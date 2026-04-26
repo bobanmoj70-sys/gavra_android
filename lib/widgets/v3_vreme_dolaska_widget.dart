@@ -27,7 +27,6 @@ class V3VremeDolaskaWidget extends StatefulWidget {
 }
 
 class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
-  static const Duration _driverStartSignalWindow = Duration(seconds: 90);
   static const String _vozacLokacijeTable = 'v3_vozac_lokacije';
   static const String _vozacLokacijeColVozacId = 'created_by';
   static const String _vozacLokacijeColUpdatedAt = 'updated_at';
@@ -111,7 +110,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     final dodelaRows = await supabase
         .from('v3_trenutna_dodela')
-        .select('termin_id, vozac_v3_auth_id, status')
+        .select('termin_id, vozac_v3_auth_id')
         .eq('putnik_v3_auth_id', putnikId)
         .eq('status', 'aktivan');
 
@@ -127,7 +126,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     if (assignments.isEmpty) return null;
 
     final vozacIds = assignments.map((e) => e.vozacId).toSet().toList(growable: false);
-    final latestSlotKeyByVozac = await _loadLatestSlotKeyByVozac(vozacIds);
+    final activeSlotKeys = await _loadActiveSlotKeys(vozacIds);
 
     final terminIds = assignments.map((e) => e.terminId).toList(growable: false);
     final operativnaRows = await supabase
@@ -137,7 +136,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     Map<String, dynamic>? selectedRow;
     String selectedVozacId = '';
-    DateTime? selectedPlanned;
     int? selectedDeltaSeconds;
     final now = DateTime.now();
 
@@ -152,32 +150,14 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       if (assignment == null) continue;
       final planned = _resolvePlannedDateTime(row, now);
       final deltaSeconds = planned?.difference(now).inSeconds;
-      final candidateSlotKey = _buildSlotKeyFromOperativnaRow(row);
-      final latestSlotKey = latestSlotKeyByVozac[assignment.vozacId];
-      final candidateMatchesStartedSlot = (latestSlotKey?.isNotEmpty ?? false) && latestSlotKey == candidateSlotKey;
+      final candidateSlotKey = _buildSlotKeyFromOperativnaRow(row, vozacId: assignment.vozacId);
+      final candidateMatchesStartedSlot = candidateSlotKey.isNotEmpty && activeSlotKeys.contains(candidateSlotKey);
+      if (!candidateMatchesStartedSlot) continue;
 
       if (selectedRow == null) {
         selectedRow = row;
         selectedVozacId = assignment.vozacId;
-        selectedPlanned = planned;
         selectedDeltaSeconds = deltaSeconds;
-        continue;
-      }
-
-      final selectedSlotKey = _buildSlotKeyFromOperativnaRow(selectedRow);
-      final selectedLatestSlotKey = latestSlotKeyByVozac[selectedVozacId];
-      final selectedMatchesStartedSlot =
-          (selectedLatestSlotKey?.isNotEmpty ?? false) && selectedLatestSlotKey == selectedSlotKey;
-
-      if (candidateMatchesStartedSlot && !selectedMatchesStartedSlot) {
-        selectedRow = row;
-        selectedVozacId = assignment.vozacId;
-        selectedPlanned = planned;
-        selectedDeltaSeconds = deltaSeconds;
-        continue;
-      }
-
-      if (!candidateMatchesStartedSlot && selectedMatchesStartedSlot) {
         continue;
       }
 
@@ -190,7 +170,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       if (shouldReplace) {
         selectedRow = row;
         selectedVozacId = assignment.vozacId;
-        selectedPlanned = planned;
         selectedDeltaSeconds = deltaSeconds;
       }
     }
@@ -199,7 +178,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       return null;
     }
 
-    final vozacLok = await _getVozacLokacijaIfRecent(selectedVozacId);
+    final vozacLok = await _getLatestVozacLokacija(selectedVozacId);
     if (vozacLok == null) return null;
 
     final vozacName = _resolveVozacName(selectedVozacId);
@@ -219,12 +198,12 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       // Prio 2: putnikova primarna/sekundarna adresa iz authCache
       final authRow = rm.authCache[putnikId];
       if (grad == 'BC') {
-        final bc1 = authRow?['adresa_bc_id']?.toString();
-        final bc2 = authRow?['adresa_bc_id_2']?.toString();
+        final bc1 = authRow?['adresa_primary_bc_id']?.toString();
+        final bc2 = authRow?['adresa_secondary_bc_id']?.toString();
         adresaId = koristiSekundarnu ? (bc2?.isNotEmpty == true ? bc2 : bc1) : (bc1?.isNotEmpty == true ? bc1 : bc2);
       } else {
-        final vs1 = authRow?['adresa_vs_id']?.toString();
-        final vs2 = authRow?['adresa_vs_id_2']?.toString();
+        final vs1 = authRow?['adresa_primary_vs_id']?.toString();
+        final vs2 = authRow?['adresa_secondary_vs_id']?.toString();
         adresaId = koristiSekundarnu ? (vs2?.isNotEmpty == true ? vs2 : vs1) : (vs1?.isNotEmpty == true ? vs1 : vs2);
       }
     }
@@ -251,9 +230,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     if (etaSeconds == null) return null;
 
     return _V3DolazakData(
-      vozacId: selectedVozacId,
       vozacIme: vozacName,
-      grad: grad,
       etaSeconds: etaSeconds,
     );
   }
@@ -306,52 +283,44 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return V3TimeUtils.extractHHmmToken(value);
   }
 
-  Future<Map<String, String>> _loadLatestSlotKeyByVozac(List<String> vozacIds) async {
-    if (vozacIds.isEmpty) return const <String, String>{};
+  Future<Set<String>> _loadActiveSlotKeys(List<String> vozacIds) async {
+    if (vozacIds.isEmpty) return const <String>{};
 
     final rows = await supabase
         .from('v3_trenutna_dodela_slot')
-        .select('datum, grad, vreme, vozac_v3_auth_id, updated_at')
+        .select('datum, grad, vreme, vozac_v3_auth_id')
         .eq('status', 'aktivan')
         .inFilter('vozac_v3_auth_id', vozacIds);
 
-    final latestByVozac = <String, ({DateTime updatedAt, String slotKey})>{};
+    final activeKeys = <String>{};
 
     for (final raw in (rows as List<dynamic>)) {
       if (raw is! Map<String, dynamic>) continue;
       final row = raw;
-      final vozacId = (row['vozac_v3_auth_id'] ?? '').toString().trim();
-      if (vozacId.isEmpty) continue;
-
-      final slotKey = _buildSlotKeyFromSlotRow(row);
+      final slotKey = _buildSlotKeyFromSlotRow(row, vozacId: row['vozac_v3_auth_id']?.toString());
       if (slotKey.isEmpty) continue;
-
-      final updatedAt = DateTime.tryParse((row['updated_at'] ?? '').toString())?.toLocal();
-      if (updatedAt == null) continue;
-
-      final current = latestByVozac[vozacId];
-      if (current == null || updatedAt.isAfter(current.updatedAt)) {
-        latestByVozac[vozacId] = (updatedAt: updatedAt, slotKey: slotKey);
-      }
+      activeKeys.add(slotKey);
     }
 
-    return latestByVozac.map((vozacId, data) => MapEntry(vozacId, data.slotKey));
+    return activeKeys;
   }
 
-  String _buildSlotKeyFromOperativnaRow(Map<String, dynamic> row) {
+  String _buildSlotKeyFromOperativnaRow(Map<String, dynamic> row, {String? vozacId}) {
     final datum = _parseIsoDatePart(row['datum']);
     final grad = (row['grad'] ?? '').toString().trim().toUpperCase();
     final vreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString() ?? row['vreme']?.toString() ?? '');
-    if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) return '';
-    return '$datum|$grad|$vreme';
+    final vozac = (vozacId ?? '').trim();
+    if (datum.isEmpty || grad.isEmpty || vreme.isEmpty || vozac.isEmpty) return '';
+    return '$datum|$grad|$vreme|$vozac';
   }
 
-  String _buildSlotKeyFromSlotRow(Map<String, dynamic> row) {
+  String _buildSlotKeyFromSlotRow(Map<String, dynamic> row, {String? vozacId}) {
     final datum = _parseIsoDatePart(row['datum']);
     final grad = (row['grad'] ?? '').toString().trim().toUpperCase();
     final vreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString() ?? '');
-    if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) return '';
-    return '$datum|$grad|$vreme';
+    final vozac = (vozacId ?? row['vozac_v3_auth_id']?.toString() ?? '').trim();
+    if (datum.isEmpty || grad.isEmpty || vreme.isEmpty || vozac.isEmpty) return '';
+    return '$datum|$grad|$vreme|$vozac';
   }
 
   String _parseIsoDatePart(dynamic raw) {
@@ -370,7 +339,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return match?.group(1) ?? '';
   }
 
-  Future<({double lat, double lng})?> _getVozacLokacijaIfRecent(String vozacId) async {
+  Future<({double lat, double lng})?> _getLatestVozacLokacija(String vozacId) async {
     final id = vozacId.trim();
     if (id.isEmpty) return null;
 
@@ -388,9 +357,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       final rawAt = row[_vozacLokacijeColUpdatedAt];
       final parsedAt = DateTime.tryParse((rawAt ?? '').toString())?.toLocal();
       if (parsedAt == null) return null;
-
-      final age = DateTime.now().difference(parsedAt);
-      if (age > _driverStartSignalWindow) return null;
 
       final lat = _parseDouble(row['lat']);
       final lng = _parseDouble(row['lng']);
@@ -518,14 +484,10 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
 class _V3DolazakData {
   const _V3DolazakData({
-    required this.vozacId,
     required this.vozacIme,
-    required this.grad,
     required this.etaSeconds,
   });
 
-  final String vozacId;
   final String vozacIme;
-  final String grad;
   final int etaSeconds;
 }

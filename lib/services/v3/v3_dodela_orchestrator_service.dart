@@ -16,14 +16,6 @@ class V3DodelaOrchestratorService {
   }) async {
     final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
 
-    await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
-      datumIso: datumIso,
-      grad: grad,
-      vreme: normVreme,
-      vozacId: vozacId,
-      updatedBy: updatedBy,
-    );
-
     final matchedRows = _rowsForSlot(
       operativnaRows: operativnaRows,
       datumIso: datumIso,

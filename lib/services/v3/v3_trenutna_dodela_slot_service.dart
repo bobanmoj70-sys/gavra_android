@@ -7,6 +7,7 @@ class V3TrenutnaDodelaSlotService {
 
   static const String tableName = 'v3_trenutna_dodela_slot';
   static const String statusAktivan = 'aktivan';
+  static const String statusNeaktivan = 'neaktivan';
   static const String colDatum = 'datum';
   static const String colGrad = 'grad';
   static const String colVreme = 'vreme';
@@ -148,5 +149,24 @@ class V3TrenutnaDodelaSlotService {
     if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty) return;
 
     await supabase.from(tableName).delete().eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
+  }
+
+  static Future<void> deactivateSlot({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+    String? updatedBy,
+  }) async {
+    final datum = _normalizeDatumIso(datumIso);
+    final gradNorm = _normalizeGrad(grad);
+    final vremeNorm = _normalizeVreme(vreme);
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty) return;
+
+    final payload = <String, dynamic>{
+      colStatus: statusNeaktivan,
+      if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
+    };
+
+    await supabase.from(tableName).update(payload).eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
   }
 }

@@ -908,13 +908,31 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     }
   }
 
+  Future<void> _handleStopNavigation() async {
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
+      try {
+        await V3TrenutnaDodelaSlotService.deactivateSlot(
+          datumIso: _selectedDatumIso,
+          grad: _selectedGrad,
+          vreme: _selectedVreme,
+          updatedBy: vozacId,
+        );
+      } catch (e) {
+        debugPrint('[STOP] deactivate slot failed: $e');
+      }
+    }
+
+    V3VozacLocationTrackingService.instance.stop();
+    if (mounted) {
+      V3AppSnackBar.info(context, 'Tracking zaustavljen.');
+      V3StateUtils.safeSetState(this, () {});
+    }
+  }
+
   void _handleStartStopTap() {
     if (V3VozacLocationTrackingService.instance.isRunning) {
-      V3VozacLocationTrackingService.instance.stop();
-      if (mounted) {
-        V3AppSnackBar.info(context, 'Tracking zaustavljen.');
-        V3StateUtils.safeSetState(this, () {});
-      }
+      unawaited(_handleStopNavigation());
       return;
     }
 
