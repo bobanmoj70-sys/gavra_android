@@ -83,6 +83,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   Future<void> _reload() async {
     if (!mounted) return;
+    if (mounted) setState(() => _loading = true);
 
     try {
       final data = await _etaOrchestratorService.loadEtaForPutnik(widget.putnikId);

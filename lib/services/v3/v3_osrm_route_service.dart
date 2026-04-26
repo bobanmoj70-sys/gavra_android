@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -108,6 +109,87 @@ class V3OsrmRouteService {
       orderedStops: orderedStops,
       etaByWaypointId: etaByWaypointId,
     );
+  }
+
+  /// Kao computeEtaForStopsFromSource ali koristi /route API — poštuje zadati redosled bez re-optimizacije.
+  Future<V3OsrmEtaResult?> computeEtaForStopsFixedOrder({
+    required V3RouteCoordinate source,
+    required List<V3RouteWaypoint> stops,
+  }) async {
+    if (stops.isEmpty) {
+      return const V3OsrmEtaResult(
+        orderedStops: <V3RouteWaypoint>[],
+        etaByWaypointId: <String, int>{},
+      );
+    }
+
+    final allCoords = <V3RouteCoordinate>[source, ...stops.map((s) => s.coordinate)];
+    final coordStr = allCoords.map((c) => '${c.longitude},${c.latitude}').join(';');
+    final uri = Uri.parse('$_baseUrl/route/v1/driving/$coordStr').replace(
+      queryParameters: {
+        'steps': 'false',
+        'overview': 'false',
+        'annotations': 'false',
+      },
+    );
+
+    try {
+      final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+      debugPrint('[OSRM/route] status=${response.statusCode} url=$uri');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[OSRM/route] ❌ bad status ${response.statusCode}');
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        debugPrint('[OSRM/route] ❌ decoded nije Map');
+        return null;
+      }
+      final code = decoded['code']?.toString() ?? '';
+      if (code != 'Ok') {
+        debugPrint('[OSRM/route] ❌ code=$code message=${decoded['message']}');
+        return null;
+      }
+
+      final rawRoutes = decoded['routes'];
+      if (rawRoutes is! List || rawRoutes.isEmpty) {
+        debugPrint('[OSRM/route] ❌ routes prazan');
+        return null;
+      }
+      final route = rawRoutes.first as Map<String, dynamic>;
+      final rawLegs = route['legs'];
+      if (rawLegs is! List || rawLegs.length != stops.length) {
+        debugPrint(
+            '[OSRM/route] ❌ legs.length=${rawLegs is List ? rawLegs.length : 'nije List'} stops.length=${stops.length}');
+        return null;
+      }
+
+      final etaByWaypointId = <String, int>{};
+      var cumulative = 0;
+      for (var i = 0; i < stops.length; i++) {
+        final leg = rawLegs[i];
+        final durationSeconds = (leg is Map ? (leg['duration'] as num?)?.toInt() : null);
+        if (durationSeconds == null || durationSeconds < 0) {
+          debugPrint('[OSRM/route] ❌ leg[$i] duration null ili negativan: $durationSeconds');
+          return null;
+        }
+        cumulative += durationSeconds;
+        // __destination__ je samo za smer rute, ne vraćamo ETA za njega
+        if (!stops[i].id.startsWith('__')) {
+          etaByWaypointId[stops[i].id] = cumulative;
+        }
+      }
+      debugPrint('[OSRM/route] ✅ etaByWaypointId keys=${etaByWaypointId.length}');
+
+      return V3OsrmEtaResult(
+        orderedStops: List<V3RouteWaypoint>.from(stops),
+        etaByWaypointId: etaByWaypointId,
+      );
+    } catch (e) {
+      debugPrint('[OSRM/route] ❌ exception: $e');
+      return null;
+    }
   }
 
   Future<List<V3RouteWaypoint>> _optimizeRoute(

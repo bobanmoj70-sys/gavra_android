@@ -452,14 +452,16 @@ Future<void> _initIosFcmHandlers() async {
       return;
     }
 
-    if (message.notification == null) {
-      await _showForegroundPushNotification(
-        title: title,
-        body: body,
-        payload: type,
-        data: data,
-      );
-    }
+    // Uvek prikaži lokalnu notifikaciju dok je app u foregroundu.
+    // Na Androidu FCM ne prikazuje notification automatski — app mora sama.
+    // Prethodni uslov `if (message.notification == null)` preskakao je sve
+    // push-ove koji imaju notification payload (npr. putnik_eta_start).
+    await _showForegroundPushNotification(
+      title: title,
+      body: body,
+      payload: type,
+      data: data,
+    );
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
