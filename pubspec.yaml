@@ -36,7 +36,6 @@ dependencies:
   wakelock_plus: ^1.2.8
   google_fonts: ^6.0.0
 
-  # googleapis i googleapis_auth UKLONJENI - koristi se OSRM za optimizaciju ruta
   shimmer: ^3.0.0
   device_info_plus: ^10.0.0
   android_intent_plus: ^5.1.0

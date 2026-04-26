@@ -300,11 +300,11 @@ String _encodeTapPayload(String type, Map<String, String> data) {
     }
   } catch (_) {}
 
-  if (payload.startsWith('putnik_eta_start')) {
+  if (payload.startsWith('zahtev_status')) {
     final parts = payload.split(':');
     final putnikId = parts.length > 1 ? parts[1].trim() : '';
     return (
-      type: 'putnik_eta_start',
+      type: 'zahtev_status',
       data: putnikId.isNotEmpty ? {'v3_auth_id': putnikId} : <String, String>{},
     );
   }
@@ -467,7 +467,10 @@ Future<void> _initIosFcmHandlers() async {
     final type = message.data['type']?.toString() ?? '';
     final data = _messageDataToStringMap(message.data);
     debugPrint('[FCM][iOS] onMessageOpenedApp type=$type data=$data');
-    unawaited(_handleFcmLaunch(type, data));
+    unawaited(
+      _handleFcmLaunch(type, data)
+          .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] onMessageOpenedApp launch handler greška: $e')),
+    );
   });
 
   final initialMessage = await messaging.getInitialMessage();
@@ -475,7 +478,10 @@ Future<void> _initIosFcmHandlers() async {
     final type = initialMessage.data['type']?.toString() ?? '';
     final data = _messageDataToStringMap(initialMessage.data);
     debugPrint('[FCM][iOS] getInitialMessage type=$type data=$data');
-    unawaited(_handleFcmLaunch(type, data));
+    unawaited(
+      _handleFcmLaunch(type, data)
+          .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] getInitialMessage launch handler greška: $e')),
+    );
   }
 
   messaging.onTokenRefresh.listen((token) {
@@ -543,7 +549,10 @@ Future<void> _initFcmChannel() async {
         );
         final launchType = launchData['type'] ?? '';
         debugPrint('[FCM] onLaunchMessage type=$launchType data=$launchData');
-        unawaited(_handleFcmLaunch(launchType, launchData));
+        unawaited(
+          _handleFcmLaunch(launchType, launchData)
+              .catchError((Object e) => debugPrint('⚠️ [FCM] onLaunchMessage launch handler greška: $e')),
+        );
     }
   });
   debugPrint('✅ [FCM] MethodChannel handler registrovan');
@@ -553,7 +562,6 @@ Future<void> _initFcmChannel() async {
 ///
 /// Tipovi:
 ///  - `zahtev_status`   → putnik otvori V3PutnikProfilScreen, vozač — nema navigacije (već je na svom ekranu)
-///  - `putnik_eta_start`→ otvori V3PutnikProfilScreen
 Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
   // Sačekaj da navigator bude dostupan (max 5s)
   for (var i = 0; i < 50; i++) {
@@ -575,10 +583,9 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
       return;
 
     case 'zahtev_status':
-    case 'putnik_eta_start':
       // v3_auth_id je v3_auth.id — direktno otvori profil ekran
       final putnikId = data['v3_auth_id'] ?? '';
-      final payload = putnikId.isNotEmpty ? 'putnik_eta_start:$putnikId' : 'putnik_eta_start';
+      final payload = putnikId.isNotEmpty ? 'zahtev_status:$putnikId' : 'zahtev_status';
       await _openPutnikProfilFromNotification(payload);
       return;
 
@@ -719,8 +726,8 @@ void onNotificationTap(NotificationResponse response) async {
   final decodedType = decodedPayload.type;
   final decodedData = decodedPayload.data;
 
-  // Tap na samu notifikaciju (bez action dugmeta) za putnik ETA flow
-  if (decodedType == 'zahtev_status' || decodedType == 'putnik_eta_start') {
+  // Tap na samu notifikaciju (bez action dugmeta) za putnik status flow
+  if (decodedType == 'zahtev_status') {
     await _handleFcmLaunch(decodedType, decodedData);
     return;
   }
@@ -817,7 +824,7 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
 
     Map<String, dynamic>? putnikData = V3PutnikService.currentPutnik;
 
-    // 1) Payload id fallback: putnik_eta_start:<putnik_id>
+    // 1) Payload id fallback: zahtev_status:<putnik_id>
     final parts = payload.split(':');
     final payloadPutnikId = parts.length > 1 ? parts[1] : '';
     if ((putnikData == null) && payloadPutnikId.isNotEmpty) {
@@ -836,7 +843,12 @@ Future<void> _openPutnikProfilFromNotification(String payload) async {
 
     // 3) Cache refresh fallback
     if (putnikData == null) {
-      await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
+      await V3MasterRealtimeManager.instance.initV3().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('⚠️ [Push] initV3 timeout nakon 15s; nastavljam bez cache refresh-a.');
+        },
+      );
       final tokenResult = await V3PushTokenProvider.getBestToken();
       final token = tokenResult?.token.trim() ?? '';
       if (token.isNotEmpty) {

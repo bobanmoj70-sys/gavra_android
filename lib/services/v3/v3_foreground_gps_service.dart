@@ -10,7 +10,6 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../models/v3_putnik.dart';
 import '../../utils/v3_stream_utils.dart';
-import '../../utils/v3_time_utils.dart';
 import 'v3_trenutna_dodela_service.dart';
 import 'v3_vozac_lokacija_service.dart';
 
@@ -33,7 +32,6 @@ class V3ForegroundGpsService {
   static List<V3Putnik> _currentPutnici = [];
   static DateTime? _lastAutoStopCheckAt;
   static bool _autoStopInProgress = false;
-  static bool _routeEtaRefreshInProgress = false;
   static bool _trackingCycleInProgress = false;
 
   /// Inicijalizuje notification channel
@@ -137,7 +135,6 @@ class V3ForegroundGpsService {
     _currentPutnici.clear();
     _lastAutoStopCheckAt = null;
     _autoStopInProgress = false;
-    _routeEtaRefreshInProgress = false;
     _trackingCycleInProgress = false;
 
     // Zaustavi GPS
@@ -293,7 +290,6 @@ class V3ForegroundGpsService {
         ),
       );
 
-      await _refreshRouteOrderEtaForActiveAssignments();
       await checkAutoStop();
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] Initial location seed failed: $e');
@@ -383,51 +379,12 @@ class V3ForegroundGpsService {
       );
 
       await _updateNotificationWithSpeed(position.speed * 3.6);
-      await _refreshRouteOrderEtaForActiveAssignments();
       await checkAutoStop();
     } catch (e) {
       debugPrint('[V3ForegroundGpsService] _runTrackingCycle error: $e');
     } finally {
       _trackingCycleInProgress = false;
     }
-  }
-
-  static Future<void> _refreshRouteOrderEtaForActiveAssignments() async {
-    if (!_isRunning || _routeEtaRefreshInProgress) return;
-
-    final vozacId = _currentVozacId?.trim() ?? '';
-    if (vozacId.isEmpty) return;
-
-    final datumIso = (_currentDatumIso ?? '').trim();
-    final grad = (_currentGrad ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(_currentPolazakTime);
-    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
-
-    final lokacija = V3VozacLokacijaService.getVozacLokacijaSync(vozacId);
-    final lat = _toDouble(lokacija?['lat']);
-    final lng = _toDouble(lokacija?['lng']);
-    if (lat == null || lng == null) return;
-
-    _routeEtaRefreshInProgress = true;
-    try {
-      await V3TrenutnaDodelaService.refreshRouteOrderEtaForVozac(
-        vozacId: vozacId,
-        originLat: lat,
-        originLng: lng,
-        datumIso: datumIso,
-        grad: grad,
-        vreme: vreme,
-      );
-    } catch (e) {
-      debugPrint('[V3ForegroundGpsService] _refreshRouteOrderEtaForActiveAssignments error: $e');
-    } finally {
-      _routeEtaRefreshInProgress = false;
-    }
-  }
-
-  static double? _toDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse(value?.toString() ?? '');
   }
 
   /// Javni interfejs za notification action handling

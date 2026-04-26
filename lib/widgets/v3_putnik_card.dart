@@ -42,7 +42,6 @@ class V3PutnikCard extends StatefulWidget {
     this.onChanged,
     this.onDodeliVozaca,
     this.vozacBoja,
-    this.isExcludedFromOptimization = false,
   });
 
   final V3Putnik putnik;
@@ -52,7 +51,6 @@ class V3PutnikCard extends StatefulWidget {
   final VoidCallback? onChanged;
   final VoidCallback? onDodeliVozaca;
   final Color? vozacBoja;
-  final bool isExcludedFromOptimization;
 
   @override
   State<V3PutnikCard> createState() => _V3PutnikCardState();

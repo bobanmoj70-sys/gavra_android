@@ -1,8 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
@@ -10,14 +11,9 @@ import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
-import '../services/v3/v3_driver_push_notification_service.dart';
-import '../services/v3/v3_foreground_gps_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
-import '../services/v3/v3_osrm_service.dart';
-import '../services/v3/v3_smart_navigation_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
-import '../services/v3/v3_vozac_lokacija_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
@@ -41,8 +37,6 @@ import 'v3_welcome_screen.dart';
 
 /// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
-///
-/// ETA i redosled vožnje koriste OSRM na zahtev vozača.
 class V3VozacScreen extends StatefulWidget {
   const V3VozacScreen({super.key});
 
@@ -58,11 +52,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   bool _isLoading = true;
-  bool _isTracking = false;
-  bool _isOptimizingRoute = false;
   bool _loadingDodela = false;
   RealtimeChannel? _trenutnaDodelaChannel;
-  final Map<String, Map<String, int>> _optimizedOrderBySlotKey = <String, Map<String, int>>{};
 
   int? _lastRealtimeTick;
 
@@ -248,23 +239,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return rows;
   }
 
-  bool _isExcludedFromOptimization(_PutnikEntry entry) {
-    return !V3StatusPolicy.canAssign(
+  bool _isPutnikAktivanZaVoznju(_PutnikEntry entry) {
+    return V3StatusPolicy.canAssign(
       status: entry.entry?.statusFinal,
       otkazanoAt: entry.entry?.otkazanoAt,
       pokupljenAt: entry.entry?.pokupljenAt,
     );
   }
 
-  String _currentRouteSlotKey() {
-    final vreme = V3TimeUtils.normalizeToHHmm(_selectedVreme);
-    return '${_selectedDatumIso}|${_selectedGrad.toUpperCase()}|$vreme';
-  }
-
   List<_PutnikEntry> _sortPutniciForDisplay(
-    List<_PutnikEntry> putnici, {
-    Map<String, int> optimizedOrderByPutnikId = const {},
-  }) {
+    List<_PutnikEntry> putnici,
+  ) {
     final sorted = List<_PutnikEntry>.from(putnici);
     sorted.sort((a, b) {
       int sortRank(_PutnikEntry entry) {
@@ -285,24 +270,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         return aRank.compareTo(bRank);
       }
 
-      if (aRank == 1 && optimizedOrderByPutnikId.isNotEmpty) {
-        final aOrder = optimizedOrderByPutnikId[a.putnik.id];
-        final bOrder = optimizedOrderByPutnikId[b.putnik.id];
-
-        if (aOrder != null && bOrder != null && aOrder != bOrder) {
-          return aOrder.compareTo(bOrder);
-        }
-        if (aOrder != null && bOrder == null) return -1;
-        if (aOrder == null && bOrder != null) return 1;
-      }
-
       return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
     });
     return sorted;
   }
 
-  List<_PutnikEntry> _optimizacijaPutnici() {
-    return _mojiPutnici.where((entry) => !_isExcludedFromOptimization(entry)).toList();
+  List<_PutnikEntry> _putniciZaRutu() {
+    return _mojiPutnici.where((entry) => _isPutnikAktivanZaVoznju(entry)).toList();
   }
 
   @override
@@ -484,12 +458,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       );
     }
 
-    final effectiveOptimizedOrder = _optimizedOrderBySlotKey[_currentRouteSlotKey()] ?? const <String, int>{};
+    final putniciZaPrikaz = _sortPutniciForDisplay(putnici);
+
     V3StateUtils.safeSetState(this, () {
-      _mojiPutnici = _sortPutniciForDisplay(
-        putnici,
-        optimizedOrderByPutnikId: effectiveOptimizedOrder,
-      );
+      _mojiPutnici = putniciZaPrikaz;
     });
   }
 
@@ -611,13 +583,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<void> _openMapa() async {
-    final putniciZaRutu = _optimizacijaPutnici();
+    final putniciZaRutu = _putniciZaRutu();
     final waypoints = <(double, double)>[];
 
     for (final item in putniciZaRutu) {
-      final stop = _resolveStopForOptimization(item);
-      if (stop == null) continue;
-      waypoints.add((stop.lat, stop.lng));
+      final coords = _resolveKoordinateZaRutu(item);
+      if (coords == null) continue;
+      waypoints.add(coords);
     }
 
     if (waypoints.isEmpty) {
@@ -699,197 +671,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  Future<void> _toggleTracking() async {
-    final vozac = _efektivniVozac;
-    if (vozac == null) return;
-
-    if (!_isTracking) {
-      final canContinue = await _ensureDriverLocationDisclosure();
-      if (!canContinue) return;
-
-      // 1. START FOREGROUND GPS TRACKING SA PERSISTENT NOTIFICATION
-      V3StateUtils.safeSetState(this, () => _isTracking = true);
-
-      try {
-        // Pokreni foreground GPS service sa notification
-        final success = await V3ForegroundGpsService.startTracking(
-          vozacId: vozac.id,
-          vozacIme: vozac.imePrezime ?? 'Vozač',
-          datumIso: _selectedDatumIso,
-          polazakVreme: _selectedVreme,
-          putnici: _optimizacijaPutnici().map((entry) => entry.putnik).toList(),
-          grad: _selectedGrad,
-        );
-
-        if (success) {
-          final locationReady = await _waitForActiveDriverLocation(
-            vozacId: vozac.id,
-            timeout: const Duration(seconds: 12),
-          );
-
-          if (!locationReady && mounted) {
-            V3AppSnackBar.warning(context, '⚠️ GPS lokacija još nije aktivna. Sačekajte par sekundi.');
-          }
-
-          try {
-            final pushResult = await V3DriverPushNotificationService.notifyPassengersDriverStarted(
-              vozacId: vozac.id,
-              datumIso: _selectedDatumIso,
-              grad: _selectedGrad,
-              vreme: _selectedVreme,
-            );
-            final notified = (pushResult['notified'] as num?)?.toInt() ?? 0;
-            if (mounted && notified <= 0) {
-              V3AppSnackBar.warning(context, '⚠️ Push nije poslat: nema aktivnih putnika za ovaj termin.');
-            }
-          } catch (e) {
-            debugPrint('[V3VozacScreen] driver-start push notify error: $e');
-            if (mounted) {
-              V3AppSnackBar.warning(context, '⚠️ Push obaveštenje putnicima nije poslato.');
-            }
-          }
-
-          if (locationReady && _mojiPutnici.isNotEmpty) {
-            await _optimizujRutu();
-          }
-
-          if (mounted) {
-            V3AppSnackBar.success(
-                context, '📍 GPS tracking pokrenut sa persistent notification! Putnici dobijaju realtime lokaciju.');
-          }
-        } else {
-          V3StateUtils.safeSetState(this, () => _isTracking = false);
-          if (mounted) {
-            V3AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga. Provjerite dozvole u Settings.');
-          }
-        }
-      } catch (e) {
-        V3StateUtils.safeSetState(this, () => _isTracking = false);
-        if (mounted) {
-          V3AppSnackBar.error(context, '❌ Greška pri pokretanju GPS trackinga: $e');
-        }
-      }
-    } else {
-      // 2. STOP FOREGROUND GPS TRACKING
-      V3StateUtils.safeSetState(this, () => _isTracking = false);
-
-      // Zaustavi foreground service i notification
-      await V3ForegroundGpsService.stopTracking();
-
-      if (mounted) {
-        V3AppSnackBar.warning(context, '⚠️ GPS tracking zaustavljen - notification uklonjena');
-      }
-    }
-  }
-
-  Future<bool> _ensureDriverLocationDisclosure() async {
-    final locationWhenInUse = await Permission.location.status;
-
-    if (locationWhenInUse.isGranted) {
-      return true;
-    }
-
-    final requested = await Permission.location.request();
-    if (requested.isGranted) {
-      return true;
-    }
-
-    if (mounted) {
-      V3AppSnackBar.warning(
-        context,
-        '⚠️ GPS dozvola nije odobrena. Uključite dozvolu u Settings.',
-      );
-    }
-    return false;
-  }
-
-  Future<bool> _waitForActiveDriverLocation({
-    required String vozacId,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final startedAt = DateTime.now();
-    while (DateTime.now().difference(startedAt) < timeout) {
-      final location = V3VozacLokacijaService.getVozacLokacijaSync(vozacId, onlyActive: true);
-      final lat = (location?['lat'] as num?)?.toDouble() ?? double.tryParse(location?['lat']?.toString() ?? '');
-      final lng = (location?['lng'] as num?)?.toDouble() ?? double.tryParse(location?['lng']?.toString() ?? '');
-      if (location != null && lat != null && lng != null) {
-        return true;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 350));
-    }
-    return false;
-  }
-
-  Future<void> _optimizujRutu({
-    bool silent = false,
-  }) async {
-    final putniciZaOptimizaciju = _optimizacijaPutnici();
-    if (putniciZaOptimizaciju.isEmpty) return;
-
-    if (_isOptimizingRoute) return;
-
-    final vozac = V3VozacService.currentVozac;
-    if (vozac == null) return;
-
-    _isOptimizingRoute = true;
-
-    try {
-      final data = _buildOptimizationData(putniciZaOptimizaciju);
-
-      final driverPosition = await _resolveDriverPositionForOptimization(
-        vozacId: vozac.id,
-        silent: silent,
-      );
-      if (driverPosition == null) return;
-
-      final res = await _optimizeRouteWithOsrm(
-        data: data,
-        driverLat: driverPosition['lat']!,
-        driverLng: driverPosition['lng']!,
-      );
-
-      if (res.success && res.optimizedData != null) {
-        final optimizedOrder = <String, int>{};
-        final optimizedData = res.optimizedData!;
-        for (var index = 0; index < optimizedData.length; index++) {
-          final item = optimizedData[index];
-          final putnikObj = item['putnik'];
-          String? putnikId;
-
-          if (putnikObj is V3Putnik) {
-            putnikId = putnikObj.id;
-          } else if (putnikObj is Map<String, dynamic>) {
-            putnikId = putnikObj['id']?.toString();
-          }
-
-          if (putnikId != null && putnikId.isNotEmpty) {
-            optimizedOrder[putnikId] = index + 1;
-          }
-        }
-
-        if (optimizedOrder.isNotEmpty) {
-          final routeSlotKey = _currentRouteSlotKey();
-          V3StateUtils.safeSetState(this, () {
-            _optimizedOrderBySlotKey[routeSlotKey] = optimizedOrder;
-            _mojiPutnici = _sortPutniciForDisplay(
-              _mojiPutnici,
-              optimizedOrderByPutnikId: optimizedOrder,
-            );
-          });
-        }
-
-        if (!silent && mounted) {
-          V3AppSnackBar.success(context, res.message);
-        }
-      } else if (!silent && mounted) {
-        V3AppSnackBar.warning(context, res.message);
-      }
-    } finally {
-      _isOptimizingRoute = false;
-    }
-  }
-
-  V3OsrmStop? _resolveStopForOptimization(_PutnikEntry item) {
+  (double, double)? _resolveKoordinateZaRutu(_PutnikEntry item) {
     final entry = item.entry;
     final putnik = item.putnik;
 
@@ -928,80 +710,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     if (adresa == null) return null;
 
-    return V3OsrmStop(
-      id: putnik.id,
-      lat: adresa.gpsLat!,
-      lng: adresa.gpsLng!,
-    );
-  }
-
-  List<Map<String, dynamic>> _buildOptimizationData(List<_PutnikEntry> putnici) {
-    final data = <Map<String, dynamic>>[];
-    for (final item in putnici) {
-      final stop = _resolveStopForOptimization(item);
-      if (stop == null) continue;
-      data.add({
-        'putnik': item.putnik,
-        'entry': item.entry,
-        'stop': stop,
-      });
-    }
-    return data;
-  }
-
-  Future<Map<String, double>?> _resolveDriverPositionForOptimization({
-    required String vozacId,
-    required bool silent,
-  }) async {
-    final gpsPosition = await _getCurrentDriverPosition(vozacId);
-    final driverLat = gpsPosition?['lat'] as double?;
-    final driverLng = gpsPosition?['lng'] as double?;
-
-    if (driverLat == null || driverLng == null) {
-      if (!silent && mounted) {
-        V3AppSnackBar.warning(context, 'OSRM ETA obračun zahteva aktivan GPS vozača.');
-      }
-      return null;
-    }
-
-    return {
-      'lat': driverLat,
-      'lng': driverLng,
-    };
-  }
-
-  Future<V3NavigationResult> _optimizeRouteWithOsrm({
-    required List<Map<String, dynamic>> data,
-    required double driverLat,
-    required double driverLng,
-  }) {
-    return V3SmartNavigationService.optimizeV3Route(
-      data: data,
-      fromCity: _selectedGrad,
-      driverLat: driverLat,
-      driverLng: driverLng,
-    );
-  }
-
-  /// Dobija trenutnu GPS poziciju vozača iz baze podataka
-  Future<Map<String, dynamic>?> _getCurrentDriverPosition(String vozacId) async {
-    try {
-      final response = V3VozacLokacijaService.getVozacLokacijaSync(vozacId, onlyActive: true);
-
-      final lat = (response?['lat'] as num?)?.toDouble() ?? double.tryParse(response?['lat']?.toString() ?? '');
-      final lng = (response?['lng'] as num?)?.toDouble() ?? double.tryParse(response?['lng']?.toString() ?? '');
-
-      if (response != null && lat != null && lng != null) {
-        return {
-          'lat': lat,
-          'lng': lng,
-          'updated_at': response['updated_at'],
-        };
-      }
-    } catch (e) {
-      debugPrint('[V3VozacScreen] _getCurrentDriverPosition error: $e');
-    }
-    return null;
+    return (adresa.gpsLat!, adresa.gpsLng!);
   }
 
   @override
@@ -1115,15 +824,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                           // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
                           Row(
                             children: [
-                              // START / STOP
+                              // START
                               Expanded(
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label: _isTracking ? 'STOP' : 'START',
-                                  color: _isTracking ? Colors.red : Colors.green,
+                                  label: 'START',
+                                  color: Colors.green,
                                   height: appBarButtonHeight,
-                                  onTap: _toggleTracking,
+                                  onTap: () {},
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -1310,7 +1019,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 redniBroj: redniBrojevi[index],
                                 vozacBoja: vozacBoja,
                                 onChanged: _rebuild,
-                                isExcludedFromOptimization: _isExcludedFromOptimization(pz),
                               );
                             },
                           ),

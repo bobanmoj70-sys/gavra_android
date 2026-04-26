@@ -18,6 +18,27 @@ import 'v3_phone_utils.dart';
 class V3TelefonHelper {
   V3TelefonHelper._();
 
+  static Future<void> _launchHereAppUri(
+    State state,
+    BuildContext context,
+    Uri uri,
+  ) async {
+    try {
+      if (!state.mounted) return;
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (!state.mounted) return;
+        V3AppSnackBar.warning(
+          context,
+          'Instalirajte HERE WeGo aplikaciju ako želite da koristite navigaciju.',
+        );
+      }
+    } catch (e) {
+      V3ErrorUtils.safeError(state, context, '❌ HERE WeGo nije dostupan: $e');
+    }
+  }
+
   // ─── TELEFON POZIVI ─────────────────────────────────────────────────────
 
   /// Pozovi telefon broj sa automatskim permission check-om i error handling-om
@@ -127,21 +148,7 @@ class V3TelefonHelper {
   /// Ako aplikacija nije instalirana, prikazuje poruku da je potrebno instalirati HERE WeGo.
   static Future<void> otvoriHereWeGoAppOnly(State state, BuildContext context) async {
     final hereAppUri = Uri.parse('here-route://mylocation');
-
-    try {
-      if (!state.mounted) return;
-      if (await canLaunchUrl(hereAppUri)) {
-        await launchUrl(hereAppUri, mode: LaunchMode.externalApplication);
-      } else {
-        if (!state.mounted) return;
-        V3AppSnackBar.warning(
-          context,
-          'Instalirajte HERE WeGo aplikaciju ako želite da koristite navigaciju.',
-        );
-      }
-    } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ HERE WeGo nije dostupan: $e');
-    }
+    await _launchHereAppUri(state, context, hereAppUri);
   }
 
   /// Otvori HERE WeGo navigaciju do specifične lokacije
@@ -149,46 +156,8 @@ class V3TelefonHelper {
   /// **Koristi umjesto:** here-route:// launch duplikata
   /// **Primjer:** V3TelefonHelper.navigirajDo(this, context, 44.8983, 21.4152);
   static Future<void> navigirajDo(State state, BuildContext context, double lat, double lng) async {
-    // Pokušaj HERE WeGo prvo
     final hereUrl = Uri.parse('here-route://mylocation/$lat,$lng/now');
-
-    try {
-      if (!state.mounted) return;
-      if (await canLaunchUrl(hereUrl)) {
-        await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
-        return;
-      }
-    } catch (e) {
-      debugPrint('[V3TelefonHelper] HERE WeGo nedostupan: $e');
-    }
-
-    // Fallback na web HERE
-    final webHereUrl = Uri.parse('https://wego.here.com/directions/drive/mypos/$lat,$lng');
-
-    try {
-      if (!state.mounted) return;
-      if (await canLaunchUrl(webHereUrl)) {
-        await launchUrl(webHereUrl, mode: LaunchMode.externalApplication);
-        return;
-      }
-    } catch (e) {
-      debugPrint('[V3TelefonHelper] Web HERE nedostupan: $e');
-    }
-
-    // Poslednji fallback - Google Maps
-    final googleUrl = Uri.parse('https://maps.google.com/?q=$lat,$lng');
-
-    try {
-      if (!state.mounted) return;
-      if (await canLaunchUrl(googleUrl)) {
-        await launchUrl(googleUrl, mode: LaunchMode.externalApplication);
-      } else {
-        if (!state.mounted) return;
-        V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
-      }
-    } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju mapa: $e');
-    }
+    await _launchHereAppUri(state, context, hereUrl);
   }
 
   /// Otvori HERE WeGo sa specifičnom adresom ili URL-om
@@ -202,22 +171,17 @@ class V3TelefonHelper {
       return;
     }
 
-    final parsed = Uri.tryParse(input);
-    final uri = (parsed != null && parsed.hasScheme)
-        ? parsed
-        : Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': input});
-
-    try {
+    final uri = Uri.tryParse(input);
+    if (uri == null || uri.scheme != 'here-route') {
       if (!state.mounted) return;
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (!state.mounted) return;
-        V3AppSnackBar.error(context, 'Ne mogu da otvorim aplikaciju za mape');
-      }
-    } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju mapa: $e');
+      V3AppSnackBar.warning(
+        context,
+        'Podržan je samo HERE WeGo app link (here-route://).',
+      );
+      return;
     }
+
+    await _launchHereAppUri(state, context, uri);
   }
 
   // ─── MULTI-DESTINATION NAVIGACIJA ──────────────────────────────────────
@@ -232,17 +196,16 @@ class V3TelefonHelper {
       return;
     }
 
-    final waypointsBuffer = StringBuffer('https://wego.here.com/directions/drive/');
+    final waypointsBuffer = StringBuffer('here-route://mylocation/');
     for (int i = 0; i < waypoints.length; i++) {
       final (lat, lng) = waypoints[i];
-      if (i == 0) {
-        waypointsBuffer.write('mylocation/');
-      }
       waypointsBuffer.write('$lat,$lng');
       if (i < waypoints.length - 1) waypointsBuffer.write('/');
     }
+    waypointsBuffer.write('/now');
 
-    await otvoriMaps(state, context, waypointsBuffer.toString());
+    final routeUri = Uri.parse(waypointsBuffer.toString());
+    await _launchHereAppUri(state, context, routeUri);
   }
 
   // ─── UTILITY METHODS ───────────────────────────────────────────────────

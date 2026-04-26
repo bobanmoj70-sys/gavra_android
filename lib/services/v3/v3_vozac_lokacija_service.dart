@@ -36,7 +36,7 @@ class V3VozacLokacijaService {
   static const Duration _activeLocationWindow = Duration(minutes: 3);
 
   /// Updates driver's location in the database using Fire-and-Forget.
-  /// Poziva se često iz GPS stream-a i koristi se za ETA/status prikaz.
+  /// Poziva se često iz GPS stream-a i koristi se za status/prikaz lokacije.
   static Future<void> updateLokacija(V3VozacLokacijaUpdate update) async {
     try {
       await _repo.upsert(update.toJson());
@@ -58,16 +58,13 @@ class V3VozacLokacijaService {
   }
 
   /// Gets specific driver's location from the synchronized cache.
-  static Map<String, dynamic>? getVozacLokacijaSync(String vozacId,
-      {bool onlyActive = false}) {
+  static Map<String, dynamic>? getVozacLokacijaSync(String vozacId, {bool onlyActive = false}) {
     final cache = V3MasterRealtimeManager.instance.vozacLokacijeCache;
     // Note: cache key is UID of the record in v3_vozac_lokacije, not created_by.
     // We search the values for the matching created_by.
     try {
       return cache.values.firstWhere(
-        (l) =>
-            l['created_by']?.toString() == vozacId &&
-            (!onlyActive || _isLokacijaAktivna(l)),
+        (l) => l['created_by']?.toString() == vozacId && (!onlyActive || _isLokacijaAktivna(l)),
       );
     } catch (_) {
       return null;
@@ -75,8 +72,7 @@ class V3VozacLokacijaService {
   }
 
   static bool _isLokacijaAktivna(Map<String, dynamic> row) {
-    final updatedRaw =
-        row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
+    final updatedRaw = row['updated_at']?.toString() ?? row['created_at']?.toString() ?? '';
     final updatedAt = DateTime.tryParse(updatedRaw);
     if (updatedAt == null) return false;
     return DateTime.now().difference(updatedAt) <= _activeLocationWindow;

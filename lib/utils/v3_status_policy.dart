@@ -100,13 +100,6 @@ class V3StatusPolicy {
     return pokupljen || isPending(status);
   }
 
-  static bool isExcludedFromOptimization({
-    String? status,
-    bool pokupljen = false,
-  }) {
-    return pokupljen || isCanceledOrRejected(status);
-  }
-
   static bool isVisibleForDisplay({
     String? status,
     bool pokupljen = false,

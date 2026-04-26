@@ -3,8 +3,7 @@ import 'dart:async';
 import '../../../globals.dart';
 
 class V3RealtimeBootstrapRepository {
-  static const Duration _requestTimeout = Duration(seconds: 10);
-  static const Duration _bootstrapTimeout = Duration(seconds: 15);
+  static const Duration _requestTimeout = Duration(seconds: 15);
 
   Future<List<dynamic>> fetchInitialData() async {
     final results = await Future.wait([
@@ -23,7 +22,7 @@ class V3RealtimeBootstrapRepository {
       _withTimeout('v3_operativna_nedelja', supabase.from('v3_operativna_nedelja').select()),
       _withTimeout('v3_kapacitet_slots', supabase.from('v3_kapacitet_slots').select()),
       _withTimeout('v3_app_settings', supabase.from('v3_app_settings').select()),
-    ]).timeout(_bootstrapTimeout);
+    ]);
 
     return results;
   }

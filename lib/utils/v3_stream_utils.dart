@@ -187,19 +187,6 @@ class V3StreamUtils {
     );
   }
 
-  /// Route optimization timer
-  static Timer createRouteOptimizationTimer({
-    required String key,
-    Duration period = const Duration(minutes: 2),
-    required void Function() onOptimize,
-  }) {
-    return createPeriodicTimer(
-      key: '${key}_route_opt',
-      period: period,
-      callback: (_) => onOptimize(),
-    );
-  }
-
   /// Long press timer за UI
   static Timer createLongPressTimer({
     required String key,
@@ -257,9 +244,7 @@ class V3StreamUtils {
 
   /// Async cancel све по префиксу кључа (за subscription-е)
   static Future<void> cancelByPrefixAsync(String prefix) async {
-    final subKeys = _subscriptions.keys
-        .where((key) => key.startsWith(prefix))
-        .toList(growable: false);
+    final subKeys = _subscriptions.keys.where((key) => key.startsWith(prefix)).toList(growable: false);
     final subscriptions = subKeys
         .map((key) => _subscriptions.remove(key))
         .whereType<StreamSubscription<dynamic>>()
@@ -267,9 +252,7 @@ class V3StreamUtils {
 
     await Future.wait(subscriptions.map((sub) => sub.cancel()));
 
-    final timerKeys = _timers.keys
-        .where((key) => key.startsWith(prefix))
-        .toList(growable: false);
+    final timerKeys = _timers.keys.where((key) => key.startsWith(prefix)).toList(growable: false);
     for (final key in timerKeys) {
       _timers.remove(key)?.cancel();
     }

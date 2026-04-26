@@ -106,9 +106,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _init() async {
     unawaited(() async {
       try {
-        await V3MasterRealtimeManager.instance.initV3().timeout(const Duration(seconds: 15));
-      } on TimeoutException catch (e) {
-        debugPrint('[V3WelcomeScreen] initV3 timeout: $e');
+        await V3MasterRealtimeManager.instance.initV3();
       } catch (e) {
         debugPrint('[V3WelcomeScreen] initV3 error: $e');
       }
