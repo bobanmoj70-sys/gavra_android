@@ -37,7 +37,6 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> putniciCache = {};
   final Map<String, Map<String, dynamic>> zahteviCache = {};
   final Map<String, Map<String, dynamic>> gorivoCache = {};
-  final Map<String, Map<String, dynamic>> vozacLokacijeCache = {};
   final Map<String, Map<String, dynamic>> troskoviCache = {};
   final Map<String, Map<String, dynamic>> racuniCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
@@ -45,7 +44,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
   final Map<String, Map<String, dynamic>> operativnaAssignedCache = {};
 
-  void _rebuildGpsCacheFromOperativna() {
+  void _rebuildAssignedCacheFromOperativna() {
     operativnaAssignedCache.clear();
     for (final entry in operativnaNedeljaCache.values) {
       final id = entry['id']?.toString();
@@ -199,7 +198,6 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_vozila', vozilaCache);
     _cacheStore.registerTable('v3_zahtevi', zahteviCache);
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
-    _cacheStore.registerTable('v3_vozac_lokacije', vozacLokacijeCache);
     _cacheStore.registerTable('v3_finansije', troskoviCache);
     _cacheStore.registerTable('v3_racuni', racuniCache);
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
@@ -292,7 +290,7 @@ class V3MasterRealtimeManager {
 
       _rebuildRoleCachesFromAuth();
 
-      _rebuildGpsCacheFromOperativna();
+      _rebuildAssignedCacheFromOperativna();
       // Primeni app_settings na notifiere odmah pri inicijalizaciji
       final globalSettings = appSettingsCache['global'];
       if (globalSettings != null) _applyAppSettings(globalSettings);
@@ -400,8 +398,8 @@ class V3MasterRealtimeManager {
 
     for (final hook in config.hooks) {
       switch (hook) {
-        case V3RealtimeHook.rebuildGpsCache:
-          _rebuildGpsCacheFromOperativna();
+        case V3RealtimeHook.rebuildAssignedCache:
+          _rebuildAssignedCacheFromOperativna();
           break;
         case V3RealtimeHook.applyGlobalAppSettings:
           if (id == 'global') {
@@ -479,14 +477,12 @@ class V3MasterRealtimeManager {
         break;
       case 'v3_gorivo':
         break;
-      case 'v3_vozac_lokacije':
-        break;
       case 'v3_finansije':
         break;
       case 'v3_racuni':
         break;
       case 'v3_operativna_nedelja':
-        _rebuildGpsCacheFromOperativna();
+        _rebuildAssignedCacheFromOperativna();
         break;
       case 'v3_kapacitet_slots':
         break;
@@ -547,8 +543,6 @@ class V3MasterRealtimeManager {
         return zahteviCache;
       case 'v3_gorivo':
         return gorivoCache;
-      case 'v3_vozac_lokacije':
-        return vozacLokacijeCache;
       case 'v3_finansije':
         return troskoviCache;
       case 'v3_racuni':

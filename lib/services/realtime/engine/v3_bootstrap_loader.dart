@@ -22,12 +22,11 @@ class V3BootstrapLoader {
       'v3_vozila': (results[2] as List).cast<dynamic>(),
       'v3_zahtevi': (results[3] as List).cast<dynamic>(),
       'v3_gorivo': (results[4] as List).cast<dynamic>(),
-      'v3_vozac_lokacije': (results[5] as List).cast<dynamic>(),
-      'v3_finansije': (results[6] as List).cast<dynamic>(),
-      'v3_racuni': (results[7] as List).cast<dynamic>(),
-      'v3_operativna_nedelja': (results[8] as List).cast<dynamic>(),
-      'v3_kapacitet_slots': (results[9] as List).cast<dynamic>(),
-      'v3_app_settings': (results[10] as List).cast<dynamic>(),
+      'v3_finansije': (results[5] as List).cast<dynamic>(),
+      'v3_racuni': (results[6] as List).cast<dynamic>(),
+      'v3_operativna_nedelja': (results[7] as List).cast<dynamic>(),
+      'v3_kapacitet_slots': (results[8] as List).cast<dynamic>(),
+      'v3_app_settings': (results[9] as List).cast<dynamic>(),
     };
   }
 
@@ -60,7 +59,6 @@ class V3BootstrapLoader {
                 'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
-      case 'v3_vozac_lokacije':
       case 'v3_operativna_nedelja':
         response = await _client.from(table).select().gte('updated_at', iso);
         break;

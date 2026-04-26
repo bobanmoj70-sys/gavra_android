@@ -21,8 +21,6 @@ class V3RolePermissionService {
 
   static Future<void> ensureDriverPermissionsOnLogin() async {
     await _requestCommonPermissions();
-    // GPS dozvola se NE traži ovde — traži se lazy u v3_vozac_screen.dart
-    // tek kada vozač pritisne START tracking (_ensureDriverLocationDisclosure).
   }
 
   static Future<void> ensurePassengerPermissionsOnLogin() async {

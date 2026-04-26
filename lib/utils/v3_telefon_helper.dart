@@ -12,32 +12,10 @@ import 'v3_phone_utils.dart';
 /// **15+ DUPLIKATA ELIMINISANO:**
 /// - Tel pozivi (v3_o_nama_screen.dart, v3_putnici_screen.dart, v3_putnik_card.dart, tail_debug.txt)
 /// - SMS pozivi
-/// - Maps pozivi (v3_vozac_screen.dart, v3_o_nama_screen.dart, v3_putnik_card.dart)
 ///
 /// **UNIFIED ERROR HANDLING + PERMISSION MANAGEMENT + CONTEXT SAFETY**
 class V3TelefonHelper {
   V3TelefonHelper._();
-
-  static Future<void> _launchHereAppUri(
-    State state,
-    BuildContext context,
-    Uri uri,
-  ) async {
-    try {
-      if (!state.mounted) return;
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (!state.mounted) return;
-        V3AppSnackBar.warning(
-          context,
-          'Instalirajte HERE WeGo aplikaciju ako želite da koristite navigaciju.',
-        );
-      }
-    } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ HERE WeGo nije dostupan: $e');
-    }
-  }
 
   // ─── TELEFON POZIVI ─────────────────────────────────────────────────────
 
@@ -139,73 +117,6 @@ class V3TelefonHelper {
       if (!state.mounted) return;
       V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju SMS: $e');
     }
-  }
-
-  // ─── MAPS I NAVIGACIJA ──────────────────────────────────────────────────
-
-  /// Otvara isključivo HERE WeGo aplikaciju (bez web/Google fallback-a)
-  ///
-  /// Ako aplikacija nije instalirana, prikazuje poruku da je potrebno instalirati HERE WeGo.
-  static Future<void> otvoriHereWeGoAppOnly(State state, BuildContext context) async {
-    final hereAppUri = Uri.parse('here-route://mylocation');
-    await _launchHereAppUri(state, context, hereAppUri);
-  }
-
-  /// Otvori HERE WeGo navigaciju do specifične lokacije
-  ///
-  /// **Koristi umjesto:** here-route:// launch duplikata
-  /// **Primjer:** V3TelefonHelper.navigirajDo(this, context, 44.8983, 21.4152);
-  static Future<void> navigirajDo(State state, BuildContext context, double lat, double lng) async {
-    final hereUrl = Uri.parse('here-route://mylocation/$lat,$lng/now');
-    await _launchHereAppUri(state, context, hereUrl);
-  }
-
-  /// Otvori HERE WeGo sa specifičnom adresom ili URL-om
-  ///
-  /// **Koristi umjesto:** Uri.parse(url) launch duplikata
-  /// **Primjer:** V3TelefonHelper.otvoriMaps(this, context, 'https://share.here.com/r/44.8983,21.4152');
-  static Future<void> otvoriMaps(State state, BuildContext context, String urlOrAddress) async {
-    final input = urlOrAddress.trim();
-    if (input.isEmpty) {
-      V3ErrorUtils.validationError(state, context, 'Neispravna maps adresa');
-      return;
-    }
-
-    final uri = Uri.tryParse(input);
-    if (uri == null || uri.scheme != 'here-route') {
-      if (!state.mounted) return;
-      V3AppSnackBar.warning(
-        context,
-        'Podržan je samo HERE WeGo app link (here-route://).',
-      );
-      return;
-    }
-
-    await _launchHereAppUri(state, context, uri);
-  }
-
-  // ─── MULTI-DESTINATION NAVIGACIJA ──────────────────────────────────────
-
-  /// Kreiraj HERE WeGo multi-stop rutu iz liste koordinata
-  ///
-  /// **Koristi umjesto:** ručnog pravljenja waypoints URL-a
-  /// **Primjer:** V3TelefonHelper.navigirajMultiStop(this, context, [(44.89, 21.41), (44.90, 21.42)]);
-  static Future<void> navigirajMultiStop(State state, BuildContext context, List<(double, double)> waypoints) async {
-    if (waypoints.isEmpty) {
-      V3ErrorUtils.validationError(state, context, 'Nema destinacija za navigaciju');
-      return;
-    }
-
-    final waypointsBuffer = StringBuffer('here-route://mylocation/');
-    for (int i = 0; i < waypoints.length; i++) {
-      final (lat, lng) = waypoints[i];
-      waypointsBuffer.write('$lat,$lng');
-      if (i < waypoints.length - 1) waypointsBuffer.write('/');
-    }
-    waypointsBuffer.write('/now');
-
-    final routeUri = Uri.parse(waypointsBuffer.toString());
-    await _launchHereAppUri(state, context, routeUri);
   }
 
   // ─── UTILITY METHODS ───────────────────────────────────────────────────

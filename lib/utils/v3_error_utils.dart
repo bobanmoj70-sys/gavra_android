@@ -17,8 +17,7 @@ class V3ErrorUtils {
     }
 
     if (trimmed.startsWith('❌')) {
-      final withoutPrefix =
-          trimmed.replaceFirst(RegExp(r'^(❌\s*)+'), '').trimLeft();
+      final withoutPrefix = trimmed.replaceFirst(RegExp(r'^(❌\s*)+'), '').trimLeft();
       return '❌ $withoutPrefix';
     }
 
@@ -54,17 +53,15 @@ class V3ErrorUtils {
   ///
   /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, '❌ Validation message');
   /// **Primjer:** V3ErrorUtils.validationError(this, context, 'Pogrešan unos');
-  static void validationError(
-      State state, BuildContext context, String message) {
+  static void validationError(State state, BuildContext context, String message) {
     safeError(state, context, '❌ $message');
   }
 
   /// Show permission error message
   ///
   /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, 'Permission message');
-  /// **Primjer:** V3ErrorUtils.permissionError(this, context, 'GPS dozvola je potrebna');
-  static void permissionError(
-      State state, BuildContext context, String message) {
+  /// **Primjer:** V3ErrorUtils.permissionError(this, context, 'Dozvola je potrebna');
+  static void permissionError(State state, BuildContext context, String message) {
     safeError(state, context, message);
   }
 
@@ -72,18 +69,15 @@ class V3ErrorUtils {
   ///
   /// **Koristi umjesto:** ručnog network error handling-a
   /// **Primjer:** V3ErrorUtils.networkError(this, context, 'Nema internet konekcije');
-  static void networkError(State state, BuildContext context,
-      [String? customMessage]) {
-    safeError(state, context,
-        customMessage ?? '🌐 Greška sa mrežom - proverite internet konekciju');
+  static void networkError(State state, BuildContext context, [String? customMessage]) {
+    safeError(state, context, customMessage ?? '🌐 Greška sa mrežom - proverite internet konekciju');
   }
 
   /// Show operation specific error with context
   ///
   /// **Koristi umjesto:** ručnog formatiranja error poruka
   /// **Primjer:** V3ErrorUtils.operationError(this, context, 'čuvanje podataka', e);
-  static void operationError(
-      State state, BuildContext context, String operation, dynamic error) {
+  static void operationError(State state, BuildContext context, String operation, dynamic error) {
     safeError(state, context, 'Greška pri $operation: $error');
   }
 

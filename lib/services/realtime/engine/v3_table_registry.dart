@@ -1,5 +1,5 @@
 enum V3RealtimeHook {
-  rebuildGpsCache,
+  rebuildAssignedCache,
   applyGlobalAppSettings,
 }
 
@@ -28,14 +28,13 @@ class V3RealtimeTableRegistry {
     V3RealtimeTableConfig(name: 'v3_vozila', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_zahtevi', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_gorivo', hasActiveKey: false),
-    V3RealtimeTableConfig(name: 'v3_vozac_lokacije', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_finansije', hasActiveKey: false),
     V3RealtimeTableConfig(name: 'v3_racuni', hasActiveKey: false),
     V3RealtimeTableConfig(
       name: 'v3_operativna_nedelja',
       hasActiveKey: false,
       keepInactive: true,
-      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildGpsCache],
+      hooks: <V3RealtimeHook>[V3RealtimeHook.rebuildAssignedCache],
     ),
     V3RealtimeTableConfig(name: 'v3_kapacitet_slots', hasActiveKey: false),
     V3RealtimeTableConfig(

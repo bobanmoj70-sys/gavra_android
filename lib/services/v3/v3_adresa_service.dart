@@ -49,8 +49,6 @@ class V3AdresaService {
     String? id,
     required String naziv,
     required String grad,
-    double? lat,
-    double? lng,
   }) async {
     try {
       final normalizedGrad = V3ValidationUtils.normalizeGrad(grad);
@@ -58,8 +56,6 @@ class V3AdresaService {
         if (id != null) 'id': id,
         'naziv': naziv,
         'grad': normalizedGrad,
-        'gps_lat': lat,
-        'gps_lng': lng,
       };
 
       await _repo.upsert(data);
@@ -74,22 +70,6 @@ class V3AdresaService {
       await _repo.deleteById(id);
     } catch (e) {
       debugPrint('[V3AdresaService] Delete error: $e');
-      rethrow;
-    }
-  }
-
-  static Future<void> updateAdresaCoordinates({
-    required String id,
-    required double lat,
-    required double lng,
-  }) async {
-    try {
-      await _repo.updateById(id, {
-        'gps_lat': lat,
-        'gps_lng': lng,
-      });
-    } catch (e) {
-      debugPrint('[V3AdresaService] updateAdresaCoordinates error: $e');
       rethrow;
     }
   }

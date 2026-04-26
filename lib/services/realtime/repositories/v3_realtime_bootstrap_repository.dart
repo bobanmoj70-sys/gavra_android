@@ -16,7 +16,6 @@ class V3RealtimeBootstrapRepository {
             'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at'),
       ),
       _withTimeout('v3_gorivo', supabase.from('v3_gorivo').select()),
-      _withTimeout('v3_vozac_lokacije', supabase.from('v3_vozac_lokacije').select()),
       _withTimeout('v3_finansije', supabase.from('v3_finansije').select()),
       _withTimeout('v3_racuni', supabase.from('v3_racuni').select()),
       _withTimeout('v3_operativna_nedelja', supabase.from('v3_operativna_nedelja').select()),

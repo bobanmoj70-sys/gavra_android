@@ -74,8 +74,6 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
           id: adresa?.id,
           naziv: result['naziv'],
           grad: result['grad'],
-          lat: result['lat'],
-          lng: result['lng'],
         );
         if (mounted) V3AppSnackBar.success(context, adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
       } catch (e) {
@@ -347,8 +345,6 @@ class _AdresaDialog extends StatefulWidget {
 
 class _AdresaDialogState extends State<_AdresaDialog> {
   late final TextEditingController _naziv;
-  late final TextEditingController _lat;
-  late final TextEditingController _lng;
   late String _selectedGrad;
 
   @override
@@ -357,15 +353,11 @@ class _AdresaDialogState extends State<_AdresaDialog> {
     _naziv = TextEditingController(text: widget.adresa?.naziv ?? '');
     final existingGrad = widget.adresa?.grad ?? '';
     _selectedGrad = (existingGrad == 'VS') ? 'VS' : 'BC';
-    _lat = TextEditingController(text: widget.adresa?.gpsLat?.toString() ?? '');
-    _lng = TextEditingController(text: widget.adresa?.gpsLng?.toString() ?? '');
   }
 
   @override
   void dispose() {
     _naziv.dispose();
-    _lat.dispose();
-    _lng.dispose();
     super.dispose();
   }
 
@@ -388,15 +380,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
               ],
               onChanged: (v) => setState(() => _selectedGrad = v!),
             ),
-            const SizedBox(height: 4),
-            TextField(
-                controller: _lat,
-                decoration: const InputDecoration(labelText: 'Latitude (opciono)'),
-                keyboardType: TextInputType.number),
-            TextField(
-                controller: _lng,
-                decoration: const InputDecoration(labelText: 'Longitude (opciono)'),
-                keyboardType: TextInputType.number),
           ],
         ),
       ),
@@ -410,8 +393,6 @@ class _AdresaDialogState extends State<_AdresaDialog> {
             Navigator.pop(context, {
               'naziv': _naziv.text,
               'grad': _selectedGrad,
-              'lat': double.tryParse(_lat.text),
-              'lng': double.tryParse(_lng.text),
             });
           },
           text: 'SAČUVAJ',

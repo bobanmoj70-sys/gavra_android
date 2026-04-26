@@ -146,21 +146,6 @@ class V3StreamUtils {
     );
   }
 
-  /// GPS position subscription
-  static StreamSubscription<T> subscribeToGPS<T>({
-    required String key,
-    required Stream<T> positionStream,
-    required void Function(T) onPosition,
-    void Function(Object)? onError,
-  }) {
-    return subscribe<T>(
-      key: '${key}_gps',
-      stream: positionStream,
-      onData: onPosition,
-      onError: onError,
-    );
-  }
-
   /// Zahtev subscription
   static StreamSubscription<List<Map<String, dynamic>>> subscribeToPinRequests({
     required String key,

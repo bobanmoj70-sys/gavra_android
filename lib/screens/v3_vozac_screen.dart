@@ -9,9 +9,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../globals.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_address_coordinate_service.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
+import '../services/v3/v3_osrm_route_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -26,7 +29,6 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
-import '../utils/v3_telefon_helper.dart';
 import '../utils/v3_time_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_live_clock_text.dart';
@@ -54,6 +56,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isLoading = true;
   bool _loadingDodela = false;
   RealtimeChannel? _trenutnaDodelaChannel;
+  final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
+  final V3AddressCoordinateService _addressCoordinateService = V3AddressCoordinateService();
+  Map<String, int> _optimizedOrderByPutnikId = const <String, int>{};
+  List<V3RouteWaypoint> _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
 
   int? _lastRealtimeTick;
 
@@ -77,7 +83,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return hour * 60 + minute;
   }
 
-  bool _isGpsRowEligible(Map<String, dynamic> row) {
+  bool _isRowEligible(Map<String, dynamic> row) {
     return V3StatusPolicy.canAssign(
       status: row['status']?.toString(),
       otkazanoAt: row['otkazano_at'],
@@ -200,7 +206,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         if (rowVreme != trazenoVreme) continue;
       }
 
-      if (onlyEligible && !_isGpsRowEligible(row)) continue;
+      if (onlyEligible && !_isRowEligible(row)) continue;
       rows.add(row);
     }
 
@@ -239,19 +245,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return rows;
   }
 
-  bool _isPutnikAktivanZaVoznju(_PutnikEntry entry) {
-    return V3StatusPolicy.canAssign(
-      status: entry.entry?.statusFinal,
-      otkazanoAt: entry.entry?.otkazanoAt,
-      pokupljenAt: entry.entry?.pokupljenAt,
-    );
-  }
-
   List<_PutnikEntry> _sortPutniciForDisplay(
     List<_PutnikEntry> putnici,
   ) {
     final sorted = List<_PutnikEntry>.from(putnici);
+    final optimizedOrder = _optimizedOrderByPutnikId;
     sorted.sort((a, b) {
+      final aIndex = optimizedOrder[a.putnik.id];
+      final bIndex = optimizedOrder[b.putnik.id];
+
+      if (aIndex != null && bIndex != null && aIndex != bIndex) {
+        return aIndex.compareTo(bIndex);
+      }
+
+      if (aIndex != null && bIndex == null) return -1;
+      if (aIndex == null && bIndex != null) return 1;
+
       int sortRank(_PutnikEntry entry) {
         if (!V3StatusPolicy.countsAsOccupied(
           status: entry.entry?.statusFinal,
@@ -275,10 +284,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return sorted;
   }
 
-  List<_PutnikEntry> _putniciZaRutu() {
-    return _mojiPutnici.where((entry) => _isPutnikAktivanZaVoznju(entry)).toList();
-  }
-
   @override
   void initState() {
     super.initState();
@@ -290,7 +295,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   @override
   void dispose() {
     V3StreamUtils.cancelSubscription('vozac_screen_realtime');
-    V3StreamUtils.cancelSubscription('vozac_screen_gps');
+    V3StreamUtils.cancelSubscription('vozac_screen_assignment');
     final channel = _trenutnaDodelaChannel;
     _trenutnaDodelaChannel = null;
     if (channel != null) {
@@ -362,7 +367,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     _mojiTermini = termsById.values.toList();
 
-    // Ako selektovani grad/vreme ne odgovara nijednom terminu, auto-select i ponovi rebuild
+    // Ako selektovani grad/vreme ne odgovara nijednom terminu, izaberi prvi dostupni i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad &&
         V3TimeUtils.normalizeToHHmm(t['vreme']?.toString()) == selectedVNorm);
@@ -370,10 +375,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (!terminPostoji) {
       final stariGrad = _selectedGrad;
       final staroVreme = _selectedVreme;
-      _selectClosestTermin();
+      _selectFirstTermin();
       final terminPromenjen = _selectedGrad != stariGrad || _selectedVreme != staroVreme;
       if (terminPromenjen && _selectedVreme.isNotEmpty) {
-        // Pronašao bliži termin — odmah ponovi rebuild sa novim vrednostima
+        // Izabran prvi dostupan termin — odmah ponovi rebuild sa novim vrednostima
         _rebuild();
         return;
       }
@@ -465,36 +470,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     });
   }
 
-  void _selectClosestTermin() {
-    final now = DateTime.now();
-    final current = now.hour * 60 + now.minute;
-    String? bestVreme;
-    String? bestGrad;
-    int minDiff = 9999;
+  void _selectFirstTermin() {
+    if (_mojiTermini.isEmpty) return;
 
-    // Kandidati: samo termini (putnici se izvlače automatski iz operativna_nedelja)
-    final kandidati = <Map<String, dynamic>>[
-      ..._mojiTermini,
-    ];
+    final first = _mojiTermini.first;
+    final grad = first['grad']?.toString().toUpperCase() ?? '';
+    final vreme = first['vreme']?.toString() ?? '';
+    if (grad.isEmpty || vreme.isEmpty) return;
 
-    for (final t in kandidati) {
-      final grad = t['grad']?.toString().toUpperCase() ?? '';
-      final vreme = t['vreme']?.toString() ?? '';
-      if (vreme.isEmpty) continue;
-      final tp = vreme.split(':');
-      if (tp.length < 2) continue;
-      final mins = (int.tryParse(tp[0]) ?? 0) * 60 + (int.tryParse(tp[1]) ?? 0);
-      final diff = (mins - current).abs();
-      if (diff < minDiff) {
-        minDiff = diff;
-        bestVreme = V3DanHelper.formatVreme(int.tryParse(tp[0]) ?? 0, int.tryParse(tp[1]) ?? 0);
-        bestGrad = grad;
-      }
-    }
-    if (bestVreme != null && bestGrad != null) {
-      _selectedVreme = bestVreme;
-      _selectedGrad = bestGrad;
-    }
+    final normalized = V3TimeUtils.normalizeToHHmm(vreme);
+    if (normalized.isEmpty) return;
+
+    _selectedGrad = grad;
+    _selectedVreme = normalized;
   }
 
   String get _selectedDay => V3DanHelper.fullName(_selectedDate);
@@ -509,6 +497,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     setState(() {
       _selectedGrad = grad;
       _selectedVreme = vreme;
+      _optimizedOrderByPutnikId = const <String, int>{};
+      _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
     });
     _rebuild();
   }
@@ -577,36 +567,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         _selectedGrad = firstTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
         _selectedVreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme']?.toString());
       }
+
+      _optimizedOrderByPutnikId = const <String, int>{};
+      _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
     });
 
     _rebuild();
-  }
-
-  Future<void> _openMapa() async {
-    final putniciZaRutu = _putniciZaRutu();
-    final waypoints = <(double, double)>[];
-
-    for (final item in putniciZaRutu) {
-      final coords = _resolveKoordinateZaRutu(item);
-      if (coords == null) continue;
-      waypoints.add(coords);
-    }
-
-    if (waypoints.isEmpty) {
-      if (mounted) {
-        V3AppSnackBar.warning(context, 'Nema validnih waypoint-a za navigaciju.');
-      }
-      return;
-    }
-
-    final targetCity = _selectedGrad.toUpperCase() == 'BC' ? 'VS' : 'BC';
-    if (targetCity == 'BC') {
-      waypoints.add((44.8973, 21.4177));
-    } else {
-      waypoints.add((45.1190, 21.3030));
-    }
-
-    await V3TelefonHelper.navigirajMultiStop(this, context, waypoints);
   }
 
   Future<void> _logout() async {
@@ -671,46 +637,143 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     );
   }
 
-  (double, double)? _resolveKoordinateZaRutu(_PutnikEntry item) {
+  String _gradLabelForGeocoding(String grad) {
+    switch (grad.trim().toUpperCase()) {
+      case 'BC':
+        return 'Bela Crkva';
+      case 'VS':
+        return 'Vrsac';
+      default:
+        return grad;
+    }
+  }
+
+  String? _resolveAdresaIdForEntry(_PutnikEntry item) {
     final entry = item.entry;
-    final putnik = item.putnik;
+    final override = (entry?.adresaIdOverride ?? '').trim();
+    if (override.isNotEmpty) return override;
 
-    final overrideId = entry?.adresaIdOverride?.trim();
-    String? primaryAdresaId;
-    String? secondaryAdresaId;
+    final grad = (entry?.grad ?? _selectedGrad).trim().toUpperCase();
+    final koristiSekundarnu = entry?.koristiSekundarnu ?? false;
+    if (grad == 'BC') {
+      return koristiSekundarnu
+          ? (item.putnik.adresaBcId2 ?? item.putnik.adresaBcId)
+          : (item.putnik.adresaBcId ?? item.putnik.adresaBcId2);
+    }
+    if (grad == 'VS') {
+      return koristiSekundarnu
+          ? (item.putnik.adresaVsId2 ?? item.putnik.adresaVsId)
+          : (item.putnik.adresaVsId ?? item.putnik.adresaVsId2);
+    }
+    return null;
+  }
 
-    if (overrideId != null && overrideId.isNotEmpty) {
-      primaryAdresaId = overrideId;
-    } else {
-      final koristiSekundarnu = entry?.koristiSekundarnu ?? false;
-      if (_selectedGrad.toUpperCase() == 'BC') {
-        primaryAdresaId = koristiSekundarnu ? putnik.adresaBcId2 : putnik.adresaBcId;
-        secondaryAdresaId = koristiSekundarnu ? putnik.adresaBcId : putnik.adresaBcId2;
-      } else {
-        primaryAdresaId = koristiSekundarnu ? putnik.adresaVsId2 : putnik.adresaVsId;
-        secondaryAdresaId = koristiSekundarnu ? putnik.adresaVsId : putnik.adresaVsId2;
+  Future<({List<V3RouteWaypoint> waypoints, int unresolvedCount})> _resolveWaypointsForCurrentOrder() async {
+    final waypointTasks = _mojiPutnici.map((item) async {
+      final adresaId = _resolveAdresaIdForEntry(item);
+      final adresaNaziv = V3AdresaService.getAdresaById(adresaId)?.naziv ?? item.putnik.imePrezime;
+      final grad = (item.entry?.grad ?? _selectedGrad).trim().toUpperCase();
+      final fallbackQuery = '$adresaNaziv, ${_gradLabelForGeocoding(grad)}, Srbija';
+
+      final coordinate = await _addressCoordinateService.resolveCoordinate(
+        adresaId: adresaId,
+        fallbackQuery: fallbackQuery,
+      );
+
+      if (coordinate == null) return null;
+      return V3RouteWaypoint(
+        id: item.putnik.id,
+        label: item.putnik.imePrezime,
+        coordinate: coordinate,
+      );
+    }).toList(growable: false);
+
+    final resolvedOrNull = await Future.wait(waypointTasks);
+    final resolved = resolvedOrNull.whereType<V3RouteWaypoint>().toList(growable: false);
+    return (waypoints: resolved, unresolvedCount: resolvedOrNull.length - resolved.length);
+  }
+
+  Future<
+      ({
+        List<V3RouteWaypoint> optimized,
+        int unresolvedCount,
+      })?> _optimizeCurrentRouteAndApplyOrder() async {
+    final resolveResult = await _resolveWaypointsForCurrentOrder();
+    final resolved = resolveResult.waypoints;
+    final unresolvedCount = resolveResult.unresolvedCount;
+
+    if (resolved.isEmpty) {
+      if (mounted) {
+        V3AppSnackBar.error(context, 'Nije moguće formirati rutu: nema validnih koordinata adresa.');
       }
+      return null;
     }
 
-    final candidates = <String>{
-      if (primaryAdresaId != null && primaryAdresaId.isNotEmpty) primaryAdresaId,
-      if (secondaryAdresaId != null && secondaryAdresaId.isNotEmpty) secondaryAdresaId,
+    final optimized = await _osrmRouteService.optimizeWaypoints(
+      resolved,
+    );
+
+    final optimizedOrderById = <String, int>{
+      for (int i = 0; i < optimized.length; i++) optimized[i].id: i,
     };
+    final reordered = List<_PutnikEntry>.from(_mojiPutnici)
+      ..sort((a, b) {
+        final aIndex = optimizedOrderById[a.putnik.id];
+        final bIndex = optimizedOrderById[b.putnik.id];
+        if (aIndex != null && bIndex != null && aIndex != bIndex) {
+          return aIndex.compareTo(bIndex);
+        }
+        if (aIndex != null && bIndex == null) return -1;
+        if (aIndex == null && bIndex != null) return 1;
+        return 0;
+      });
 
-    if (candidates.isEmpty) return null;
+    if (!mounted) return null;
 
-    dynamic adresa;
-    for (final adresaId in candidates) {
-      final candidate = V3AdresaService.getAdresaById(adresaId);
-      if (candidate != null && candidate.hasValidCoordinates) {
-        adresa = candidate;
-        break;
-      }
+    V3StateUtils.safeSetState(this, () {
+      _optimizedOrderByPutnikId = optimizedOrderById;
+      _lastOptimizedWaypoints = optimized;
+      _mojiPutnici = reordered;
+    });
+
+    return (
+      optimized: optimized,
+      unresolvedCount: unresolvedCount,
+    );
+  }
+
+  Future<void> _handleOpenMap() async {
+    if (_mojiPutnici.isEmpty) {
+      if (mounted) V3AppSnackBar.warning(context, 'Nema putnika za izabrani termin.');
+      return;
     }
 
-    if (adresa == null) return null;
+    final optimization = await _optimizeCurrentRouteAndApplyOrder();
+    if (optimization == null) return;
 
-    return (adresa.gpsLat!, adresa.gpsLng!);
+    final optimized = optimization.optimized;
+    final unresolvedCount = optimization.unresolvedCount;
+
+    try {
+      await V3NavigationAppLauncherService.launchHereWeGoAppOnly(
+        waypoints: optimized,
+      );
+      if (!mounted) return;
+
+      V3AppSnackBar.success(context, 'Ruta optimizovana i MAPA otvorena sa istim redosledom.');
+
+      if (unresolvedCount > 0) {
+        V3AppSnackBar.warning(context, 'Preskočeno adresa bez koordinata: $unresolvedCount.');
+      }
+    } catch (e) {
+      if (mounted) {
+        V3AppSnackBar.error(context, 'MAPA nije otvorena: $e');
+      }
+    }
+  }
+
+  Future<void> _handleStartNavigation() async {
+    await _handleOpenMap();
   }
 
   @override
@@ -832,7 +895,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                   label: 'START',
                                   color: Colors.green,
                                   height: appBarButtonHeight,
-                                  onTap: () {},
+                                  onTap: () {
+                                    _handleStartNavigation();
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -844,7 +909,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                   label: 'MAPA',
                                   color: Colors.blue,
                                   height: appBarButtonHeight,
-                                  onTap: _openMapa,
+                                  onTap: () {
+                                    _handleOpenMap();
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -953,12 +1020,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   Widget _buildBody() {
     final vozacBoja = _getVozacBojaRaw(_efektivniVozac);
-    final redniBrojevi = <int>[];
-    var tekuciRedniBroj = 1;
-    for (final putnikEntry in _mojiPutnici) {
-      redniBrojevi.add(tekuciRedniBroj);
-      tekuciRedniBroj += putnikEntry.entry?.brojMesta ?? 1;
-    }
+    final redniBrojevi = List<int>.generate(_mojiPutnici.length, (index) => index + 1);
 
     return Column(
       children: [

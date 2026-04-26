@@ -19,7 +19,6 @@ import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
-import 'services/v3/v3_foreground_gps_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
@@ -888,14 +887,6 @@ Future<void> _initAppServices() async {
       debugPrint('⚠️ [main] Preskačem app services init (Supabase nije spreman): $e');
       return;
     }
-  }
-
-  // Inicijalizuj V3 Foreground GPS Service
-  try {
-    await V3ForegroundGpsService.initialize();
-    debugPrint('✅ [main] V3ForegroundGpsService inicijalizovan');
-  } catch (e) {
-    debugPrint('⚠️ [main] V3ForegroundGpsService greška: $e');
   }
 
   // Učitaj nav_bar_type iz baze

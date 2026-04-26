@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../helpers/v3_placanje_dialog_helper.dart';
-import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -228,47 +227,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
-    }
-  }
-
-  Future<void> _handleNavigation() async {
-    // Prioritet 1: direktan adresa_override_id
-    final overrideId = widget.entry?.adresaIdOverride;
-    final String? adresaId;
-    if (overrideId != null && overrideId.isNotEmpty) {
-      adresaId = overrideId;
-    } else {
-      final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
-      final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
-      if (grad != 'BC' && grad != 'VS') {
-        if (mounted) V3AppSnackBar.warning(context, '⚠️ Grad nije definisan za ovog putnika');
-        return;
-      }
-      adresaId = grad == 'BC'
-          ? (koristiSekundarnu ? widget.putnik.adresaBcId2 : widget.putnik.adresaBcId) ??
-              widget.putnik.adresaBcId ??
-              widget.putnik.adresaBcId2
-          : (koristiSekundarnu ? widget.putnik.adresaVsId2 : widget.putnik.adresaVsId) ??
-              widget.putnik.adresaVsId ??
-              widget.putnik.adresaVsId2;
-    }
-    final adresaNaziv = _getAdresaNaziv();
-    final V3Adresa? adresa = V3AdresaService.getAdresaById(adresaId);
-
-    if (adresa != null && adresa.hasValidCoordinates) {
-      final hereUrl = Uri.parse('here-route://mylocation/${adresa.gpsLat},${adresa.gpsLng}/now');
-      if (await canLaunchUrl(hereUrl)) {
-        await launchUrl(hereUrl, mode: LaunchMode.externalApplication);
-        return;
-      }
-      if (mounted) {
-        V3AppSnackBar.warning(context, '⚠️ HERE aplikacija nije dostupna na uređaju');
-      }
-      return;
-    }
-    if (mounted) {
-      final naziv = adresaNaziv ?? '/';
-      V3AppSnackBar.warning(context, '⚠️ GPS koordinate nisu dostupne za: $naziv');
     }
   }
 
@@ -544,7 +502,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                     runSpacing: 4,
                                     children: [
                                       if (widget.onDodeliVozaca != null) iconBtn('👤', widget.onDodeliVozaca!),
-                                      if (hasAdresa) iconBtn('📍', _handleNavigation),
                                       if (hasTel) iconBtn('📞', _handleCall),
                                       if (!isOtkazan) iconBtn('💰', _handlePayment),
                                       if (!isOtkazan) iconBtn('❌', _handleOtkazivanje),

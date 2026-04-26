@@ -85,11 +85,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   List<String> get _bcVremena => getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
   List<String> get _vsVremena => getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
 
-  List<String> get _sviPolasci => [
-        ..._bcVremena.map((v) => '$v BC'),
-        ..._vsVremena.map((v) => '$v VS'),
-      ];
-
   int _timeToMinutes(String hhmm) {
     final parts = hhmm.split(':');
     if (parts.length < 2) return -1;
@@ -243,35 +238,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
     if (mounted) {
       await _reloadTrenutnaDodelaMap();
-      _selectClosestDeparture();
       _syncSelectedSlotForDatum(_selectedDatumIso);
       setState(() => _isLoading = false);
-    }
-  }
-
-  void _selectClosestDeparture() {
-    final now = DateTime.now();
-    final current = now.hour * 60 + now.minute;
-    String? bestVreme;
-    String? bestGrad;
-    int minDiff = 9999;
-
-    for (final p in _sviPolasci) {
-      final parts = p.split(' ');
-      if (parts.length < 2) continue;
-      final tp = parts[0].split(':');
-      if (tp.length != 2) continue;
-      final mins = (int.tryParse(tp[0]) ?? 0) * 60 + (int.tryParse(tp[1]) ?? 0);
-      final diff = (mins - current).abs();
-      if (diff < minDiff) {
-        minDiff = diff;
-        bestVreme = parts[0];
-        bestGrad = parts.sublist(1).join(' ');
-      }
-    }
-    if (bestVreme != null && bestGrad != null) {
-      _selectedVreme = bestVreme;
-      _selectedGrad = bestGrad;
     }
   }
 
@@ -387,7 +355,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Ruta', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                const Text('Termin',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
                                 _buildStatRow('⏰ Vreme:', _selectedVreme),
                                 _buildStatRow('📍 Grad:', _selectedGrad),
