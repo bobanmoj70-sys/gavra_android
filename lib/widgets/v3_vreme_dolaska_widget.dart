@@ -81,10 +81,8 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     if (assignments.isEmpty) return null;
 
     final terminIds = assignments.map((e) => e.terminId).toList(growable: false);
-    final operativnaRows = await supabase
-        .from('v3_operativna_nedelja')
-        .select('id, datum, grad, vreme, polazak_at')
-        .inFilter('id', terminIds);
+    final operativnaRows =
+        await supabase.from('v3_operativna_nedelja').select('id, datum, grad, polazak_at').inFilter('id', terminIds);
 
     Map<String, dynamic>? selectedRow;
     String selectedVozacId = '';
