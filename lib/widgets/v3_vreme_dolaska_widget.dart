@@ -26,7 +26,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   RealtimeChannel? _realtimeChannel;
   Timer? _refreshTimer;
   V3EtaDolazakData? _data;
-  bool _loading = false;
 
   @override
   void initState() {
@@ -65,6 +64,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       'v3_trenutna_dodela',
       'v3_trenutna_dodela_slot',
       'v3_vozac_lokacije',
+      'v3_operativna_nedelja',
     ]) {
       channel.onPostgresChanges(
         event: PostgresChangeEvent.all,
@@ -83,21 +83,14 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   Future<void> _reload() async {
     if (!mounted) return;
-    if (mounted) setState(() => _loading = true);
 
     try {
       final data = await _etaOrchestratorService.loadEtaForPutnik(widget.putnikId);
       if (!mounted) return;
-      setState(() {
-        _data = data;
-        _loading = false;
-      });
+      setState(() => _data = data);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _data = null;
-        _loading = false;
-      });
+      setState(() => _data = null);
     }
   }
 
@@ -108,22 +101,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return V3ContainerUtils.styledContainer(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        backgroundColor: V3StyleHelper.whiteAlpha06,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: V3StyleHelper.whiteAlpha13),
-        child: const Center(
-          child: SizedBox(
-            height: 18,
-            width: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-    }
-
     final data = _data;
     if (data == null) return const SizedBox.shrink();
 

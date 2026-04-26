@@ -66,7 +66,7 @@ class V3EtaOrchestratorService {
     final terminIds = assignments.map((e) => e.terminId).toList(growable: false);
     final operativnaRows = await supabase
         .from('v3_operativna_nedelja')
-        .select('id, datum, grad, polazak_at, adresa_override_id, koristi_sekundarnu, created_by')
+        .select('id, datum, grad, polazak_at, adresa_override_id, koristi_sekundarnu, created_by, pokupljen_at')
         .inFilter('id', terminIds);
 
     Map<String, dynamic>? selectedRow;
@@ -80,6 +80,13 @@ class V3EtaOrchestratorService {
 
       final id = (row['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
+
+      // Ako je putnik već pokupljen — ETA nema smisla prikazivati
+      final pokupljenAt = row['pokupljen_at'];
+      if (pokupljenAt != null) {
+        debugPrint('[ETA] termin=${id.substring(0, 8)} — putnik pokupljen, preskačem');
+        continue;
+      }
 
       final assignment = assignments.where((a) => a.terminId == id).firstOrNull;
       if (assignment == null) continue;
