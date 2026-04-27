@@ -36,6 +36,14 @@ class V3DodelaOrchestratorService {
       updatedBy: updatedBy,
     );
 
+    await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: normVreme,
+      vozacId: vozacId,
+      updatedBy: updatedBy,
+    );
+
     return matchedRows.length;
   }
 

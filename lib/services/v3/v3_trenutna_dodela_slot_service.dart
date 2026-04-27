@@ -14,6 +14,7 @@ class V3TrenutnaDodelaSlotService {
   static const String colVozacId = 'vozac_v3_auth_id';
   static const String colStatus = 'status';
   static const String colUpdatedBy = 'updated_by';
+  static const String colWaypointsJson = 'waypoints_json';
 
   static String _normalizeDatumIso(String? raw) {
     final value = (raw ?? '').trim();
@@ -142,6 +143,26 @@ class V3TrenutnaDodelaSlotService {
     };
 
     await supabase.from(tableName).upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme');
+  }
+
+  static Future<void> updateWaypointsJson({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+    required List<Map<String, dynamic>> waypoints,
+  }) async {
+    final datum = _normalizeDatumIso(datumIso);
+    final gradNorm = _normalizeGrad(grad);
+    final vremeNorm = _normalizeVreme(vreme);
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || waypoints.isEmpty) return;
+
+    await supabase
+        .from(tableName)
+        .update({colWaypointsJson: waypoints})
+        .eq(colDatum, datum)
+        .eq(colGrad, gradNorm)
+        .eq(colVreme, vremeNorm)
+        .eq(colStatus, statusAktivan);
   }
 
   static Future<void> deleteBySlot({
