@@ -255,16 +255,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     List<_PutnikEntry> putnici,
   ) {
     final sorted = List<_PutnikEntry>.from(putnici);
-    final optimizedOrder = _optimizedOrderByPutnikId;
+    final currentVozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     sorted.sort((a, b) {
-      final aIndex = optimizedOrder[a.putnik.id];
-      final bIndex = optimizedOrder[b.putnik.id];
-
-      if (aIndex != null && bIndex != null) return aIndex.compareTo(bIndex);
-      if (aIndex != null && bIndex == null) return -1;
-      if (aIndex == null && bIndex != null) return 1;
-
-      return a.putnik.imePrezime.compareTo(b.putnik.imePrezime);
+      return V3StatusPolicy.compareEntriesForDisplay<_PutnikEntry>(
+        a: a,
+        b: b,
+        currentVozacId: currentVozacId,
+        otkazanoAtOf: (e) => e.entry?.otkazanoAt,
+        pokupljenAtOf: (e) => e.entry?.pokupljenAt,
+        putnikIdOf: (e) => e.putnik.id,
+        assignedVozacIdForEntry: (_) => currentVozacId,
+        putnikNameById: (id) => V3PutnikService.getPutnikById(id)?.imePrezime ?? '',
+      );
     });
     return sorted;
   }
@@ -361,7 +363,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     // 1. Moji termini za ovaj datum (izvor dodele: v3_trenutna_dodela)
     final assignedRows = _assignedOperativnaRows(
       datumIso: _selectedDatumIso,
-      onlyEligible: true,
+      onlyEligible: false,
     );
 
     final assignedSlotRows = _assignedSlotTermRows(
@@ -410,7 +412,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       datumIso: _selectedDatumIso,
       grad: _selectedGrad,
       vreme: selectedVNorm,
-      onlyEligible: true,
+      onlyEligible: false,
     ).where((r) => r['created_by'] != null);
 
     // Redovi bez duplikata po operativna ID
@@ -441,12 +443,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (matchedEntryData == null && putnikId != null && putnikId.isNotEmpty) {
         DateTime? bestUpdatedAt;
         for (final r in rm.operativnaNedeljaCache.values) {
-          if (!V3StatusPolicy.countsAsOccupied(
-            status: r['status']?.toString(),
-            otkazanoAt: r['otkazano_at'],
-          )) {
-            continue;
-          }
           if (r['created_by']?.toString() != putnikId) continue;
           if (V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
           if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
@@ -780,6 +776,31 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     });
     debugPrint(
         '[OPT] Applied reordered: ${reordered.map((p) => '${p.putnik.imePrezime}(opt=${optimizedOrderById[p.putnik.id]})').join(' -> ')}');
+
+    // Sačuvaj optimizovane waypoints u slot da orchestrator može da ih čita
+    // Destinacija se dodaje na kraj da OSRM zna pravi smer pri ETA računanju
+    if (_selectedDatumIso.isNotEmpty && _selectedGrad.isNotEmpty && _selectedVreme.isNotEmpty) {
+      final waypointsJson = optimized
+          .map((w) => <String, dynamic>{
+                'id': w.id,
+                'lat': w.coordinate.latitude,
+                'lng': w.coordinate.longitude,
+              })
+          .toList();
+      if (fixedDestination != null) {
+        waypointsJson.add(<String, dynamic>{
+          'id': fixedDestination.id,
+          'lat': fixedDestination.coordinate.latitude,
+          'lng': fixedDestination.coordinate.longitude,
+        });
+      }
+      V3TrenutnaDodelaSlotService.updateWaypointsJson(
+        datumIso: _selectedDatumIso,
+        grad: _selectedGrad,
+        vreme: _selectedVreme,
+        waypoints: waypointsJson,
+      ).catchError((e) => debugPrint('[OPT] updateWaypointsJson failed: $e'));
+    }
 
     return (
       optimized: optimized,
