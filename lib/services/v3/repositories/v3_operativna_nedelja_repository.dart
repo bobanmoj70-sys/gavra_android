@@ -1,20 +1,8 @@
 import '../../../globals.dart';
 
 class V3OperativnaNedeljaRepository {
-  Future<Map<String, dynamic>?> updateByIdReturningMaybeSingle(String id, Map<String, dynamic> payload) {
-    return supabase.from('v3_operativna_nedelja').update(payload).eq('id', id).select().maybeSingle();
-  }
-
   Future<Map<String, dynamic>> updateByIdReturningSingle(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_operativna_nedelja').update(payload).eq('id', id).select().single();
-  }
-
-  Future<void> updateById(String id, Map<String, dynamic> payload) {
-    return supabase.from('v3_operativna_nedelja').update(payload).eq('id', id);
-  }
-
-  Future<void> insert(Map<String, dynamic> payload) {
-    return supabase.from('v3_operativna_nedelja').insert(payload);
   }
 
   Future<Map<String, dynamic>> insertReturning(Map<String, dynamic> payload) {
