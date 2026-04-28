@@ -16,10 +16,6 @@ class V3FinansijeRepository {
         .maybeSingle();
   }
 
-  Future<void> deleteById(String id) {
-    return supabase.from('v3_finansije').delete().eq('id', id);
-  }
-
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_finansije').update(payload).eq('id', id).select().single();
   }

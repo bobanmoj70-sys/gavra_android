@@ -194,22 +194,6 @@ class V3ZahtevService {
     }
   }
 
-  /// Prepisuje trazeni_polazak_at i polazak_at postojećeg zahteva (admin use-case).
-  static Future<void> updateVreme(String id, String novoVreme, {String? status}) async {
-    try {
-      final row = await _domain.assignTime(
-        id: id,
-        vreme: novoVreme,
-        status: status,
-        updatedBy: V3UuidUtils.normalizeUuid(V3VozacService.currentVozac?.id),
-      );
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-    } catch (e) {
-      debugPrint('[V3ZahtevService] updateVreme error: $e');
-      rethrow;
-    }
-  }
-
   static Future<void> otkaziZahtev(String id,
       {String? otkazaoVozacId, String? otkazaoPutnikId, String? operativnaId}) async {
     try {
@@ -237,10 +221,9 @@ class V3ZahtevService {
           },
         );
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-        final String? updBy2 = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
         final payload2 = {
           if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
-          if (updBy2 != null) 'updated_by': updBy2,
+          if (updBy != null) 'updated_by': updBy,
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);

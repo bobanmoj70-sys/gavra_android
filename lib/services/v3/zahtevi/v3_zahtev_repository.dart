@@ -12,8 +12,4 @@ class V3ZahtevRepository {
   Future<Map<String, dynamic>?> updateRawMaybeSingle(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_zahtevi').update(payload).eq('id', id).select().maybeSingle();
   }
-
-  Future<void> deleteById(String id) {
-    return supabase.from('v3_zahtevi').delete().eq('id', id);
-  }
 }
