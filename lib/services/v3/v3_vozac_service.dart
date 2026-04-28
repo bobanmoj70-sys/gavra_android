@@ -40,9 +40,10 @@ class V3VozacService {
   static Future<void> addUpdateVozac(V3Vozac vozac) async {
     try {
       final actorUuid = V3UuidUtils.normalizeUuid(currentVozac?.id);
+      final Map<String, dynamic> row;
       if (vozac.id.isNotEmpty) {
         // Edit — ne diramo push_token
-        await _repo.updateById(vozac.id, {
+        row = await _repo.updateByIdReturning(vozac.id, {
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
@@ -51,7 +52,7 @@ class V3VozacService {
         });
       } else {
         // Add — insert novog vozača (bez push_token, dobija ga pri prvom loginu)
-        await _repo.insert({
+        row = await _repo.insertReturning({
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
@@ -60,6 +61,7 @@ class V3VozacService {
           if (actorUuid != null) 'updated_by': actorUuid,
         });
       }
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_auth', row);
     } catch (e) {
       debugPrint('[V3VozacService] Error: $e');
       rethrow;

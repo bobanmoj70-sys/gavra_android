@@ -39,11 +39,11 @@ class V3GorivoService {
   /// Ažurira trenutno stanje pumpe u bazi
   static Future<bool> updateStanje(String id, double novoStanje, double noviBrojac) async {
     try {
-      await _repo.updateById(id, {
+      final row = await _repo.updateByIdReturning(id, {
         'trenutno_stanje_litri': novoStanje,
         'brojac_pistolj_litri': noviBrojac,
       });
-
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_gorivo', row);
       return true;
     } catch (e) {
       debugPrint('[V3GorivoService] updateStanje error: $e');
@@ -54,10 +54,10 @@ class V3GorivoService {
   /// Ažurira trenutni nivo rezervoara u bazi
   static Future<bool> updateRezervoar(String id, double novoLitara) async {
     try {
-      await _repo.updateById(id, {
+      final row = await _repo.updateByIdReturning(id, {
         'trenutno_stanje_litri': novoLitara,
       });
-
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_gorivo', row);
       return true;
     } catch (e) {
       debugPrint('[V3GorivoService] updateRezevoar error: $e');

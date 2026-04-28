@@ -68,7 +68,8 @@ class V3PutnikService {
       if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;
       if (updatedByUuid != null) data['updated_by'] = updatedByUuid;
 
-      await _repo.upsert(data);
+      final row = await _repo.upsertReturning(data);
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_auth', row);
     } catch (e) {
       debugPrint('[V3PutnikService] Error: $e');
       rethrow;

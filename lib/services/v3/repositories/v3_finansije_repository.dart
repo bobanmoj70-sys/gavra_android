@@ -5,6 +5,10 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload);
   }
 
+  Future<Map<String, dynamic>> insertReturning(Map<String, dynamic> payload) {
+    return supabase.from('v3_finansije').insert(payload).select().single();
+  }
+
   Future<Map<String, dynamic>?> findNaplataByReferencaId(String referencaId) {
     return supabase
         .from('v3_finansije')
@@ -22,6 +26,10 @@ class V3FinansijeRepository {
 
   Future<void> updateById(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_finansije').update(payload).eq('id', id);
+  }
+
+  Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) {
+    return supabase.from('v3_finansije').update(payload).eq('id', id).select().single();
   }
 
   Future<Map<String, dynamic>?> getLatestByCriteria({

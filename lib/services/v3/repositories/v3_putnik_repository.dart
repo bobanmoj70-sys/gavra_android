@@ -3,6 +3,9 @@ import 'package:uuid/uuid.dart';
 import '../../../globals.dart';
 
 class V3PutnikRepository {
+  static const String _authRawSelect =
+      'id, ime, telefon, telefon_2, tip, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
+
   static const String _putnikSelectProjection =
       'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
 
@@ -28,6 +31,17 @@ class V3PutnikRepository {
 
     final mapped = _mapPayload(payload);
     return supabase.from('v3_auth').upsert(mapped, onConflict: 'id');
+  }
+
+  Future<Map<String, dynamic>> upsertReturning(Map<String, dynamic> data) {
+    final payload = Map<String, dynamic>.from(data);
+    final id = payload['id']?.toString().trim() ?? '';
+    if (id.isEmpty) {
+      payload['id'] = const Uuid().v4();
+    }
+
+    final mapped = _mapPayload(payload);
+    return supabase.from('v3_auth').upsert(mapped, onConflict: 'id').select(_authRawSelect).single();
   }
 
   Future<void> updateById(String id, Map<String, dynamic> payload) {
