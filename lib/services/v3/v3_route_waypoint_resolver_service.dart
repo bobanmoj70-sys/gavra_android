@@ -7,7 +7,7 @@ import 'v3_putnik_adresa_resolver_service.dart';
 /// Rešava V3RouteWaypoint za putnika koristeći njegovu adresu iz profila.
 class V3RouteWaypointResolverService {
   V3RouteWaypointResolverService({V3AddressCoordinateService? addressCoordinateService})
-      : _addressCoordinateService = addressCoordinateService ?? V3AddressCoordinateService();
+      : _addressCoordinateService = addressCoordinateService ?? V3AddressCoordinateService.instance;
 
   final V3AddressCoordinateService _addressCoordinateService;
 

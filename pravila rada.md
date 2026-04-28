@@ -1,2 +1,2 @@
-pre odgovora proveris sve sto je povezano sa pitanjem kod + funkcije u bazi
-kod ne menjas bez mog zahteva ili odobrenja
+bez pretpostavki
+bez pokretanja akcija dok korisnik ne odobri ili zatrazi

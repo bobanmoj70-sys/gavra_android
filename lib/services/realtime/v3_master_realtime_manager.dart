@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../v3/v3_address_coordinate_service.dart';
 import '../v3/v3_app_update_service.dart';
 import 'engine/v3_bootstrap_loader.dart';
 import 'engine/v3_cache_store.dart';
@@ -298,6 +299,13 @@ class V3MasterRealtimeManager {
       await _setupRealtime();
       _isInitialized = true;
       _scheduleEmit(tables: {'*'}, immediate: true);
+      // Pre-geocodiramo koordinate gradova u pozadini — bez blokiranja bootstrapa.
+      // Time se izbjegava Nominatim poziv pri prvom kliku na Start/Mapa.
+      unawaited(
+        V3AddressCoordinateService.instance
+            .warmUpCities()
+            .catchError((Object e) => debugPrint('[V3MasterRealtimeManager] warmUpCities error: $e')),
+      );
       debugPrint('[V3MasterRealtimeManager] Initialized successfully');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] Initialization error: $e');

@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import '../../utils/v3_geo_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_adresa_service.dart';
 import 'v3_osrm_route_service.dart';
@@ -10,7 +12,14 @@ import 'v3_osrm_route_service.dart';
 class V3AddressCoordinateService {
   V3AddressCoordinateService({http.Client? client}) : _client = client ?? http.Client();
 
+  /// Globalna singleton instanca sa dijeljenim cache-om koordinata.
+  /// Koristi se u svim servisima i screenovima umjesto kreiranja novih instanci.
+  static final V3AddressCoordinateService instance = V3AddressCoordinateService();
+
   final http.Client _client;
+
+  // Globalni cache koordinata: adresaId → koordinata, i geocoding query → koordinata.
+  // Dijeli se između svih pozivača koji koriste istu instancu.
   final Map<String, V3RouteCoordinate> _cache = <String, V3RouteCoordinate>{};
 
   Future<V3RouteCoordinate?> resolveCoordinate({
@@ -94,6 +103,31 @@ class V3AddressCoordinateService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Pre-geocodira koordinate za sve poznate gradove u sistemu (BC, VS).
+  /// Treba pozvati jednom pri bootstrapu da se izbjegne Nominatim poziv
+  /// pri svakom kliku na "Start" ili "Mapa".
+  Future<void> warmUpCities() async {
+    final grads = ['BC', 'VS'];
+    final futures = <Future<void>>[];
+    for (final grad in grads) {
+      final label = V3GeoUtils.gradLabelForGeocoding(grad);
+      final query = '$label, Srbija';
+      if (_cache.containsKey(query)) continue;
+      futures.add(
+        _geocode(query).then((coord) {
+          if (coord != null) {
+            debugPrint('[V3AddressCoordinateService] warmUp grad=$grad → $coord');
+          } else {
+            debugPrint('[V3AddressCoordinateService] warmUp grad=$grad → NULL (geocoding failed)');
+          }
+        }).catchError((Object e) {
+          debugPrint('[V3AddressCoordinateService] warmUp grad=$grad error: $e');
+        }),
+      );
+    }
+    await Future.wait(futures);
   }
 
   double? _parseDouble(dynamic value) {
