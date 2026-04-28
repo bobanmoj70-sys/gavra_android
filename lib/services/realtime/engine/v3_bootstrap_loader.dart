@@ -74,9 +74,7 @@ class V3BootstrapLoader {
   }
 
   Future<Map<String, List<Map<String, dynamic>>>> loadDeltaAll(Map<String, DateTime?> watermarks) async {
-    final tables = V3RealtimeTableRegistry.defaults
-        .where((t) => watermarks[t.name] != null)
-        .toList(growable: false);
+    final tables = V3RealtimeTableRegistry.defaults.where((t) => watermarks[t.name] != null).toList(growable: false);
 
     if (tables.isEmpty) return {};
 

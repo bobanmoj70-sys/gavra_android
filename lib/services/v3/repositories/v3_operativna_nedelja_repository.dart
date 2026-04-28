@@ -24,5 +24,4 @@ class V3OperativnaNedeljaRepository {
         .isFilter('otkazano_at', null)
         .select();
   }
-
 }

@@ -1,6 +1,6 @@
+import '../../realtime/v3_master_realtime_manager.dart';
 import 'v3_zahtev_repository.dart';
 import 'v3_zahtev_types.dart';
-import '../../realtime/v3_master_realtime_manager.dart';
 
 class V3ZahtevDomainService {
   final V3ZahtevRepository _repository;

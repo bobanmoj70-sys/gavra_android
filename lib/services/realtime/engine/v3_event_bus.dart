@@ -1,8 +1,7 @@
 import 'dart:async';
 
 class V3EventBus {
-  final StreamController<Map<String, int>> _revisionController =
-      StreamController<Map<String, int>>.broadcast();
+  final StreamController<Map<String, int>> _revisionController = StreamController<Map<String, int>>.broadcast();
 
   static const Duration defaultDebounceWindow = Duration(milliseconds: 90);
   final Duration emitDebounceWindow;
@@ -50,9 +49,7 @@ class V3EventBus {
     _emitDebounceTimer = null;
 
     if (_pendingTableChanges.isEmpty) return;
-    final changed = _pendingTableChanges.contains('*')
-        ? <String>{'*'}
-        : Set<String>.from(_pendingTableChanges);
+    final changed = _pendingTableChanges.contains('*') ? <String>{'*'} : Set<String>.from(_pendingTableChanges);
     _pendingTableChanges.clear();
 
     _revisionController.add(Map<String, int>.from(_lastRevisions));

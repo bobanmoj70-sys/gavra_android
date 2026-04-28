@@ -9,5 +9,4 @@ class V3RacunRepository {
         .order('redni_broj', ascending: false)
         .limit(1);
   }
-
 }

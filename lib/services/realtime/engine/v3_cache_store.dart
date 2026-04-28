@@ -1,6 +1,5 @@
 class V3CacheStore {
-  final Map<String, Map<String, Map<String, dynamic>>> _tables =
-      <String, Map<String, Map<String, dynamic>>>{};
+  final Map<String, Map<String, Map<String, dynamic>>> _tables = <String, Map<String, Map<String, dynamic>>>{};
   final Map<String, int> _revisions = <String, int>{};
   final Map<String, DateTime?> _watermarks = <String, DateTime?>{};
 
@@ -69,8 +68,7 @@ class V3CacheStore {
     }
 
     if (changed) {
-      _watermarks[table] =
-          _maxTime(_watermarks[table], _extractTimestamp(newRecord));
+      _watermarks[table] = _maxTime(_watermarks[table], _extractTimestamp(newRecord));
       _touch(table);
     }
 

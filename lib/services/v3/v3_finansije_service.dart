@@ -174,43 +174,6 @@ class V3FinansijeService {
     );
   }
 
-  static Map<String, Map<String, dynamic>> getLatestNaplataByReferencaForPutnikMesec({
-    required String putnikId,
-    required int godina,
-    required int mesec,
-  }) {
-    final putnik = putnikId.trim();
-    if (putnik.isEmpty) return <String, Map<String, dynamic>>{};
-
-    final byReferenca = <String, Map<String, dynamic>>{};
-    for (final row in _naplataRowsForPutnikMesec(putnikId: putnik, godina: godina, mesec: mesec)) {
-      final referencaId = row['operativna_id']?.toString().trim() ?? '';
-      if (referencaId.isEmpty) continue;
-
-      final existing = byReferenca[referencaId];
-      if (existing == null || _createdAtOrEpoch(row).isAfter(_createdAtOrEpoch(existing))) {
-        byReferenca[referencaId] = row;
-      }
-    }
-
-    return byReferenca;
-  }
-
-  static double sumNaplataZaPutnikMesec({
-    required String putnikId,
-    required int godina,
-    required int mesec,
-  }) {
-    final putnik = putnikId.trim();
-    if (putnik.isEmpty) return 0;
-
-    return _naplataRowsForPutnikMesec(
-      putnikId: putnik,
-      godina: godina,
-      mesec: mesec,
-    ).fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
-  }
-
   static ({int brojVoznji, double ukupanIznos}) getNaplataSummaryForPutnik({
     required String putnikId,
     int? godina,
@@ -461,25 +424,6 @@ class V3FinansijeService {
         tables: ['v3_auth', 'v3_finansije'],
         build: () => getDugovi(),
       );
-
-  static Map<String, Map<String, dynamic>> getLatestNaplataByReferencaIds(Iterable<String> referencaIds) {
-    final ids = referencaIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet();
-    if (ids.isEmpty) return <String, Map<String, dynamic>>{};
-
-    final byReferenca = <String, Map<String, dynamic>>{};
-
-    for (final row in _naplataRows()) {
-      final referencaId = row['operativna_id']?.toString().trim() ?? '';
-      if (!ids.contains(referencaId)) continue;
-
-      final existing = byReferenca[referencaId];
-      if (existing == null || _createdAtOrEpoch(row).isAfter(_createdAtOrEpoch(existing))) {
-        byReferenca[referencaId] = row;
-      }
-    }
-
-    return byReferenca;
-  }
 
   static Future<void> sacuvajMesecnuNaplatu({
     required String putnikId,
