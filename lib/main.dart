@@ -32,6 +32,7 @@ bool _localNotificationsInitialized = false;
 bool _notificationLaunchHandled = false;
 Future<void>? _localNotificationsInitInFlight;
 Future<void>? _supabaseInitInFlight;
+String _lastSyncedPushToken = '';
 
 Future<void> _ensureLocalNotificationsInitialized() async {
   if (_localNotificationsInitialized) return;
@@ -374,17 +375,21 @@ Future<void> _showAlternativaFromData(
 Future<void> _syncRefreshedPushToken(String token) async {
   final safeToken = token.trim();
   if (safeToken.isEmpty) return;
+  if (_lastSyncedPushToken == safeToken) return;
   final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
+  final tokenResult = await V3PushTokenProvider.getBestToken();
+  final apnsToken = tokenResult?.apnsToken?.trim() ?? '';
 
-  Future<void> doSyncAttempt() async {
+  Future<bool> doSyncAttempt() async {
     final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
     if (putnikId.isNotEmpty) {
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: putnikId,
         pushToken: safeToken,
         installationId: installationId,
+        pushToken2: apnsToken,
       );
-      return;
+      return true;
     }
 
     final vozacId = (V3VozacService.currentVozac?.id ?? '').trim();
@@ -393,18 +398,28 @@ Future<void> _syncRefreshedPushToken(String token) async {
         vozacId: vozacId,
         pushToken: safeToken,
         installationId: installationId,
+        pushToken2: apnsToken,
       );
+      return true;
     }
+
+    return false;
   }
 
   try {
-    await doSyncAttempt().timeout(const Duration(seconds: 5));
+    final synced = await doSyncAttempt().timeout(const Duration(seconds: 5));
+    if (synced) {
+      _lastSyncedPushToken = safeToken;
+    }
   } catch (e) {
     debugPrint('[FCM] Token refresh sync prvi pokušaj nije uspeo: $e');
     unawaited(
       Future<void>.delayed(const Duration(seconds: 2), () async {
         try {
-          await doSyncAttempt().timeout(const Duration(seconds: 5));
+          final synced = await doSyncAttempt().timeout(const Duration(seconds: 5));
+          if (synced) {
+            _lastSyncedPushToken = safeToken;
+          }
         } catch (retryError) {
           debugPrint('[FCM] Token refresh sync retry nije uspeo: $retryError');
         }

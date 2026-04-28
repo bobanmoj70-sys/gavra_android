@@ -17,6 +17,7 @@ import '../utils/v3_app_messages.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_state_utils.dart';
@@ -50,6 +51,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
   Map<String, V3WeatherSnapshot> _weatherByGrad = const {};
   Timer? _weatherTimer;
+  V3ObracunPeriod _selectedObracunPeriod = V3ObracunPeriod.tekuciMesec;
+  late int _selectedMesec;
+  late int _selectedGodina;
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
 
@@ -73,6 +77,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedMesec = now.month;
+    _selectedGodina = now.year;
     WidgetsBinding.instance.addObserver(this);
     _putnikData = Map<String, dynamic>.from(widget.putnikData);
     _refresh();
@@ -685,7 +692,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final koristiCenuPoPokupljenju = tip == 'dnevni' || tip == 'posiljka';
     final efektivnaCena = koristiCenuPoPokupljenju ? cenaPoPokupljenju : cenaPoDanu;
     final cenaInfo = efektivnaCena > 0
-        ? '${koristiCenuPoPokupljenju ? 'Cena po pokupljenju' : 'Cena po danu'}: ${efektivnaCena.toStringAsFixed(0)} RSD'
+        ? '${koristiCenuPoPokupljenju ? 'Cena po vožnji' : 'Cena po danu'}: ${efektivnaCena.toStringAsFixed(0)} RSD'
         : null;
     final imePrezime = _putnikData['ime_prezime'] as String? ?? '';
     final telefon = _putnikData['telefon_1'] as String? ?? '';
@@ -700,6 +707,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
     final stats = V3PutnikStatistikaService.getTekuciMesec(putnikId ?? '');
     final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
+    final obracunSummary = V3PutnikStatistikaService.getObracunSummary(
+      putnikId: putnikId ?? '',
+      period: _selectedObracunPeriod,
+      godina: _selectedGodina,
+      mesec: _selectedMesec,
+    );
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
     final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
     return ValueListenableBuilder<ThemeData>(
@@ -734,7 +747,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         V3VremeDolaskaWidget(putnikId: putnikId),
                       ],
                       const SizedBox(height: 16),
-                      _buildStatistikaCard(tip: tip, stats: stats, cenaInfo: cenaInfo, ukupanDug: ukupanDug),
+                      _buildStatistikaCard(
+                        tip: tip,
+                        stats: stats,
+                        cenaInfo: cenaInfo,
+                        ukupanDug: ukupanDug,
+                        obracunSummary: obracunSummary,
+                      ),
                       const SizedBox(height: 10),
                       _buildDetaljneStatistikeSection(
                         putnikId: putnikId,
@@ -996,6 +1015,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   Widget _buildStatistikaCard({
     required String tip,
     required V3PutnikMesecnaStatistika stats,
+    required V3PutnikObracunSummary obracunSummary,
     String? cenaInfo,
     required double ukupanDug,
   }) {
@@ -1040,7 +1060,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _kpiTile('Pokupljen', '${stats.pokupljeno}', Colors.lightBlueAccent),
+              _kpiTile('Realiz.', '${stats.pokupljeno}', Colors.lightBlueAccent),
               _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
               _kpiTile('Otkazano', '${stats.otkazano}', Colors.redAccent),
             ],
@@ -1077,6 +1097,155 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               Text(
                 '${ukupanDug.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(color: V3StyleHelper.whiteAlpha15),
+          const SizedBox(height: 8),
+          Text(
+            'Obračun broja vožnji',
+            style: TextStyle(color: V3StyleHelper.whiteAlpha9, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<V3ObracunPeriod>(
+            value: _selectedObracunPeriod,
+            dropdownColor: const Color(0xFF1A2035),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              isDense: true,
+              labelText: 'Period',
+              labelStyle: TextStyle(color: V3StyleHelper.whiteAlpha65),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: V3StyleHelper.whiteAlpha15),
+              ),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+                borderSide: BorderSide(color: Colors.white54),
+              ),
+            ),
+            items: const [
+              DropdownMenuItem(value: V3ObracunPeriod.tekuciMesec, child: Text('Tekući mesec')),
+              DropdownMenuItem(value: V3ObracunPeriod.izabraniMesec, child: Text('Izabrani mesec')),
+              DropdownMenuItem(value: V3ObracunPeriod.ukupno, child: Text('Ukupno')),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              V3StateUtils.safeSetState(this, () => _selectedObracunPeriod = value);
+            },
+          ),
+          if (_selectedObracunPeriod == V3ObracunPeriod.izabraniMesec) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _selectedMesec,
+                    dropdownColor: const Color(0xFF1A2035),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      labelText: 'Mesec',
+                      labelStyle: TextStyle(color: V3StyleHelper.whiteAlpha65),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: V3StyleHelper.whiteAlpha15),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                        borderSide: BorderSide(color: Colors.white54),
+                      ),
+                    ),
+                    items: List.generate(
+                      12,
+                      (index) => DropdownMenuItem<int>(
+                        value: index + 1,
+                        child: Text(V3DateUtils.mesecNaziv(index + 1)),
+                      ),
+                    ),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      V3StateUtils.safeSetState(this, () => _selectedMesec = value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _selectedGodina,
+                    dropdownColor: const Color(0xFF1A2035),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      labelText: 'Godina',
+                      labelStyle: TextStyle(color: V3StyleHelper.whiteAlpha65),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: V3StyleHelper.whiteAlpha15),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                        borderSide: BorderSide(color: Colors.white54),
+                      ),
+                    ),
+                    items: List.generate(
+                      7,
+                      (index) {
+                        final year = DateTime.now().year - 3 + index;
+                        return DropdownMenuItem<int>(value: year, child: Text('$year'));
+                      },
+                    ),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      V3StateUtils.safeSetState(this, () => _selectedGodina = value);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Period', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                obracunSummary.periodLabel,
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Ukupan broj vožnji', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${obracunSummary.ukupnoVoznji}',
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Cena', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${obracunSummary.cena.toStringAsFixed(0)} RSD',
+                style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Ukupan iznos', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${obracunSummary.ukupanIznos.toStringAsFixed(0)} RSD',
+                style: const TextStyle(color: Colors.amberAccent, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ],
           ),

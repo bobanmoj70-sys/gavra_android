@@ -10,10 +10,12 @@ import 'package:uuid/uuid.dart';
 class V3PushTokenResult {
   final String token;
   final String? installationId;
+  final String? apnsToken;
 
   const V3PushTokenResult({
     required this.token,
     this.installationId,
+    this.apnsToken,
   });
 }
 
@@ -21,15 +23,24 @@ class V3PushTokenProvider {
   V3PushTokenProvider._();
 
   static const MethodChannel _channel = MethodChannel('com.gavra013.gavra_android/push_token');
-  static const FlutterSecureStorage _storage =
-      FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
+  static const FlutterSecureStorage _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+  );
   static const String _installationStorageKey = 'installation_device_id';
+  static const String _lastFcmTokenStorageKey = 'v3_last_known_fcm_token';
+  static const String _lastApnsTokenStorageKey = 'v3_last_known_apns_token';
 
   static Future<V3PushTokenResult?> getBestToken() async {
-    final fcmToken = await _tryGetFcmToken();
-    if (fcmToken != null) {
+    final result = await _tryGetFcmToken();
+    final fcmToken = result?.token ?? '';
+    if (fcmToken.isNotEmpty) {
       final installationId = await getInstallationId();
-      return V3PushTokenResult(token: fcmToken, installationId: installationId);
+      return V3PushTokenResult(
+        token: fcmToken,
+        installationId: installationId,
+        apnsToken: result?.apnsToken,
+      );
     }
 
     return null;
@@ -44,7 +55,7 @@ class V3PushTokenProvider {
     return generated;
   }
 
-  static Future<String?> _tryGetFcmToken() async {
+  static Future<V3PushTokenResult?> _tryGetFcmToken() async {
     if (Platform.isIOS) {
       return _tryGetFcmTokenIos();
     }
@@ -63,7 +74,7 @@ class V3PushTokenProvider {
             .timeout(const Duration(seconds: 4), onTimeout: () => null);
         final safeToken = (token ?? '').trim();
         if (safeToken.isNotEmpty) {
-          return safeToken;
+          return V3PushTokenResult(token: safeToken);
         }
       } catch (e) {
         debugPrint('[PushTokenProvider] Android FCM token unavailable (attempt=$attempt): $e');
@@ -77,7 +88,7 @@ class V3PushTokenProvider {
     return null;
   }
 
-  static Future<String?> _tryGetFcmTokenIos() async {
+  static Future<V3PushTokenResult?> _tryGetFcmTokenIos() async {
     try {
       await _ensureFirebaseInitialized();
 
@@ -108,22 +119,30 @@ class V3PushTokenProvider {
       }
 
       String? apnsToken;
-      for (var attempt = 1; attempt <= 2; attempt++) {
-        apnsToken = await messaging.getAPNSToken().timeout(const Duration(milliseconds: 700), onTimeout: () => null);
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        apnsToken = await messaging.getAPNSToken().timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
         if ((apnsToken ?? '').trim().isNotEmpty) break;
-        if (attempt < 2) {
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+        if (attempt < 3) {
+          await Future<void>.delayed(const Duration(milliseconds: 300));
         }
       }
 
-      debugPrint('[PushTokenProvider] iOS APNs token present=${(apnsToken ?? '').isNotEmpty}');
+      final safeApnsToken = (apnsToken ?? '').trim();
+      final apnsPresent = safeApnsToken.isNotEmpty;
+      debugPrint('[PushTokenProvider] iOS APNs token present=$apnsPresent');
+      if (!apnsPresent) {
+        debugPrint('⚠️ [PushTokenProvider] iOS APNs token nije prisutan — FCM token može biti nedostupan.');
+      } else {
+        await _writeTokenSafely(_lastApnsTokenStorageKey, safeApnsToken);
+      }
 
       String? token;
       for (var attempt = 1; attempt <= 3; attempt++) {
-        token = await messaging.getToken().timeout(const Duration(seconds: 1), onTimeout: () => null);
+        token = await messaging.getToken().timeout(const Duration(seconds: 2), onTimeout: () => null);
         final safeToken = (token ?? '').trim();
         if (safeToken.isNotEmpty) {
-          return safeToken;
+          await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
+          return V3PushTokenResult(token: safeToken, apnsToken: safeApnsToken.isEmpty ? null : safeApnsToken);
         }
         if (attempt < 3) {
           await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -131,11 +150,30 @@ class V3PushTokenProvider {
       }
 
       final safeToken = (token ?? '').trim();
-      return safeToken.isEmpty ? null : safeToken;
+      if (safeToken.isNotEmpty) {
+        await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
+        return V3PushTokenResult(token: safeToken, apnsToken: safeApnsToken.isEmpty ? null : safeApnsToken);
+      }
+
+      final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
+      if (fallbackToken.isNotEmpty) {
+        debugPrint('[PushTokenProvider] iOS using last known FCM token fallback.');
+        return V3PushTokenResult(token: fallbackToken, apnsToken: safeApnsToken.isEmpty ? null : safeApnsToken);
+      }
+
+      return null;
     } catch (e) {
       debugPrint('[PushTokenProvider] iOS FCM token unavailable: $e');
       return null;
     }
+  }
+
+  static Future<void> _writeTokenSafely(String key, String value) async {
+    final safeValue = value.trim();
+    if (safeValue.isEmpty) return;
+    try {
+      await _storage.write(key: key, value: safeValue);
+    } catch (_) {}
   }
 
   static Future<void> _ensureFirebaseInitialized() async {

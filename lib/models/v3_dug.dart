@@ -34,7 +34,7 @@ class V3Dug {
     Map<String, dynamic>? putnikData,
   }) {
     final tip = putnikData?['tip_putnika'] as String? ?? 'dnevni';
-    // Iznos = cena po pokupljenju iz profila putnika (jedini relevantan iznos za dnevne/posiljke)
+    // Iznos = cena po vožnji iz profila putnika (jedini relevantan iznos za dnevne/pošiljke)
     final iznos = (putnikData?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
     return V3Dug(
       id: json['id']?.toString() ?? '',

@@ -80,6 +80,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   List<_PutnikEntry> _mojiPutnici = [];
   Set<String> _assignedOperativnaIds = <String>{};
   List<Map<String, String>> _assignedSlotRows = <Map<String, String>>[];
+  bool _autoStopInProgress = false;
 
   int _timeToMinutes(String hhmm) {
     final parts = hhmm.split(':');
@@ -284,7 +285,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   void dispose() {
     V3StreamUtils.cancelSubscription('vozac_screen_realtime');
     V3StreamUtils.cancelSubscription('vozac_screen_assignment');
-    V3VozacLocationTrackingService.instance.stop();
     final channel = _trenutnaDodelaChannel;
     _trenutnaDodelaChannel = null;
     if (channel != null) {
@@ -348,6 +348,34 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
     if (vozacId.isEmpty) return;
     await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
+  }
+
+  bool _isPutnikEntryCompleted(_PutnikEntry item) {
+    final entry = item.entry;
+    if (entry == null) return false;
+    final pokupljen = V3StatusPolicy.isTimestampSet(entry.pokupljenAt);
+    final otkazan = V3StatusPolicy.isTimestampSet(entry.otkazanoAt);
+    return pokupljen || otkazan;
+  }
+
+  bool _shouldAutoStopTracking(List<_PutnikEntry> putnici) {
+    if (putnici.isEmpty) return false;
+    return putnici.every(_isPutnikEntryCompleted);
+  }
+
+  void _maybeAutoStopTrackingForCompletedTermin(List<_PutnikEntry> putnici) {
+    if (!V3VozacLocationTrackingService.instance.isRunning) return;
+    if (_autoStopInProgress) return;
+    if (!_shouldAutoStopTracking(putnici)) return;
+
+    _autoStopInProgress = true;
+    unawaited(() async {
+      try {
+        await _handleStopNavigation();
+      } finally {
+        _autoStopInProgress = false;
+      }
+    }());
   }
 
   void _rebuild() {
@@ -480,6 +508,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     V3StateUtils.safeSetState(this, () {
       _mojiPutnici = putniciZaPrikaz;
     });
+
+    _maybeAutoStopTrackingForCompletedTermin(putniciZaPrikaz);
   }
 
   void _selectFirstTermin() {

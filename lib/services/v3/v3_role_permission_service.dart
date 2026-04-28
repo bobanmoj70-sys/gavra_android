@@ -55,11 +55,15 @@ class V3RolePermissionService {
     final alreadyPrompted = await _storage.read(key: key) == 'true';
     if (alreadyPrompted) return;
 
+    // Na iOS-u push dozvolu traži Firebase (messaging.requestPermission)
+    // u V3PushTokenProvider._tryGetFcmTokenIos() — ovde je skip da se ne prikazuje dupli dijalog.
+    if (Platform.isIOS) {
+      await _storage.write(key: key, value: 'true');
+      return;
+    }
+
     try {
-      final notifStatus = await Permission.notification.request();
-      if (Platform.isIOS) {
-        debugPrint('[Permissions] iOS push status: $notifStatus');
-      }
+      await Permission.notification.request();
     } catch (e) {
       debugPrint('[Permissions] Push dozvola greška: $e');
     } finally {

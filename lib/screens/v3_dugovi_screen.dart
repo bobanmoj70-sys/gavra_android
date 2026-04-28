@@ -258,7 +258,7 @@ class _DugCard extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text('Vozač: $vozacStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Pokupljen: $pickupStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text('Vožnja: $pickupStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
               ),
             ),

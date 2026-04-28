@@ -117,11 +117,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       await V3ZahtevService.oznaciPokupljen(pokupljenBy: currentVozac.id, operativnaId: widget.entry?.id);
       await V2HapticService.putnikPokupljen();
       if (mounted) {
-        V3AppSnackBar.success(context, 'Putnik pokupljen');
+        V3AppSnackBar.success(context, 'Vožnja evidentirana');
         widget.onChanged?.call();
       }
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, 'Greška pri pokupljenju: $e');
+      V3ErrorUtils.safeError(this, context, 'Greška pri evidenciji vožnje: $e');
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -178,7 +178,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
     if (isPoPokupljenjuModel && !V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt)) {
       if (mounted) {
-        V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon pokupljanja putnika.');
+        V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon završene vožnje.');
       }
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -584,7 +584,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              return dtStr.isNotEmpty ? 'Pokupljen: $dtStr' : 'Pokupljen';
+                              return dtStr.isNotEmpty ? 'Vožnja: $dtStr' : 'Vožnja';
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
                           ),
@@ -595,7 +595,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              return dtStr.isNotEmpty ? 'Pokupljen: $dtStr' : 'Pokupljen';
+                              return dtStr.isNotEmpty ? 'Vožnja: $dtStr' : 'Vožnja';
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
                           ),

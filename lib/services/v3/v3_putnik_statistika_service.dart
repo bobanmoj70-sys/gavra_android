@@ -4,6 +4,32 @@ import '../../utils/v3_status_policy.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_finansije_service.dart';
 
+enum V3ObracunPeriod {
+  tekuciMesec,
+  izabraniMesec,
+  ukupno,
+}
+
+class V3PutnikObracunSummary {
+  final V3ObracunPeriod period;
+  final String periodLabel;
+  final int ukupnoVoznji;
+  final double cena;
+  final double ukupanIznos;
+  final int? godina;
+  final int? mesec;
+
+  const V3PutnikObracunSummary({
+    required this.period,
+    required this.periodLabel,
+    this.ukupnoVoznji = 0,
+    this.cena = 0,
+    this.ukupanIznos = 0,
+    this.godina,
+    this.mesec,
+  });
+}
+
 class V3PutnikMesecnaStatistika {
   final int godina;
   final int mesec;
@@ -32,6 +58,92 @@ class V3PutnikMesecnaStatistika {
 
 class V3PutnikStatistikaService {
   V3PutnikStatistikaService._();
+
+  static V3PutnikObracunSummary getObracunSummary({
+    required String putnikId,
+    required V3ObracunPeriod period,
+    int? godina,
+    int? mesec,
+    DateTime? now,
+  }) {
+    final ref = now ?? DateTime.now();
+    final safePutnikId = putnikId.trim();
+
+    if (safePutnikId.isEmpty) {
+      return V3PutnikObracunSummary(
+          period: period, periodLabel: _periodLabel(period: period, godina: godina, mesec: mesec));
+    }
+
+    final rm = V3MasterRealtimeManager.instance;
+    final putnikData = rm.putniciCache[safePutnikId] ?? const <String, dynamic>{};
+    final tip = (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
+    final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0;
+    final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0;
+    final koristiCenuPoDanu = tip == 'radnik' || tip == 'ucenik';
+    final cena = koristiCenuPoDanu ? cenaPoDanu : cenaPoPokupljenju;
+
+    if (period == V3ObracunPeriod.tekuciMesec) {
+      final stat = getZaMesec(putnikId: safePutnikId, godina: ref.year, mesec: ref.month);
+      final broj = stat.ukupnoVoznji;
+      return V3PutnikObracunSummary(
+        period: period,
+        periodLabel: _periodLabel(period: period, godina: ref.year, mesec: ref.month),
+        ukupnoVoznji: broj,
+        cena: cena,
+        ukupanIznos: broj * cena,
+        godina: ref.year,
+        mesec: ref.month,
+      );
+    }
+
+    if (period == V3ObracunPeriod.izabraniMesec) {
+      final selectedGodina = godina ?? ref.year;
+      final selectedMesec = mesec ?? ref.month;
+      final stat = getZaMesec(putnikId: safePutnikId, godina: selectedGodina, mesec: selectedMesec);
+      final broj = stat.ukupnoVoznji;
+      return V3PutnikObracunSummary(
+        period: period,
+        periodLabel: _periodLabel(period: period, godina: selectedGodina, mesec: selectedMesec),
+        ukupnoVoznji: broj,
+        cena: cena,
+        ukupanIznos: broj * cena,
+        godina: selectedGodina,
+        mesec: selectedMesec,
+      );
+    }
+
+    final meseci = _getMeseciSaPodacima(safePutnikId)..add((ref.year, ref.month));
+    var brojVoznji = 0;
+    for (final (godinaItem, mesecItem) in meseci) {
+      final stat = getZaMesec(putnikId: safePutnikId, godina: godinaItem, mesec: mesecItem);
+      brojVoznji += stat.ukupnoVoznji;
+    }
+
+    return V3PutnikObracunSummary(
+      period: period,
+      periodLabel: _periodLabel(period: period),
+      ukupnoVoznji: brojVoznji,
+      cena: cena,
+      ukupanIznos: brojVoznji * cena,
+    );
+  }
+
+  static String _periodLabel({
+    required V3ObracunPeriod period,
+    int? godina,
+    int? mesec,
+  }) {
+    switch (period) {
+      case V3ObracunPeriod.tekuciMesec:
+        return 'Tekući mesec';
+      case V3ObracunPeriod.izabraniMesec:
+        final safeMesec = mesec ?? DateTime.now().month;
+        final safeGodina = godina ?? DateTime.now().year;
+        return '${V3DateUtils.mesecNaziv(safeMesec)} $safeGodina';
+      case V3ObracunPeriod.ukupno:
+        return 'Ukupno';
+    }
+  }
 
   static List<V3PutnikMesecnaStatistika> getZaGodinu(
     String putnikId, {

@@ -5,7 +5,7 @@ class V3PutnikProfilMessages {
   static const String requestReceived =
       '✅ Vaš zahtev je uspešno primljen i biće obrađen u najkraćem roku. Bićete obavešteni o statusu putem aplikacije.';
   static const String requestPendingDispatcher = 'Vaš zahtev je u obradi kod dispečera.';
-  static const String alreadyPickedUp = '🚗 Već ste pokupljeni — nije moguće otkazati.';
+  static const String alreadyPickedUp = '🚗 Vožnja je već evidentirana — nije moguće otkazati.';
   static const String logoutSuccess = '✅ Uspešno odjavljeni';
   static const String themeChanged = '🎨 Tema promenjena';
 

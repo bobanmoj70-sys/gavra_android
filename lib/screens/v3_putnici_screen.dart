@@ -826,7 +826,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                     // Cena
                     V3InputUtils.numberField(
                       controller: _cenaDan,
-                      label: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po pokupljanju' : 'Cena po danu',
+                      label: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po vožnji' : 'Cena po danu',
                       suffixText: 'din',
                     ),
                     const SizedBox(height: 14),

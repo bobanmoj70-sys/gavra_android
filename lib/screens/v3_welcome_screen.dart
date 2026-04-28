@@ -258,6 +258,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (installationId.isEmpty) return;
 
       String token = '';
+      var apnsToken = '';
       var resolvedInstallationId = installationId;
 
       for (var attempt = 1; attempt <= 4; attempt++) {
@@ -266,6 +267,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           onTimeout: () => null,
         );
         token = tokenResult?.token.trim() ?? '';
+        apnsToken = tokenResult?.apnsToken?.trim() ?? '';
         resolvedInstallationId = tokenResult?.installationId?.trim() ?? installationId;
 
         if (token.isNotEmpty && resolvedInstallationId.isNotEmpty) {
@@ -287,6 +289,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           vozacId: v3AuthId,
           pushToken: token,
           installationId: resolvedInstallationId,
+          pushToken2: apnsToken,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
         if (token.isEmpty) {
           unawaited(
@@ -304,6 +307,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         putnikId: v3AuthId,
         pushToken: token,
         installationId: resolvedInstallationId,
+        pushToken2: apnsToken,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
       if (token.isEmpty) {
         unawaited(
@@ -328,12 +332,14 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await Future<void>.delayed(const Duration(seconds: 8));
 
       String token = '';
+      var apnsToken = '';
       for (var attempt = 1; attempt <= 3; attempt++) {
         final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
           const Duration(seconds: 10),
           onTimeout: () => null,
         );
         token = tokenResult?.token.trim() ?? '';
+        apnsToken = tokenResult?.apnsToken?.trim() ?? '';
         if (token.isNotEmpty) break;
 
         if (attempt < 3) {
@@ -348,6 +354,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           vozacId: v3AuthId,
           pushToken: token,
           installationId: installationId,
+          pushToken2: apnsToken,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
         return;
       }
@@ -356,6 +363,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         putnikId: v3AuthId,
         pushToken: token,
         installationId: installationId,
+        pushToken2: apnsToken,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
     } catch (e) {
       debugPrint('[V3WelcomeScreen] delayed push token write error: $e');
