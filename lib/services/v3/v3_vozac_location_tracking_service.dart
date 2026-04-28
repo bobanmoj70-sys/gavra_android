@@ -22,9 +22,12 @@ class V3VozacLocationTrackingService {
   static const String _colLng = 'lng';
   static const String _colUpdatedAt = 'updated_at';
 
+  static const double _minDistanceMeters = 20.0;
+
   Timer? _timer;
   bool _inFlight = false;
   String _activeVozacId = '';
+  Position? _lastSentPosition;
 
   bool get isRunning => _timer != null;
 
@@ -48,6 +51,7 @@ class V3VozacLocationTrackingService {
     _timer = null;
     _activeVozacId = '';
     _inFlight = false;
+    _lastSentPosition = null;
   }
 
   Future<void> _sendCurrentLocation() async {
@@ -68,11 +72,25 @@ class V3VozacLocationTrackingService {
         ),
       );
 
+      if (_lastSentPosition != null) {
+        final distance = Geolocator.distanceBetween(
+          _lastSentPosition!.latitude,
+          _lastSentPosition!.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        if (distance < _minDistanceMeters) {
+          debugPrint('[V3VozacLocationTrackingService] skip send — pomak ${distance.toStringAsFixed(1)}m < ${_minDistanceMeters}m');
+          return;
+        }
+      }
+
       await _insertLocation(
         vozacId: _activeVozacId,
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      _lastSentPosition = position;
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] send error: $e');
     } finally {

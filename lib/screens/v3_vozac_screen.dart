@@ -63,7 +63,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _loadingDodela = false;
   RealtimeChannel? _trenutnaDodelaChannel;
   final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
-  final V3AddressCoordinateService _addressCoordinateService = V3AddressCoordinateService();
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   Map<String, int> _optimizedOrderByPutnikId = const <String, int>{};
   List<V3RouteWaypoint> _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
@@ -710,7 +709,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     if (opposite.isEmpty) return null;
 
     final cityLabel = V3GeoUtils.gradLabelForGeocoding(opposite);
-    final coordinate = await _addressCoordinateService.resolveCoordinate(
+    final coordinate = await V3AddressCoordinateService.instance.resolveCoordinate(
       adresaId: null,
       fallbackQuery: '$cityLabel, Srbija',
     );
@@ -825,10 +824,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           'lng': fixedDestination.coordinate.longitude,
         });
       }
+      final currentVozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
       V3TrenutnaDodelaSlotService.updateWaypointsJson(
         datumIso: _selectedDatumIso,
         grad: _selectedGrad,
         vreme: _selectedVreme,
+        vozacId: currentVozacId,
         waypoints: waypointsJson,
       ).catchError((e) => debugPrint('[OPT] updateWaypointsJson failed: $e'));
     }

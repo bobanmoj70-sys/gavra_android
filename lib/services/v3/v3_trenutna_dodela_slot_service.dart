@@ -149,12 +149,14 @@ class V3TrenutnaDodelaSlotService {
     required String datumIso,
     required String grad,
     required String vreme,
+    required String vozacId,
     required List<Map<String, dynamic>> waypoints,
   }) async {
     final datum = _normalizeDatumIso(datumIso);
     final gradNorm = _normalizeGrad(grad);
     final vremeNorm = _normalizeVreme(vreme);
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || waypoints.isEmpty) return;
+    final vozacIdNorm = vozacId.trim();
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozacIdNorm.isEmpty || waypoints.isEmpty) return;
 
     await supabase
         .from(tableName)
@@ -162,6 +164,7 @@ class V3TrenutnaDodelaSlotService {
         .eq(colDatum, datum)
         .eq(colGrad, gradNorm)
         .eq(colVreme, vremeNorm)
+        .eq(colVozacId, vozacIdNorm)
         .eq(colStatus, statusAktivan);
   }
 
