@@ -864,13 +864,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         });
       }
       final currentVozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
-      V3TrenutnaDodelaSlotService.updateWaypointsJson(
-        datumIso: _selectedDatumIso,
-        grad: _selectedGrad,
-        vreme: _selectedVreme,
-        vozacId: currentVozacId,
-        waypoints: waypointsJson,
-      ).catchError((e) => debugPrint('[OPT] updateWaypointsJson failed: $e'));
+      try {
+        await V3TrenutnaDodelaSlotService.updateWaypointsJson(
+          datumIso: _selectedDatumIso,
+          grad: _selectedGrad,
+          vreme: _selectedVreme,
+          vozacId: currentVozacId,
+          waypoints: waypointsJson,
+        );
+        debugPrint('[OPT] updateWaypointsJson OK');
+      } catch (e) {
+        debugPrint('[OPT] updateWaypointsJson failed: $e');
+      }
     }
 
     return (
@@ -970,6 +975,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         '[START] optimized.length=${optimization.optimized.length} unresolvedCount=${optimization.unresolvedCount}');
     V3AppSnackBar.success(context, 'Ruta optimizovana (OSRM).');
     _isNavigating = true;
+    // Odmah izračunaj ETA bez čekanja na GPS pomak
+    unawaited(V3VozacLocationTrackingService.instance.forceComputeEta());
 
     if (optimization.unresolvedCount > 0) {
       V3AppSnackBar.warning(

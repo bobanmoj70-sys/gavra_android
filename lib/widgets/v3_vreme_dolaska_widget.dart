@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../utils/v3_container_utils.dart';
 
 class V3VremeDolaskaWidget extends StatefulWidget {
@@ -20,26 +21,32 @@ class V3VremeDolaskaWidget extends StatefulWidget {
 class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   static const String _tableName = 'v3_eta_results';
   static const String _colPutnikId = 'putnik_id';
+  static const String _colVozacId = 'vozac_id';
   static const String _colEtaSeconds = 'eta_seconds';
   static const String _colComputedAt = 'computed_at';
 
-  // ETA se smatra zastarelom ako je starija od 5 minuta
-  static const Duration _staleThreshold = Duration(minutes: 5);
+  // ETA se smatra zastarelom ako je starija od 2 sata
+  static const Duration _staleThreshold = Duration(hours: 2);
 
   RealtimeChannel? _realtimeChannel;
+  Timer? _pollTimer;
   int _realtimeReconnectAttempts = 0;
   int? _etaSeconds;
   bool _isStale = false;
+  String? _vozacId;
 
   @override
   void initState() {
     super.initState();
     _reload();
     _bindRealtime();
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _reload());
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
     final channel = _realtimeChannel;
     _realtimeChannel = null;
     if (channel != null) {
@@ -105,20 +112,23 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   Future<void> _reload() async {
     if (!mounted) return;
     try {
+      debugPrint('[ETA_WIDGET] _reload for putnikId=${widget.putnikId}');
       final rows = await Supabase.instance.client
           .from(_tableName)
-          .select('$_colEtaSeconds, $_colComputedAt')
+          .select('$_colEtaSeconds, $_colComputedAt, $_colVozacId')
           .eq(_colPutnikId, widget.putnikId)
           .limit(1);
 
       if (!mounted) return;
 
+      debugPrint('[ETA_WIDGET] _reload rows.length=${rows.length} rows=$rows');
       if (rows.isNotEmpty) {
         _applyRow(rows.first);
       } else {
         setState(() => _etaSeconds = null);
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[ETA_WIDGET] _reload error: $e');
       if (mounted) setState(() => _etaSeconds = null);
     }
   }
@@ -128,11 +138,14 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     final computedAtRaw = row[_colComputedAt];
     final computedAt = computedAtRaw is String ? DateTime.tryParse(computedAtRaw) : null;
     final stale = computedAt == null || DateTime.now().difference(computedAt) > _staleThreshold;
+    final vozacId = row[_colVozacId]?.toString();
+    debugPrint('[ETA_WIDGET] _applyRow eta=$eta computedAt=$computedAt stale=$stale vozacId=$vozacId');
 
     if (mounted) {
       setState(() {
         _etaSeconds = eta;
         _isStale = stale;
+        _vozacId = vozacId;
       });
     }
   }
@@ -145,6 +158,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   @override
   Widget build(BuildContext context) {
     final eta = _etaSeconds;
+    debugPrint('[ETA_WIDGET] build: eta=$eta isStale=$_isStale putnikId=${widget.putnikId}');
     if (eta == null || _isStale) return const SizedBox.shrink();
 
     final minutes = _buildEtaMinutes(eta);
@@ -177,6 +191,18 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
               fontWeight: FontWeight.w900,
             ),
           ),
+          if (_vozacId != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Vozač: ${V3MasterRealtimeManager.instance.vozaciCache[_vozacId]?['ime_prezime'] ?? _vozacId}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ],
       ),
     );

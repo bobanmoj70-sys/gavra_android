@@ -111,6 +111,20 @@ class V3VozacLocationTrackingService {
     }
   }
 
+  /// Odmah poziva ETA edge funkciju sa poslednjom poznatom pozicijom.
+  /// Koristi se nakon optimizacije rute kada vozač stoji (pomak < threshold).
+  Future<void> forceComputeEta() async {
+    final pos = _lastSentPosition;
+    if (pos == null || _activeVozacId.isEmpty) return;
+    unawaited(
+      _invokeComputeEta(
+        vozacId: _activeVozacId,
+        lat: pos.latitude,
+        lng: pos.longitude,
+      ).catchError((Object e) => debugPrint('[V3VozacLocationTrackingService] forceComputeEta error: $e')),
+    );
+  }
+
   Future<V3LocationPrereqStatus> checkLocationPrerequisites() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return V3LocationPrereqStatus.serviceDisabled;
@@ -137,7 +151,7 @@ class V3VozacLocationTrackingService {
     required double lng,
   }) async {
     final supabase = Supabase.instance.client;
-    await supabase.functions.invoke(
+    final response = await supabase.functions.invoke(
       'v3-compute-eta',
       body: <String, dynamic>{
         'vozac_id': vozacId,
@@ -145,6 +159,6 @@ class V3VozacLocationTrackingService {
         'lng': lng,
       },
     );
-    debugPrint('[V3VozacLocationTrackingService] computeEta invoked za vozac=${vozacId.substring(0, 8)}');
+    debugPrint('[V3VozacLocationTrackingService] computeEta response: ${response.data}');
   }
 }
