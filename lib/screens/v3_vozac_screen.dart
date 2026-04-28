@@ -164,8 +164,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       if (status == RealtimeSubscribeStatus.subscribed) {
         _dodelaReconnectAttempts = 0;
       }
-      if (status == RealtimeSubscribeStatus.channelError ||
-          status == RealtimeSubscribeStatus.timedOut) {
+      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
         debugPrint('[V3VozacScreen] dodela realtime $status: $error');
         if (mounted) {
           _dodelaReconnectAttempts += 1;
@@ -1029,7 +1028,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         'Aktivna sedmica: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
     return StreamBuilder<int>(
-      stream: rm.v3StreamFromCache<int>(
+      stream: rm.v3StreamFromRevisions<int>(
         tables: const ['v3_operativna_nedelja', 'v3_auth', 'v3_adrese', 'v3_kapacitet_slots', 'v3_app_settings'],
         build: () => DateTime.now().microsecondsSinceEpoch,
       ),

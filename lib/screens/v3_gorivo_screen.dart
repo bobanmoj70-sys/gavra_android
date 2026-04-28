@@ -34,7 +34,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen>
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<_GorivoData>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<_GorivoData>(
+      stream: V3MasterRealtimeManager.instance.v3StreamFromRevisions<_GorivoData>(
         tables: ['v3_gorivo'],
         build: () => _GorivoData(
           stanje: V3GorivoService.getStanjeSync(),

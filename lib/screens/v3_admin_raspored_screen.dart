@@ -114,8 +114,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (status == RealtimeSubscribeStatus.subscribed) {
         _dodelaReconnectAttempts = 0;
       }
-      if (status == RealtimeSubscribeStatus.channelError ||
-          status == RealtimeSubscribeStatus.timedOut) {
+      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
         debugPrint('[V3AdminRasporedScreen] dodela realtime $status: $error');
         if (mounted) {
           _dodelaReconnectAttempts += 1;
@@ -629,7 +628,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<V3OperativnaNedeljaEntry>>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
+      stream: V3MasterRealtimeManager.instance.v3StreamFromRevisions<List<V3OperativnaNedeljaEntry>>(
         tables: const [
           'v3_operativna_nedelja',
           'v3_auth',

@@ -70,7 +70,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   Stream<List<V3OperativnaNedeljaEntry>> _buildOperativnaStream(String datumIso) {
-    return V3MasterRealtimeManager.instance.v3StreamFromCache<List<V3OperativnaNedeljaEntry>>(
+    return V3MasterRealtimeManager.instance.v3StreamFromRevisions<List<V3OperativnaNedeljaEntry>>(
       tables: const [
         'v3_operativna_nedelja',
         'v3_auth',
@@ -152,8 +152,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       if (status == RealtimeSubscribeStatus.subscribed) {
         _dodelaReconnectAttempts = 0;
       }
-      if (status == RealtimeSubscribeStatus.channelError ||
-          status == RealtimeSubscribeStatus.timedOut) {
+      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
         debugPrint('[V3HomeScreen] dodela realtime $status: $error');
         if (mounted) {
           _dodelaReconnectAttempts += 1;

@@ -486,10 +486,6 @@ class V3MasterRealtimeManager {
     _scheduleEmit(tables: affected);
   }
 
-  Stream<T> v3StreamFromCache<T>({required List<String> tables, required T Function() build}) {
-    return v3StreamFromRevisions(tables: tables, build: build);
-  }
-
   Stream<T> v3StreamFromRevisions<T>({required List<String> tables, required T Function() build}) {
     final normalized = tables.map((t) => t.trim()).where((t) => t.isNotEmpty).toList(growable: false);
 
@@ -535,25 +531,11 @@ class V3MasterRealtimeManager {
     _cacheStore.upsert(table, normalizedRow);
 
     switch (table) {
-      case 'v3_adrese':
-        break;
       case 'v3_auth':
         _rebuildRoleCachesFromAuth();
         break;
-      case 'v3_vozila':
-        break;
-      case 'v3_zahtevi':
-        break;
-      case 'v3_gorivo':
-        break;
-      case 'v3_finansije':
-        break;
-      case 'v3_racuni':
-        break;
       case 'v3_operativna_nedelja':
         _rebuildAssignedCacheFromOperativna();
-        break;
-      case 'v3_kapacitet_slots':
         break;
       case 'v3_app_settings':
         if (id == 'global') {
@@ -565,24 +547,12 @@ class V3MasterRealtimeManager {
     _scheduleEmit(tables: {table});
   }
 
-  Map<String, dynamic> _normalizeZahtevRow(Map<String, dynamic> row) {
-    if (row.isEmpty) return row;
-
-    return Map<String, dynamic>.from(row);
-  }
-
-  Map<String, dynamic> _normalizeOperativnaRow(Map<String, dynamic> row) {
-    if (row.isEmpty) return row;
-
-    return Map<String, dynamic>.from(row);
-  }
-
   Map<String, dynamic> _normalizeRowForTable(String table, Map<String, dynamic> row) {
+    if (row.isEmpty) return row;
     switch (table) {
       case 'v3_zahtevi':
-        return _normalizeZahtevRow(row);
       case 'v3_operativna_nedelja':
-        return _normalizeOperativnaRow(row);
+        return Map<String, dynamic>.from(row);
       default:
         return row;
     }
