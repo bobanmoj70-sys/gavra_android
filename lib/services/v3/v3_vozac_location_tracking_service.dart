@@ -55,11 +55,7 @@ class V3VozacLocationTrackingService {
     _lastSentPosition = null;
     if (vozacIdToClean.isNotEmpty) {
       unawaited(
-        Supabase.instance.client
-            .from('v3_eta_results')
-            .delete()
-            .eq('vozac_id', vozacIdToClean)
-            .catchError((Object e) {
+        Supabase.instance.client.from('v3_eta_results').delete().eq('vozac_id', vozacIdToClean).catchError((Object e) {
           debugPrint('[V3VozacLocationTrackingService] eta cleanup error: $e');
           return <Map<String, dynamic>>[];
         }),

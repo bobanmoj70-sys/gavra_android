@@ -49,7 +49,7 @@ class V3BootstrapLoader {
       case 'v3_racuni':
       case 'v3_gorivo':
       case 'v3_app_settings':
-        response = await _client.from(table).select();
+        response = await _client.from(table).select().gte('updated_at', iso);
         break;
       case 'v3_auth':
         response = await _client.from('v3_auth').select().gte('updated_at', iso);
