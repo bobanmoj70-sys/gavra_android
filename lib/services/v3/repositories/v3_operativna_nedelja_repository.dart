@@ -9,21 +9,6 @@ class V3OperativnaNedeljaRepository {
     return supabase.from('v3_operativna_nedelja').insert(payload).select().single();
   }
 
-  Future<List<dynamic>> updateByTerminReturningList({
-    required String datumIso,
-    required String grad,
-    required String polazakAt,
-    required Map<String, dynamic> payload,
-  }) {
-    return supabase
-        .from('v3_operativna_nedelja')
-        .update(payload)
-        .eq('datum', datumIso)
-        .eq('grad', grad)
-        .eq('polazak_at', polazakAt)
-        .select();
-  }
-
   Future<List<dynamic>> updateByPutnikDatumGradAktivniReturningList({
     required String putnikId,
     required String datumIso,
@@ -40,32 +25,4 @@ class V3OperativnaNedeljaRepository {
         .select();
   }
 
-  Future<List<dynamic>> updateByPutnikGradPolazakAtDatumReturningList({
-    required String putnikId,
-    required String grad,
-    required String polazakAt,
-    required String datumIso,
-    required Map<String, dynamic> payload,
-  }) {
-    return supabase
-        .from('v3_operativna_nedelja')
-        .update(payload)
-        .eq('created_by', putnikId)
-        .eq('grad', grad)
-        .eq('polazak_at', polazakAt)
-        .eq('datum', datumIso)
-        .select();
-  }
-
-  Future<List<dynamic>> listByDateRange({
-    required String fromDate,
-    required String toDate,
-  }) {
-    return supabase
-        .from('v3_operativna_nedelja')
-        .select('id, datum, grad, polazak_at, created_by, pokupljen_at, otkazano_at')
-        .isFilter('otkazano_at', null)
-        .gte('datum', fromDate)
-        .lte('datum', toDate);
-  }
 }

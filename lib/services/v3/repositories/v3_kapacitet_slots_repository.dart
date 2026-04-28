@@ -1,20 +1,6 @@
 import '../../../globals.dart';
 
 class V3KapacitetSlotsRepository {
-  Future<Map<String, dynamic>?> getSlotByGradDatumVreme({
-    required String grad,
-    required String datum,
-    required String vreme,
-  }) {
-    return supabase
-        .from('v3_kapacitet_slots')
-        .select('max_mesta')
-        .eq('grad', grad)
-        .eq('datum', datum)
-        .eq('vreme', vreme)
-        .maybeSingle();
-  }
-
   Future<Map<String, dynamic>> upsertSlot({
     required String grad,
     required String vreme,
