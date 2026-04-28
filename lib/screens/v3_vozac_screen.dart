@@ -34,7 +34,6 @@ import '../utils/v3_geo_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
-import '../utils/v3_stream_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_live_clock_text.dart';
@@ -292,8 +291,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   @override
   void dispose() {
-    V3StreamUtils.cancelSubscription('vozac_screen_realtime');
-    V3StreamUtils.cancelSubscription('vozac_screen_assignment');
     final channel = _trenutnaDodelaChannel;
     _trenutnaDodelaChannel = null;
     if (channel != null) {

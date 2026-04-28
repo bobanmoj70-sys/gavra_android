@@ -88,8 +88,7 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
       builder: (context, _) {
         final redovi = _getRedovi();
 
@@ -156,8 +155,7 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.engineering_outlined,
-                                    size: 56, color: Colors.white.withValues(alpha: 0.25)),
+                                Icon(Icons.engineering_outlined, size: 56, color: Colors.white.withValues(alpha: 0.25)),
                                 const SizedBox(height: 14),
                                 Text(
                                   'Nema raspoređenih radnika',

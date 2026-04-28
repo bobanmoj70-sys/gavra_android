@@ -148,11 +148,21 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       },
     );
     channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.channelError && error != null) {
+      if (status == RealtimeSubscribeStatus.channelError) {
         debugPrint('[V3HomeScreen] dodela realtime channelError: $error');
+        if (mounted) {
+          Future<void>.delayed(const Duration(seconds: 3), () {
+            if (mounted) _startTrenutnaDodelaRealtime();
+          });
+        }
       }
       if (status == RealtimeSubscribeStatus.timedOut) {
         debugPrint('[V3HomeScreen] dodela realtime timedOut');
+        if (mounted) {
+          Future<void>.delayed(const Duration(seconds: 3), () {
+            if (mounted) _startTrenutnaDodelaRealtime();
+          });
+        }
       }
     });
 

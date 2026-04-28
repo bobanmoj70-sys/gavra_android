@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -404,8 +403,7 @@ class V3MasterRealtimeManager {
     debugPrint('[RT] _applyMissedDelta → pulling missed rows...');
     try {
       final watermarks = {
-        for (final t in V3RealtimeTableRegistry.defaults)
-          t.name: _cacheStore.watermark(t.name),
+        for (final t in V3RealtimeTableRegistry.defaults) t.name: _cacheStore.watermark(t.name),
       };
       final deltas = await _bootstrapLoader.loadDeltaAll(watermarks);
       if (deltas.isEmpty) {
@@ -414,8 +412,7 @@ class V3MasterRealtimeManager {
         return;
       }
       for (final entry in deltas.entries) {
-        final config = V3RealtimeTableRegistry.defaults
-            .firstWhere((t) => t.name == entry.key);
+        final config = V3RealtimeTableRegistry.defaults.firstWhere((t) => t.name == entry.key);
         for (final row in entry.value) {
           final normalized = _normalizeRowForTable(entry.key, row);
           _cacheStore.applyDeltaRow(
