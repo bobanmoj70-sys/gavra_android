@@ -27,6 +27,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   static const Duration _staleThreshold = Duration(minutes: 5);
 
   RealtimeChannel? _realtimeChannel;
+  int _realtimeReconnectAttempts = 0;
   int? _etaSeconds;
   bool _isStale = false;
 
@@ -81,10 +82,16 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     _realtimeChannel = channel;
     channel.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        _realtimeReconnectAttempts = 0;
+      }
       if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
         debugPrint('[V3VremeDolaskaWidget] realtime $status: $error');
         if (mounted) {
-          Future<void>.delayed(const Duration(seconds: 3), () {
+          _realtimeReconnectAttempts += 1;
+          final capped = _realtimeReconnectAttempts.clamp(1, 5);
+          final delayMs = 500 * (1 << capped);
+          Future<void>.delayed(Duration(milliseconds: delayMs), () {
             if (mounted) {
               _reload();
               _bindRealtime();

@@ -43,6 +43,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
   RealtimeChannel? _trenutnaDodelaChannel;
+  int _dodelaReconnectAttempts = 0;
 
   /// ISO datum za izabrani dan u tekućoj nedelji.
   String get _selectedDatumIso =>
@@ -110,18 +111,17 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       },
     );
     channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.channelError) {
-        debugPrint('[V3AdminRasporedScreen] dodela realtime channelError: $error');
-        if (mounted) {
-          Future<void>.delayed(const Duration(seconds: 3), () {
-            if (mounted) _startTrenutnaDodelaRealtime();
-          });
-        }
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        _dodelaReconnectAttempts = 0;
       }
-      if (status == RealtimeSubscribeStatus.timedOut) {
-        debugPrint('[V3AdminRasporedScreen] dodela realtime timedOut');
+      if (status == RealtimeSubscribeStatus.channelError ||
+          status == RealtimeSubscribeStatus.timedOut) {
+        debugPrint('[V3AdminRasporedScreen] dodela realtime $status: $error');
         if (mounted) {
-          Future<void>.delayed(const Duration(seconds: 3), () {
+          _dodelaReconnectAttempts += 1;
+          final capped = _dodelaReconnectAttempts.clamp(1, 5);
+          final delayMs = 500 * (1 << capped);
+          Future<void>.delayed(Duration(milliseconds: delayMs), () {
             if (mounted) _startTrenutnaDodelaRealtime();
           });
         }

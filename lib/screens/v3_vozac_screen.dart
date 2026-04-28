@@ -61,6 +61,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isLoading = true;
   bool _loadingDodela = false;
   RealtimeChannel? _trenutnaDodelaChannel;
+  int _dodelaReconnectAttempts = 0;
   final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   Map<String, int> _optimizedOrderByPutnikId = const <String, int>{};
@@ -160,18 +161,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       },
     );
     channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.channelError) {
-        debugPrint('[V3VozacScreen] dodela realtime channelError: $error');
-        if (mounted) {
-          Future<void>.delayed(const Duration(seconds: 3), () {
-            if (mounted) _startTrenutnaDodelaRealtime();
-          });
-        }
+      if (status == RealtimeSubscribeStatus.subscribed) {
+        _dodelaReconnectAttempts = 0;
       }
-      if (status == RealtimeSubscribeStatus.timedOut) {
-        debugPrint('[V3VozacScreen] dodela realtime timedOut');
+      if (status == RealtimeSubscribeStatus.channelError ||
+          status == RealtimeSubscribeStatus.timedOut) {
+        debugPrint('[V3VozacScreen] dodela realtime $status: $error');
         if (mounted) {
-          Future<void>.delayed(const Duration(seconds: 3), () {
+          _dodelaReconnectAttempts += 1;
+          final capped = _dodelaReconnectAttempts.clamp(1, 5);
+          final delayMs = 500 * (1 << capped); // 1s→2s→4s→8s→16s max
+          Future<void>.delayed(Duration(milliseconds: delayMs), () {
             if (mounted) _startTrenutnaDodelaRealtime();
           });
         }

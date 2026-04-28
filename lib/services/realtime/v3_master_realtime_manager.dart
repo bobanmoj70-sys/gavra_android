@@ -40,7 +40,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> putniciCache = {};
   final Map<String, Map<String, dynamic>> zahteviCache = {};
   final Map<String, Map<String, dynamic>> gorivoCache = {};
-  final Map<String, Map<String, dynamic>> troskoviCache = {};
+  final Map<String, Map<String, dynamic>> finansijeCache = {};
   final Map<String, Map<String, dynamic>> racuniCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
@@ -201,7 +201,7 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_vozila', vozilaCache);
     _cacheStore.registerTable('v3_zahtevi', zahteviCache);
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
-    _cacheStore.registerTable('v3_finansije', troskoviCache);
+    _cacheStore.registerTable('v3_finansije', finansijeCache);
     _cacheStore.registerTable('v3_racuni', racuniCache);
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
     _cacheStore.registerTable('v3_kapacitet_slots', kapacitetSlotsCache);
@@ -613,7 +613,7 @@ class V3MasterRealtimeManager {
       case 'v3_gorivo':
         return gorivoCache;
       case 'v3_finansije':
-        return troskoviCache;
+        return finansijeCache;
       case 'v3_racuni':
         return racuniCache;
       case 'v3_operativna_nedelja':
