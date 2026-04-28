@@ -161,11 +161,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       },
     );
     channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.channelError && error != null) {
+      if (status == RealtimeSubscribeStatus.channelError) {
         debugPrint('[V3VozacScreen] dodela realtime channelError: $error');
+        if (mounted) {
+          Future<void>.delayed(const Duration(seconds: 3), () {
+            if (mounted) _startTrenutnaDodelaRealtime();
+          });
+        }
       }
       if (status == RealtimeSubscribeStatus.timedOut) {
         debugPrint('[V3VozacScreen] dodela realtime timedOut');
+        if (mounted) {
+          Future<void>.delayed(const Duration(seconds: 3), () {
+            if (mounted) _startTrenutnaDodelaRealtime();
+          });
+        }
       }
     });
 

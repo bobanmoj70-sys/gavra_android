@@ -80,7 +80,20 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     );
 
     _realtimeChannel = channel;
-    channel.subscribe();
+    channel.subscribe((status, [error]) {
+      if (status == RealtimeSubscribeStatus.channelError ||
+          status == RealtimeSubscribeStatus.timedOut) {
+        debugPrint('[V3VremeDolaskaWidget] realtime $status: $error');
+        if (mounted) {
+          Future<void>.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              _reload();
+              _bindRealtime();
+            }
+          });
+        }
+      }
+    });
   }
 
   Future<void> _reload() async {

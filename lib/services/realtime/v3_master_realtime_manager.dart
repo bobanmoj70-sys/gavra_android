@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
@@ -29,6 +30,8 @@ class V3MasterRealtimeManager {
   RealtimeChannel? _channel;
   int _reconnectAttempts = 0;
   bool _isSubscribing = false;
+  bool _hasConnectedBefore = false;
+  AppLifecycleListener? _lifecycleListener;
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
@@ -296,6 +299,15 @@ class V3MasterRealtimeManager {
       final globalSettings = appSettingsCache['global'];
       if (globalSettings != null) _applyAppSettings(globalSettings);
 
+      _lifecycleListener ??= AppLifecycleListener(
+        onResume: () {
+          if (!_isInitialized) return;
+          if (_isSubscribing) return;
+          debugPrint('[RT] app resumed → reconnect + missed delta');
+          unawaited(_setupRealtime());
+        },
+      );
+
       await _setupRealtime();
       _isInitialized = true;
       _scheduleEmit(tables: {'*'}, immediate: true);
@@ -351,8 +363,13 @@ class V3MasterRealtimeManager {
       switch (status) {
         case RealtimeSubscribeStatus.subscribed:
           _reconnectAttempts = 0;
-          debugPrint('[RT] subscribed');
-          _scheduleEmit(tables: {'*'}, immediate: true);
+          debugPrint('[RT] subscribed (hasConnectedBefore=$_hasConnectedBefore)');
+          if (_hasConnectedBefore) {
+            unawaited(_applyMissedDelta());
+          } else {
+            _hasConnectedBefore = true;
+            _scheduleEmit(tables: {'*'}, immediate: true);
+          }
           break;
         case RealtimeSubscribeStatus.channelError:
           debugPrint('[RT] channelError: $error');
@@ -380,6 +397,53 @@ class V3MasterRealtimeManager {
       await _setupRealtime();
     } catch (e) {
       debugPrint('[RT] reconnect error: $e');
+    }
+  }
+
+  Future<void> _applyMissedDelta() async {
+    debugPrint('[RT] _applyMissedDelta → pulling missed rows...');
+    try {
+      final watermarks = {
+        for (final t in V3RealtimeTableRegistry.defaults)
+          t.name: _cacheStore.watermark(t.name),
+      };
+      final deltas = await _bootstrapLoader.loadDeltaAll(watermarks);
+      if (deltas.isEmpty) {
+        debugPrint('[RT] _applyMissedDelta → nema izmena');
+        _scheduleEmit(tables: {'*'}, immediate: true);
+        return;
+      }
+      for (final entry in deltas.entries) {
+        final config = V3RealtimeTableRegistry.defaults
+            .firstWhere((t) => t.name == entry.key);
+        for (final row in entry.value) {
+          final normalized = _normalizeRowForTable(entry.key, row);
+          _cacheStore.applyDeltaRow(
+            table: entry.key,
+            row: normalized,
+            activeKey: config.activeKey,
+            hasActiveKey: config.hasActiveKey,
+            keepInactive: config.keepInactive,
+          );
+        }
+        for (final hook in config.hooks) {
+          switch (hook) {
+            case V3RealtimeHook.rebuildAssignedCache:
+              _rebuildAssignedCacheFromOperativna();
+              break;
+            case V3RealtimeHook.applyGlobalAppSettings:
+              final globalRow = appSettingsCache['global'];
+              if (globalRow != null) _applyAppSettings(globalRow);
+              break;
+          }
+        }
+        if (config.name == 'v3_auth') _rebuildRoleCachesFromAuth();
+      }
+      debugPrint('[RT] _applyMissedDelta → applied ${deltas.length} tabela');
+      _scheduleEmit(tables: {'*'}, immediate: true);
+    } catch (e) {
+      debugPrint('[RT] _applyMissedDelta error: $e');
+      _scheduleEmit(tables: {'*'}, immediate: true);
     }
   }
 
