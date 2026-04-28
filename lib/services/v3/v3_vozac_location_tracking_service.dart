@@ -47,11 +47,24 @@ class V3VozacLocationTrackingService {
   }
 
   void stop() {
+    final vozacIdToClean = _activeVozacId;
     _timer?.cancel();
     _timer = null;
     _activeVozacId = '';
     _inFlight = false;
     _lastSentPosition = null;
+    if (vozacIdToClean.isNotEmpty) {
+      unawaited(
+        Supabase.instance.client
+            .from('v3_eta_results')
+            .delete()
+            .eq('vozac_id', vozacIdToClean)
+            .catchError((Object e) {
+          debugPrint('[V3VozacLocationTrackingService] eta cleanup error: $e');
+          return <Map<String, dynamic>>[];
+        }),
+      );
+    }
   }
 
   Future<void> _sendCurrentLocation() async {
