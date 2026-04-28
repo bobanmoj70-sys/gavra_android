@@ -108,8 +108,12 @@ class V3TrenutnaDodelaService {
   }
 
   static Future<void> deleteByTerminIds(Iterable<String> terminIds) async {
-    for (final terminId in terminIds) {
-      await deleteByTerminId(terminId);
+    final ids = terminIds.map((id) => id.trim()).where((id) => id.isNotEmpty).toList();
+    if (ids.isEmpty) return;
+    if (ids.length == 1) {
+      await deleteByTerminId(ids.first);
+      return;
     }
+    await supabase.from(tableName).delete().inFilter(_colTerminId, ids);
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -134,7 +135,7 @@ class V3OsrmRouteService {
     );
 
     try {
-      final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+      final response = await _getWithRetry(uri);
       debugPrint('[OSRM/route] status=${response.statusCode} url=$uri');
       if (response.statusCode < 200 || response.statusCode >= 300) {
         debugPrint('[OSRM/route] ❌ bad status ${response.statusCode}');
@@ -232,7 +233,7 @@ class V3OsrmRouteService {
     );
 
     try {
-      final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+      final response = await _getWithRetry(uri);
       if (response.statusCode < 200 || response.statusCode >= 300) return null;
 
       final decoded = jsonDecode(response.body);
@@ -264,6 +265,17 @@ class V3OsrmRouteService {
       );
     } catch (_) {
       return null;
+    }
+  }
+
+  /// HTTP GET sa jednim retry-em nakon 2s pri mrežnoj grešci.
+  Future<http.Response> _getWithRetry(Uri uri) async {
+    try {
+      return await _client.get(uri).timeout(const Duration(seconds: 12));
+    } catch (e) {
+      debugPrint('[OSRM] request failed, retry za 2s: $e');
+      await Future<void>.delayed(const Duration(seconds: 2));
+      return _client.get(uri).timeout(const Duration(seconds: 12));
     }
   }
 }
