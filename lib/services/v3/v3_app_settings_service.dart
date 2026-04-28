@@ -20,7 +20,10 @@ class V3AppSettingsService {
   static Future<void> upsertGlobal(Map<String, dynamic> payload) async {
     try {
       final dataToUpsert = Map<String, dynamic>.from(payload);
-      await _repo.upsertGlobal(dataToUpsert);
+      final row = await _repo.upsertGlobalReturning(dataToUpsert);
+      if (row != null) {
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_app_settings', row);
+      }
     } catch (e) {
       debugPrint('[V3AppSettingsService] upsertGlobal error: $e');
       rethrow;

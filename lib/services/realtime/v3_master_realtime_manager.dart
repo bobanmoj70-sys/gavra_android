@@ -180,12 +180,9 @@ class V3MasterRealtimeManager {
   Future<void>? _initInFlight;
   bool _isInitialized = false;
 
-  DateTime? _tryParseDateTime(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is String && value.trim().isNotEmpty) return DateTime.tryParse(value);
-    return null;
-  }
+  DateTime? _tryParseDateTime(dynamic value) => V3CacheStore.parseDateTime(value);
+
+  // Alias maintained for readability; delegates to shared CacheStore utility.
 
   void _scheduleEmit({Set<String>? tables, bool immediate = false}) => _eventBus.scheduleEmit(
         tables: tables,
@@ -418,9 +415,6 @@ class V3MasterRealtimeManager {
           _cacheStore.applyDeltaRow(
             table: entry.key,
             row: normalized,
-            activeKey: config.activeKey,
-            hasActiveKey: config.hasActiveKey,
-            keepInactive: config.keepInactive,
           );
         }
         for (final hook in config.hooks) {
@@ -456,9 +450,6 @@ class V3MasterRealtimeManager {
       newRecord: normalizedNew,
       oldRecord: normalizedOld,
       isDelete: payload.eventType == PostgresChangeEvent.delete,
-      activeKey: config.activeKey,
-      hasActiveKey: config.hasActiveKey,
-      keepInactive: config.keepInactive,
     );
 
     if (!changed) return;
@@ -549,13 +540,7 @@ class V3MasterRealtimeManager {
 
   Map<String, dynamic> _normalizeRowForTable(String table, Map<String, dynamic> row) {
     if (row.isEmpty) return row;
-    switch (table) {
-      case 'v3_zahtevi':
-      case 'v3_operativna_nedelja':
-        return Map<String, dynamic>.from(row);
-      default:
-        return row;
-    }
+    return Map<String, dynamic>.from(row);
   }
 
   List<dynamic> _normalizeRowsForTable(String table, List<dynamic> rows) {

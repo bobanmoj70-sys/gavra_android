@@ -58,7 +58,8 @@ class V3AdresaService {
         'grad': normalizedGrad,
       };
 
-      await _repo.upsert(data);
+      final row = await _repo.upsertReturning(data);
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_adrese', row);
     } catch (e) {
       debugPrint('[V3AdresaService] Error: $e');
       rethrow;

@@ -47,9 +47,6 @@ class V3CacheStore {
     required Map<String, dynamic> newRecord,
     required Map<String, dynamic> oldRecord,
     required bool isDelete,
-    required String activeKey,
-    required bool hasActiveKey,
-    required bool keepInactive,
   }) {
     final cache = _tables[table];
     if (cache == null) return false;
@@ -64,20 +61,10 @@ class V3CacheStore {
     if (isDelete) {
       changed = cache.remove(id) != null;
     } else {
-      var shouldKeep = true;
-      if (hasActiveKey && newRecord.containsKey(activeKey)) {
-        shouldKeep =
-            _asBool(newRecord[activeKey], defaultValue: true) || keepInactive;
-      }
-
-      if (!shouldKeep) {
-        changed = cache.remove(id) != null;
-      } else {
-        final normalized = Map<String, dynamic>.from(newRecord);
-        if (!hadBefore || !_mapsEqual(before, normalized)) {
-          cache[id] = normalized;
-          changed = true;
-        }
+      final normalized = Map<String, dynamic>.from(newRecord);
+      if (!hadBefore || !_mapsEqual(before, normalized)) {
+        cache[id] = normalized;
+        changed = true;
       }
     }
 
@@ -93,9 +80,6 @@ class V3CacheStore {
   bool applyDeltaRow({
     required String table,
     required Map<String, dynamic> row,
-    required String activeKey,
-    required bool hasActiveKey,
-    required bool keepInactive,
   }) {
     final cache = _tables[table];
     if (cache == null) return false;
@@ -106,20 +90,11 @@ class V3CacheStore {
     final hadBefore = cache.containsKey(id);
     final before = cache[id];
 
-    var shouldKeep = true;
-    if (hasActiveKey && row.containsKey(activeKey)) {
-      shouldKeep = _asBool(row[activeKey], defaultValue: true) || keepInactive;
-    }
-
     bool changed = false;
-    if (!shouldKeep) {
-      changed = cache.remove(id) != null;
-    } else {
-      final normalized = Map<String, dynamic>.from(row);
-      if (!hadBefore || !_mapsEqual(before, normalized)) {
-        cache[id] = normalized;
-        changed = true;
-      }
+    final normalized = Map<String, dynamic>.from(row);
+    if (!hadBefore || !_mapsEqual(before, normalized)) {
+      cache[id] = normalized;
+      changed = true;
     }
 
     if (changed) {
@@ -170,27 +145,6 @@ class V3CacheStore {
     return true;
   }
 
-  bool _asBool(dynamic value, {required bool defaultValue}) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      if (normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 'yes' ||
-          normalized == 'y') {
-        return true;
-      }
-      if (normalized == 'false' ||
-          normalized == '0' ||
-          normalized == 'no' ||
-          normalized == 'n') {
-        return false;
-      }
-    }
-    return defaultValue;
-  }
-
   DateTime? _extractTimestamp(Map<String, dynamic> row) {
     final updatedAt = row['updated_at'];
     final createdAt = row['created_at'];
@@ -203,7 +157,9 @@ class V3CacheStore {
     return updated.isAfter(created) ? updated : created;
   }
 
-  DateTime? _parseDateTime(dynamic value) {
+  DateTime? _parseDateTime(dynamic value) => V3CacheStore.parseDateTime(value);
+
+  static DateTime? parseDateTime(dynamic value) {
     if (value == null) return null;
     if (value is DateTime) return value;
     if (value is String && value.trim().isNotEmpty) {

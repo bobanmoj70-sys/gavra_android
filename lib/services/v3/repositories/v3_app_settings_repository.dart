@@ -15,6 +15,14 @@ class V3AppSettingsRepository {
         .upsert({'id': 'global', ...payload});
   }
 
+  Future<Map<String, dynamic>?> upsertGlobalReturning(Map<String, dynamic> payload) {
+    return supabase
+        .from('v3_app_settings')
+        .upsert({'id': 'global', ...payload})
+        .select()
+        .maybeSingle();
+  }
+
   Future<Map<String, dynamic>?> updateGlobal(Map<String, dynamic> payload) {
     return supabase
         .from('v3_app_settings')

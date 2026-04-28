@@ -17,6 +17,10 @@ class V3OperativnaNedeljaRepository {
     return supabase.from('v3_operativna_nedelja').insert(payload);
   }
 
+  Future<Map<String, dynamic>> insertReturning(Map<String, dynamic> payload) {
+    return supabase.from('v3_operativna_nedelja').insert(payload).select().single();
+  }
+
   Future<List<dynamic>> updateByTerminReturningList({
     required String datumIso,
     required String grad,

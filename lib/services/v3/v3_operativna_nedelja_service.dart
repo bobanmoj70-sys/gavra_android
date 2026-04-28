@@ -175,16 +175,17 @@ class V3OperativnaNedeljaService {
 
       if (postojeci.isNotEmpty) {
         // UPDATE: prepiši polazak_at i broj_mesta
-        await _repo.updateById(postojeci.first['id'] as String, {
+        final updatedRow = await _repo.updateByIdReturningSingle(postojeci.first['id'] as String, {
           'polazak_at': polazakAt,
           'broj_mesta': normalizedBrojMesta,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_override_id': adresaIdOverride, // null = briše override
         });
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', updatedRow);
       } else {
         // INSERT direktno u operativna_nedelja
-        await _repo.insert({
+        final insertedRow = await _repo.insertReturning({
           'created_by': putnikId,
           'datum': datum,
           'grad': grad,
@@ -194,6 +195,7 @@ class V3OperativnaNedeljaService {
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
         });
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', insertedRow);
       }
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] createOrUpdateByVozac error: $e');
