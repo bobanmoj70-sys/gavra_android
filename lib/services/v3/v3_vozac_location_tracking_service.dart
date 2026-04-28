@@ -80,7 +80,8 @@ class V3VozacLocationTrackingService {
           position.longitude,
         );
         if (distance < _minDistanceMeters) {
-          debugPrint('[V3VozacLocationTrackingService] skip send — pomak ${distance.toStringAsFixed(1)}m < ${_minDistanceMeters}m');
+          debugPrint(
+              '[V3VozacLocationTrackingService] skip send — pomak ${distance.toStringAsFixed(1)}m < ${_minDistanceMeters}m');
           return;
         }
       }
@@ -91,6 +92,14 @@ class V3VozacLocationTrackingService {
         longitude: position.longitude,
       );
       _lastSentPosition = position;
+      // Fire-and-forget: server računa ETA za sve putnike ovog vozača
+      unawaited(
+        _invokeComputeEta(
+          vozacId: _activeVozacId,
+          lat: position.latitude,
+          lng: position.longitude,
+        ).catchError((Object e) => debugPrint('[V3VozacLocationTrackingService] computeEta error: $e')),
+      );
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] send error: $e');
     } finally {
@@ -136,5 +145,22 @@ class V3VozacLocationTrackingService {
     debugPrint(
       '[V3VozacLocationTrackingService] inserted vozac=$vozacId table=$_tableName lat=$latitude lng=$longitude',
     );
+  }
+
+  Future<void> _invokeComputeEta({
+    required String vozacId,
+    required double lat,
+    required double lng,
+  }) async {
+    final supabase = Supabase.instance.client;
+    await supabase.functions.invoke(
+      'v3-compute-eta',
+      body: <String, dynamic>{
+        'vozac_id': vozacId,
+        'lat': lat,
+        'lng': lng,
+      },
+    );
+    debugPrint('[V3VozacLocationTrackingService] computeEta invoked za vozac=${vozacId.substring(0, 8)}');
   }
 }

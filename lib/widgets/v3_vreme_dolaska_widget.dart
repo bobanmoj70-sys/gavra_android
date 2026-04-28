@@ -3,10 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../globals.dart';
-import '../services/v3/v3_eta_orchestrator_service.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_style_helper.dart';
 
 class V3VremeDolaskaWidget extends StatefulWidget {
   const V3VremeDolaskaWidget({
@@ -21,30 +18,31 @@ class V3VremeDolaskaWidget extends StatefulWidget {
 }
 
 class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
-  final V3EtaOrchestratorService _etaOrchestratorService = V3EtaOrchestratorService();
+  static const String _tableName = 'v3_eta_results';
+  static const String _colPutnikId = 'putnik_id';
+  static const String _colEtaSeconds = 'eta_seconds';
+  static const String _colComputedAt = 'computed_at';
+
+  // ETA se smatra zastarelom ako je starija od 5 minuta
+  static const Duration _staleThreshold = Duration(minutes: 5);
 
   RealtimeChannel? _realtimeChannel;
-  Timer? _refreshTimer;
-  V3EtaDolazakData? _data;
+  int? _etaSeconds;
+  bool _isStale = false;
 
   @override
   void initState() {
     super.initState();
     _reload();
     _bindRealtime();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      if (mounted) unawaited(_reload());
-    });
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
-    _refreshTimer = null;
     final channel = _realtimeChannel;
     _realtimeChannel = null;
     if (channel != null) {
-      unawaited(supabase.removeChannel(channel));
+      unawaited(Supabase.instance.client.removeChannel(channel));
     }
     super.dispose();
   }
@@ -52,30 +50,34 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   void _bindRealtime() {
     final existing = _realtimeChannel;
     if (existing != null) {
-      unawaited(supabase.removeChannel(existing));
+      unawaited(Supabase.instance.client.removeChannel(existing));
       _realtimeChannel = null;
     }
 
-    final channel = supabase.channel(
-      'v3_eta_dolazak_${widget.putnikId}_${DateTime.now().microsecondsSinceEpoch}',
+    final channel = Supabase.instance.client.channel(
+      'v3_eta_dolazak_${widget.putnikId}',
     );
 
-    for (final table in const <String>[
-      'v3_trenutna_dodela',
-      'v3_trenutna_dodela_slot',
-      'v3_vozac_lokacije',
-      'v3_operativna_nedelja',
-    ]) {
-      channel.onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: table,
-        callback: (_) {
-          if (!mounted) return;
-          unawaited(_reload());
-        },
-      );
-    }
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: _tableName,
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: _colPutnikId,
+        value: widget.putnikId,
+      ),
+      callback: (payload) {
+        if (!mounted) return;
+        final newRow = payload.newRecord;
+        if (newRow.isNotEmpty) {
+          _applyRow(newRow);
+        } else {
+          // DELETE event
+          if (mounted) setState(() => _etaSeconds = null);
+        }
+      },
+    );
 
     _realtimeChannel = channel;
     channel.subscribe();
@@ -83,14 +85,36 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   Future<void> _reload() async {
     if (!mounted) return;
-
     try {
-      final data = await _etaOrchestratorService.loadEtaForPutnik(widget.putnikId);
+      final rows = await Supabase.instance.client
+          .from(_tableName)
+          .select('$_colEtaSeconds, $_colComputedAt')
+          .eq(_colPutnikId, widget.putnikId)
+          .limit(1);
+
       if (!mounted) return;
-      setState(() => _data = data);
+
+      if (rows.isNotEmpty) {
+        _applyRow(rows.first);
+      } else {
+        setState(() => _etaSeconds = null);
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _data = null);
+      if (mounted) setState(() => _etaSeconds = null);
+    }
+  }
+
+  void _applyRow(Map<String, dynamic> row) {
+    final eta = (row[_colEtaSeconds] as num?)?.toInt();
+    final computedAtRaw = row[_colComputedAt];
+    final computedAt = computedAtRaw is String ? DateTime.tryParse(computedAtRaw) : null;
+    final stale = computedAt == null || DateTime.now().difference(computedAt) > _staleThreshold;
+
+    if (mounted) {
+      setState(() {
+        _etaSeconds = eta;
+        _isStale = stale;
+      });
     }
   }
 
@@ -101,8 +125,10 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final data = _data;
-    if (data == null) return const SizedBox.shrink();
+    final eta = _etaSeconds;
+    if (eta == null || _isStale) return const SizedBox.shrink();
+
+    final minutes = _buildEtaMinutes(eta);
 
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(12),
@@ -124,22 +150,12 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           ),
           const SizedBox(height: 6),
           Text(
-            '${_buildEtaMinutes(data.etaSeconds)} min',
+            minutes <= 0 ? 'Stiže uskoro' : 'za $minutes min',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.greenAccent,
               fontSize: 26,
               fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '👤 ${data.vozacIme}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: V3StyleHelper.whiteAlpha9,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ],
