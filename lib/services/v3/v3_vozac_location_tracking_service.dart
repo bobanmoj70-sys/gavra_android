@@ -16,12 +16,6 @@ class V3VozacLocationTrackingService {
 
   static final V3VozacLocationTrackingService instance = V3VozacLocationTrackingService._();
   static const Duration _interval = Duration(seconds: 30);
-  static const String _tableName = 'v3_vozac_lokacije';
-  static const String _colVozacId = 'created_by';
-  static const String _colLat = 'lat';
-  static const String _colLng = 'lng';
-  static const String _colUpdatedAt = 'updated_at';
-
   static const double _minDistanceMeters = 20.0;
 
   Timer? _timer;
@@ -29,7 +23,11 @@ class V3VozacLocationTrackingService {
   String _activeVozacId = '';
   Position? _lastSentPosition;
 
+  /// Poziva se nakon svakog uspješnog slanja GPS pozicije.
+  void Function(Position position)? onLocationSent;
+
   bool get isRunning => _timer != null;
+  Position? get lastKnownPosition => _lastSentPosition;
 
   Future<void> start({required String vozacId}) async {
     final normalizedVozacId = vozacId.trim();
@@ -53,6 +51,7 @@ class V3VozacLocationTrackingService {
     _activeVozacId = '';
     _inFlight = false;
     _lastSentPosition = null;
+    onLocationSent = null;
     if (vozacIdToClean.isNotEmpty) {
       unawaited(
         Supabase.instance.client.from('v3_eta_results').delete().eq('vozac_id', vozacIdToClean).catchError((Object e) {
@@ -95,12 +94,8 @@ class V3VozacLocationTrackingService {
         }
       }
 
-      await _insertLocation(
-        vozacId: _activeVozacId,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
       _lastSentPosition = position;
+      onLocationSent?.call(position);
       // Fire-and-forget: server računa ETA za sve putnike ovog vozača
       unawaited(
         _invokeComputeEta(
@@ -134,26 +129,6 @@ class V3VozacLocationTrackingService {
     }
 
     return V3LocationPrereqStatus.ok;
-  }
-
-  Future<void> _insertLocation({
-    required String vozacId,
-    required double latitude,
-    required double longitude,
-  }) async {
-    final supabase = Supabase.instance.client;
-
-    final payload = <String, dynamic>{
-      _colVozacId: vozacId,
-      _colLat: latitude,
-      _colLng: longitude,
-      _colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
-    };
-
-    await supabase.from(_tableName).upsert(payload, onConflict: _colVozacId);
-    debugPrint(
-      '[V3VozacLocationTrackingService] inserted vozac=$vozacId table=$_tableName lat=$latitude lng=$longitude',
-    );
   }
 
   Future<void> _invokeComputeEta({

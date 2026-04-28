@@ -51,14 +51,31 @@ class V3OsrmRouteService {
   Future<List<V3RouteWaypoint>> optimizeWaypoints(
     List<V3RouteWaypoint> input, {
     V3RouteWaypoint? fixedDestination,
+    V3RouteCoordinate? currentLocation,
   }) async {
     if (input.length <= 1) return List<V3RouteWaypoint>.from(input);
+
+    const sourceId = '__driver_source__';
+    final sourceWaypoint =
+        currentLocation != null ? V3RouteWaypoint(id: sourceId, label: sourceId, coordinate: currentLocation) : null;
+
+    final inputWithSource = sourceWaypoint != null ? <V3RouteWaypoint>[sourceWaypoint, ...input] : input;
+
     if (fixedDestination != null) {
-      final withDestination = <V3RouteWaypoint>[...input, fixedDestination];
-      final optimized = await _optimizeRoute(withDestination, lockLastAsDestination: true);
-      return optimized.where((item) => item.id != fixedDestination.id).toList(growable: false);
+      final withDestination = <V3RouteWaypoint>[...inputWithSource, fixedDestination];
+      final optimized = await _optimizeRoute(
+        withDestination,
+        lockFirstAsSource: sourceWaypoint != null,
+        lockLastAsDestination: true,
+      );
+      return optimized.where((item) => item.id != fixedDestination.id && item.id != sourceId).toList(growable: false);
     }
-    return _optimizeRoute(input);
+
+    final optimized = await _optimizeRoute(
+      inputWithSource,
+      lockFirstAsSource: sourceWaypoint != null,
+    );
+    return optimized.where((item) => item.id != sourceId).toList(growable: false);
   }
 
   Future<V3OsrmEtaResult?> computeEtaForStopsFromSource({

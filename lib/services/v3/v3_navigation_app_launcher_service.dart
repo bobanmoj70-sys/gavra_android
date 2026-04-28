@@ -22,8 +22,11 @@ class V3NavigationAppLauncherService {
   }
 
   static String _buildHereWeGoAppRouteUri(List<V3RouteWaypoint> waypoints) {
-    final points = waypoints.map((w) => '${w.coordinate.latitude},${w.coordinate.longitude}').join('/');
-    return 'here-route://mylocation/$points/now';
+    final points = waypoints.map((w) {
+      final label = Uri.encodeComponent(w.label.isNotEmpty ? w.label : 'Stop');
+      return '${w.coordinate.latitude},${w.coordinate.longitude},$label';
+    }).join('/');
+    return 'here-route://mylocation/$points?m=d';
   }
 
   static Future<void> _launchInPackage(String packageName, String url) async {
