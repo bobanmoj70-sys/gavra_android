@@ -1,10 +1,6 @@
 import '../../../globals.dart';
 
 class V3FinansijeRepository {
-  Future<void> insert(Map<String, dynamic> payload) {
-    return supabase.from('v3_finansije').insert(payload);
-  }
-
   Future<Map<String, dynamic>> insertReturning(Map<String, dynamic> payload) {
     return supabase.from('v3_finansije').insert(payload).select().single();
   }
@@ -22,10 +18,6 @@ class V3FinansijeRepository {
 
   Future<void> deleteById(String id) {
     return supabase.from('v3_finansije').delete().eq('id', id);
-  }
-
-  Future<void> updateById(String id, Map<String, dynamic> payload) {
-    return supabase.from('v3_finansije').update(payload).eq('id', id);
   }
 
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) {

@@ -1,6 +1,7 @@
 import '../../models/v3_dnevna_predaja.dart';
 import '../../utils/v3_dan_helper.dart';
 import '../../utils/v3_date_utils.dart';
+import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_finansije_repository.dart';
 
 class V3DnevnaPredajaService {
@@ -68,7 +69,8 @@ class V3DnevnaPredajaService {
     };
 
     if (existing != null && existing['id'] != null) {
-      await _repo.updateById(existing['id'] as String, baseData);
+      final row = await _repo.updateByIdReturning(existing['id'] as String, baseData);
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
       return;
     }
 
@@ -78,6 +80,7 @@ class V3DnevnaPredajaService {
       'created_at': dayStart.toIso8601String(),
     };
 
-    await _repo.insert(insertData);
+    final row = await _repo.insertReturning(insertData);
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
   }
 }

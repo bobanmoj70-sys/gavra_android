@@ -1,5 +1,6 @@
 import 'v3_zahtev_repository.dart';
 import 'v3_zahtev_types.dart';
+import '../../realtime/v3_master_realtime_manager.dart';
 
 class V3ZahtevDomainService {
   final V3ZahtevRepository _repository;
@@ -52,6 +53,7 @@ class V3ZahtevDomainService {
       updateData['koristi_sekundarnu'] = koristiSekundarnu;
     }
 
-    await _repository.updateRaw(id, updateData);
+    final row = await _repository.updateRaw(id, updateData);
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
   }
 }

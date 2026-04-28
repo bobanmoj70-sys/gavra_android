@@ -16,8 +16,4 @@ class V3ZahtevRepository {
   Future<void> deleteById(String id) {
     return supabase.from('v3_zahtevi').delete().eq('id', id);
   }
-
-  Future<Map<String, dynamic>?> getById(String id) {
-    return supabase.from('v3_zahtevi').select().eq('id', id).maybeSingle();
-  }
 }

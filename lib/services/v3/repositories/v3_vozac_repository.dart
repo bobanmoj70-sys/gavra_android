@@ -10,19 +10,18 @@ class V3VozacRepository {
     return Future.value();
   }
 
-  Future<void> updateById(String id, Map<String, dynamic> payload) {
-    final mapped = _mapUpdatePayloadToAuth(payload);
-    if (mapped.isEmpty) return Future.value();
-
-    return supabase.from('v3_auth').update(mapped).eq('id', id).eq('tip', 'vozac');
-  }
-
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) async {
     final mapped = _mapUpdatePayloadToAuth(payload);
     if (mapped.isEmpty) {
       return supabase.from('v3_auth').select('$_authVozacSelect, tip').eq('id', id).eq('tip', 'vozac').single();
     }
-    return supabase.from('v3_auth').update(mapped).eq('id', id).eq('tip', 'vozac').select('$_authVozacSelect, tip').single();
+    return supabase
+        .from('v3_auth')
+        .update(mapped)
+        .eq('id', id)
+        .eq('tip', 'vozac')
+        .select('$_authVozacSelect, tip')
+        .single();
   }
 
   Future<Map<String, dynamic>?> getActiveByIdAndPushToken({
@@ -46,25 +45,6 @@ class V3VozacRepository {
 
     if (row == null) return null;
     return _mapAuthRowToVozac(Map<String, dynamic>.from(row));
-  }
-
-  Future<void> insert(Map<String, dynamic> payload) {
-    final telefon = payload['telefon_1']?.toString().trim() ?? '';
-    if (telefon.isEmpty) {
-      throw ArgumentError('telefon_1 je obavezan za unos vozača');
-    }
-
-    final authId = payload['id']?.toString().trim();
-    final mapped = <String, dynamic>{
-      'id': authId != null && authId.isNotEmpty ? authId : const Uuid().v4(),
-      'ime': payload['ime_prezime'],
-      'telefon': telefon,
-      'telefon_2': payload['telefon_2'],
-      'boja': payload['boja'],
-      'push_token': payload['push_token'],
-      'tip': 'vozac',
-    };
-    return supabase.from('v3_auth').insert(mapped);
   }
 
   Future<Map<String, dynamic>> insertReturning(Map<String, dynamic> payload) {

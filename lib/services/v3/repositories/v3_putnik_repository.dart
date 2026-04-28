@@ -22,17 +22,6 @@ class V3PutnikRepository {
         .maybeSingle();
   }
 
-  Future<void> upsert(Map<String, dynamic> data) {
-    final payload = Map<String, dynamic>.from(data);
-    final id = payload['id']?.toString().trim() ?? '';
-    if (id.isEmpty) {
-      payload['id'] = const Uuid().v4();
-    }
-
-    final mapped = _mapPayload(payload);
-    return supabase.from('v3_auth').upsert(mapped, onConflict: 'id');
-  }
-
   Future<Map<String, dynamic>> upsertReturning(Map<String, dynamic> data) {
     final payload = Map<String, dynamic>.from(data);
     final id = payload['id']?.toString().trim() ?? '';
@@ -42,12 +31,6 @@ class V3PutnikRepository {
 
     final mapped = _mapPayload(payload);
     return supabase.from('v3_auth').upsert(mapped, onConflict: 'id').select(_authRawSelect).single();
-  }
-
-  Future<void> updateById(String id, Map<String, dynamic> payload) {
-    final mapped = _mapPayload(payload);
-    if (mapped.isEmpty) return Future.value();
-    return supabase.from('v3_auth').update(mapped).eq('id', id);
   }
 
   Future<void> deleteById(String id) {
