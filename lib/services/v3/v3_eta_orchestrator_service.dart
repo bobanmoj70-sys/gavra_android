@@ -18,6 +18,14 @@ class V3EtaDolazakData {
   final int etaSeconds;
 }
 
+/// TTL entry za kratki in-memory cache.
+class _TtlEntry<T> {
+  _TtlEntry(this.value, this.expiresAt);
+  final T value;
+  final DateTime expiresAt;
+  bool get isValid => DateTime.now().isBefore(expiresAt);
+}
+
 class V3EtaOrchestratorService {
   V3EtaOrchestratorService({
     V3RouteWaypointResolverService? routeWaypointResolverService,
@@ -29,6 +37,14 @@ class V3EtaOrchestratorService {
   static const String _vozacLokacijeColVozacId = 'created_by';
   static const String _vozacLokacijeColUpdatedAt = 'updated_at';
 
+  // TTL cache za vozac lokaciju — GPS šalje svakih 30s, pa 35s TTL je sigurno
+  static const Duration _lokacijaTtl = Duration(seconds: 35);
+  // TTL cache za waypoints_json — mijenja se samo kad vozač klikne START
+  static const Duration _waypointsTtl = Duration(seconds: 90);
+
+  final Map<String, _TtlEntry<({double lat, double lng})>> _lokacijaCache = {};
+  final Map<String, _TtlEntry<List<V3RouteWaypoint>?>> _waypointsCache = {};
+
   final V3RouteWaypointResolverService _routeWaypointResolverService;
   final V3OsrmRouteService _osrmRouteService;
 
@@ -38,13 +54,20 @@ class V3EtaOrchestratorService {
 
     debugPrint('[ETA] loadEtaForPutnik START putnikId=$putnikId');
 
-    final dodelaRows = await supabase
+    // OPTIMIZACIJA: Pozivi #1 i #2 paralelno umjesto sekvencijalno
+    final dodelaFuture = supabase
         .from('v3_trenutna_dodela')
         .select('termin_id, vozac_v3_auth_id')
         .eq('putnik_v3_auth_id', putnikId)
         .eq('status', 'aktivan');
+    final slotsFuture = V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey();
 
-    final assignments = (dodelaRows as List<dynamic>)
+    final parallelInit = await Future.wait<dynamic>([dodelaFuture, slotsFuture]);
+
+    final dodelaRows = parallelInit[0] as List<dynamic>;
+    final activeVozacBySlotKey = parallelInit[1] as Map<String, String>;
+
+    final assignments = dodelaRows
         .whereType<Map<String, dynamic>>()
         .map((row) => (
               terminId: (row['termin_id'] ?? '').toString().trim(),
@@ -59,25 +82,24 @@ class V3EtaOrchestratorService {
     }
     debugPrint(
         '[ETA] dodele(${assignments.length}): ${assignments.map((a) => 'termin=${a.terminId.substring(0, 8)} vozac=${a.vozacId.substring(0, 8)}').join(', ')}');
-
-    final activeVozacBySlotKey = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey();
     debugPrint('[ETA] aktivni slotovi(${activeVozacBySlotKey.length}): ${activeVozacBySlotKey.keys.join(', ')}');
 
-    final terminIds = assignments.map((e) => e.terminId).toList(growable: false);
-    final operativnaRows = await supabase
-        .from('v3_operativna_nedelja')
-        .select('id, datum, grad, polazak_at, adresa_override_id, koristi_sekundarnu, created_by, pokupljen_at')
-        .inFilter('id', terminIds);
+    // OPTIMIZACIJA: Poziv #3 eliminisan — koristimo operativnaNedeljaCache umjesto live DB
+    final rm = V3MasterRealtimeManager.instance;
+    final terminIds = assignments.map((e) => e.terminId).toSet();
+    final operativnaRows = terminIds
+        .map((id) => rm.operativnaNedeljaCache[id] ?? rm.operativnaAssignedCache[id])
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+
+    debugPrint('[ETA] operativna iz cache: ${operativnaRows.length} (od ${terminIds.length} terminId-a)');
 
     Map<String, dynamic>? selectedRow;
     String selectedVozacId = '';
     int? selectedDeltaSeconds;
     final now = DateTime.now();
 
-    for (final raw in (operativnaRows as List<dynamic>)) {
-      if (raw is! Map<String, dynamic>) continue;
-      final row = raw;
-
+    for (final row in operativnaRows) {
       final id = (row['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
 
@@ -129,7 +151,43 @@ class V3EtaOrchestratorService {
       return null;
     }
 
-    final vozacLok = await _getLatestVozacLokacija(selectedVozacId);
+    final selectedDatum = V3DateUtils.parseIsoDatePart(selectedRow['datum']);
+    final selectedGrad = (selectedRow['grad'] ?? '').toString().trim().toUpperCase();
+    final selectedVreme = selectedRow['polazak_at']?.toString() ?? '';
+    final slotCacheKey = '$selectedVozacId|$selectedDatum|$selectedGrad|$selectedVreme';
+
+    debugPrint(
+        '[ETA] tražim slot: datum=$selectedDatum grad=$selectedGrad vreme=$selectedVreme vozacId=${selectedVozacId.substring(0, 8)}');
+
+    // OPTIMIZACIJA: Pozivi #4 (lokacija) i #5 (waypoints) paralelno + TTL cache
+    final lokacijaCached = _lokacijaCache[selectedVozacId];
+    final waypointsCached = _waypointsCache[slotCacheKey];
+
+    final needsLokacija = lokacijaCached == null || !lokacijaCached.isValid;
+    final needsWaypoints = waypointsCached == null || !waypointsCached.isValid;
+
+    debugPrint(
+        '[ETA] cache: lokacija=${!needsLokacija ? 'HIT' : 'MISS'} waypoints=${!needsWaypoints ? 'HIT' : 'MISS'}');
+
+    // OPTIMIZACIJA: Pozivi #4 (lokacija) i #5 (waypoints) paralelno + TTL cache
+    final lokacijaFuture = needsLokacija
+        ? _fetchVozacLokacija(selectedVozacId)
+        : Future<({double lat, double lng})?>.value(lokacijaCached.value);
+    final waypointsFuture = needsWaypoints
+        ? _fetchWaypointsJson(selectedVozacId, selectedDatum, selectedGrad, selectedVreme)
+        : Future<List<V3RouteWaypoint>?>.value(waypointsCached.value);
+
+    final parallelLW = await Future.wait<dynamic>([lokacijaFuture, waypointsFuture]);
+
+    final vozacLok = parallelLW[0] as ({double lat, double lng})?;
+    if (needsLokacija) {
+      if (vozacLok != null) {
+        _lokacijaCache[selectedVozacId] = _TtlEntry(vozacLok, DateTime.now().add(_lokacijaTtl));
+      } else {
+        _lokacijaCache.remove(selectedVozacId);
+      }
+    }
+
     if (vozacLok == null) {
       debugPrint('[ETA] ❌ vozac lokacija null ili stale (>300s) za vozacId=${selectedVozacId.substring(0, 8)}');
       return null;
@@ -138,47 +196,16 @@ class V3EtaOrchestratorService {
 
     final vozacName = _resolveVozacName(selectedVozacId);
 
-    final selectedDatum = V3DateUtils.parseIsoDatePart(selectedRow['datum']);
-    final selectedGrad = (selectedRow['grad'] ?? '').toString().trim().toUpperCase();
-    final selectedVreme = selectedRow['polazak_at']?.toString() ?? '';
-    debugPrint(
-        '[ETA] tražim slot: datum=$selectedDatum grad=$selectedGrad vreme=$selectedVreme vozacId=${selectedVozacId.substring(0, 8)}');
-
-    // Pokušaj da učitaš waypoints iz slota (upisuje ih vozač pri optimizaciji)
-    final slotRow = await supabase
-        .from(V3TrenutnaDodelaSlotService.tableName)
-        .select(V3TrenutnaDodelaSlotService.colWaypointsJson)
-        .eq(V3TrenutnaDodelaSlotService.colDatum, selectedDatum)
-        .eq(V3TrenutnaDodelaSlotService.colGrad, selectedGrad)
-        .eq(V3TrenutnaDodelaSlotService.colVreme, selectedVreme)
-        .eq(V3TrenutnaDodelaSlotService.colVozacId, selectedVozacId)
-        .eq(V3TrenutnaDodelaSlotService.colStatus, V3TrenutnaDodelaSlotService.statusAktivan)
-        .maybeSingle();
-
-    final rawWaypoints = slotRow?[V3TrenutnaDodelaSlotService.colWaypointsJson];
-    debugPrint(
-        '[ETA] slotRow=${slotRow == null ? 'NULL' : 'found'} rawWaypoints type=${rawWaypoints?.runtimeType} isList=${rawWaypoints is List}');
-
-    List<V3RouteWaypoint>? stopsFromSlot;
-    if (rawWaypoints is List) {
-      final parsed = <V3RouteWaypoint>[];
-      for (final item in rawWaypoints) {
-        if (item is! Map) continue;
-        final id = (item['id'] ?? '').toString().trim();
-        final lat = _parseDouble(item['lat']);
-        final lng = _parseDouble(item['lng']);
-        if (id.isNotEmpty && lat != null && lng != null) {
-          parsed.add(V3RouteWaypoint(id: id, label: id, coordinate: V3RouteCoordinate(latitude: lat, longitude: lng)));
-        }
-      }
-      if (parsed.isNotEmpty) stopsFromSlot = parsed;
-      debugPrint(
-          '[ETA] parsed waypoints: ${parsed.length} (putnikUWaypointima=${parsed.any((s) => s.id == putnikId)})');
+    final List<V3RouteWaypoint>? stopsFromSlot = parallelLW[1] as List<V3RouteWaypoint>?;
+    if (needsWaypoints) {
+      _waypointsCache[slotCacheKey] = _TtlEntry(stopsFromSlot, DateTime.now().add(_waypointsTtl));
+    } else {
+      debugPrint('[ETA] waypoints iz TTL cache: ${stopsFromSlot?.length ?? 0} stops');
     }
 
-    // Ako slot ima sačuvane waypoints od poslednje optimizacije — koristi ih direktno
-    // Koristimo /route API (fiksni redosled) jer je waypoints_json već optimizovan
-    // Destinacija (__destination__) ostaje u listi da OSRM zna pravi smer, ali se ETA ne traži za nju
+    debugPrint(
+        '[ETA] stopsFromSlot=${stopsFromSlot == null ? 'NULL' : '${stopsFromSlot.length} stops'} (putnikUWaypointima=${stopsFromSlot?.any((s) => s.id == putnikId) ?? false})');
+
     if (stopsFromSlot != null) {
       final putnikJeUStops = stopsFromSlot.any((s) => s.id == putnikId);
       if (!putnikJeUStops) {
@@ -204,7 +231,6 @@ class V3EtaOrchestratorService {
       return V3EtaDolazakData(vozacIme: vozacName, etaSeconds: etaSeconds);
     }
 
-    // Nema waypoints_json — vozač nije kliknuo START ili još nije optimizovao rutu
     debugPrint('[ETA] ❌ stopsFromSlot null — vozač nije kliknuo START ili waypoints_json prazan');
     return null;
   }
@@ -257,7 +283,9 @@ class V3EtaOrchestratorService {
     return V3TimeUtils.extractHHmmToken(value);
   }
 
-  Future<({double lat, double lng})?> _getLatestVozacLokacija(String vozacId) async {
+  /// Dohvata poslednju lokaciju vozača direktno iz DB.
+  /// Vraća null ako lokacija ne postoji ili je starija od 300s.
+  Future<({double lat, double lng})?> _fetchVozacLokacija(String vozacId) async {
     final id = vozacId.trim();
     if (id.isEmpty) return null;
 
@@ -285,6 +313,49 @@ class V3EtaOrchestratorService {
 
       return (lat: lat, lng: lng);
     } catch (_) {
+      return null;
+    }
+  }
+
+  /// Dohvata i parsira waypoints_json iz aktivnog slota za dati vozač/datum/grad/vreme.
+  Future<List<V3RouteWaypoint>?> _fetchWaypointsJson(
+    String vozacId,
+    String datumIso,
+    String grad,
+    String vreme,
+  ) async {
+    try {
+      final slotRow = await supabase
+          .from(V3TrenutnaDodelaSlotService.tableName)
+          .select(V3TrenutnaDodelaSlotService.colWaypointsJson)
+          .eq(V3TrenutnaDodelaSlotService.colDatum, datumIso)
+          .eq(V3TrenutnaDodelaSlotService.colGrad, grad)
+          .eq(V3TrenutnaDodelaSlotService.colVreme, vreme)
+          .eq(V3TrenutnaDodelaSlotService.colVozacId, vozacId)
+          .eq(V3TrenutnaDodelaSlotService.colStatus, V3TrenutnaDodelaSlotService.statusAktivan)
+          .maybeSingle();
+
+      final rawWaypoints = slotRow?[V3TrenutnaDodelaSlotService.colWaypointsJson];
+      debugPrint(
+          '[ETA] fetchWaypointsJson: slotRow=${slotRow == null ? 'NULL' : 'found'} rawType=${rawWaypoints?.runtimeType}');
+
+      if (rawWaypoints is! List) return null;
+
+      final parsed = <V3RouteWaypoint>[];
+      for (final item in rawWaypoints) {
+        if (item is! Map) continue;
+        final id = (item['id'] ?? '').toString().trim();
+        final lat = _parseDouble(item['lat']);
+        final lng = _parseDouble(item['lng']);
+        if (id.isNotEmpty && lat != null && lng != null) {
+          parsed.add(V3RouteWaypoint(id: id, label: id, coordinate: V3RouteCoordinate(latitude: lat, longitude: lng)));
+        }
+      }
+
+      debugPrint('[ETA] fetchWaypointsJson: parsed ${parsed.length} waypoints');
+      return parsed.isNotEmpty ? parsed : null;
+    } catch (e) {
+      debugPrint('[ETA] fetchWaypointsJson error: $e');
       return null;
     }
   }
