@@ -99,7 +99,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       putnikId: widget.putnik.id,
       datumRef: datumRef,
       isMesecniModel: isMesecniModel,
-      operativnaId: widget.entry?.id,
+      referencaId: widget.entry?.id,
     );
   }
 
@@ -115,6 +115,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw 'Niste logovani u V3 sistem';
       await V3ZahtevService.oznaciPokupljen(pokupljenBy: currentVozac.id, operativnaId: widget.entry?.id);
+      await V3FinansijeService.evidentirajRealizacijuPriPokupljanju(
+        putnikId: widget.putnik.id,
+        tipPutnika: widget.putnik.tipPutnika,
+        datum: widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now(),
+        referencaId: widget.entry?.id,
+        evidentiraoBy: currentVozac.id,
+      );
       await V2HapticService.putnikPokupljen();
       if (mounted) {
         V3AppSnackBar.success(context, 'Vožnja evidentirana');
@@ -207,7 +214,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         imePrezime: widget.putnik.imePrezime,
         defaultCena: defaultCena,
         zakljucajIznos: zakljucajIznos,
-        operativnaId: widget.entry?.id,
+        referencaId: widget.entry?.id,
         snimiMesecnuUplatu: isMesecniModel,
       );
       if (rezultat != null && mounted) {

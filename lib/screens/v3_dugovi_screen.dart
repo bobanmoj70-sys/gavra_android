@@ -131,7 +131,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                       putnikId: dug.putnikId,
                                       imePrezime: dug.imePrezime,
                                       defaultCena: dug.iznos,
-                                      operativnaId: dug.id,
+                                      referencaId: dug.id,
                                     );
                                     if (rezultat == null) return;
 

@@ -5,13 +5,13 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload);
   }
 
-  Future<Map<String, dynamic>?> findOperativnaNaplataByOperativnaId(String operativnaId) {
+  Future<Map<String, dynamic>?> findNaplataByReferencaId(String referencaId) {
     return supabase
         .from('v3_finansije')
         .select('id')
         .eq('tip', 'prihod')
         .eq('kategorija', 'operativna_naplata')
-        .eq('operativna_id', operativnaId)
+        .eq('operativna_id', referencaId)
         .limit(1)
         .maybeSingle();
   }

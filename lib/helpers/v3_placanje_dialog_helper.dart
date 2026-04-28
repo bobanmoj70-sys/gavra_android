@@ -209,7 +209,7 @@ class V3PlacanjeDialogHelper {
     required String imePrezime,
     required double defaultCena,
     bool zakljucajIznos = false,
-    String? operativnaId,
+    String? referencaId,
     bool snimiMesecnuUplatu = false,
   }) async {
     final rezultat = await _prikaziDialog(
@@ -225,7 +225,7 @@ class V3PlacanjeDialogHelper {
       context: context,
       putnikId: putnikId,
       rezultat: rezultat,
-      operativnaId: operativnaId,
+      referencaId: referencaId,
       snimiMesecnuUplatu: snimiMesecnuUplatu,
     );
     if (!ok) return null;
@@ -237,7 +237,7 @@ class V3PlacanjeDialogHelper {
     required BuildContext context,
     required String putnikId,
     required V3PlacanjeRezultat rezultat,
-    String? operativnaId,
+    String? referencaId,
     bool snimiMesecnuUplatu = false,
   }) async {
     try {
@@ -245,7 +245,7 @@ class V3PlacanjeDialogHelper {
       if (vozac == null) throw 'Vozač nije ulogovan u V3';
 
       if (snimiMesecnuUplatu) {
-        await V3FinansijeService.sacuvajMesecnuOperativnuNaplatu(
+        await V3FinansijeService.sacuvajMesecnuNaplatu(
           putnikId: putnikId,
           naplacenoBy: vozac.id,
           iznos: rezultat.iznos,
@@ -253,12 +253,12 @@ class V3PlacanjeDialogHelper {
           godina: rezultat.godina,
         );
       } else {
-        final operativna = (operativnaId ?? '').trim();
-        if (operativna.isEmpty) {
-          throw 'Operativna vožnja nije pronađena za ovu naplatu.';
+        final referenca = (referencaId ?? '').trim();
+        if (referenca.isEmpty) {
+          throw 'Referenca vožnje nije pronađena za ovu naplatu.';
         }
-        await V3FinansijeService.sacuvajOperativnuNaplatu(
-          operativnaId: operativna,
+        await V3FinansijeService.sacuvajNaplatuPoReferenci(
+          referencaId: referenca,
           putnikId: putnikId,
           naplacenoBy: vozac.id,
           iznos: rezultat.iznos,

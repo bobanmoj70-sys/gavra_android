@@ -88,7 +88,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     if (_selectedVozacId == null) return;
 
     final vozacId = _selectedVozacId!;
-    final naplateRows = V3FinansijeService.getOperativnaNaplateZaVozacaDan(
+    final naplateRows = V3FinansijeService.getNaplataRowsZaVozacaDan(
       vozacId: vozacId,
       dan: _selectedDate,
     );
