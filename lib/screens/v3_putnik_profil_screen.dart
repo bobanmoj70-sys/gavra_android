@@ -95,8 +95,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         'v3_zahtevi',
         'v3_operativna_nedelja',
         'v3_app_settings',
-        'v3_trenutna_dodela',
-        'v3_trenutna_dodela_slot',
       ]),
       onData: (_) {
         if (mounted) _refresh();
