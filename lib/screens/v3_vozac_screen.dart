@@ -289,6 +289,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   void initState() {
     super.initState();
     _selectedDate = V3DanHelper.defaultWorkdayDate();
+    // Ako je tracking već aktivan (npr. vozač se vratio back), obnovi state
+    _isNavigating = V3VozacLocationTrackingService.instance.isRunning;
     _startTrenutnaDodelaRealtime();
     _initData();
   }
