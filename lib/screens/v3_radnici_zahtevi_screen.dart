@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_status_policy.dart';
-import '../widgets/v3_zahtev_timelapse_widget.dart';
 
 /// V3 ekran — Monitoring Radnika
-/// Prikaz i upravljanje zahtevima putnika tipa 'radnik'.
+/// Izvor istine: v3_operativna_nedelja.polazak_at (finalno postavljeno od crona).
 class V3RadniciZahteviScreen extends StatefulWidget {
   const V3RadniciZahteviScreen({super.key});
 
@@ -17,43 +14,88 @@ class V3RadniciZahteviScreen extends StatefulWidget {
   State<V3RadniciZahteviScreen> createState() => _V3RadniciZahteviScreenState();
 }
 
-class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
-  // ─── Helpers ───────────────────────────────────────────────────────────────
+// ─── Model ────────────────────────────────────────────────────────────────────
+enum _OpStatus { aktivno, pokupljeno, otkazano }
 
-  List<V3Zahtev> _getZahtevi() {
+class _OpRed {
+  _OpRed({
+    required this.putnikId,
+    required this.datum,
+    required this.grad,
+    required this.polazakAt,
+    required this.brojMesta,
+    required this.status,
+    required this.updatedAt,
+  });
+
+  final String putnikId;
+  final DateTime datum;
+  final String grad;
+  final String polazakAt;
+  final int brojMesta;
+  final _OpStatus status;
+  final DateTime updatedAt;
+
+  factory _OpRed.fromJson(Map<String, dynamic> r) {
+    final otkazano = r['otkazano_at'] != null;
+    final pokupljeno = !otkazano && r['pokupljen_at'] != null;
+    final status = otkazano
+        ? _OpStatus.otkazano
+        : pokupljeno
+            ? _OpStatus.pokupljeno
+            : _OpStatus.aktivno;
+
+    final datum = DateTime.tryParse(r['datum']?.toString() ?? '') ?? DateTime(2000);
+    final updatedAt = DateTime.tryParse(r['updated_at']?.toString() ?? '') ??
+        DateTime.tryParse(r['created_at']?.toString() ?? '') ??
+        DateTime(2000);
+
+    return _OpRed(
+      putnikId: r['created_by']?.toString() ?? '',
+      datum: datum,
+      grad: (r['grad']?.toString() ?? '').toUpperCase(),
+      polazakAt: r['polazak_at']?.toString() ?? '',
+      brojMesta: (r['broj_mesta'] as num?)?.toInt() ?? 1,
+      status: status,
+      updatedAt: updatedAt,
+    );
+  }
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
+  List<_OpRed> _getRedovi() {
     final rm = V3MasterRealtimeManager.instance;
     final radniciIds = rm.putniciCache.values
         .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'radnik')
         .map((p) => p['id'] as String)
         .toSet();
 
-    return rm.zahteviCache.values
+    return rm.operativnaNedeljaCache.values
         .where((r) {
           final putnikId = (r['created_by']?.toString() ?? '').trim();
-          if (putnikId.isEmpty) return false;
-          if (!radniciIds.contains(putnikId)) return false;
-          // Samo zahtevi koje je radnik sam poslao
-          final createdBy = (r['created_by']?.toString() ?? '').trim();
-          return createdBy == putnikId;
+          return putnikId.isNotEmpty && radniciIds.contains(putnikId);
         })
-        .map((r) => V3Zahtev.fromJson(r))
+        .map(_OpRed.fromJson)
         .toList()
-      ..sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+      ..sort((a, b) {
+        final datumCmp = b.datum.compareTo(a.datum);
+        if (datumCmp != 0) return datumCmp;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
   }
-
-  // ─── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
       builder: (context, _) {
-        final zahtevi = _getZahtevi();
+        final redovi = _getRedovi();
 
-        final brObrada = zahtevi.where((z) => V3StatusPolicy.isPending(z.status)).length;
-        final brOdobreno = zahtevi.where((z) => V3StatusPolicy.isApproved(z.status)).length;
-        final brOdbijeno = zahtevi.where((z) => V3StatusPolicy.isRejected(z.status)).length;
-        final brOtkazano = zahtevi.where((z) => V3StatusPolicy.isCanceled(z.status)).length;
+        final brAktivno = redovi.where((r) => r.status == _OpStatus.aktivno).length;
+        final brPokupljeno = redovi.where((r) => r.status == _OpStatus.pokupljeno).length;
+        final brOtkazano = redovi.where((r) => r.status == _OpStatus.otkazano).length;
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -70,16 +112,16 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
                   'Monitoring Radnika',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
-                if (brObrada > 0) ...[
+                if (brAktivno > 0) ...[
                   const SizedBox(width: 8),
                   V3ContainerUtils.badgeContainer(
-                    backgroundColor: Colors.lightBlueAccent.withValues(alpha: 0.3),
-                    borderColor: Colors.lightBlueAccent.withValues(alpha: 0.6),
+                    backgroundColor: Colors.greenAccent.withValues(alpha: 0.25),
+                    borderColor: Colors.greenAccent.withValues(alpha: 0.6),
                     borderWidth: 1,
                     borderRadius: 10,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     child: Text(
-                      '$brObrada',
+                      '$brAktivno',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),
@@ -92,7 +134,7 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // ── Summary badges ─────────────────────────────────
+                  // ── Summary badges ──────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                     child: Wrap(
@@ -100,25 +142,25 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
                       runSpacing: 6,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (brObrada > 0) _badge('🟡 $brObrada obrada', Colors.amber),
-                        if (brOdobreno > 0) _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
-                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
+                        if (brAktivno > 0) _badge('🟢 $brAktivno aktivno', Colors.greenAccent),
+                        if (brPokupljeno > 0) _badge('🚗 $brPokupljeno pokupljeno', Colors.lightBlueAccent),
                         if (brOtkazano > 0) _badge('⛔ $brOtkazano otkazano', Colors.orange),
                       ],
                     ),
                   ),
 
-                  // ── Lista ──────────────────────────────────────────
+                  // ── Lista ───────────────────────────────────────────
                   Expanded(
-                    child: zahtevi.isEmpty
+                    child: redovi.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.engineering_outlined, size: 56, color: Colors.white.withValues(alpha: 0.25)),
+                                Icon(Icons.engineering_outlined,
+                                    size: 56, color: Colors.white.withValues(alpha: 0.25)),
                                 const SizedBox(height: 14),
                                 Text(
-                                  'Nema zahteva radnika',
+                                  'Nema raspoređenih radnika',
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.6),
                                     fontSize: 16,
@@ -130,13 +172,8 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
                         : ListView.builder(
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                             physics: const BouncingScrollPhysics(),
-                            itemCount: zahtevi.length,
-                            itemBuilder: (_, i) {
-                              final z = zahtevi[i];
-                              return _ZahtevKarticaRadnik(
-                                zahtev: z,
-                              );
-                            },
+                            itemCount: redovi.length,
+                            itemBuilder: (_, i) => _OpKartica(red: redovi[i]),
                           ),
                   ),
                 ],
@@ -156,19 +193,18 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
       );
 }
 
-// ─── Zahtev kartica ───────────────────────────────────────────────────────────
-class _ZahtevKarticaRadnik extends StatelessWidget {
-  const _ZahtevKarticaRadnik({
-    required this.zahtev,
-  });
-
-  final V3Zahtev zahtev;
+// ─── Kartica ─────────────────────────────────────────────────────────────────
+class _OpKartica extends StatelessWidget {
+  const _OpKartica({required this.red});
+  final _OpRed red;
 
   @override
   Widget build(BuildContext context) {
-    final style = V3StatusPolicy.statusCardStyle(zahtev.status);
-    final borderColor = style.borderColor;
-    final statusLabel = style.label;
+    final (borderColor, statusLabel, icon) = switch (red.status) {
+      _OpStatus.aktivno => (Colors.greenAccent, 'aktivno', Icons.schedule),
+      _OpStatus.pokupljeno => (Colors.lightBlueAccent, 'pokupljeno', Icons.directions_car),
+      _OpStatus.otkazano => (Colors.orange, 'otkazano', Icons.cancel_outlined),
+    };
 
     return V3ContainerUtils.iconContainer(
       margin: const EdgeInsets.only(bottom: 8),
@@ -183,7 +219,7 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
             V3ContainerUtils.iconContainer(
               backgroundColor: borderColor.withValues(alpha: 0.15),
               borderRadius: 10,
-              icon: Icon(Icons.work_outline, color: borderColor, size: 22),
+              icon: Icon(icon, color: borderColor, size: 22),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -194,7 +230,7 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Radnik',
+                          V3PutnikService.getPutnikById(red.putnikId)?.imePrezime ?? 'Radnik',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -207,19 +243,18 @@ class _ZahtevKarticaRadnik extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${zahtev.grad} · ${zahtev.trazeniPolazakAt} · '
-                    '${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
+                    '${red.grad} · ${red.polazakAt} · '
+                    '${red.datum.day}.${red.datum.month}.${red.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
-                  if (zahtev.brojMesta > 1)
+                  if (red.brojMesta > 1)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
                       child: Text(
-                        '👥 ${zahtev.brojMesta} mesta',
+                        '👥 ${red.brojMesta} mesta',
                         style: const TextStyle(color: Colors.white38, fontSize: 12),
                       ),
                     ),
-                  V3ZahtevTimelapseWidget(zahtev: zahtev),
                 ],
               ),
             ),
