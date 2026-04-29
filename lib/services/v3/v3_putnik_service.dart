@@ -1,10 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import '../../globals.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
-import '../../models/v3_zahtev.dart';
-import '../../utils/v3_status_policy.dart';
+import '../../utils/v3_time_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
@@ -106,41 +104,44 @@ class V3PutnikService {
 
   /// Get active v3 passengers + their requests for today, filtered by city and time
   static List<Map<String, dynamic>> getKombinovaniPutniciFiltrirano({
+    required String datumIso,
     required String grad,
     required String vreme,
   }) {
-    final nowIso = V3DanHelper.todayIso();
     final rm = V3MasterRealtimeManager.instance;
+    final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
 
-    final rez = <Map<String, dynamic>>[];
-
-    final filtriraniZahtevi = rm.zahteviCache.values.where((z) {
-      final isDanas = z['datum'] == nowIso;
-      final statusAllowed = !V3StatusPolicy.isCanceledOrRejected(z['status']?.toString());
-      final isGrad = z['grad'] == grad;
-      final isVreme = z['trazeni_polazak_at'] == vreme;
-      return isDanas && statusAllowed && isGrad && isVreme;
-    }).toList();
-
-    for (final z in filtriraniZahtevi) {
-      final pid = z['created_by'];
-      final pData = rm.putniciCache[pid];
-      if (pData != null) {
-        rez.add({
-          'putnik': V3Putnik.fromJson(pData),
-          'zahtev': V3Zahtev.fromJson(z),
-        });
-      }
-    }
-
-    return rez;
+    return rm.operativnaNedeljaCache.values
+        .where((row) {
+          if ((row['datum']?.toString() ?? '') != datumIso) return false;
+          if ((row['grad']?.toString() ?? '') != grad) return false;
+          if (V3TimeUtils.normalizeToHHmm(row['polazak_at']) != vremeNorm) return false;
+          if (row['otkazano_at'] != null) return false;
+          if (row['created_by'] == null) return false;
+          return true;
+        })
+        .map((row) {
+          final pid = row['created_by'].toString();
+          final pData = rm.putniciCache[pid];
+          return {
+            'id': pid,
+            'putnik_id': pid,
+            'ime_prezime': pData?['ime'] ?? '',
+            'operativna_row': row,
+            if (pData != null) 'putnik': V3Putnik.fromJson(pData),
+          };
+        })
+        .where((m) => (m['ime_prezime'] as String).isNotEmpty)
+        .toList();
   }
 
   static Stream<List<Map<String, dynamic>>> streamKombinovaniPutniciFiltrirano({
+    required String datumIso,
     required String grad,
     required String vreme,
   }) {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
-        tables: ['v3_auth', 'v3_zahtevi'], build: () => getKombinovaniPutniciFiltrirano(grad: grad, vreme: vreme));
+        tables: ['v3_auth', 'v3_operativna_nedelja'],
+        build: () => getKombinovaniPutniciFiltrirano(datumIso: datumIso, grad: grad, vreme: vreme));
   }
 }

@@ -285,6 +285,19 @@ class _MesecCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          if (stats.cena > 0) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Obaveza', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(
+                  '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)} = ${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

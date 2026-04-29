@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -33,8 +34,19 @@ class V3RacunService {
 
   static final PdfColor _navyBlue = PdfColors.black;
 
-  static pw.Font get _regular => pw.Font.helvetica();
-  static pw.Font get _bold => pw.Font.helveticaBold();
+  static pw.Font? _regularFont;
+  static pw.Font? _boldFont;
+
+  static Future<void> _ensureFonts() async {
+    if (_regularFont != null) return;
+    final regData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final boldData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+    _regularFont = pw.Font.ttf(regData);
+    _boldFont = pw.Font.ttf(boldData);
+  }
+
+  static pw.Font get _regular => _regularFont ?? pw.Font.helvetica();
+  static pw.Font get _bold => _boldFont ?? pw.Font.helveticaBold();
 
   // ─── Sekvenca broja računa ────────────────────────────────────────
   /// Vraća sledeći broj računa u formatu `X/YYYY`.
@@ -65,6 +77,7 @@ class V3RacunService {
     required BuildContext context,
   }) async {
     try {
+      await _ensureFonts();
       final pdfBytes = await _kreirajRacunPDF(
         brojRacuna: brojRacuna,
         imePrezimeKupca: imePrezimeKupca,
@@ -96,13 +109,7 @@ class V3RacunService {
       return;
     }
     try {
-      final firmaMap = <String, Map<String, dynamic>>{};
-      for (final r in racuniPodaci) {
-        final putnikId = r['putnik_id']?.toString();
-        if (putnikId == null || putnikId.isEmpty) continue;
-        firmaMap[putnikId] = r;
-      }
-
+      await _ensureFonts();
       final pdf = pw.Document();
       final theme = pw.ThemeData.withFont(
         base: _regular,
@@ -112,8 +119,6 @@ class V3RacunService {
       );
 
       for (final r in racuniPodaci) {
-        final putnikId = r['putnik_id'].toString();
-        final firma = firmaMap[putnikId];
         final imePutnika = r['ime_prezime']?.toString() ?? '---';
         final brojVoznji = (r['broj_voznji'] as num?)?.toDouble() ?? 1.0;
         final cenaPoVoznji = (r['cena_po_voznji'] as num?)?.toDouble() ?? 0.0;
@@ -124,7 +129,7 @@ class V3RacunService {
             theme: theme,
             brojRacuna: brojRacuna,
             imePutnika: imePutnika,
-            firma: firma,
+            firma: r,
             brojVoznji: brojVoznji,
             cenaPoVoznji: cenaPoVoznji,
             datumPrometa: datumPrometa,

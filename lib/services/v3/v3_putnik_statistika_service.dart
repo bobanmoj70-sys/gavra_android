@@ -39,6 +39,8 @@ class V3PutnikMesecnaStatistika {
   final int neplaceno;
   final double naplacenoIznos;
   final double dugIznos;
+  final double cena;
+  final double ukupnaObaveza;
 
   const V3PutnikMesecnaStatistika({
     required this.godina,
@@ -51,6 +53,8 @@ class V3PutnikMesecnaStatistika {
     this.neplaceno = 0,
     this.naplacenoIznos = 0,
     this.dugIznos = 0,
+    this.cena = 0,
+    this.ukupnaObaveza = 0,
   });
 }
 
@@ -259,6 +263,8 @@ class V3PutnikStatistikaService {
       neplaceno: neplaceno,
       naplacenoIznos: naplacenoIznos,
       dugIznos: dugIznos,
+      cena: cena,
+      ukupnaObaveza: ukupnaObaveza,
     );
   }
 

@@ -656,157 +656,27 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     );
   }
 
-  // ─── Dialog: Račun za firme (B2B) ────────────────────────────────
+  // ─── Dialog: Račun za postojeću firmu (B2B) ──────────────────────
   void _showRacunZaFirmeDialog() {
-    // Pripremi listu putnika sa aktivnim terminima za odabrani dan/grad/vreme
-    final putnici = V3PutnikService.getKombinovaniPutniciFiltrirano(
-      grad: _selectedGrad,
-      vreme: _selectedVreme,
-    );
+    final firme = V3MasterRealtimeManager.instance.racuniCache.values.toList()
+      ..sort((a, b) => (a['firma_naziv'] ?? '').toString().compareTo((b['firma_naziv'] ?? '').toString()));
 
-    if (putnici.isEmpty) {
-      V3AppSnackBar.warning(context, '⚠️ Nema putnika za odabrani polazak');
+    if (firme.isEmpty) {
+      V3AppSnackBar.warning(context, '⚠️ Nema firmi u bazi (v3_racuni je prazan)');
       return;
     }
 
-    final selected = <String, bool>{};
-    final ceneController = <String, TextEditingController>{};
-    final brojVoznjiController = <String, TextEditingController>{};
-    bool controllersDisposed = false;
-
-    void disposeRacunControllers() {
-      if (controllersDisposed) return;
-      controllersDisposed = true;
-      for (final controller in ceneController.values) {
-        controller.dispose();
-      }
-      for (final controller in brojVoznjiController.values) {
-        controller.dispose();
-      }
-    }
-
-    for (final p in putnici) {
-      final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
-      selected[id] = false;
-      ceneController[id] = TextEditingController(text: '1500');
-      brojVoznjiController[id] = TextEditingController(text: '1');
-    }
-
-    DateTime datumPrometa = DateTime.now();
+    final putnici = V3MasterRealtimeManager.instance.putniciCache.values.toList()
+      ..sort((a, b) => (a['ime_prezime'] ?? '').toString().compareTo((b['ime_prezime'] ?? '').toString()));
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          backgroundColor: const Color(0xFF1A2035),
-          title: const Text('Račun za firme', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Datum prometa
-                Row(
-                  children: [
-                    const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
-                    const SizedBox(width: 8),
-                    V3ButtonUtils.textButton(
-                      onPressed: () async {
-                        final d = await showDatePicker(
-                          context: ctx,
-                          initialDate: datumPrometa,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (d != null) setS(() => datumPrometa = d);
-                      },
-                      text: '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
-                      foregroundColor: Colors.amber,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Lista putnika
-                ...putnici.map((p) {
-                  final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
-                  final ime = p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---';
-                  return CheckboxListTile(
-                    value: selected[id] ?? false,
-                    onChanged: (v) => setS(() => selected[id] = v ?? false),
-                    title: Text(ime, style: const TextStyle(color: Colors.white)),
-                    subtitle: selected[id] == true
-                        ? Row(children: [
-                            Expanded(
-                              child: V3InputUtils.numberField(
-                                controller: brojVoznjiController[id]!,
-                                label: 'Dana',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: V3InputUtils.numberField(
-                                controller: ceneController[id]!,
-                                label: 'Cena/dan',
-                              ),
-                            ),
-                          ])
-                        : null,
-                    activeColor: Colors.green,
-                  );
-                }),
-              ],
-            ),
-          ),
-          actions: [
-            V3ButtonUtils.textButton(
-              onPressed: () => Navigator.pop(ctx),
-              text: 'Otkaži',
-              foregroundColor: Colors.red,
-            ),
-            V3ButtonUtils.successButton(
-              onPressed: () async {
-                final odabrani = putnici.where((p) {
-                  final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
-                  return selected[id] == true;
-                }).toList();
-
-                if (odabrani.isEmpty) {
-                  V3AppSnackBar.warning(ctx, '⚠️ Odaberite barem jednog putnika');
-                  return;
-                }
-
-                Navigator.pop(ctx);
-
-                final racuniPodaci = <Map<String, dynamic>>[];
-                for (final p in odabrani) {
-                  final id = (p['id'] ?? p['putnik_id'] ?? '').toString();
-                  final ime = p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---';
-                  final cena = double.tryParse(ceneController[id]?.text ?? '') ?? 1500;
-                  final dana = double.tryParse(brojVoznjiController[id]?.text ?? '') ?? 1;
-                  final broj = await V3RacunService.getNextBrojRacuna();
-                  racuniPodaci.add({
-                    'putnik_id': id,
-                    'ime_prezime': ime,
-                    'cena_po_voznji': cena,
-                    'broj_voznji': dana,
-                    'broj_racuna': broj,
-                  });
-                }
-
-                if (!mounted) return;
-                await V3RacunService.stampajRacuneZaFirme(
-                  racuniPodaci: racuniPodaci,
-                  context: context,
-                  datumPrometa: datumPrometa,
-                );
-
-                disposeRacunControllers();
-              },
-              text: 'Štampaj',
-            ),
-          ],
-        ),
+      builder: (ctx) => _RacunFirmeDialogContent(
+        firme: firme,
+        putnici: putnici,
+        parentContext: context,
       ),
-    ).then((_) => disposeRacunControllers());
+    );
   }
 
   // ─── Dialog: Novi račun za fizičko lice ───────────────────────────
@@ -1476,6 +1346,362 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           vsVremena: _vsVremena,
         );
       },
+    );
+  }
+}
+
+// ─── Dijalog: Račun za firmu — sadržaj ────────────────────────────────────────
+class _RacunFirmeDialogContent extends StatefulWidget {
+  const _RacunFirmeDialogContent({
+    required this.firme,
+    required this.putnici,
+    required this.parentContext,
+  });
+
+  final List<Map<String, dynamic>> firme;
+  final List<Map<String, dynamic>> putnici;
+  final BuildContext parentContext;
+
+  @override
+  State<_RacunFirmeDialogContent> createState() => _RacunFirmeDialogContentState();
+}
+
+class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
+  late Map<String, dynamic>? selectedFirma;
+  late Map<String, dynamic>? selectedPutnik;
+  late final TextEditingController pretragaCtrl;
+  late final TextEditingController cenaCtrl;
+  late final TextEditingController danaCtrl;
+  DateTime datumPrometa = DateTime.now();
+
+  static const bg = Color(0xFF1A2035);
+  static const sectionBg = Color(0xFF232D45);
+  static const borderColor = Color(0xFF3A4A6B);
+
+  @override
+  void initState() {
+    super.initState();
+    selectedFirma = widget.firme.first;
+    selectedPutnik = widget.putnici.isNotEmpty ? widget.putnici.first : null;
+    pretragaCtrl = TextEditingController();
+    cenaCtrl = TextEditingController(text: '1500');
+    danaCtrl = TextEditingController(text: '22');
+  }
+
+  @override
+  void dispose() {
+    pretragaCtrl.dispose();
+    cenaCtrl.dispose();
+    danaCtrl.dispose();
+    super.dispose();
+  }
+
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text, style: const TextStyle(color: Colors.white54, fontSize: 11, letterSpacing: 0.5)),
+      );
+
+  Widget _divider() => const Divider(color: borderColor, height: 20);
+
+  @override
+  Widget build(BuildContext context) {
+    final filtrirani = pretragaCtrl.text.trim().isEmpty
+        ? widget.putnici
+        : widget.putnici
+            .where((p) =>
+                (p['ime_prezime'] ?? '').toString().toLowerCase().contains(pretragaCtrl.text.trim().toLowerCase()))
+            .toList();
+
+    final ukupno = (double.tryParse(cenaCtrl.text) ?? 0) * (double.tryParse(danaCtrl.text) ?? 0);
+
+    return AlertDialog(
+      backgroundColor: bg,
+      titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      title: const Row(children: [
+        Icon(Icons.receipt_long, color: Colors.green, size: 22),
+        SizedBox(width: 8),
+        Text('Račun — firma', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+      ]),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+
+              // ── FIRMA ──
+              _sectionLabel('FIRMA'),
+              Container(
+                decoration: BoxDecoration(
+                  color: sectionBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderColor),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedFirma?['id']?.toString(),
+                    dropdownColor: sectionBg,
+                    isExpanded: true,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    iconEnabledColor: Colors.white54,
+                    items: widget.firme
+                        .map((f) => DropdownMenuItem<String>(
+                              value: f['id']?.toString(),
+                              child: Text(f['firma_naziv']?.toString() ?? '---'),
+                            ))
+                        .toList(),
+                    onChanged: (id) =>
+                        setState(() => selectedFirma = widget.firme.firstWhere((f) => f['id']?.toString() == id)),
+                  ),
+                ),
+              ),
+              if (selectedFirma != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D1525),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: DefaultTextStyle(
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(selectedFirma!['firma_adresa']?.toString() ?? ''),
+                        const SizedBox(height: 2),
+                        Text('PIB: ${selectedFirma!['firma_pib'] ?? ''}   MB: ${selectedFirma!['firma_mb'] ?? ''}'),
+                        if ((selectedFirma!['firma_ziro'] ?? '').toString().isNotEmpty)
+                          Text('Žiro: ${selectedFirma!['firma_ziro']}'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              _divider(),
+
+              // ── PUTNIK ──
+              _sectionLabel('PUTNIK'),
+              TextField(
+                controller: pretragaCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Pretraži...',
+                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 18),
+                  suffixIcon: pretragaCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white38, size: 16),
+                          onPressed: () => setState(() => pretragaCtrl.clear()),
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: sectionBg,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: borderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.green),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 180),
+                decoration: BoxDecoration(
+                  color: sectionBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderColor),
+                ),
+                child: filtrirani.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text('Nema rezultata', style: TextStyle(color: Colors.white38)),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filtrirani.length,
+                        itemBuilder: (_, i) {
+                          final p = filtrirani[i];
+                          final isSelected = p['id']?.toString() == selectedPutnik?['id']?.toString();
+                          return InkWell(
+                            onTap: () => setState(() => selectedPutnik = p),
+                            child: Container(
+                              color: isSelected ? Colors.green.withOpacity(0.15) : Colors.transparent,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              child: Row(children: [
+                                Icon(
+                                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                                  color: isSelected ? Colors.green : Colors.white30,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    p['ime_prezime']?.toString() ?? '---',
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.white70,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  p['tip_putnika']?.toString() ?? '',
+                                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                                ),
+                              ]),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+
+              _divider(),
+
+              // ── IZNOS ──
+              _sectionLabel('IZNOS'),
+              Row(children: [
+                Expanded(
+                    child: V3InputUtils.numberField(
+                  controller: danaCtrl,
+                  label: 'Dana',
+                  onChanged: (_) => setState(() {}),
+                )),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: V3InputUtils.numberField(
+                  controller: cenaCtrl,
+                  label: 'Cena/dan',
+                  onChanged: (_) => setState(() {}),
+                )),
+              ]),
+
+              _divider(),
+
+              // ── DATUM ──
+              _sectionLabel('DATUM PROMETA'),
+              InkWell(
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: datumPrometa,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (d != null) setState(() => datumPrometa = d);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: sectionBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today, color: Colors.amber, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
+                      style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600),
+                    ),
+                  ]),
+                ),
+              ),
+
+              // ── SUMMARY ──
+              if (selectedPutnik != null && ukupno > 0) ...[
+                _divider(),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        selectedFirma?['firma_naziv']?.toString() ?? '',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      Text(
+                        selectedPutnik!['ime_prezime']?.toString() ?? '',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ukupno: ${ukupno.toStringAsFixed(2)} RSD',
+                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context),
+          text: 'Otkaži',
+          foregroundColor: Colors.red,
+        ),
+        V3ButtonUtils.successButton(
+          onPressed: () async {
+            final ime = (selectedPutnik?['ime_prezime']?.toString() ?? '').trim();
+            if (ime.isEmpty) {
+              V3AppSnackBar.warning(context, '⚠️ Odaberite putnika');
+              return;
+            }
+            final cena = double.tryParse(cenaCtrl.text.trim()) ?? 0;
+            final dana = double.tryParse(danaCtrl.text.trim()) ?? 1;
+            if (cena <= 0) {
+              V3AppSnackBar.warning(context, '⚠️ Unesite ispravnu cenu');
+              return;
+            }
+            Navigator.pop(context);
+            final broj = await V3RacunService.getNextBrojRacuna();
+            await V3RacunService.stampajRacuneZaFirme(
+              racuniPodaci: [
+                {
+                  'putnik_id': selectedPutnik?['id']?.toString() ?? '',
+                  'ime_prezime': ime,
+                  'cena_po_voznji': cena,
+                  'broj_voznji': dana,
+                  'broj_racuna': broj,
+                  'firma_naziv': selectedFirma?['firma_naziv'],
+                  'firma_adresa': selectedFirma?['firma_adresa'],
+                  'firma_pib': selectedFirma?['firma_pib'],
+                  'firma_mb': selectedFirma?['firma_mb'],
+                  'firma_ziro': selectedFirma?['firma_ziro'],
+                }
+              ],
+              context: widget.parentContext,
+              datumPrometa: datumPrometa,
+            );
+          },
+          text: 'Štampaj',
+        ),
+      ],
     );
   }
 }

@@ -431,6 +431,7 @@ class V3FinansijeService {
     required double iznos,
     required int mesec,
     required int godina,
+    int brojVoznji = 1,
   }) async {
     final lockKey = '$putnikId:$mesec:$godina';
     if (_mesecnaNaplataLocks.contains(lockKey)) {
@@ -447,12 +448,22 @@ class V3FinansijeService {
         'iznos': iznos,
         'putnik_v3_auth_id': putnikId,
         'naplaceno_by': naplacenoBy,
-        'broj_voznji': 1,
+        'broj_voznji': brojVoznji,
         'mesec': mesec,
         'godina': godina,
       };
 
-      final row = await _repo.insertReturning(payload);
+      final existing = await _repo.findMesecnuNaplatu(
+        putnikId: putnikId,
+        mesec: mesec,
+        godina: godina,
+      );
+      final Map<String, dynamic> row;
+      if (existing != null && existing['id'] != null) {
+        row = await _repo.updateByIdReturning(existing['id'] as String, payload);
+      } else {
+        row = await _repo.insertReturning(payload);
+      }
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
     } catch (e) {
       debugPrint('[V3FinansijeService] sacuvajMesecnuNaplatu error: $e');
@@ -502,12 +513,10 @@ class V3FinansijeService {
 
       final existing = await _repo.findNaplataByReferencaId(referencaId);
       if (existing != null && existing['id'] != null) {
-        final row = await _repo.updateByIdReturning(existing['id'] as String, payload);
-        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
-      } else {
-        final row = await _repo.insertReturning(payload);
-        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
+        payload['id'] = existing['id'];
       }
+      final row = await _repo.upsertByOperativnaId(payload);
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
     } catch (e) {
       debugPrint('[V3FinansijeService] sacuvajNaplatuPoReferenci error: $e');
       rethrow;

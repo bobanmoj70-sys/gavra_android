@@ -35,6 +35,7 @@ class V3PrintingService {
     try {
       // Putnici iz v3 cache-a za dati polazak
       final putnici = V3PutnikService.getKombinovaniPutniciFiltrirano(
+        datumIso: datumIso,
         grad: grad,
         vreme: vreme,
       );
@@ -57,10 +58,9 @@ class V3PrintingService {
       );
 
       final tempDir = await getTemporaryDirectory();
-      final fileName =
-          'Spisak_${dan}_${vreme}_${grad}_${DateFormat('dd_MM_yyyy').format(DateTime.now())}.pdf'
-              .replaceAll(' ', '_')
-              .replaceAll(':', '_');
+      final fileName = 'Spisak_${dan}_${vreme}_${grad}_${DateFormat('dd_MM_yyyy').format(DateTime.now())}.pdf'
+          .replaceAll(' ', '_')
+          .replaceAll(':', '_');
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(pdfBytes, flush: true);
       await OpenFilex.open(file.path);
@@ -80,12 +80,7 @@ class V3PrintingService {
   }) async {
     final pdf = pw.Document();
 
-    final imeList = putnici
-        .map((p) =>
-            p['ime_prezime']?.toString() ??
-            p['imePrezime']?.toString() ??
-            '---')
-        .toList()
+    final imeList = putnici.map((p) => p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---').toList()
       ..sort();
 
     final relacija = _relacija(grad, vreme);
@@ -111,8 +106,7 @@ class V3PrintingService {
               pw.Center(
                 child: pw.Text(
                   'Limo servis "Gavra 013"',
-                  style: pw.TextStyle(
-                      fontSize: 22, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
                 ),
               ),
               pw.SizedBox(height: 4),
@@ -140,8 +134,7 @@ class V3PrintingService {
               pw.Center(
                 child: pw.Text(
                   'SPISAK PUTNIKA',
-                  style: pw.TextStyle(
-                      fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
                 ),
               ),
               pw.SizedBox(height: 20),
@@ -150,9 +143,7 @@ class V3PrintingService {
               ...List.generate(
                 imeList.length > 8 ? imeList.length : 8,
                 (index) {
-                  final ime = index < imeList.length
-                      ? imeList[index]
-                      : '_____________________________________';
+                  final ime = index < imeList.length ? imeList[index] : '_____________________________________';
                   return pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 6),
                     child: pw.Row(
@@ -160,17 +151,14 @@ class V3PrintingService {
                       children: [
                         pw.SizedBox(
                           width: 30,
-                          child: pw.Text('${index + 1}.',
-                              style: const pw.TextStyle(fontSize: 12)),
+                          child: pw.Text('${index + 1}.', style: const pw.TextStyle(fontSize: 12)),
                         ),
                         pw.Expanded(
                           child: pw.Container(
                             decoration: const pw.BoxDecoration(
-                              border:
-                                  pw.Border(bottom: pw.BorderSide(width: 0.5)),
+                              border: pw.Border(bottom: pw.BorderSide(width: 0.5)),
                             ),
-                            child: pw.Text(ime,
-                                style: const pw.TextStyle(fontSize: 12)),
+                            child: pw.Text(ime, style: const pw.TextStyle(fontSize: 12)),
                           ),
                         ),
                       ],
@@ -194,8 +182,7 @@ class V3PrintingService {
                       child: pw.SizedBox(height: 40),
                     ),
                     pw.SizedBox(height: 4),
-                    pw.Text('Potpis narucioca',
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Potpis narucioca', style: const pw.TextStyle(fontSize: 10)),
                   ]),
                   // Pečat
                   pw.Container(
@@ -210,22 +197,12 @@ class V3PrintingService {
                         mainAxisAlignment: pw.MainAxisAlignment.center,
                         children: [
                           pw.Text('Bojan Gavrilovic',
-                              style: pw.TextStyle(
-                                  fontSize: 6,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.blue),
+                              style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: PdfColors.blue),
                               textAlign: pw.TextAlign.center),
-                          pw.Text('LIMO',
-                              style: pw.TextStyle(
-                                  fontSize: 5, color: PdfColors.blue)),
+                          pw.Text('LIMO', style: pw.TextStyle(fontSize: 5, color: PdfColors.blue)),
                           pw.Text('GAVRA 013',
-                              style: pw.TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.blue)),
-                          pw.Text('Bela Crkva',
-                              style: pw.TextStyle(
-                                  fontSize: 6, color: PdfColors.blue)),
+                              style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue)),
+                          pw.Text('Bela Crkva', style: pw.TextStyle(fontSize: 6, color: PdfColors.blue)),
                         ],
                       ),
                     ),
@@ -239,8 +216,7 @@ class V3PrintingService {
                       child: pw.SizedBox(height: 40),
                     ),
                     pw.SizedBox(height: 4),
-                    pw.Text('Potpis prevoznika',
-                        style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Potpis prevoznika', style: const pw.TextStyle(fontSize: 10)),
                   ]),
                 ],
               ),
@@ -267,8 +243,7 @@ class V3PrintingService {
           width: 120,
           child: pw.Text(label, style: const pw.TextStyle(fontSize: 12)),
         ),
-        pw.Text(value,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+        pw.Text(value, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
       ],
     );
   }

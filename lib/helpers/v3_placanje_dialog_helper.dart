@@ -10,10 +10,12 @@ class V3PlacanjeRezultat {
   final double iznos;
   final int mesec;
   final int godina;
+  final int brojVoznji;
   const V3PlacanjeRezultat({
     required this.iznos,
     required this.mesec,
     required this.godina,
+    this.brojVoznji = 1,
   });
 }
 
@@ -211,15 +213,24 @@ class V3PlacanjeDialogHelper {
     bool zakljucajIznos = false,
     String? referencaId,
     bool snimiMesecnuUplatu = false,
+    int brojVoznji = 1,
   }) async {
-    final rezultat = await _prikaziDialog(
+    final dialogRezultat = await _prikaziDialog(
       context: context,
       putnikId: putnikId,
       imePrezime: imePrezime,
       defaultCena: defaultCena,
       zakljucajIznos: zakljucajIznos,
     );
-    if (rezultat == null) return null;
+    if (dialogRezultat == null) return null;
+
+    // Ugradi brojVoznji u rezultat
+    final rezultat = V3PlacanjeRezultat(
+      iznos: dialogRezultat.iznos,
+      mesec: dialogRezultat.mesec,
+      godina: dialogRezultat.godina,
+      brojVoznji: brojVoznji,
+    );
 
     final ok = await _sacuvajPlacanje(
       context: context,
@@ -251,6 +262,7 @@ class V3PlacanjeDialogHelper {
           iznos: rezultat.iznos,
           mesec: rezultat.mesec,
           godina: rezultat.godina,
+          brojVoznji: rezultat.brojVoznji,
         );
       } else {
         final referenca = (referencaId ?? '').trim();

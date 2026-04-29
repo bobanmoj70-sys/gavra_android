@@ -270,6 +270,7 @@ class V3InputUtils {
     String? suffixText,
     String? Function(String?)? validator,
     bool isDense = false,
+    ValueChanged<String>? onChanged,
   }) {
     return formField(
       controller: controller,
@@ -280,6 +281,7 @@ class V3InputUtils {
       suffixText: suffixText,
       validator: validator,
       isDense: isDense,
+      onChanged: onChanged,
     );
   }
 

@@ -170,8 +170,20 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final tip = widget.putnik.tipPutnika;
     final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
     final isPoPokupljenjuModel = tip == 'dnevni' || tip == 'posiljka';
-    final defaultCena =
-        (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
+
+    double defaultCena;
+    if (isMesecniModel && widget.putnik.cenaPoDanu > 0) {
+      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+        putnikId: widget.putnik.id,
+        mesec: datumRef.month,
+        godina: datumRef.year,
+      );
+      final brVoznji = summary.brojVoznji > 0 ? summary.brojVoznji : 1;
+      defaultCena = widget.putnik.cenaPoDanu * brVoznji;
+    } else {
+      defaultCena = (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
+    }
     final zakljucajIznos = defaultCena > 0;
 
     if (isPoPokupljenjuModel && widget.entry == null) {
@@ -208,6 +220,17 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         if (confirmOverwrite != true) return;
       }
 
+      final brVoznjiParam = isMesecniModel && widget.putnik.cenaPoDanu > 0
+          ? () {
+              final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+              final s = V3FinansijeService.getNaplataSummaryForPutnik(
+                putnikId: widget.putnik.id,
+                mesec: datumRef.month,
+                godina: datumRef.year,
+              );
+              return s.brojVoznji > 0 ? s.brojVoznji : 1;
+            }()
+          : 1;
       final rezultat = await V3PlacanjeDialogHelper.naplati(
         context: context,
         putnikId: widget.putnik.id,
@@ -216,6 +239,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         zakljucajIznos: zakljucajIznos,
         referencaId: widget.entry?.id,
         snimiMesecnuUplatu: isMesecniModel,
+        brojVoznji: brVoznjiParam,
       );
       if (rezultat != null && mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');

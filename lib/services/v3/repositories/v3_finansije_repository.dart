@@ -5,6 +5,10 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload).select().single();
   }
 
+  Future<Map<String, dynamic>> upsertByOperativnaId(Map<String, dynamic> payload) {
+    return supabase.from('v3_finansije').upsert(payload, onConflict: 'operativna_id').select().single();
+  }
+
   Future<Map<String, dynamic>?> findNaplataByReferencaId(String referencaId) {
     return supabase
         .from('v3_finansije')
@@ -18,6 +22,24 @@ class V3FinansijeRepository {
 
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_finansije').update(payload).eq('id', id).select().single();
+  }
+
+  Future<Map<String, dynamic>?> findMesecnuNaplatu({
+    required String putnikId,
+    required int mesec,
+    required int godina,
+  }) {
+    return supabase
+        .from('v3_finansije')
+        .select('id')
+        .eq('tip', 'prihod')
+        .eq('kategorija', 'operativna_naplata')
+        .eq('putnik_v3_auth_id', putnikId)
+        .eq('mesec', mesec)
+        .eq('godina', godina)
+        .isFilter('operativna_id', null)
+        .limit(1)
+        .maybeSingle();
   }
 
   Future<Map<String, dynamic>?> getLatestByCriteria({
