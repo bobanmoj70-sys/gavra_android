@@ -5,10 +5,6 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload).select().single();
   }
 
-  Future<Map<String, dynamic>> upsertByOperativnaId(Map<String, dynamic> payload) {
-    return supabase.from('v3_finansije').upsert(payload, onConflict: 'operativna_id').select().single();
-  }
-
   Future<Map<String, dynamic>?> findNaplataByReferencaId(String referencaId) {
     return supabase
         .from('v3_finansije')
