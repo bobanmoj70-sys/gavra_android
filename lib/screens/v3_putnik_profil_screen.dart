@@ -297,7 +297,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
     final tipPutnika = (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
     if (validNovoVreme != null && tipPutnika == 'dnevni' && !_isDnevniDatumAllowed(datumPolaska)) {
-      final allowedLabel = _allowedDnevniDateLabel();
+      final allowedLabel = _allowedDnevniDateLabel(grad: grad);
       if (mounted) {
         V3AppSnackBar.info(context, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
       }
@@ -346,7 +346,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
 
     if (tipPutnika == 'dnevni' && !_isDnevniDatumAllowed(datumPolaska)) {
-      final allowedLabel = _allowedDnevniDateLabel();
+      final allowedLabel = _allowedDnevniDateLabel(grad: grad);
       if (mounted) {
         V3AppSnackBar.info(ctx, V3PutnikProfilMessages.dnevniDateWindowLocked(allowedLabel));
       }
@@ -623,9 +623,41 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     return target == tomorrow;
   }
 
-  String _allowedDnevniDateLabel({DateTime? now}) {
+  bool _isWorkingDateForGrad(DateTime date, String grad) {
+    if (date.weekday < DateTime.monday || date.weekday > DateTime.friday) {
+      return false;
+    }
+    final datumIso = V3DanHelper.toIsoDate(date);
+    return getNeradanDanRazlog(datumIso: datumIso, grad: grad.toLowerCase()) == null;
+  }
+
+  DateTime _nextWorkingDateForGrad(DateTime startDate, String grad) {
+    var candidate = DateTime(startDate.year, startDate.month, startDate.day);
+    for (var i = 0; i < 14; i++) {
+      if (_isWorkingDateForGrad(candidate, grad)) {
+        return candidate;
+      }
+      candidate = candidate.add(const Duration(days: 1));
+    }
+    return candidate;
+  }
+
+  String _allowedDnevniDateLabel({DateTime? now, required String grad}) {
     final current = now ?? DateTime.now();
-    return current.hour < 16 ? 'danas' : 'sutra';
+    final today = DateTime(current.year, current.month, current.day);
+    final baseDate = current.hour < 16 ? today : today.add(const Duration(days: 1));
+    final allowedDate = _nextWorkingDateForGrad(baseDate, grad);
+    final tomorrow = today.add(const Duration(days: 1));
+    final dateLabel = V3DanHelper.formatDatumPuni(allowedDate);
+
+    if (allowedDate == today) {
+      return 'danas ($dateLabel)';
+    }
+    if (allowedDate == tomorrow) {
+      return 'sutra ($dateLabel)';
+    }
+
+    return '${V3DanHelper.fullName(allowedDate)}, $dateLabel';
   }
 
   /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.
