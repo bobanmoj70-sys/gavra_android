@@ -512,11 +512,24 @@ class V3FinansijeService {
       };
 
       final existing = await _repo.findNaplataByReferencaId(referencaId);
-      final Map<String, dynamic> row;
+      Map<String, dynamic> row;
       if (existing != null && existing['id'] != null) {
         row = await _repo.updateByIdReturning(existing['id'] as String, payload);
       } else {
-        row = await _repo.insertReturning(payload);
+        try {
+          row = await _repo.insertReturning(payload);
+        } on Object catch (insertErr) {
+          final isConflict = insertErr.toString().contains('23505') || insertErr.toString().contains('duplicate key');
+          if (!isConflict) rethrow;
+          // Race condition — zapis se pojavio između find i insert, pokušaj update
+          debugPrint('[V3FinansijeService] sacuvajNaplatuPoReferenci: insert conflict, retry find+update');
+          final retry = await _repo.findNaplataByReferencaId(referencaId);
+          if (retry != null && retry['id'] != null) {
+            row = await _repo.updateByIdReturning(retry['id'] as String, payload);
+          } else {
+            rethrow;
+          }
+        }
       }
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
     } catch (e) {
