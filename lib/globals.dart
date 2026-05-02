@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/v2_config_service.dart'; // Centralizovani kredencijali
+import 'services/v3/v3_app_settings_state.dart';
 import 'utils/v3_dan_helper.dart';
 import 'utils/v3_date_utils.dart';
 
 export 'utils/v3_dan_helper.dart';
 
 void initDanHelperGlobals() {
-  V3DanHelper.getGlobalActiveWeekStart = () => aktivnaSedmicaStartNotifier.value;
-  V3DanHelper.getGlobalActiveWeekEnd = () => aktivnaSedmicaEndNotifier.value;
+  V3DanHelper.getGlobalActiveWeekStart = () => V3AppSettingsState.instance.activeWeekStartValue;
+  V3DanHelper.getGlobalActiveWeekEnd = () => V3AppSettingsState.instance.activeWeekEndValue;
 }
 
 /// Globalne varijable za Gavra Android
@@ -270,18 +271,10 @@ class V2UpdateInfo {
 /// Notifier koji se puni nakon provere verzije samo kada postoji obavezni update
 final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateInfo?>(null);
 
-/// AKTIVNA SEDMICA NOTIFIER - globalni izvor istine iz v3_app_settings
-/// Sadrži početak (Ponedeljak) aktivne sedmice (kako je zadato u bazi)
-/// Inicijalno ima lokalnu vrednost (početak tekuće sedmice) i zatim se
-/// prepisuje vrednošću iz baze kada stigne.
-final DateTime _initialActiveWeekStart = (() {
-  final today = DateTime.now();
-  final dateOnly = DateTime(today.year, today.month, today.day);
-  return dateOnly.subtract(Duration(days: dateOnly.weekday - DateTime.monday));
-})();
-final ValueNotifier<DateTime?> aktivnaSedmicaStartNotifier = ValueNotifier<DateTime?>(_initialActiveWeekStart);
+/// APP SETTINGS ACTIVE WEEK START NOTIFIER - runtime izvor istine iz `v3_app_settings`.
+/// Sadrži početak (Ponedeljak) aktivne sedmice isključivo iz baze.
+ValueNotifier<DateTime?> get appSettingsActiveWeekStartNotifier => V3AppSettingsState.instance.activeWeekStart;
 
-/// AKTIVNA SEDMICA END NOTIFIER - globalni kraj aktivne sedmice iz v3_app_settings
-/// Inicijalno je kraj lokalne aktivne sedmice i zatim se prepisuje iz baze.
-final ValueNotifier<DateTime?> aktivnaSedmicaEndNotifier =
-    ValueNotifier<DateTime?>(_initialActiveWeekStart.add(const Duration(days: 6)));
+/// APP SETTINGS ACTIVE WEEK END NOTIFIER - runtime izvor istine iz `v3_app_settings`.
+/// Sadrži kraj aktivne sedmice isključivo iz baze.
+ValueNotifier<DateTime?> get appSettingsActiveWeekEndNotifier => V3AppSettingsState.instance.activeWeekEnd;

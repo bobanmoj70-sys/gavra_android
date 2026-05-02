@@ -113,7 +113,7 @@ class V3DanHelper {
     final overrideStart = getGlobalActiveWeekStart?.call();
     if (overrideStart == null) {
       throw StateError(
-        'Aktivna sedmica nije podešena (aktivnaSedmicaStartNotifier je null).',
+        'Aktivna sedmica nije podešena (app settings active week start je null).',
       );
     }
 

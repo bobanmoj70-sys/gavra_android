@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../v3/v3_address_coordinate_service.dart';
+import '../v3/v3_app_settings_state.dart';
 import '../v3/v3_app_update_service.dart';
 import 'engine/v3_bootstrap_loader.dart';
 import 'engine/v3_cache_store.dart';
@@ -153,7 +154,9 @@ class V3MasterRealtimeManager {
     if (row.containsKey('active_week_start')) {
       final awsParsed = _tryParseDateTime(row['active_week_start']);
       if (awsParsed != null) {
-        aktivnaSedmicaStartNotifier.value = DateTime(awsParsed.year, awsParsed.month, awsParsed.day);
+        V3AppSettingsState.instance.setActiveWeekStart(
+          DateTime(awsParsed.year, awsParsed.month, awsParsed.day),
+        );
       } else {
         debugPrint('[V3MasterRealtimeManager] active_week_start je nevažeći, zadržavam postojeću vrednost.');
       }
@@ -162,7 +165,9 @@ class V3MasterRealtimeManager {
     if (row.containsKey('active_week_end')) {
       final aweParsed = _tryParseDateTime(row['active_week_end']);
       if (aweParsed != null) {
-        aktivnaSedmicaEndNotifier.value = DateTime(aweParsed.year, aweParsed.month, aweParsed.day);
+        V3AppSettingsState.instance.setActiveWeekEnd(
+          DateTime(aweParsed.year, aweParsed.month, aweParsed.day),
+        );
       } else {
         debugPrint('[V3MasterRealtimeManager] active_week_end je nevažeći, zadržavam postojeću vrednost.');
       }
