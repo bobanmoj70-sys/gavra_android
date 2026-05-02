@@ -93,12 +93,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     _isLongPressActive = false;
   }
 
-  V3NaplataInfo? _resolveNaplataInfo({required bool isMesecniModel}) {
+  V3NaplataInfo? _resolveNaplataInfo() {
     final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
     return V3FinansijeService.resolveNaplataInfo(
       putnikId: widget.putnik.id,
       datumRef: datumRef,
-      isMesecniModel: isMesecniModel,
     );
   }
 
@@ -273,8 +272,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = V3StatusPolicy.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
     final bool isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final tip = widget.putnik.tipPutnika;
-    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo();
     final bool isPlacen = naplataInfo?.isPaid ?? false;
 
     return V3StyleHelper.putnikCard(
@@ -289,8 +287,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status;
     final pokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final tip = widget.putnik.tipPutnika;
-    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo();
     final placen = naplataInfo?.isPaid ?? false;
     return V3StatusPolicy.textForCard(
       status: status,
@@ -332,8 +329,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final bool isOtkazan = widget.entry?.otkazanoAt != null;
     final tip = widget.putnik.tipPutnika;
-    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
+    final naplataInfo = _resolveNaplataInfo();
     final bool isPlacen = naplataInfo?.isPaid ?? false;
     final String? naplataById = naplataInfo?.paidBy;
     final DateTime? naplataAt = naplataInfo?.paidAt;

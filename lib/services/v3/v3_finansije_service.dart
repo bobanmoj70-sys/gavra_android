@@ -60,7 +60,7 @@ class V3FinansijeService {
   }
 
   static DateTime? _naplacenoAt(Map<String, dynamic> row) {
-    return V3DateUtils.parseTs(row['naplaceno_at']?.toString()) ?? V3DateUtils.parseTs(row['created_at']?.toString());
+    return V3DateUtils.parseTs(row['created_at']?.toString());
   }
 
   static void _sortByCreatedAtDesc(List<Map<String, dynamic>> rows) {
@@ -132,7 +132,6 @@ class V3FinansijeService {
   static V3NaplataInfo? resolveNaplataInfo({
     required String putnikId,
     required DateTime datumRef,
-    required bool isMesecniModel,
   }) {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return null;
