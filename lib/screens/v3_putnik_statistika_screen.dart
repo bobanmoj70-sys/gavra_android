@@ -4,7 +4,6 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_style_helper.dart';
 
 class V3PutnikStatistikaScreen extends StatefulWidget {
@@ -24,19 +23,6 @@ class V3PutnikStatistikaScreen extends StatefulWidget {
 }
 
 class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
-  late V3ObracunPeriod _selectedPeriod;
-  late int _selectedMesec;
-  late int _selectedGodina;
-
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _selectedPeriod = V3ObracunPeriod.tekuciMesec;
-    _selectedMesec = now.month;
-    _selectedGodina = now.year;
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
@@ -45,12 +31,10 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
       builder: (context, _) {
         final godina = DateTime.now().year;
         final meseci = V3PutnikStatistikaService.getZaGodinu(widget.putnikId, godina: godina);
-        final summary = V3PutnikStatistikaService.getObracunSummary(
-          putnikId: widget.putnikId,
-          period: _selectedPeriod,
-          godina: _selectedGodina,
-          mesec: _selectedMesec,
-        );
+        final ukupnoVoznji = meseci.fold<int>(0, (sum, mesec) => sum + mesec.ukupnoVoznji);
+        final ukupnaObaveza = meseci.fold<double>(0.0, (sum, mesec) => sum + mesec.ukupnaObaveza);
+        final ukupnoPlaceno = meseci.fold<double>(0.0, (sum, mesec) => sum + mesec.naplacenoIznos);
+        final ukupanDug = meseci.fold<double>(0.0, (sum, mesec) => sum + mesec.dugIznos);
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -105,114 +89,16 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           const Text(
-                            'Obračun broja vožnji',
+                            'Godišnji obračun',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 10),
-                          DropdownButtonFormField<V3ObracunPeriod>(
-                            value: _selectedPeriod,
-                            dropdownColor: const Color(0xFF1A2035),
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              labelText: 'Period',
-                              labelStyle: TextStyle(color: V3StyleHelper.whiteAlpha65),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(color: V3StyleHelper.whiteAlpha15),
-                              ),
-                              focusedBorder: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(10)),
-                                borderSide: BorderSide(color: Colors.white54),
-                              ),
-                            ),
-                            items: const [
-                              DropdownMenuItem(value: V3ObracunPeriod.tekuciMesec, child: Text('Tekući mesec')),
-                              DropdownMenuItem(value: V3ObracunPeriod.izabraniMesec, child: Text('Izabrani mesec')),
-                              DropdownMenuItem(value: V3ObracunPeriod.ukupno, child: Text('Ukupno')),
-                            ],
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() => _selectedPeriod = value);
-                            },
-                          ),
-                          if (_selectedPeriod == V3ObracunPeriod.izabraniMesec) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<int>(
-                                    value: _selectedMesec,
-                                    dropdownColor: const Color(0xFF1A2035),
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      labelText: 'Mesec',
-                                      labelStyle: TextStyle(color: V3StyleHelper.whiteAlpha65),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(color: V3StyleHelper.whiteAlpha15),
-                                      ),
-                                      focusedBorder: const OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                                        borderSide: BorderSide(color: Colors.white54),
-                                      ),
-                                    ),
-                                    items: List.generate(
-                                      12,
-                                      (index) => DropdownMenuItem<int>(
-                                        value: index + 1,
-                                        child: Text(V3DateUtils.mesecNaziv(index + 1)),
-                                      ),
-                                    ),
-                                    onChanged: (value) {
-                                      if (value == null) return;
-                                      setState(() => _selectedMesec = value);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: DropdownButtonFormField<int>(
-                                    value: _selectedGodina,
-                                    dropdownColor: const Color(0xFF1A2035),
-                                    style: const TextStyle(color: Colors.white),
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      labelText: 'Godina',
-                                      labelStyle: TextStyle(color: V3StyleHelper.whiteAlpha65),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: BorderSide(color: V3StyleHelper.whiteAlpha15),
-                                      ),
-                                      focusedBorder: const OutlineInputBorder(
-                                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                                        borderSide: BorderSide(color: Colors.white54),
-                                      ),
-                                    ),
-                                    items: List.generate(
-                                      7,
-                                      (index) {
-                                        final year = DateTime.now().year - 3 + index;
-                                        return DropdownMenuItem<int>(value: year, child: Text('$year'));
-                                      },
-                                    ),
-                                    onChanged: (value) {
-                                      if (value == null) return;
-                                      setState(() => _selectedGodina = value);
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          _summaryRow('Period', summary.periodLabel, Colors.white),
-                          _summaryRow('Ukupan broj vožnji', '${summary.ukupnoVoznji}', Colors.greenAccent),
-                          _summaryRow('Cena', '${summary.cena.toStringAsFixed(0)} RSD', Colors.lightBlueAccent),
-                          _summaryRow(
-                              'Ukupna obaveza', '${summary.ukupanIznos.toStringAsFixed(0)} RSD', Colors.amberAccent),
+                          _summaryRow('Godina', '$godina', Colors.white),
+                          _summaryRow('Ukupan broj vožnji', '$ukupnoVoznji', Colors.greenAccent),
+                          _summaryRow('Ukupna obaveza', '${ukupnaObaveza.toStringAsFixed(0)} RSD', Colors.amberAccent),
+                          _summaryRow('Ukupno plaćeno', '${ukupnoPlaceno.toStringAsFixed(0)} RSD', Colors.greenAccent),
+                          _summaryRow('Ukupan dug', '${ukupanDug.toStringAsFixed(0)} RSD', Colors.orangeAccent),
                         ],
                       ),
                     ),
