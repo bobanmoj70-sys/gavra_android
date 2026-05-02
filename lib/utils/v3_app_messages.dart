@@ -14,7 +14,7 @@ class V3PutnikProfilMessages {
   static String nonWorkingDay(String datumIso, String reason) => '⛔ Neradan dan ($datumIso). Razlog: $reason';
 
   static String dnevniDateWindowLocked(String allowedLabel) =>
-      'ℹ️ Zbog ograničenog broja mesta, za vaš tip putnika trenutno je moguće zakazivanje samo za $allowedLabel. Hvala na razumevanju.';
+      '📅 Zakazivanje za dnevne putnike je moguće samo za $allowedLabel.\nPre 16:00 zakazuje se za tekući dan, posle 16:00 – za sledeći radni dan.';
 
   static String schedulingLocked(String vreme, String unlockStr) =>
       '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu od 03:00 ($unlockStr).';

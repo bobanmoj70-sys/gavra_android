@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
@@ -165,6 +166,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(_writePushTokenOnLogin(v3AuthId: restoredVozac.id, isVozac: true));
+      unawaited(V3AppUpdateService.refreshUpdateInfo()
+          .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
 
       V3NavigationUtils.pushReplacement(
         context,
@@ -423,6 +426,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3ClosedAuthService.clearManualSmsPutnikPhone();
       await V3RolePermissionService.ensureDriverPermissionsOnLogin();
       unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
+      unawaited(V3AppUpdateService.refreshUpdateInfo()
+          .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
       if (!mounted) return;
       V3NavigationUtils.pushReplacement(
         context,

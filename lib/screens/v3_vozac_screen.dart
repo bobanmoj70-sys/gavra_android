@@ -766,8 +766,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   }
 
   Future<({List<V3RouteWaypoint> waypoints, int unresolvedCount})> _resolveWaypointsForCurrentOrder() async {
-    debugPrint('[WAYPOINTS] resolving ${_mojiPutnici.length} putnika...');
-    final waypointTasks = _mojiPutnici.map((item) async {
+    final preostali = _mojiPutnici.where((item) => !_isPutnikEntryCompleted(item)).toList(growable: false);
+    debugPrint('[WAYPOINTS] resolving ${preostali.length} preostalih (od ${_mojiPutnici.length} ukupno)...');
+    final waypointTasks = preostali.map((item) async {
       final grad = (item.entry?.grad ?? _selectedGrad).trim().toUpperCase();
       final waypoint = await _routeWaypointResolverService.resolveWaypointForPutnikModel(
         putnik: item.putnik,
