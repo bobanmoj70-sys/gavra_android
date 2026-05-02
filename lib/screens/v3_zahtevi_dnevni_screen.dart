@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_import
+
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
@@ -25,6 +27,60 @@ class V3ZahteviDnevniScreen extends StatefulWidget {
 }
 
 class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
+  static const String _sistemAkterId = '4feffa3a-8b4d-4e28-9b8b-c0af3c48ea4e';
+
+  bool _isSistemAkter(String? akterId, Map<String, Map<String, dynamic>> authCache) {
+    final id = (akterId ?? '').trim();
+    if (id.isEmpty) return false;
+    if (id == _sistemAkterId) return true;
+    final tip = (authCache[id]?['tip']?.toString() ?? '').trim().toLowerCase();
+    return tip == 'sistem';
+  }
+
+  List<V3Zahtev> _getMonitoringZahtevi() {
+    final rm = V3MasterRealtimeManager.instance;
+    const tip = 'dnevni';
+
+    final putniciIds = rm.putniciCache.values
+        .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == tip)
+        .map((p) => p['id'] as String)
+        .toSet();
+
+    return rm.zahteviCache.values
+        .where((r) {
+          final putnikId = (r['created_by']?.toString() ?? '').trim();
+          if (putnikId.isEmpty) return false;
+          if (!putniciIds.contains(putnikId)) return false;
+
+          final createdBy = (r['created_by']?.toString() ?? '').trim();
+          if (createdBy != putnikId) return false;
+
+          final datumRaw = r['datum']?.toString();
+          final datum = datumRaw != null ? DateTime.tryParse(datumRaw) : null;
+          if (datum == null) return false;
+          if (!V3DanHelper.isInSchedulingWeek(datum)) return false;
+
+          final status = (r['status']?.toString() ?? '').trim().toLowerCase();
+          if (V3StatusPolicy.isCanceled(status)) {
+            final updatedBy = (r['updated_by']?.toString() ?? '').trim();
+            if (updatedBy.isEmpty) return false;
+            if (updatedBy != putnikId && !_isSistemAkter(updatedBy, rm.authCache)) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .map((r) => V3Zahtev.fromJson(r))
+        .toList()
+      ..sort((a, b) {
+        final aCreated = a.createdAt ?? DateTime(2000);
+        final bCreated = b.createdAt ?? DateTime(2000);
+        final createdCmp = bCreated.compareTo(aCreated);
+        if (createdCmp != 0) return createdCmp;
+        return b.datum.compareTo(a.datum);
+      });
+  }
   // ─── data helpers ────────────────────────────────────────────────
 
   List<V3Zahtev> _getZahtevi(String status) {
@@ -91,164 +147,67 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return V3ContainerUtils.backgroundContainer(
-      gradient: Theme.of(context).backgroundGradient,
-      child: Scaffold(
+    final zahtevi = _getMonitoringZahtevi();
+    final obrada =
+        zahtevi.where((z) => V3StatusPolicy.isPending(z.status) || V3StatusPolicy.isOfferLike(z.status)).toList();
+    final odobreno = zahtevi.where((z) => V3StatusPolicy.isApproved(z.status)).toList();
+    final odbijeno = zahtevi.where((z) => V3StatusPolicy.isRejected(z.status)).toList();
+    final otkazano = zahtevi.where((z) => V3StatusPolicy.isCanceled(z.status)).toList();
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        body: StreamBuilder<int>(
-          stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_zahtevi', 'v3_auth']),
-          builder: (context, __) {
-            final obrada = _getZahtevi('obrada');
-            final odobreno = _getZahtevi('odobreno');
-            final odbijeno = _getZahtevi('odbijeno');
-            final otkazano = _getZahtevi('otkazano');
-
-            return CustomScrollView(
-              slivers: [
-                // ── AppBar ────────────────────────────────────────
-                SliverAppBar(
-                  backgroundColor: Colors.transparent,
-                  expandedHeight: V3ContainerUtils.responsiveHeight(context, 110),
-                  floating: true,
-                  snap: true,
-                  automaticallyImplyLeading: false,
-                  flexibleSpace: FlexibleSpaceBar(
-                    background: V3ContainerUtils.styledContainer(
-                      backgroundColor: Colors.black.withValues(alpha: 0.35),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(24),
-                        bottomRight: Radius.circular(24),
+        elevation: 0,
+        centerTitle: true,
+        foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Monitoring zahteva',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      body: V3ContainerUtils.backgroundContainer(
+        gradient: Theme.of(context).backgroundGradient,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if (obrada.isNotEmpty) _StatusBadge('🟡 ${obrada.length} obrada', Colors.amber),
+                    if (odobreno.isNotEmpty) _StatusBadge('🟢 ${odobreno.length} odobreno', Colors.greenAccent),
+                    if (odbijeno.isNotEmpty) _StatusBadge('🔴 ${odbijeno.length} odbijeno', Colors.redAccent),
+                    if (otkazano.isNotEmpty) _StatusBadge('⛔ ${otkazano.length} otkazano', Colors.orange),
+                    if (zahtevi.isEmpty)
+                      Text(
+                        'Nema zahteva',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                       ),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.13),
-                          width: 1.5,
-                        ),
-                      ),
-                      padding: EdgeInsets.zero,
-                      child: SafeArea(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Zahtevi dnevnih putnika',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 6,
-                              children: [
-                                if (obrada.isNotEmpty) _StatusBadge('⏰ ${obrada.length} obrada', Colors.orange),
-                                if (odobreno.isNotEmpty) _StatusBadge('✅ ${odobreno.length} odobreno', Colors.green),
-                                if (odbijeno.isNotEmpty) _StatusBadge('❌ ${odbijeno.length} odbijeno', Colors.red),
-                                if (otkazano.isNotEmpty)
-                                  _StatusBadge('🚫 ${otkazano.length} otkazano', Colors.red.shade300),
-                                if (obrada.isEmpty && odobreno.isEmpty && odbijeno.isEmpty && otkazano.isEmpty)
-                                  Text(
-                                    'Nema zahteva',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.5),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-
-                // ── Sekcija: NA ČEKANJU ───────────────────────────
-                if (obrada.isNotEmpty) ...[
-                  _sectionHeader('⏰ Na čekanju', Colors.orange, obrada.length),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (ctx, i) => _ZahtevCard(
-                        zahtev: obrada[i],
-                        putnik: V3PutnikService.getPutnikById(obrada[i].putnikId),
-                        onOdobri: () => _updateStatus(obrada[i].id, 'odobreno'),
-                        onOdbij: () => _updateStatus(obrada[i].id, 'otkazano'),
+              ),
+              Expanded(
+                child: zahtevi.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nema zahteva',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: zahtevi.length,
+                        itemBuilder: (_, i) => _MonitoringCardDaily(zahtev: zahtevi[i]),
                       ),
-                      childCount: obrada.length,
-                    ),
-                  ),
-                ],
-
-                // ── Sekcija: ODOBRENO ─────────────────────────────
-                if (odobreno.isNotEmpty) ...[
-                  _sectionHeader('✅ Odobreno', Colors.green, odobreno.length),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (ctx, i) => _ZahtevCard(
-                        zahtev: odobreno[i],
-                        putnik: V3PutnikService.getPutnikById(odobreno[i].putnikId),
-                        onOdobri: null,
-                        onOdbij: () => _updateStatus(odobreno[i].id, 'otkazano'),
-                      ),
-                      childCount: odobreno.length,
-                    ),
-                  ),
-                ],
-
-                // ── Sekcija: ODBIJENO / OTKAZANO ─────────────────
-                if (odbijeno.isNotEmpty || otkazano.isNotEmpty) ...[
-                  _sectionHeader(
-                    '❌ Odbijeno / Otkazano',
-                    Colors.red,
-                    odbijeno.length + otkazano.length,
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (ctx, i) {
-                        final all = [...odbijeno, ...otkazano];
-                        return _ZahtevCard(
-                          zahtev: all[i],
-                          putnik: V3PutnikService.getPutnikById(all[i].putnikId),
-                          onOdobri: () => _updateStatus(all[i].id, 'odobreno'),
-                          onOdbij: null,
-                        );
-                      },
-                      childCount: odbijeno.length + otkazano.length,
-                    ),
-                  ),
-                ],
-
-                // ── Prazan state ──────────────────────────────────
-                if (obrada.isEmpty && odobreno.isEmpty && odbijeno.isEmpty && otkazano.isEmpty)
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.inbox_outlined,
-                            color: Colors.white.withValues(alpha: 0.3),
-                            size: 64,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Nema zahteva',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -287,6 +246,74 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                 style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MonitoringCardDaily extends StatelessWidget {
+  const _MonitoringCardDaily({required this.zahtev});
+
+  final V3Zahtev zahtev;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = V3StatusPolicy.statusCardStyle(zahtev.status);
+    final borderColor = style.borderColor;
+    final statusLabel = style.label;
+    final putnik = V3PutnikService.getPutnikById(zahtev.putnikId);
+
+    return V3ContainerUtils.iconContainer(
+      margin: const EdgeInsets.only(bottom: 8),
+      backgroundColor: borderColor.withValues(alpha: 0.06),
+      borderRadiusGeometry: BorderRadius.circular(14),
+      border: Border.all(color: borderColor.withValues(alpha: 0.45), width: 1.5),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            V3ContainerUtils.iconContainer(
+              backgroundColor: borderColor.withValues(alpha: 0.15),
+              borderRadius: 10,
+              icon: Icon(Icons.monitor_heart_outlined, color: borderColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          putnik?.imePrezime ?? 'Putnik',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
+                      Text(statusLabel, style: TextStyle(color: borderColor, fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${zahtev.grad} · ${V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  if (zahtev.brojMesta > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        '👥 ${zahtev.brojMesta} mesta',
+                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      ),
+                    ),
+                  V3ZahtevTimelapseWidget(zahtev: zahtev),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
           ],
         ),
       ),
