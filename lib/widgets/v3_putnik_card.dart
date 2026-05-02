@@ -170,19 +170,75 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     return null;
   }
 
-  Future<void> _handleCall() async {
-    final tel = _firstValidTelefon();
-    if (tel == null || tel.isEmpty) return;
+  void _pokaziKontakt(BuildContext context) {
+    final tel1 = (widget.putnik.telefon1 ?? '').trim();
+    final tel2 = (widget.putnik.telefon2 ?? '').trim();
+    V3DialogHelper.showBottomSheet<void>(
+      context: context,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Kontaktiraj ${widget.putnik.imePrezime}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              if (tel1.isNotEmpty) ..._kontaktRed(context, tel1),
+              if (tel2.isNotEmpty) ..._kontaktRed(context, tel2),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Otkaži'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    // Za widgets koristimo direktnu implementaciju sa basic error handling
-    final uri = Uri(scheme: 'tel', path: tel);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('[V3PutnikCard._handleCall] Greška: $e');
-    }
+  List<Widget> _kontaktRed(BuildContext context, String broj) {
+    return [
+      const Divider(),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(broj, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+      ),
+      Row(
+        children: [
+          Expanded(
+            child: ListTile(
+              leading: const Icon(Icons.phone, color: Colors.green),
+              title: const Text('Pozovi'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () async {
+                Navigator.pop(context);
+                final uri = Uri(scheme: 'tel', path: broj);
+                if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
+          ),
+          Expanded(
+            child: ListTile(
+              leading: const Icon(Icons.sms, color: Colors.blueAccent),
+              title: const Text('SMS'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () async {
+                Navigator.pop(context);
+                final uri = Uri(scheme: 'sms', path: broj);
+                if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 
   Future<void> _handlePayment() async {
@@ -501,7 +557,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                     runSpacing: 4,
                                     children: [
                                       if (widget.onDodeliVozaca != null) iconBtn('👤', widget.onDodeliVozaca!),
-                                      if (hasTel) iconBtn('📞', _handleCall),
+                                      if (hasTel) iconBtn('📞', () => _pokaziKontakt(context)),
                                       if (!isOtkazan) iconBtn('💰', _handlePayment),
                                       if (!isOtkazan) iconBtn('❌', _handleOtkazivanje),
                                     ],
