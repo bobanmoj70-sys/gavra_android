@@ -79,29 +79,6 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    V3ContainerUtils.styledContainer(
-                      padding: const EdgeInsets.all(14),
-                      backgroundColor: V3StyleHelper.whiteAlpha06,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: V3StyleHelper.whiteAlpha13),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Godišnji obračun',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 10),
-                          _summaryRow('Godina', '$godina', Colors.white),
-                          _summaryRow('Ukupan broj vožnji', '$ukupnoVoznji', Colors.greenAccent),
-                          _summaryRow('Ukupna obaveza', '${ukupnaObaveza.toStringAsFixed(0)} RSD', Colors.amberAccent),
-                          _summaryRow('Ukupno plaćeno', '${ukupnoPlaceno.toStringAsFixed(0)} RSD', Colors.greenAccent),
-                          _summaryRow('Ukupan dug', '${ukupanDug.toStringAsFixed(0)} RSD', Colors.orangeAccent),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 12),
                     ...meseci.map((m) => _MesecCard(stats: m)),
                   ],
@@ -120,25 +97,6 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
     if (normalized == 'ucenik') return 'Tip: Učenik (model po danu)';
     if (normalized == 'posiljka') return 'Tip: Pošiljka (model po vožnji)';
     return 'Tip: Dnevni (model po vožnji)';
-  }
-
-  Widget _summaryRow(String label, String value, Color valueColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13),
-          ),
-          Text(
-            value,
-            style: TextStyle(color: valueColor, fontSize: 14, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
   }
 }
 
