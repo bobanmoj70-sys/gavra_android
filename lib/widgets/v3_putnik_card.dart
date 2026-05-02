@@ -99,7 +99,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       putnikId: widget.putnik.id,
       datumRef: datumRef,
       isMesecniModel: isMesecniModel,
-      referencaId: widget.entry?.id,
     );
   }
 
@@ -147,7 +146,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         putnikId: widget.putnik.id,
         tipPutnika: widget.putnik.tipPutnika,
         datum: widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now(),
-        referencaId: widget.entry?.id,
         evidentiraoBy: currentVozac.id,
       );
       await V2HapticService.putnikPokupljen();
@@ -212,7 +210,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         imePrezime: widget.putnik.imePrezime,
         defaultCena: defaultCena,
         zakljucajIznos: zakljucajIznos,
-        referencaId: widget.entry?.id,
         snimiMesecnuUplatu: isPoDanuModel,
         brojVoznji: defaults.brojVoznji,
       );

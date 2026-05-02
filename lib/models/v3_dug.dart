@@ -1,6 +1,5 @@
 class V3Dug {
   final String id;
-  final String? referencaId;
   final String putnikId;
   final String imePrezime;
   final String tipPutnika;
@@ -26,7 +25,6 @@ class V3Dug {
 
   V3Dug({
     required this.id,
-    this.referencaId,
     required this.putnikId,
     required this.imePrezime,
     required this.tipPutnika,

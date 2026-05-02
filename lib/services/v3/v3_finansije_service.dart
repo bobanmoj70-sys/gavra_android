@@ -133,7 +133,6 @@ class V3FinansijeService {
     required String putnikId,
     required DateTime datumRef,
     required bool isMesecniModel,
-    String? referencaId,
   }) {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return null;
@@ -242,7 +241,6 @@ class V3FinansijeService {
     required String putnikId,
     required String tipPutnika,
     required DateTime datum,
-    String? referencaId,
     String? evidentiraoBy,
   }) async {
     final safePutnikId = putnikId.trim();
@@ -413,7 +411,6 @@ class V3FinansijeService {
         dugovi.add(
           V3Dug(
             id: '$putnikId:$godina:$mesec',
-            referencaId: null,
             putnikId: putnikId,
             imePrezime: putnikData['ime_prezime'] as String? ?? 'Nepoznato',
             tipPutnika: tip,
@@ -492,8 +489,7 @@ class V3FinansijeService {
     }
   }
 
-  static Future<void> sacuvajNaplatuPoReferenci({
-    required String referencaId,
+  static Future<void> sacuvajNaplatuZaMesec({
     required String putnikId,
     required String naplacenoBy,
     required double iznos,
@@ -508,7 +504,7 @@ class V3FinansijeService {
 
     final lockKey = 'ref:${putnikId.trim()}:${datum.month}:${datum.year}';
     if (_naplataPoReferenciLocks.contains(lockKey)) {
-      debugPrint('[V3FinansijeService] sacuvajNaplatuPoReferenci skipped (lock): $lockKey');
+      debugPrint('[V3FinansijeService] sacuvajNaplatuZaMesec skipped (lock): $lockKey');
       return;
     }
     _naplataPoReferenciLocks.add(lockKey);
@@ -541,7 +537,7 @@ class V3FinansijeService {
           final isConflict = insertErr.toString().contains('23505') || insertErr.toString().contains('duplicate key');
           if (!isConflict) rethrow;
           // Race condition — zapis se pojavio između find i insert, pokušaj update
-          debugPrint('[V3FinansijeService] sacuvajNaplatuPoReferenci: insert conflict, retry find+update');
+          debugPrint('[V3FinansijeService] sacuvajNaplatuZaMesec: insert conflict, retry find+update');
           final retry = await _repo.findMesecnuNaplatu(
             putnikId: putnikId,
             mesec: datum.month,
@@ -556,7 +552,7 @@ class V3FinansijeService {
       }
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
     } catch (e) {
-      debugPrint('[V3FinansijeService] sacuvajNaplatuPoReferenci error: $e');
+      debugPrint('[V3FinansijeService] sacuvajNaplatuZaMesec error: $e');
       rethrow;
     } finally {
       _naplataPoReferenciLocks.remove(lockKey);

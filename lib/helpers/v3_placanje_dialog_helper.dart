@@ -211,7 +211,6 @@ class V3PlacanjeDialogHelper {
     required String imePrezime,
     required double defaultCena,
     bool zakljucajIznos = false,
-    String? referencaId,
     bool snimiMesecnuUplatu = false,
     int brojVoznji = 1,
   }) async {
@@ -236,7 +235,6 @@ class V3PlacanjeDialogHelper {
       context: context,
       putnikId: putnikId,
       rezultat: rezultat,
-      referencaId: referencaId,
       snimiMesecnuUplatu: snimiMesecnuUplatu,
     );
     if (!ok) return null;
@@ -248,7 +246,6 @@ class V3PlacanjeDialogHelper {
     required BuildContext context,
     required String putnikId,
     required V3PlacanjeRezultat rezultat,
-    String? referencaId,
     bool snimiMesecnuUplatu = false,
   }) async {
     try {
@@ -265,8 +262,7 @@ class V3PlacanjeDialogHelper {
           brojVoznji: rezultat.brojVoznji,
         );
       } else {
-        await V3FinansijeService.sacuvajNaplatuPoReferenci(
-          referencaId: (referencaId ?? '').trim(),
+        await V3FinansijeService.sacuvajNaplatuZaMesec(
           putnikId: putnikId,
           naplacenoBy: vozac.id,
           iznos: rezultat.iznos,
