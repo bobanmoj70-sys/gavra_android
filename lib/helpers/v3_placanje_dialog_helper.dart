@@ -32,7 +32,6 @@ class V3PlacanjeDialogHelper {
     required String putnikId,
     required String imePrezime,
     required double defaultCena,
-    bool zakljucajIznos = false,
   }) async {
     final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
 
@@ -117,9 +116,8 @@ class V3PlacanjeDialogHelper {
                   ),
                 TextField(
                   controller: _iznosController,
-                  readOnly: zakljucajIznos,
                   decoration: InputDecoration(
-                    labelText: zakljucajIznos ? 'Iznos (zaključano)' : 'Iznos (RSD)',
+                    labelText: 'Iznos (RSD)',
                     suffixText: 'RSD',
                     prefixIcon: const Icon(Icons.payments_outlined),
                   ),
@@ -182,7 +180,7 @@ class V3PlacanjeDialogHelper {
                 ),
                 onPressed: () {
                   final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
-                  final iznos = zakljucajIznos ? defaultCena : (double.tryParse(rawIznos) ?? 0);
+                  final iznos = double.tryParse(rawIznos) ?? 0;
                   if (iznos <= 0) {
                     V3AppSnackBar.warning(context, 'Unesite ispravan iznos (> 0 RSD).');
                     return;
@@ -210,7 +208,6 @@ class V3PlacanjeDialogHelper {
     required String putnikId,
     required String imePrezime,
     required double defaultCena,
-    bool zakljucajIznos = false,
     bool snimiMesecnuUplatu = false,
     int brojVoznji = 1,
   }) async {
@@ -219,7 +216,6 @@ class V3PlacanjeDialogHelper {
       putnikId: putnikId,
       imePrezime: imePrezime,
       defaultCena: defaultCena,
-      zakljucajIznos: zakljucajIznos,
     );
     if (dialogRezultat == null) return null;
 

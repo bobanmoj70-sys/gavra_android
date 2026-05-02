@@ -201,7 +201,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final imaObracun = cenaPoModelu > 0 && defaults.brojVoznji > 0;
     final ocekivaniIznos = imaObracun ? defaults.defaultCena : 0.0;
     final defaultCena = ocekivaniIznos;
-    const zakljucajIznos = false;
 
     try {
       final rezultat = await V3PlacanjeDialogHelper.naplati(
@@ -209,7 +208,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         defaultCena: defaultCena,
-        zakljucajIznos: zakljucajIznos,
         snimiMesecnuUplatu: isPoDanuModel,
         brojVoznji: defaults.brojVoznji,
       );
