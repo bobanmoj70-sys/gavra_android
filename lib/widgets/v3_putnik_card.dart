@@ -103,6 +103,34 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
   }
 
+  bool _isPoDanuModel(String tipPutnika) {
+    final tip = tipPutnika.trim().toLowerCase();
+    return tip == 'radnik' || tip == 'ucenik';
+  }
+
+  ({double defaultCena, int brojVoznji}) _resolvePaymentDefaults({
+    required String tipPutnika,
+    required bool isPoDanuModel,
+  }) {
+    if (isPoDanuModel) {
+      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+        putnikId: widget.putnik.id,
+        mesec: datumRef.month,
+        godina: datumRef.year,
+      );
+      final brojVoznji = summary.brojVoznji;
+      return (
+        defaultCena: widget.putnik.cenaPoDanu * brojVoznji,
+        brojVoznji: brojVoznji,
+      );
+    }
+
+    final tip = tipPutnika.trim().toLowerCase();
+    final cena = (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
+    return (defaultCena: cena, brojVoznji: 1);
+  }
+
   // ─── Akcije ────────────────────────────────────────────────────
 
   Future<void> _handlePickup() async {
@@ -168,69 +196,16 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     V3StateUtils.safeSetState(this, () => _isProcessing = true);
 
     final tip = widget.putnik.tipPutnika;
-    final isMesecniModel = tip == 'radnik' || tip == 'ucenik';
-    final isPoPokupljenjuModel = tip == 'dnevni' || tip == 'posiljka';
+    final isPoDanuModel = _isPoDanuModel(tip);
+    final defaults = _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: isPoDanuModel);
 
-    double defaultCena;
-    if (isMesecniModel && widget.putnik.cenaPoDanu > 0) {
-      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
-      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
-        putnikId: widget.putnik.id,
-        mesec: datumRef.month,
-        godina: datumRef.year,
-      );
-      final brVoznji = summary.brojVoznji > 0 ? summary.brojVoznji : 1;
-      defaultCena = widget.putnik.cenaPoDanu * brVoznji;
-    } else {
-      defaultCena = (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
-    }
-    final zakljucajIznos = defaultCena > 0;
-
-    if (isPoPokupljenjuModel && widget.entry == null) {
-      if (mounted) {
-        V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon potvrđenog termina.');
-      }
-      _globalProcessingLock = false;
-      V3StateUtils.safeSetState(this, () => _isProcessing = false);
-      return;
-    }
-
-    if (isPoPokupljenjuModel && !V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt)) {
-      if (mounted) {
-        V3AppSnackBar.warning(context, 'Naplata je moguća tek nakon završene vožnje.');
-      }
-      _globalProcessingLock = false;
-      V3StateUtils.safeSetState(this, () => _isProcessing = false);
-      return;
-    }
-
-    final naplataInfo = _resolveNaplataInfo(isMesecniModel: isMesecniModel);
-    final alreadyPaid = !isMesecniModel && (naplataInfo?.isPaid ?? false);
+    final cenaPoModelu = isPoDanuModel ? widget.putnik.cenaPoDanu : widget.putnik.cenaPoPokupljenju;
+    final imaObracun = cenaPoModelu > 0 && defaults.brojVoznji > 0;
+    final ocekivaniIznos = imaObracun ? defaults.defaultCena : 0.0;
+    final defaultCena = ocekivaniIznos;
+    const zakljucajIznos = false;
 
     try {
-      if (alreadyPaid && widget.entry != null) {
-        final confirmOverwrite = await V3DialogHelper.showConfirmDialog(
-          context,
-          title: 'Naplata već postoji',
-          message: 'Ovaj termin je već naplaćen. Da li želite da prepišete postojeću naplatu?',
-          confirmText: 'DA, PREPIŠI',
-          cancelText: 'NE',
-          isDangerous: true,
-        );
-        if (confirmOverwrite != true) return;
-      }
-
-      final brVoznjiParam = isMesecniModel && widget.putnik.cenaPoDanu > 0
-          ? () {
-              final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
-              final s = V3FinansijeService.getNaplataSummaryForPutnik(
-                putnikId: widget.putnik.id,
-                mesec: datumRef.month,
-                godina: datumRef.year,
-              );
-              return s.brojVoznji > 0 ? s.brojVoznji : 1;
-            }()
-          : 1;
       final rezultat = await V3PlacanjeDialogHelper.naplati(
         context: context,
         putnikId: widget.putnik.id,
@@ -238,11 +213,21 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         defaultCena: defaultCena,
         zakljucajIznos: zakljucajIznos,
         referencaId: widget.entry?.id,
-        snimiMesecnuUplatu: isMesecniModel,
-        brojVoznji: brVoznjiParam,
+        snimiMesecnuUplatu: isPoDanuModel,
+        brojVoznji: defaults.brojVoznji,
       );
       if (rezultat != null && mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');
+        if (imaObracun) {
+          final razlika = rezultat.iznos - ocekivaniIznos;
+          if (razlika.abs() > 0.009) {
+            final znak = razlika > 0 ? '+' : '';
+            V3AppSnackBar.info(
+              context,
+              'Obračun ${ocekivaniIznos.toStringAsFixed(0)} RSD, uneto ${rezultat.iznos.toStringAsFixed(0)} RSD, razlika ${znak}${razlika.toStringAsFixed(0)} RSD',
+            );
+          }
+        }
         widget.onChanged?.call();
       }
     } catch (e) {

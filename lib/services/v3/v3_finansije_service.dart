@@ -453,17 +453,7 @@ class V3FinansijeService {
         'godina': godina,
       };
 
-      final existing = await _repo.findMesecnuNaplatu(
-        putnikId: putnikId,
-        mesec: mesec,
-        godina: godina,
-      );
-      final Map<String, dynamic> row;
-      if (existing != null && existing['id'] != null) {
-        row = await _repo.updateByIdReturning(existing['id'] as String, payload);
-      } else {
-        row = await _repo.insertReturning(payload);
-      }
+      final row = await _repo.insertReturning(payload);
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
     } catch (e) {
       debugPrint('[V3FinansijeService] sacuvajMesecnuNaplatu error: $e');
