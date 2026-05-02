@@ -78,7 +78,7 @@ _V3IzvestajData _buildIzvestaj() {
   final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
   final sutra = danas.add(const Duration(days: 1));
 
-  // Aktivna nedelja iz app settings (active_week_start/end) ili fallback pon-ned
+  // Operativna nedelja iz app settings (active_week_start/end)
   final aktivnaNedelja = V3DanHelper.schedulingWeekRange(now: now);
   final nedeljaStart = aktivnaNedelja.start;
   final nedeljaEnd = aktivnaNedelja.end;

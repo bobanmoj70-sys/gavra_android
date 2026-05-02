@@ -945,7 +945,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           final ponedeljak = weekRange.start;
           final petak = weekRange.end;
           final aktivnaNedelja =
-              'Aktivna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
+              'Operativna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
           return V3ContainerUtils.gradientContainer(
             gradient: V3ThemeManager().currentGradient,

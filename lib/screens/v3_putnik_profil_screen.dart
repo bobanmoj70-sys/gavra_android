@@ -744,7 +744,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       mesec: _selectedMesec,
     );
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
-    final nedeljaInfo = 'Aktivna nedelja: $nedeljaOpseg';
+    final nedeljaInfo = 'Operativna nedelja: $nedeljaOpseg';
     return ValueListenableBuilder<ThemeData>(
       valueListenable: V3ThemeManager().themeNotifier,
       builder: (context, _, __) => V3ContainerUtils.backgroundContainer(

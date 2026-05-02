@@ -50,7 +50,7 @@ class V3DanHelper {
 
   /// Danas kao puni naziv RADNOG dana.
   /// - Ako je danas ponedeljak–petak: vraća današnji radni dan.
-  /// - Ako je vikend: vraća ponedeljak aktivne sedmice zakazivanja.
+  /// - Ako je vikend: vraća ponedeljak operativne sedmice zakazivanja.
   static String defaultWorkdayFullName({DateTime? now}) {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
@@ -62,7 +62,7 @@ class V3DanHelper {
 
   /// Podrazumevani datum radnog dana.
   /// - Ako je danas ponedeljak–petak: vraća današnji datum.
-  /// - Ako je vikend: vraća ponedeljak aktivne sedmice zakazivanja.
+  /// - Ako je vikend: vraća ponedeljak operativne sedmice zakazivanja.
   static DateTime defaultWorkdayDate({DateTime? now}) {
     final current = now ?? DateTime.now();
     final base = dateOnly(current);
@@ -88,36 +88,32 @@ class V3DanHelper {
     return '';
   }
 
-  // ─── Aktivna sedmica za zakazivanje ────────────────────────────
+  // ─── Operativna sedmica za zakazivanje ─────────────────────────
 
-  /// Funkcija koja dobavlja globalni override za početak aktivne sedmice (kako je podešeno u bazi).
+  /// Funkcija koja dobavlja globalni override za početak operativne sedmice (kako je podešeno u bazi).
   /// Koristimo callback da izbegnemo kružne importe sa globals.dart.
   static DateTime? Function()? getGlobalActiveWeekStart;
   static DateTime? Function()? getGlobalActiveWeekEnd;
 
-  /// Anchor datum za aktivnu sedmicu zakazivanja.
+  /// Anchor datum za operativnu sedmicu zakazivanja.
+  /// Preferira app settings vrednost iz baze; ako još nije stigla,
+  /// privremeno koristi tekuću kalendarsku sedmicu kao fallback.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
-    if (getGlobalActiveWeekStart != null) {
-      final overrideStart = getGlobalActiveWeekStart!();
-      if (overrideStart != null) {
-        return dateOnly(overrideStart);
-      }
+    final overrideStart = getGlobalActiveWeekStart?.call();
+    if (overrideStart != null) {
+      return dateOnly(overrideStart);
     }
 
-    return dateOnly(now ?? DateTime.now());
+    final current = dateOnly(now ?? DateTime.now());
+    return current.subtract(Duration(days: current.weekday - DateTime.monday));
   }
 
-  /// Početak i kraj aktivne sedmice zakazivanja.
-  /// Zahteva globalni override iz app settings (`aktivnaSedmicaStart/End`).
+  /// Početak i kraj operativne sedmice zakazivanja.
+  /// Preferira app settings vrednosti iz baze; ako još nisu stigle,
+  /// koristi tekuću kalendarsku sedmicu (ponedeljak-nedelja).
   static ({DateTime start, DateTime end}) schedulingWeekRange({DateTime? now}) {
     final overrideStart = getGlobalActiveWeekStart?.call();
-    if (overrideStart == null) {
-      throw StateError(
-        'Aktivna sedmica nije podešena (app settings active week start je null).',
-      );
-    }
-
-    final start = dateOnly(overrideStart);
+    final start = overrideStart != null ? dateOnly(overrideStart) : schedulingWeekAnchor(now: now ?? DateTime.now());
     final overrideEnd = getGlobalActiveWeekEnd?.call();
     final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
         ? dateOnly(overrideEnd)
@@ -136,7 +132,7 @@ class V3DanHelper {
     return DateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
   }
 
-  /// Da li je datum unutar aktivne sedmice zakazivanja.
+  /// Da li je datum unutar operativne sedmice zakazivanja.
   static bool isInSchedulingWeek(DateTime datum, {DateTime? now}) {
     final target = dateOnly(datum);
     final range = schedulingWeekRange(now: now);

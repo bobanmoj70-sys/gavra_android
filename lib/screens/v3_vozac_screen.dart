@@ -1077,7 +1077,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final ponedeljak = weekRange.start;
     final petak = weekRange.end;
     final aktivnaSedmica =
-        'Aktivna sedmica: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
+        'Operativna sedmica: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
     return StreamBuilder<int>(
       stream: rm.v3StreamFromRevisions<int>(

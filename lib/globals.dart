@@ -272,9 +272,9 @@ class V2UpdateInfo {
 final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateInfo?>(null);
 
 /// APP SETTINGS ACTIVE WEEK START NOTIFIER - runtime izvor istine iz `v3_app_settings`.
-/// Sadrži početak (Ponedeljak) aktivne sedmice isključivo iz baze.
+/// Sadrži početak (Ponedeljak) operativne sedmice isključivo iz baze.
 ValueNotifier<DateTime?> get appSettingsActiveWeekStartNotifier => V3AppSettingsState.instance.activeWeekStart;
 
 /// APP SETTINGS ACTIVE WEEK END NOTIFIER - runtime izvor istine iz `v3_app_settings`.
-/// Sadrži kraj aktivne sedmice isključivo iz baze.
+/// Sadrži kraj operativne sedmice isključivo iz baze.
 ValueNotifier<DateTime?> get appSettingsActiveWeekEndNotifier => V3AppSettingsState.instance.activeWeekEnd;

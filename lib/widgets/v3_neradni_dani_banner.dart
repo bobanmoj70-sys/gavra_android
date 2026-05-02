@@ -4,8 +4,8 @@ import '../globals.dart';
 import '../utils/v3_date_utils.dart';
 import 'v3_shimmer_banner.dart';
 
-/// Inline baner koji prikazuje neradne dane iz aktivne nedelje.
-/// Koristi [neradniDaniNotifier] i filtrira dane iz aktivne sedmice.
+/// Inline baner koji prikazuje neradne dane iz operativne nedelje.
+/// Koristi [neradniDaniNotifier] i filtrira dane iz operativne sedmice.
 /// Ako nema neradnih dana, ne prikazuje ništa (SizedBox.shrink).
 class V3NeradniDaniBanner extends StatelessWidget {
   const V3NeradniDaniBanner({super.key, this.margin});
@@ -58,7 +58,7 @@ class V3NeradniDaniBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '📢 Neradni dan(i) — aktivna nedelja',
+                  '📢 Neradni dan(i) — operativna nedelja',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
