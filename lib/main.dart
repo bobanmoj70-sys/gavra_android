@@ -32,7 +32,52 @@ bool _localNotificationsInitialized = false;
 bool _notificationLaunchHandled = false;
 Future<void>? _localNotificationsInitInFlight;
 Future<void>? _supabaseInitInFlight;
+Future<void>? _fcmChannelInitInFlight;
+Future<void>? _iosFcmHandlersInitInFlight;
 String _lastSyncedPushToken = '';
+bool _fcmChannelInitialized = false;
+bool _iosFcmHandlersInitialized = false;
+
+void _startBackgroundTask({
+  required String label,
+  required Future<void> Function() task,
+  Duration timeout = const Duration(seconds: 8),
+  int retries = 1,
+  Duration retryDelay = const Duration(seconds: 2),
+}) {
+  unawaited(
+    _runBackgroundTask(
+      label: label,
+      task: task,
+      timeout: timeout,
+      retries: retries,
+      retryDelay: retryDelay,
+    ),
+  );
+}
+
+Future<void> _runBackgroundTask({
+  required String label,
+  required Future<void> Function() task,
+  required Duration timeout,
+  required int retries,
+  required Duration retryDelay,
+}) async {
+  final totalAttempts = retries + 1;
+  for (var attempt = 1; attempt <= totalAttempts; attempt++) {
+    try {
+      await task().timeout(timeout);
+      if (attempt > 1) {
+        debugPrint('✅ [main] Task "$label" uspeo nakon retry pokušaja #$attempt');
+      }
+      return;
+    } catch (e) {
+      debugPrint('⚠️ [main] Task "$label" pokušaj #$attempt/$totalAttempts neuspešan: $e');
+      if (attempt >= totalAttempts) return;
+      await Future<void>.delayed(Duration(milliseconds: retryDelay.inMilliseconds * attempt));
+    }
+  }
+}
 
 Future<void> _ensureLocalNotificationsInitialized() async {
   if (_localNotificationsInitialized) return;
@@ -185,7 +230,12 @@ void main() async {
   runApp(const MyApp());
 
   // SVE OSTALE ZADATKE GURAMO U POZADINU
-  unawaited(_postRunAppInitialization());
+  _startBackgroundTask(
+    label: 'postRunAppInitialization',
+    task: _postRunAppInitialization,
+    timeout: const Duration(seconds: 20),
+    retries: 0,
+  );
 }
 
 /// Pokretanje servisa u pozadini kako UI ne bi čekao i pravio deadlock
@@ -201,9 +251,12 @@ Future<void> _postRunAppInitialization() async {
 
   if (isSupabaseReady) {
     debugPrint('🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
-    unawaited(V3MasterRealtimeManager.instance
-        .initV3()
-        .catchError((Object e) => debugPrint('❌ [main] V3MasterRealtimeManager.initV3 greška: $e')));
+    _startBackgroundTask(
+      label: 'V3MasterRealtimeManager.initV3',
+      task: () => V3MasterRealtimeManager.instance.initV3(),
+      timeout: const Duration(seconds: 12),
+      retries: 1,
+    );
   } else {
     debugPrint('⚠️ [main] Preskačem initV3: Supabase nije inicijalizovan.');
   }
@@ -218,9 +271,14 @@ Future<void> _postRunAppInitialization() async {
   }
 
   // 3. Pokreni sve ostale servise sa malom pauzom
-  unawaited(
-    Future<void>.delayed(const Duration(milliseconds: 500), _doStartupTasks)
-        .catchError((Object e) => debugPrint('⚠️ [main] Startup tasks greška: $e')),
+  _startBackgroundTask(
+    label: 'startup tasks',
+    task: () async {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      await _doStartupTasks();
+    },
+    timeout: const Duration(seconds: 20),
+    retries: 0,
   );
 }
 
@@ -235,32 +293,62 @@ Future<void> _doStartupTasks() async {
   }
 
   // Locale - UTF-8 podrska za dijakritiku
-  unawaited(
-    initializeDateFormatting('sr', null)
-        .catchError((Object e) => debugPrint('⚠️ [main] initializeDateFormatting greška: $e')),
+  _startBackgroundTask(
+    label: 'initializeDateFormatting(sr)',
+    task: () => initializeDateFormatting('sr', null),
+    timeout: const Duration(seconds: 5),
+    retries: 0,
   );
 
   // Sve ostalo pokreni istovremeno (paralelno)
-  unawaited(
-    _initFcmChannel().catchError((Object e) => debugPrint('⚠️ [main] FCM channel greška: $e')),
+  _startBackgroundTask(
+    label: 'FCM channel init',
+    task: _initFcmChannel,
+    timeout: const Duration(seconds: 6),
+    retries: 1,
   );
   if (Platform.isIOS) {
-    unawaited(
-      _initIosFcmHandlers().catchError((Object e) => debugPrint('⚠️ [main] iOS FCM handlers greška: $e')),
+    _startBackgroundTask(
+      label: 'iOS FCM handlers init',
+      task: _initIosFcmHandlers,
+      timeout: const Duration(seconds: 8),
+      retries: 1,
     );
   }
-  unawaited(
-    _initNotificationHandlers().catchError((Object e) => debugPrint('⚠️ [main] Notification handlers greška: $e')),
+  _startBackgroundTask(
+    label: 'notification handlers init',
+    task: _initNotificationHandlers,
+    timeout: const Duration(seconds: 8),
+    retries: 2,
   );
-  unawaited(
-    _initAppServices().catchError((Object e) => debugPrint('⚠️ [main] App services greška: $e')),
+  _startBackgroundTask(
+    label: 'app services init',
+    task: _initAppServices,
+    timeout: const Duration(seconds: 10),
+    retries: 2,
   );
 }
 
-Future<void> _ensureFirebaseInitialized() async {
-  if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp();
+Future<bool> _ensureFirebaseInitialized() async {
+  if (Firebase.apps.isNotEmpty) return true;
+
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 5));
+    return true;
+  } catch (e) {
+    debugPrint('⚠️ [main] Firebase init nije uspeo: $e');
+    return Firebase.apps.isNotEmpty;
   }
+}
+
+Map<String, dynamic> _toStringDynamicMap(Object? raw) {
+  if (raw is! Map) return <String, dynamic>{};
+  return raw.map((k, v) => MapEntry(k.toString(), v));
+}
+
+Map<String, String> _toStringStringMap(Object? raw) {
+  if (raw is! Map) return <String, String>{};
+  return raw.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''));
 }
 
 Map<String, String> _messageDataToStringMap(Map<String, dynamic> raw) {
@@ -438,76 +526,98 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 Future<void> _initIosFcmHandlers() async {
-  await _ensureFirebaseInitialized();
+  if (_iosFcmHandlersInitialized) return;
 
-  final messaging = FirebaseMessaging.instance;
-  await messaging.setForegroundNotificationPresentationOptions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  final inFlight = _iosFcmHandlersInitInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    final type = message.data['type']?.toString() ?? '';
-    final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
-    final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
-    final data = _messageDataToStringMap(message.data);
-
-    debugPrint('[FCM][iOS] onMessage type=$type title=$title');
-    unawaited(V3RolePermissionService.wakeScreenOnPush());
-
-    if (type == 'v3_alternativa') {
-      await _showAlternativaFromData(
-        data,
-        title: title,
-        body: body,
-      );
+  final initFuture = () async {
+    final firebaseReady = await _ensureFirebaseInitialized();
+    if (!firebaseReady) {
+      debugPrint('⚠️ [FCM][iOS] Preskačem FCM handlers: Firebase nije spreman.');
       return;
     }
 
-    // Uvek prikaži lokalnu notifikaciju dok je app u foregroundu.
-    // Na Androidu FCM ne prikazuje notification automatski — app mora sama.
-    // Prethodni uslov `if (message.notification == null)` preskakao je sve
-    // push-ove koji imaju notification payload (npr. putnik_eta_start).
-    await _showForegroundPushNotification(
-      title: title,
-      body: body,
-      payload: type,
-      data: data,
+    final messaging = FirebaseMessaging.instance;
+    await messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
     );
-  });
 
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    final type = message.data['type']?.toString() ?? '';
-    final data = _messageDataToStringMap(message.data);
-    debugPrint('[FCM][iOS] onMessageOpenedApp type=$type data=$data');
-    unawaited(
-      _handleFcmLaunch(type, data)
-          .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] onMessageOpenedApp launch handler greška: $e')),
-    );
-  });
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  final initialMessage = await messaging.getInitialMessage();
-  if (initialMessage != null) {
-    final type = initialMessage.data['type']?.toString() ?? '';
-    final data = _messageDataToStringMap(initialMessage.data);
-    debugPrint('[FCM][iOS] getInitialMessage type=$type data=$data');
-    unawaited(
-      _handleFcmLaunch(type, data)
-          .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] getInitialMessage launch handler greška: $e')),
-    );
-  }
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      final type = message.data['type']?.toString() ?? '';
+      final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
+      final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
+      final data = _messageDataToStringMap(message.data);
 
-  messaging.onTokenRefresh.listen((token) {
-    if (token.trim().isNotEmpty) {
-      debugPrint('[FCM][iOS] Token refresh primljen.');
-      unawaited(_syncRefreshedPushToken(token));
+      debugPrint('[FCM][iOS] onMessage type=$type title=$title');
+      unawaited(V3RolePermissionService.wakeScreenOnPush());
+
+      if (type == 'v3_alternativa') {
+        await _showAlternativaFromData(
+          data,
+          title: title,
+          body: body,
+        );
+        return;
+      }
+
+      // Uvek prikaži lokalnu notifikaciju dok je app u foregroundu.
+      // Na Androidu FCM ne prikazuje notification automatski — app mora sama.
+      // Prethodni uslov `if (message.notification == null)` preskakao je sve
+      // push-ove koji imaju notification payload (npr. putnik_eta_start).
+      await _showForegroundPushNotification(
+        title: title,
+        body: body,
+        payload: type,
+        data: data,
+      );
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      final type = message.data['type']?.toString() ?? '';
+      final data = _messageDataToStringMap(message.data);
+      debugPrint('[FCM][iOS] onMessageOpenedApp type=$type data=$data');
+      unawaited(
+        _handleFcmLaunch(type, data)
+            .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] onMessageOpenedApp launch handler greška: $e')),
+      );
+    });
+
+    final initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      final type = initialMessage.data['type']?.toString() ?? '';
+      final data = _messageDataToStringMap(initialMessage.data);
+      debugPrint('[FCM][iOS] getInitialMessage type=$type data=$data');
+      unawaited(
+        _handleFcmLaunch(type, data)
+            .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] getInitialMessage launch handler greška: $e')),
+      );
     }
-  });
 
-  debugPrint('✅ [FCM][iOS] Firebase Messaging handlers konfigurisani');
+    messaging.onTokenRefresh.listen((token) {
+      if (token.trim().isNotEmpty) {
+        debugPrint('[FCM][iOS] Token refresh primljen.');
+        unawaited(_syncRefreshedPushToken(token));
+      }
+    });
+
+    _iosFcmHandlersInitialized = true;
+    debugPrint('✅ [FCM][iOS] Firebase Messaging handlers konfigurisani');
+  }();
+
+  _iosFcmHandlersInitInFlight = initFuture;
+  try {
+    await initFuture;
+  } finally {
+    _iosFcmHandlersInitInFlight = null;
+  }
 }
 
 /// Sluša FCM poruke prosleđene od GavraFcmService (Kotlin) via MethodChannel.
@@ -515,63 +625,95 @@ Future<void> _initIosFcmHandlers() async {
 ///  - onMessage     → prikazuje lokalnu notifikaciju + budi ekran
 ///  - onTokenRefresh → sync-uje novi FCM token sa Supabase
 Future<void> _initFcmChannel() async {
-  const channel = MethodChannel('com.gavra013.gavra_android/fcm');
-  channel.setMethodCallHandler((call) async {
-    switch (call.method) {
-      case 'onMessage':
-        final args = Map<String, dynamic>.from(call.arguments as Map);
-        final title = args['title']?.toString() ?? '';
-        final body = args['body']?.toString() ?? '';
-        final type = args['type']?.toString() ?? '';
-        final rawData = args['data'];
-        final data =
-            rawData is Map ? rawData.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')) : <String, String>{};
-        debugPrint('[FCM] onMessage type=$type title=$title');
+  if (_fcmChannelInitialized) return;
 
-        // Budi ekran
-        unawaited(V3RolePermissionService.wakeScreenOnPush());
+  final inFlight = _fcmChannelInitInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
 
-        if (type == 'v3_alternativa') {
-          await _showAlternativaFromData(
-            data,
-            title: title,
-            body: body,
+  final initFuture = () async {
+    const channel = MethodChannel('com.gavra013.gavra_android/fcm');
+    channel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'onMessage':
+          final args = _toStringDynamicMap(call.arguments);
+          if (args.isEmpty) {
+            debugPrint('[FCM] onMessage ignorisan: neispravni arguments.');
+            return;
+          }
+          final title = args['title']?.toString() ?? '';
+          final body = args['body']?.toString() ?? '';
+          final type = args['type']?.toString() ?? '';
+          final rawData = args['data'];
+          final data =
+              rawData is Map ? rawData.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')) : <String, String>{};
+          debugPrint('[FCM] onMessage type=$type title=$title');
+
+          // Budi ekran
+          unawaited(V3RolePermissionService.wakeScreenOnPush());
+
+          if (type == 'v3_alternativa') {
+            await _showAlternativaFromData(
+              data,
+              title: title,
+              body: body,
+            );
+            return;
+          }
+
+          // Prikaži lokalnu notifikaciju (foreground)
+          if (title.isNotEmpty || body.isNotEmpty) {
+            await _showForegroundPushNotification(
+              title: title,
+              body: body,
+              payload: type,
+              data: data,
+            );
+          }
+          return;
+
+        case 'onTokenRefresh':
+          final args = _toStringDynamicMap(call.arguments);
+          final token = args['token']?.toString().trim() ?? '';
+          if (token.isNotEmpty) {
+            debugPrint('[FCM] Token refresh primljen.');
+            unawaited(_syncRefreshedPushToken(token));
+          }
+          return;
+
+        case 'onLaunchMessage':
+          // Korisnik je tapnuo FCM notifikaciju dok je app bila killed/background.
+          // `arguments` je Map<String, String> sa svim FCM data key-value parovima.
+          final launchData = _toStringStringMap(call.arguments);
+          if (launchData.isEmpty) {
+            debugPrint('[FCM] onLaunchMessage ignorisan: neispravni arguments.');
+            return;
+          }
+          final launchType = launchData['type'] ?? '';
+          debugPrint('[FCM] onLaunchMessage type=$launchType data=$launchData');
+          unawaited(
+            _handleFcmLaunch(launchType, launchData)
+                .catchError((Object e) => debugPrint('⚠️ [FCM] onLaunchMessage launch handler greška: $e')),
           );
           return;
-        }
 
-        // Prikaži lokalnu notifikaciju (foreground)
-        if (title.isNotEmpty || body.isNotEmpty) {
-          await _showForegroundPushNotification(
-            title: title,
-            body: body,
-            payload: type,
-            data: data,
-          );
-        }
+        default:
+          debugPrint('[FCM] Nepoznata MethodChannel metoda: ${call.method}');
+          return;
+      }
+    });
+    _fcmChannelInitialized = true;
+    debugPrint('✅ [FCM] MethodChannel handler registrovan');
+  }();
 
-      case 'onTokenRefresh':
-        final token = call.arguments['token']?.toString() ?? '';
-        if (token.isNotEmpty) {
-          debugPrint('[FCM] Token refresh primljen.');
-          unawaited(_syncRefreshedPushToken(token));
-        }
-
-      case 'onLaunchMessage':
-        // Korisnik je tapnuo FCM notifikaciju dok je app bila killed/background.
-        // `arguments` je Map<String, String> sa svim FCM data key-value parovima.
-        final launchData = Map<String, String>.from(
-          (call.arguments as Map).map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')),
-        );
-        final launchType = launchData['type'] ?? '';
-        debugPrint('[FCM] onLaunchMessage type=$launchType data=$launchData');
-        unawaited(
-          _handleFcmLaunch(launchType, launchData)
-              .catchError((Object e) => debugPrint('⚠️ [FCM] onLaunchMessage launch handler greška: $e')),
-        );
-    }
-  });
-  debugPrint('✅ [FCM] MethodChannel handler registrovan');
+  _fcmChannelInitInFlight = initFuture;
+  try {
+    await initFuture;
+  } finally {
+    _fcmChannelInitInFlight = null;
+  }
 }
 
 /// Rutira na pravi ekran kada korisnik tapne FCM notifikaciju dok je app bila killed/background.

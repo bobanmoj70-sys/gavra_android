@@ -36,6 +36,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   static const String _fadeAnimationKey = 'welcome_fade';
   static const String _slideAnimationKey = 'welcome_slide';
   static const String _pulseAnimationKey = 'welcome_pulse';
+  static const Duration _startupTimeout = Duration(seconds: 8);
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
@@ -107,19 +108,66 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _init() async {
     unawaited(() async {
       try {
-        await V3MasterRealtimeManager.instance.initV3();
+        await V3MasterRealtimeManager.instance.initV3().timeout(_startupTimeout);
       } catch (e) {
         debugPrint('[V3WelcomeScreen] initV3 error: $e');
       }
     }());
 
-    final vozacRestored = await _tryAutoLoginVozac();
+    final vozacRestored = await _runStartupStep<bool>(
+          label: 'auto-login vozac',
+          action: _tryAutoLoginVozac,
+        ) ??
+        false;
     if (vozacRestored) return;
 
-    final putnikRestored = await _tryAutoLoginPutnik();
+    final putnikRestored = await _runStartupStep<bool>(
+          label: 'auto-login putnik',
+          action: _tryAutoLoginPutnik,
+        ) ??
+        false;
     if (putnikRestored) return;
 
-    await _tryBiometricAutoLogin();
+    await _runStartupStep<void>(
+      label: 'biometric auto-login',
+      action: _tryBiometricAutoLogin,
+    );
+  }
+
+  Future<T?> _runStartupStep<T>({
+    required String label,
+    required Future<T> Function() action,
+  }) async {
+    try {
+      return await action().timeout(_startupTimeout);
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] startup step failed ($label): $e');
+      return null;
+    }
+  }
+
+  void _showSafeSnackBar(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _safePushReplacement(Widget screen) {
+    if (!mounted) return;
+    try {
+      V3NavigationUtils.pushReplacement(context, screen);
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] pushReplacement error: $e');
+    }
+  }
+
+  void _safePushScreen(Widget screen) {
+    if (!mounted) return;
+    try {
+      V3NavigationUtils.pushScreen(context, screen);
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] pushScreen error: $e');
+    }
   }
 
   Future<void> _tryBiometricAutoLogin() async {
@@ -169,10 +217,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       unawaited(V3AppUpdateService.refreshUpdateInfo()
           .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
 
-      V3NavigationUtils.pushReplacement(
-        context,
-        const V3HomeScreen(),
-      );
+      _safePushReplacement(const V3HomeScreen());
       return true;
     } catch (e) {
       debugPrint('[V3WelcomeScreen] auto-login vozac error: $e');
@@ -195,8 +240,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
       }
 
-      V3NavigationUtils.pushReplacement(
-        context,
+      _safePushReplacement(
         V3PutnikProfilScreen(putnikData: Map<String, dynamic>.from(restored)),
       );
       return true;
@@ -374,93 +418,80 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   Future<void> _onLoginVerified(String phone, String? authId) async {
-    V3Vozac? vozac;
-    Map<String, dynamic>? putnik;
+    try {
+      V3Vozac? vozac;
+      Map<String, dynamic>? putnik;
 
-    final resolvedId = (authId ?? '').trim();
-    if (resolvedId.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ UUID naloga nedostaje za proveru.')),
-        );
+      final resolvedId = (authId ?? '').trim();
+      if (resolvedId.isEmpty) {
+        _showSafeSnackBar('❌ UUID naloga nedostaje za proveru.');
+        return;
       }
-      return;
-    }
 
-    final verifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-      phone,
-      expectedAuthId: resolvedId,
-    );
+      final verifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
+        phone,
+        expectedAuthId: resolvedId,
+      ).timeout(_startupTimeout, onTimeout: () => null);
 
-    if ((verifiedId ?? '').trim().isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Telefon nije uparen sa UUID nalogom.')),
-        );
+      if ((verifiedId ?? '').trim().isEmpty) {
+        _showSafeSnackBar('❌ Telefon nije uparen sa UUID nalogom.');
+        return;
       }
-      return;
-    }
 
-    if (resolvedId.isNotEmpty) {
       vozac = V3VozacService.getVozacById(resolvedId);
       if (vozac == null) {
-        final vozacDirect = await V3VozacService.getVozacByIdDirect(resolvedId);
+        final vozacDirect = await V3VozacService.getVozacByIdDirect(resolvedId).timeout(
+          _startupTimeout,
+          onTimeout: () => null,
+        );
         if (vozacDirect != null && vozacDirect.id.trim() == resolvedId) {
           vozac = vozacDirect;
         }
       }
-    }
 
-    if (resolvedId.isNotEmpty) {
-      putnik = await V3PutnikService.getActiveById(resolvedId);
-    }
-
-    if (!mounted) return;
-
-    if (vozac != null) {
-      V3VozacService.currentVozac = vozac;
-      await V3ClosedAuthService.saveManualSmsVozacSession(
-        normalizedPhone: phone,
-        authId: vozac.id,
+      putnik = await V3PutnikService.getActiveById(resolvedId).timeout(
+        _startupTimeout,
+        onTimeout: () => null,
       );
-      await V3ClosedAuthService.clearManualSmsPutnikPhone();
-      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
-      unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
-      unawaited(V3AppUpdateService.refreshUpdateInfo()
-          .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
+
       if (!mounted) return;
-      V3NavigationUtils.pushReplacement(
-        context,
-        const V3HomeScreen(),
-      );
-      return;
-    }
 
-    if (putnik == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ UUID nije mapiran ni na vozača ni na putnika.')),
-        );
+      if (vozac != null) {
+        V3VozacService.currentVozac = vozac;
+        await V3ClosedAuthService.saveManualSmsVozacSession(
+          normalizedPhone: phone,
+          authId: vozac.id,
+        ).timeout(_startupTimeout, onTimeout: () => Future.value());
+        await V3ClosedAuthService.clearManualSmsPutnikPhone().timeout(_startupTimeout, onTimeout: () => null);
+        await V3RolePermissionService.ensureDriverPermissionsOnLogin().timeout(_startupTimeout, onTimeout: () => null);
+        unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
+        unawaited(V3AppUpdateService.refreshUpdateInfo()
+            .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
+        _safePushReplacement(const V3HomeScreen());
+        return;
       }
-      return;
-    }
 
-    V3PutnikService.currentPutnik = putnik;
-    await V3ClosedAuthService.saveManualSmsPutnikSession(
-      normalizedPhone: phone,
-      authId: resolvedId,
-    );
-    await V3ClosedAuthService.clearManualSmsVozacPhone();
-    await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
-    final putnikId = putnik['id']?.toString().trim() ?? '';
-    if (putnikId.isNotEmpty) {
-      unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
+      if (putnik == null) {
+        _showSafeSnackBar('❌ UUID nije mapiran ni na vozača ni na putnika.');
+        return;
+      }
+
+      V3PutnikService.currentPutnik = putnik;
+      await V3ClosedAuthService.saveManualSmsPutnikSession(
+        normalizedPhone: phone,
+        authId: resolvedId,
+      ).timeout(_startupTimeout, onTimeout: () => Future.value());
+      await V3ClosedAuthService.clearManualSmsVozacPhone().timeout(_startupTimeout, onTimeout: () => null);
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin().timeout(_startupTimeout, onTimeout: () => null);
+      final putnikId = putnik['id']?.toString().trim() ?? '';
+      if (putnikId.isNotEmpty) {
+        unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
+      }
+      _safePushReplacement(V3PutnikProfilScreen(putnikData: putnik));
+    } catch (e) {
+      debugPrint('[V3WelcomeScreen] onLoginVerified error: $e');
+      _showSafeSnackBar('⚠️ Greška pri verifikaciji prijave. Pokušaj ponovo.');
     }
-    if (!mounted) return;
-    V3NavigationUtils.pushReplacement(
-      context,
-      V3PutnikProfilScreen(putnikData: putnik),
-    );
   }
 
   @override
@@ -590,8 +621,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                       onTap: () async {
                         await _stopAudio();
                         if (!mounted) return;
-                        V3NavigationUtils.pushScreen(
-                          context,
+                        _safePushScreen(
                           V3SmsLoginScreen(
                             title: 'Prijava',
                             biometricKey: _biometricPhoneKey,
@@ -666,10 +696,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                     opacity: _fadeAnimation,
                     child: GestureDetector(
                       onTap: () {
-                        V3NavigationUtils.pushScreen(
-                          context,
-                          const V3ONamaScreen(),
-                        );
+                        _safePushScreen(const V3ONamaScreen());
                       },
                       child: V3ContainerUtils.styledContainer(
                         padding: const EdgeInsets.symmetric(vertical: 16),
