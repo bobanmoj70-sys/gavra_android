@@ -903,15 +903,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             ],
           ),
           const SizedBox(height: 10),
-          // Tip badge
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              if (tip.toLowerCase() != 'radnik') _Badge(label: tipLabel, color: avatarColors[0]),
-            ],
-          ),
           if (telefon.isNotEmpty || telefon2.isNotEmpty) ...[
             const SizedBox(height: 10),
             Row(
@@ -1386,29 +1377,6 @@ class _ZahtevInfo {
 // ─────────────────────────────────────────────────────────────────────
 // Small widgets
 // ─────────────────────────────────────────────────────────────────────
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Badge({required this.label, required this.color});
-  @override
-  Widget build(BuildContext context) {
-    return V3ContainerUtils.styledContainer(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      backgroundColor: color.withValues(alpha: 0.28),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: V3StyleHelper.whiteAlpha25),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
 class _WeatherMiniCell extends StatelessWidget {
   final V3WeatherSnapshot? snapshot;
 

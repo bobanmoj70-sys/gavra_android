@@ -411,6 +411,17 @@ class _PutnikCard extends StatelessWidget {
               // ── Action buttons row 1 ─────────────────────────────────
               Row(
                 children: [
+                  if (putnik.telefon1 != null || putnik.telefon2 != null) ...[
+                    Expanded(
+                        child: _actionBtn(
+                      context: context,
+                      icon: Icons.phone,
+                      label: 'Pozovi',
+                      color: Colors.green,
+                      onPressed: () => _pokaziKontakt(context),
+                    )),
+                    const SizedBox(width: 6),
+                  ],
                   Expanded(
                       child: _actionBtn(
                     context: context,
@@ -425,17 +436,6 @@ class _PutnikCard extends StatelessWidget {
               // ── Action buttons row 2 ─────────────────────────────────
               Row(
                 children: [
-                  if (putnik.telefon1 != null || putnik.telefon2 != null) ...[
-                    Expanded(
-                        child: _actionBtn(
-                      context: context,
-                      icon: Icons.phone,
-                      label: 'Pozovi',
-                      color: Colors.green,
-                      onPressed: () => _pokaziKontakt(context),
-                    )),
-                    const SizedBox(width: 6),
-                  ],
                   Expanded(
                       child: _actionBtn(
                     context: context,
@@ -499,42 +499,88 @@ class _PutnikCard extends StatelessWidget {
       context: context,
       child: SafeArea(
         top: false,
-        child: Padding(
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('Kontaktiraj ${putnik.imePrezime}',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              if (putnik.telefon1?.isNotEmpty == true)
-                ListTile(
-                  leading: const Icon(Icons.person, color: Colors.green),
-                  title: const Text('Pozovi (telefon 1)'),
-                  subtitle: Text(putnik.telefon1!),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final uri = Uri(scheme: 'tel', path: putnik.telefon1!);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    }
-                  },
+              const SizedBox(height: 8),
+              if (putnik.telefon1?.isNotEmpty == true) ...[
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(putnik.telefon1!, style: const TextStyle(fontSize: 13, color: Colors.black54)),
                 ),
-              if (putnik.telefon2?.isNotEmpty == true)
-                ListTile(
-                  leading: const Icon(Icons.phone_android, color: Colors.blue),
-                  title: const Text('Pozovi (telefon 2)'),
-                  subtitle: Text(putnik.telefon2!),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final uri = Uri(scheme: 'tel', path: putnik.telefon2!);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    }
-                  },
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        leading: const Icon(Icons.phone, color: Colors.green),
+                        title: const Text('Pozovi'),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final uri = Uri(scheme: 'tel', path: putnik.telefon1!);
+                          if (await canLaunchUrl(uri)) await launchUrl(uri);
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        leading: const Icon(Icons.sms, color: Colors.blueAccent),
+                        title: const Text('SMS'),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final uri = Uri(scheme: 'sms', path: putnik.telefon1!);
+                          if (await canLaunchUrl(uri)) await launchUrl(uri);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
+              ],
+              if (putnik.telefon2?.isNotEmpty == true) ...[
+                const Divider(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(putnik.telefon2!, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        leading: const Icon(Icons.phone, color: Colors.green),
+                        title: const Text('Pozovi'),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final uri = Uri(scheme: 'tel', path: putnik.telefon2!);
+                          if (await canLaunchUrl(uri)) await launchUrl(uri);
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        leading: const Icon(Icons.sms, color: Colors.blueAccent),
+                        title: const Text('SMS'),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onTap: () async {
+                          Navigator.pop(context);
+                          final uri = Uri(scheme: 'sms', path: putnik.telefon2!);
+                          if (await canLaunchUrl(uri)) await launchUrl(uri);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'Otkaži'),
             ],
