@@ -92,14 +92,14 @@ class V3DanHelper {
 
   /// Funkcija koja dobavlja globalni override za početak operativne sedmice (kako je podešeno u bazi).
   /// Koristimo callback da izbegnemo kružne importe sa globals.dart.
-  static DateTime? Function()? getGlobalActiveWeekStart;
-  static DateTime? Function()? getGlobalActiveWeekEnd;
+  static DateTime? Function()? getGlobalOperativnaNedeljaStart;
+  static DateTime? Function()? getGlobalOperativnaNedeljaEnd;
 
   /// Anchor datum za operativnu sedmicu zakazivanja.
   /// Preferira app settings vrednost iz baze; ako još nije stigla,
   /// privremeno koristi tekuću kalendarsku sedmicu kao fallback.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
-    final overrideStart = getGlobalActiveWeekStart?.call();
+    final overrideStart = getGlobalOperativnaNedeljaStart?.call();
     if (overrideStart != null) {
       return dateOnly(overrideStart);
     }
@@ -112,9 +112,9 @@ class V3DanHelper {
   /// Preferira app settings vrednosti iz baze; ako još nisu stigle,
   /// koristi tekuću kalendarsku sedmicu (ponedeljak-nedelja).
   static ({DateTime start, DateTime end}) schedulingWeekRange({DateTime? now}) {
-    final overrideStart = getGlobalActiveWeekStart?.call();
+    final overrideStart = getGlobalOperativnaNedeljaStart?.call();
     final start = overrideStart != null ? dateOnly(overrideStart) : schedulingWeekAnchor(now: now ?? DateTime.now());
-    final overrideEnd = getGlobalActiveWeekEnd?.call();
+    final overrideEnd = getGlobalOperativnaNedeljaEnd?.call();
     final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
         ? dateOnly(overrideEnd)
         : start.add(const Duration(days: 6));
