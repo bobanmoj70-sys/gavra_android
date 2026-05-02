@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_finansije_service.dart';
+import 'package:gavra_android/services/v3/v3_vozac_service.dart';
 import 'package:gavra_android/utils/v3_date_utils.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
 
@@ -211,6 +212,21 @@ class _DugCard extends StatelessWidget {
   final V3Dug dug;
   final VoidCallback onNaplati;
 
+  String _resolveVozacIme(String? vozacId) {
+    final id = (vozacId ?? '').trim();
+    if (id.isEmpty) return 'Nepoznato';
+    return V3VozacService.getVozacById(id)?.imePrezime ?? id;
+  }
+
+  String _formatTs(DateTime? ts) {
+    if (ts == null) return '-';
+    final dd = ts.day.toString().padLeft(2, '0');
+    final mm = ts.month.toString().padLeft(2, '0');
+    final hh = ts.hour.toString().padLeft(2, '0');
+    final mi = ts.minute.toString().padLeft(2, '0');
+    return '$dd.$mm.${ts.year} $hh:$mi';
+  }
+
   @override
   Widget build(BuildContext context) {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
@@ -218,7 +234,11 @@ class _DugCard extends StatelessWidget {
     final obracunStr =
         '${dug.brojVoznji} × ${dug.cena.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
     final uplataStr = '${dug.uplaceno.toStringAsFixed(0)} RSD';
-    final vozacStr = dug.vozacIme.isNotEmpty ? dug.vozacIme : 'Nepoznato';
+    final naplatioStr = _resolveVozacIme(dug.naplacenoBy);
+    final azuriraoStr = _resolveVozacIme(dug.updatedBy);
+    final naplacenoAtStr = _formatTs(dug.naplacenoAt ?? dug.createdAt);
+    final updatedAtStr = _formatTs(dug.updatedAt);
+    final finansijeNaziv = (dug.finansijeNaziv ?? '').trim();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -263,7 +283,18 @@ class _DugCard extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text('Uplaćeno: $uplataStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Vozač: $vozacStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text('Naplatio: $naplatioStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Naplaćeno at: $naplacenoAtStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Updated by: $azuriraoStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Updated at: $updatedAtStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  if (finansijeNaziv.isNotEmpty) ...[
+                    const SizedBox(height: 1),
+                    Text('Finansije naziv: $finansijeNaziv',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  ],
                 ],
               ),
             ),

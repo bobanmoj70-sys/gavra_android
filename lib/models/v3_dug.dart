@@ -17,6 +17,12 @@ class V3Dug {
   final double iznos;
   final bool placeno;
   final DateTime? createdAt;
+  final DateTime? naplacenoAt;
+  final String? naplacenoBy;
+  final DateTime? updatedAt;
+  final String? updatedBy;
+  final String? finansijeNaziv;
+  final String? finansijeKategorija;
 
   V3Dug({
     required this.id,
@@ -37,5 +43,11 @@ class V3Dug {
     required this.iznos,
     this.placeno = false,
     this.createdAt,
+    this.naplacenoAt,
+    this.naplacenoBy,
+    this.updatedAt,
+    this.updatedBy,
+    this.finansijeNaziv,
+    this.finansijeKategorija,
   });
 }

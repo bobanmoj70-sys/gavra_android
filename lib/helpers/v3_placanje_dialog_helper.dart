@@ -265,12 +265,8 @@ class V3PlacanjeDialogHelper {
           brojVoznji: rezultat.brojVoznji,
         );
       } else {
-        final referenca = (referencaId ?? '').trim();
-        if (referenca.isEmpty) {
-          throw 'Referenca vožnje nije pronađena za ovu naplatu.';
-        }
         await V3FinansijeService.sacuvajNaplatuPoReferenci(
-          referencaId: referenca,
+          referencaId: (referencaId ?? '').trim(),
           putnikId: putnikId,
           naplacenoBy: vozac.id,
           iznos: rezultat.iznos,

@@ -5,22 +5,6 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload).select().single();
   }
 
-  Future<bool> operativnaReferencaExists(String referencaId) async {
-    final row = await supabase.from('v3_operativna_nedelja').select('id').eq('id', referencaId).limit(1).maybeSingle();
-    return row != null;
-  }
-
-  Future<Map<String, dynamic>?> findNaplataByReferencaId(String referencaId) {
-    return supabase
-        .from('v3_finansije')
-        .select('id')
-        .eq('tip', 'prihod')
-        .eq('kategorija', 'operativna_naplata')
-        .eq('operativna_id', referencaId)
-        .limit(1)
-        .maybeSingle();
-  }
-
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_finansije').update(payload).eq('id', id).select().single();
   }
@@ -38,7 +22,6 @@ class V3FinansijeRepository {
         .eq('putnik_v3_auth_id', putnikId)
         .eq('mesec', mesec)
         .eq('godina', godina)
-        .isFilter('operativna_id', null)
         .limit(1)
         .maybeSingle();
   }
