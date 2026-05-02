@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_finansije_service.dart';
+import 'package:gavra_android/utils/v3_date_utils.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
-import 'package:intl/intl.dart';
 
 import '../helpers/v3_placanje_dialog_helper.dart';
 import '../theme.dart';
@@ -131,7 +131,8 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                       putnikId: dug.putnikId,
                                       imePrezime: dug.imePrezime,
                                       defaultCena: dug.iznos,
-                                      referencaId: dug.id,
+                                      snimiMesecnuUplatu: true,
+                                      brojVoznji: dug.brojVoznji,
                                     );
                                     if (rezultat == null) return;
 
@@ -213,8 +214,10 @@ class _DugCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
-    final datumStr = DateFormat('dd.MM.yyyy  HH:mm').format(dug.datum);
-    final pickupStr = dug.pokupljenAt != null ? DateFormat('dd.MM.yyyy  HH:mm').format(dug.pokupljenAt!) : 'Nepoznato';
+    final periodStr = '${V3DateUtils.mesecNaziv(dug.mesec)} ${dug.godina}';
+    final obracunStr =
+        '${dug.brojVoznji} × ${dug.cena.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
+    final uplataStr = '${dug.uplaceno.toStringAsFixed(0)} RSD';
     final vozacStr = dug.vozacIme.isNotEmpty ? dug.vozacIme : 'Nepoznato';
 
     return Container(
@@ -254,11 +257,13 @@ class _DugCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 1),
-                  Text(datumStr, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  Text('Period: $periodStr', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Obračun: $obracunStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  const SizedBox(height: 1),
+                  Text('Uplaćeno: $uplataStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
                   Text('Vozač: $vozacStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  const SizedBox(height: 1),
-                  Text('Vožnja: $pickupStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                 ],
               ),
             ),

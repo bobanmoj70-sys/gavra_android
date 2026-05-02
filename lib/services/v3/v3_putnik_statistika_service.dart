@@ -28,6 +28,26 @@ class V3PutnikObracunSummary {
   });
 }
 
+class V3MesecniObracun {
+  final int godina;
+  final int mesec;
+  final int brojVoznji;
+  final double cena;
+  final double obaveza;
+  final double uplaceno;
+  final double dug;
+
+  const V3MesecniObracun({
+    required this.godina,
+    required this.mesec,
+    required this.brojVoznji,
+    required this.cena,
+    required this.obaveza,
+    required this.uplaceno,
+    required this.dug,
+  });
+}
+
 class V3PutnikMesecnaStatistika {
   final int godina;
   final int mesec;
@@ -136,6 +156,48 @@ class V3PutnikStatistikaService {
     return (tip: tip, cena: cena);
   }
 
+  static V3MesecniObracun getMesecniObracun({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final safePutnikId = putnikId.trim();
+    if (safePutnikId.isEmpty) {
+      return V3MesecniObracun(
+        godina: godina,
+        mesec: mesec,
+        brojVoznji: 0,
+        cena: 0,
+        obaveza: 0,
+        uplaceno: 0,
+        dug: 0,
+      );
+    }
+
+    final tipICena = _tipICena(safePutnikId);
+    final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+      putnikId: safePutnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    final brojVoznji = summary.brojVoznji;
+    final cena = tipICena.cena;
+    final obaveza = brojVoznji * cena;
+    final uplaceno = summary.ukupanIznos;
+    final dug = obaveza > uplaceno ? (obaveza - uplaceno) : 0.0;
+
+    return V3MesecniObracun(
+      godina: godina,
+      mesec: mesec,
+      brojVoznji: brojVoznji,
+      cena: cena,
+      obaveza: obaveza,
+      uplaceno: uplaceno,
+      dug: dug,
+    );
+  }
+
   static double _saldoDoGodine({
     required String putnikId,
     required int preGodine,
@@ -152,13 +214,13 @@ class V3PutnikStatistikaService {
 
     for (var godina = startGodina; godina < preGodine; godina++) {
       for (var mesec = 1; mesec <= 12; mesec++) {
-        final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+        final obracun = getMesecniObracun(
           putnikId: putnikId,
           godina: godina,
           mesec: mesec,
         );
-        final obaveza = summary.brojVoznji * cena;
-        final uplata = summary.ukupanIznos;
+        final obaveza = obracun.obaveza;
+        final uplata = obracun.uplaceno;
         saldo += uplata - obaveza;
       }
     }
@@ -209,14 +271,14 @@ class V3PutnikStatistikaService {
     var ukupnoUplaceno = 0.0;
 
     for (var mesec = 1; mesec <= 12; mesec++) {
-      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+      final obracun = getMesecniObracun(
         putnikId: safePutnikId,
         godina: godina,
         mesec: mesec,
       );
-      final brojVoznji = summary.brojVoznji;
-      final obaveza = brojVoznji * cena;
-      final uplata = summary.ukupanIznos;
+      final brojVoznji = obracun.brojVoznji;
+      final obaveza = obracun.obaveza;
+      final uplata = obracun.uplaceno;
       final saldoPocetak = saldo;
       saldo = saldo + uplata - obaveza;
 
@@ -265,50 +327,56 @@ class V3PutnikStatistikaService {
           period: period, periodLabel: _periodLabel(period: period, godina: godina, mesec: mesec));
     }
 
-    final rm = V3MasterRealtimeManager.instance;
-    final putnikData = rm.putniciCache[safePutnikId] ?? const <String, dynamic>{};
-    final tip = (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
-    final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0;
-    final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0;
-    final koristiCenuPoDanu = tip == 'radnik' || tip == 'ucenik';
-    final cena = koristiCenuPoDanu ? cenaPoDanu : cenaPoPokupljenju;
-
-    ({int brojVoznji, double ukupanIznos}) finansijeSummary;
+    int ukupnoVoznji = 0;
+    double ukupnaObaveza = 0;
+    double ukupnoUplaceno = 0;
     int labelGodina = ref.year;
     int labelMesec = ref.month;
 
     if (period == V3ObracunPeriod.tekuciMesec) {
-      finansijeSummary = V3FinansijeService.getNaplataSummaryForPutnik(
+      final obracun = getMesecniObracun(
         putnikId: safePutnikId,
         godina: ref.year,
         mesec: ref.month,
       );
+      ukupnoVoznji = obracun.brojVoznji;
+      ukupnaObaveza = obracun.obaveza;
+      ukupnoUplaceno = obracun.uplaceno;
       labelGodina = ref.year;
       labelMesec = ref.month;
     } else if (period == V3ObracunPeriod.izabraniMesec) {
       final selectedGodina = godina ?? ref.year;
       final selectedMesec = mesec ?? ref.month;
-      finansijeSummary = V3FinansijeService.getNaplataSummaryForPutnik(
+      final obracun = getMesecniObracun(
         putnikId: safePutnikId,
         godina: selectedGodina,
         mesec: selectedMesec,
       );
+      ukupnoVoznji = obracun.brojVoznji;
+      ukupnaObaveza = obracun.obaveza;
+      ukupnoUplaceno = obracun.uplaceno;
       labelGodina = selectedGodina;
       labelMesec = selectedMesec;
     } else {
-      finansijeSummary = V3FinansijeService.getNaplataSummaryForPutnik(
-        putnikId: safePutnikId,
-      );
+      final meseci = _getMeseciSaPodacima(safePutnikId)..add((ref.year, ref.month));
+      for (final (g, m) in meseci) {
+        final mObracun = getMesecniObracun(
+          putnikId: safePutnikId,
+          godina: g,
+          mesec: m,
+        );
+        ukupnoVoznji += mObracun.brojVoznji;
+        ukupnaObaveza += mObracun.obaveza;
+        ukupnoUplaceno += mObracun.uplaceno;
+      }
     }
 
-    final ukupanIznos =
-        finansijeSummary.ukupanIznos > 0 ? finansijeSummary.ukupanIznos : finansijeSummary.brojVoznji * cena;
     return V3PutnikObracunSummary(
       period: period,
       periodLabel: _periodLabel(period: period, godina: labelGodina, mesec: labelMesec),
-      ukupnoVoznji: finansijeSummary.brojVoznji,
-      cena: cena,
-      ukupanIznos: ukupanIznos,
+      ukupnoVoznji: ukupnoVoznji,
+      cena: ukupnoVoznji > 0 ? (ukupnaObaveza / ukupnoVoznji) : 0,
+      ukupanIznos: ukupnaObaveza,
       godina: period == V3ObracunPeriod.ukupno ? null : labelGodina,
       mesec: period == V3ObracunPeriod.ukupno ? null : labelMesec,
     );
@@ -402,78 +470,40 @@ class V3PutnikStatistikaService {
       return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
     }
 
-    final rm = V3MasterRealtimeManager.instance;
-    final putnikData = rm.putniciCache[putnikId] ?? const <String, dynamic>{};
-    final tip = (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
-    final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0;
-    final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0;
-
-    return _computeFromFinansije(
-      putnikId: putnikId,
-      godina: godina,
-      mesec: mesec,
-      mesecNaziv: mesecNaziv,
-      tip: tip,
-      cenaPoDanu: cenaPoDanu,
-      cenaPoPokupljenju: cenaPoPokupljenju,
-    );
-  }
-
-  static V3PutnikMesecnaStatistika _computeFromFinansije({
-    required String putnikId,
-    required int godina,
-    required int mesec,
-    required String mesecNaziv,
-    required String tip,
-    required double cenaPoDanu,
-    required double cenaPoPokupljenju,
-  }) {
-    final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+    final obracun = getMesecniObracun(
       putnikId: putnikId,
       godina: godina,
       mesec: mesec,
     );
 
-    final brojVoznji = summary.brojVoznji;
-    final ukupnoUplaceno = summary.ukupanIznos;
-
-    if (brojVoznji <= 0 && ukupnoUplaceno <= 0) {
+    if (obracun.brojVoznji <= 0 && obracun.uplaceno <= 0) {
       return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
     }
 
-    final cena = _cenaZaTip(
-      tip: tip,
-      cenaPoDanu: cenaPoDanu,
-      cenaPoPokupljenju: cenaPoPokupljenju,
-    );
-    final ukupnaObaveza = brojVoznji * cena;
-
     int placeno;
-    if (cena > 0) {
-      placeno = (ukupnoUplaceno / cena).floor();
-      if (placeno > brojVoznji) placeno = brojVoznji;
+    if (obracun.cena > 0) {
+      placeno = (obracun.uplaceno / obracun.cena).floor();
+      if (placeno > obracun.brojVoznji) placeno = obracun.brojVoznji;
       if (placeno < 0) placeno = 0;
     } else {
-      placeno = brojVoznji;
+      placeno = obracun.brojVoznji;
     }
 
-    final neplaceno = (brojVoznji - placeno).clamp(0, brojVoznji);
-    final dugIznos = ukupnaObaveza > ukupnoUplaceno ? (ukupnaObaveza - ukupnoUplaceno) : 0.0;
-    final naplacenoIznos = ukupnoUplaceno;
+    final neplaceno = (obracun.brojVoznji - placeno).clamp(0, obracun.brojVoznji);
 
     return V3PutnikMesecnaStatistika(
       godina: godina,
       mesec: mesec,
       mesecNaziv: mesecNaziv,
-      ukupnoVoznji: brojVoznji,
-      pokupljeno: brojVoznji,
+      ukupnoVoznji: obracun.brojVoznji,
+      pokupljeno: obracun.brojVoznji,
       placeno: placeno,
       otkazano: 0,
       neplaceno: neplaceno,
-      naplacenoIznos: naplacenoIznos,
-      dugIznos: dugIznos,
-      cena: cena,
-      ukupnaObaveza: ukupnaObaveza,
+      naplacenoIznos: obracun.uplaceno,
+      dugIznos: obracun.dug,
+      cena: obracun.cena,
+      ukupnaObaveza: obracun.obaveza,
     );
   }
 

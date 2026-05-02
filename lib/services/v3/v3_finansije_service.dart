@@ -26,6 +26,19 @@ class V3FinansijeService {
   static final Set<String> _mesecnaNaplataLocks = <String>{};
   static final Set<String> _naplataPoReferenciLocks = <String>{};
 
+  static bool _isPoDanuTip(String tip) {
+    final normalized = tip.trim().toLowerCase();
+    return normalized == 'radnik' || normalized == 'ucenik' || normalized == 'vozac';
+  }
+
+  static double _cenaZaTip({
+    required String tip,
+    required double cenaPoDanu,
+    required double cenaPoPokupljenju,
+  }) {
+    return _isPoDanuTip(tip) ? cenaPoDanu : cenaPoPokupljenju;
+  }
+
   static bool _isNaplataPrihod(Map<String, dynamic> row) {
     if (row['tip']?.toString() != 'prihod') return false;
     final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
@@ -355,68 +368,72 @@ class V3FinansijeService {
     return result;
   }
 
-  static String _dugMatchKey(Map<String, dynamic> row) {
-    final referencaId = row['operativna_id']?.toString().trim() ?? '';
-    if (referencaId.isNotEmpty) return referencaId;
-    return row['id']?.toString().trim() ?? '';
-  }
-
   static List<V3Dug> getDugovi() {
     final rm = V3MasterRealtimeManager.instance;
-    final realizacije = _realizacijaRows().toList(growable: false);
-    final naplate = _naplataRows().toList(growable: false);
-
-    final latestNaplataByKey = <String, Map<String, dynamic>>{};
-    for (final naplata in naplate) {
-      final key = _dugMatchKey(naplata);
-      if (key.isEmpty) continue;
-      final existing = latestNaplataByKey[key];
-      if (existing == null || _createdAtOrEpoch(naplata).isAfter(_createdAtOrEpoch(existing))) {
-        latestNaplataByKey[key] = naplata;
-      }
-    }
-
     final dugovi = <V3Dug>[];
-    for (final row in realizacije) {
-      final putnikId = row['putnik_v3_auth_id']?.toString().trim() ?? '';
+    final now = DateTime.now();
+
+    for (final putnikData in rm.putniciCache.values) {
+      final putnikId = putnikData['id']?.toString().trim() ?? '';
       if (putnikId.isEmpty) continue;
 
-      final putnikData = rm.putniciCache[putnikId];
-      if (putnikData == null) continue;
+      final tip = (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
+      final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+      final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+      final cena = _cenaZaTip(
+        tip: tip,
+        cenaPoDanu: cenaPoDanu,
+        cenaPoPokupljenju: cenaPoPokupljenju,
+      );
 
-      final tip = putnikData['tip_putnika'] as String? ?? 'dnevni';
-      if (tip != 'dnevni' && tip != 'posiljka') continue;
+      final meseci = getNaplataMeseciForPutnik(putnikId)..add((now.year, now.month));
+      if (meseci.isEmpty) continue;
 
-      final key = _dugMatchKey(row);
-      if (key.isEmpty) continue;
-      final naplata = latestNaplataByKey[key];
-      if (naplata != null) continue;
+      for (final (godina, mesec) in meseci) {
+        final summary = getNaplataSummaryForPutnik(
+          putnikId: putnikId,
+          godina: godina,
+          mesec: mesec,
+        );
 
-      try {
-        final pickupVozacId = row['naplaceno_by']?.toString() ?? '';
-        final vozacData = pickupVozacId.isNotEmpty ? rm.vozaciCache[pickupVozacId] : null;
-        final createdAt = V3DateUtils.parseTs(row['created_at']?.toString());
-        final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+        final brojVoznji = summary.brojVoznji;
+        if (brojVoznji <= 0) continue;
+
+        final ukupnaObaveza = brojVoznji * cena;
+        final uplaceno = summary.ukupanIznos;
+        final dugIznos = ukupnaObaveza - uplaceno;
+        if (dugIznos <= 0) continue;
 
         dugovi.add(
           V3Dug(
-            id: key,
+            id: '$putnikId:$godina:$mesec',
+            referencaId: null,
             putnikId: putnikId,
             imePrezime: putnikData['ime_prezime'] as String? ?? 'Nepoznato',
             tipPutnika: tip,
-            vozacId: pickupVozacId,
-            vozacIme: vozacData?['ime_prezime'] as String? ?? '',
-            datum: createdAt ?? DateTime.now(),
-            pokupljenAt: createdAt,
-            iznos: cenaPoPokupljenju,
+            godina: godina,
+            mesec: mesec,
+            brojVoznji: brojVoznji,
+            cena: cena,
+            ukupnaObaveza: ukupnaObaveza,
+            uplaceno: uplaceno,
+            vozacId: '',
+            vozacIme: '',
+            datum: DateTime(godina, mesec, 1),
+            pokupljenAt: null,
+            iznos: dugIznos,
             placeno: false,
-            createdAt: createdAt,
+            createdAt: null,
           ),
         );
-      } catch (_) {}
+      }
     }
 
-    dugovi.sort((a, b) => b.datum.compareTo(a.datum));
+    dugovi.sort((a, b) {
+      final byDate = b.datum.compareTo(a.datum);
+      if (byDate != 0) return byDate;
+      return b.iznos.compareTo(a.iznos);
+    });
     return dugovi;
   }
 
@@ -478,6 +495,11 @@ class V3FinansijeService {
     }
     if (iznos <= 0) {
       throw ArgumentError('Iznos naplate mora biti veći od nule.');
+    }
+
+    final referencaExists = await _repo.operativnaReferencaExists(referencaId);
+    if (!referencaExists) {
+      throw StateError('Referenca vožnje nije validna (operativni red ne postoji).');
     }
 
     final lockKey = 'ref:$referencaId';

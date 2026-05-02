@@ -40,7 +40,8 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_auth']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_finansije', 'v3_auth']),
       builder: (context, _) {
         final godina = DateTime.now().year;
         final meseci = V3PutnikStatistikaService.getZaGodinu(widget.putnikId, godina: godina);
@@ -211,7 +212,7 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
                           _summaryRow('Ukupan broj vožnji', '${summary.ukupnoVoznji}', Colors.greenAccent),
                           _summaryRow('Cena', '${summary.cena.toStringAsFixed(0)} RSD', Colors.lightBlueAccent),
                           _summaryRow(
-                              'Ukupan iznos', '${summary.ukupanIznos.toStringAsFixed(0)} RSD', Colors.amberAccent),
+                              'Ukupna obaveza', '${summary.ukupanIznos.toStringAsFixed(0)} RSD', Colors.amberAccent),
                         ],
                       ),
                     ),

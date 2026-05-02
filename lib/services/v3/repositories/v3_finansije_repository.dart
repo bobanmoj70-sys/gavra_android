@@ -5,6 +5,11 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').insert(payload).select().single();
   }
 
+  Future<bool> operativnaReferencaExists(String referencaId) async {
+    final row = await supabase.from('v3_operativna_nedelja').select('id').eq('id', referencaId).limit(1).maybeSingle();
+    return row != null;
+  }
+
   Future<Map<String, dynamic>?> findNaplataByReferencaId(String referencaId) {
     return supabase
         .from('v3_finansije')
