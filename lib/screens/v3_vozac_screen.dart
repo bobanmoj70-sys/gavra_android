@@ -468,6 +468,36 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       allSelectedRowsById.putIfAbsent(entryId, () => row);
     }
 
+    // B: Ako postoji aktivan slot za ovaj grad/vreme/datum, dodaj SVE putnike
+    // iz operativnaNedeljaCache za taj slot (pokriva putnike dodane naknadno).
+    final hasActiveSlot = _assignedSlotRows.any((slot) {
+      final slotDatum = (slot[V3TrenutnaDodelaSlotService.colDatum] ?? '').trim();
+      final slotGrad = (slot[V3TrenutnaDodelaSlotService.colGrad] ?? '').trim().toUpperCase();
+      final slotVreme = V3TimeUtils.normalizeToHHmm(slot[V3TrenutnaDodelaSlotService.colVreme]);
+      return slotDatum == _selectedDatumIso &&
+          slotGrad == _selectedGrad &&
+          slotVreme == selectedVNorm;
+    });
+
+    if (hasActiveSlot) {
+      for (final raw in rm.operativnaNedeljaCache.values) {
+        final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
+        final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
+        final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
+        final putnikId = raw['created_by']?.toString();
+        if (rowDatum != _selectedDatumIso) continue;
+        if (rowGrad != _selectedGrad) continue;
+        if (rowVreme != selectedVNorm) continue;
+        if (putnikId == null || putnikId.isEmpty) continue;
+        if (raw['otkazano_at'] != null) continue;
+        final entryId = raw['id']?.toString();
+        if (entryId == null || entryId.isEmpty) continue;
+        final row = Map<String, dynamic>.from(raw);
+        row['vreme'] = row['vreme'] ?? row['polazak_at'];
+        allSelectedRowsById.putIfAbsent(entryId, () => row);
+      }
+    }
+
     // 3. Za svaki red izgradimo _PutnikEntry iz operativna_nedelja
     final putnici = <_PutnikEntry>[];
     for (final row in allSelectedRowsById.values) {
