@@ -563,23 +563,21 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                       width: isSelected ? 2.5 : 1.5,
                                     ),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    padding: EdgeInsets.symmetric(vertical: isSelected ? 4 : 10),
                                   ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       if (isSelected)
-                                        const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                                        const Icon(Icons.check_circle, color: Colors.greenAccent, size: 12),
                                       Text(
                                         vreme,
                                         style: TextStyle(
                                           color: isLocked
                                               ? Colors.white24
-                                              : isSelected
-                                                  ? Colors.white
-                                                  : Colors.white,
+                                              : Colors.white,
                                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                          fontSize: 14,
+                                          fontSize: 13,
                                         ),
                                       ),
                                     ],
