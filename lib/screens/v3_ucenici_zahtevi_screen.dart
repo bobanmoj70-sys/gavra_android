@@ -104,69 +104,74 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final zahtevi = _getMonitoringZahtevi();
-    final brObrada =
-        zahtevi.where((z) => V3StatusPolicy.isPending(z.status) || V3StatusPolicy.isOfferLike(z.status)).length;
-    final brOdobreno = zahtevi.where((z) => V3StatusPolicy.isApproved(z.status)).length;
-    final brOdbijeno = zahtevi.where((z) => V3StatusPolicy.isRejected(z.status)).length;
-    final brOtkazano = zahtevi.where((z) => V3StatusPolicy.isCanceled(z.status)).length;
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_auth', 'v3_zahtevi']),
+      builder: (context, _) {
+        final zahtevi = _getMonitoringZahtevi();
+        final brObrada =
+            zahtevi.where((z) => V3StatusPolicy.isPending(z.status) || V3StatusPolicy.isOfferLike(z.status)).length;
+        final brOdobreno = zahtevi.where((z) => V3StatusPolicy.isApproved(z.status)).length;
+        final brOdbijeno = zahtevi.where((z) => V3StatusPolicy.isRejected(z.status)).length;
+        final brOtkazano = zahtevi.where((z) => V3StatusPolicy.isCanceled(z.status)).length;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Monitoring zahteva',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-      ),
-      body: V3ContainerUtils.backgroundContainer(
-        gradient: Theme.of(context).backgroundGradient,
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    if (brObrada > 0) _badge('🟡 $brObrada obrada', Colors.amber),
-                    if (brOdobreno > 0) _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
-                    if (brOdbijeno > 0) _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
-                    if (brOtkazano > 0) _badge('⛔ $brOtkazano otkazano', Colors.orange),
-                    if (zahtevi.isEmpty)
-                      Text(
-                        'Nema zahteva',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
-                      ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: zahtevi.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Nema zahteva',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: zahtevi.length,
-                        itemBuilder: (_, i) => _MonitoringCardUcenik(zahtev: zahtevi[i]),
-                      ),
-              ),
-            ],
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            foregroundColor: Colors.white,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Monitoring zahteva',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ),
-        ),
-      ),
+          body: V3ContainerUtils.backgroundContainer(
+            gradient: Theme.of(context).backgroundGradient,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        if (brObrada > 0) _badge('🟡 $brObrada obrada', Colors.amber),
+                        if (brOdobreno > 0) _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
+                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
+                        if (brOtkazano > 0) _badge('⛔ $brOtkazano otkazano', Colors.orange),
+                        if (zahtevi.isEmpty)
+                          Text(
+                            'Nema zahteva',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: zahtevi.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Nema zahteva',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: zahtevi.length,
+                            itemBuilder: (_, i) => _MonitoringCardUcenik(zahtev: zahtevi[i]),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

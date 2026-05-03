@@ -285,20 +285,7 @@ class V3MasterRealtimeManager {
     }
     try {
       _registerCacheStoreIfNeeded();
-      final results = await _bootstrapLoader.loadFull();
-
-      for (final table in V3RealtimeTableRegistry.defaults) {
-        final rawRows = results[table.name] ?? const <dynamic>[];
-        final normalizedRows = _normalizeRowsForTable(table.name, rawRows);
-        _cacheStore.replaceAll(table.name, normalizedRows);
-      }
-
-      _rebuildRoleCachesFromAuth();
-
-      _rebuildAssignedCacheFromOperativna();
-      // Primeni app_settings na notifiere odmah pri inicijalizaciji
-      final globalSettings = appSettingsCache['global'];
-      if (globalSettings != null) _applyAppSettings(globalSettings);
+      await _loadInitialCachesWithRetry();
 
       _lifecycleListener ??= AppLifecycleListener(
         onResume: () {
@@ -365,12 +352,11 @@ class V3MasterRealtimeManager {
         case RealtimeSubscribeStatus.subscribed:
           _reconnectAttempts = 0;
           debugPrint('[RT] subscribed (hasConnectedBefore=$_hasConnectedBefore)');
-          if (_hasConnectedBefore) {
-            unawaited(_applyMissedDelta());
-          } else {
+          if (!_hasConnectedBefore) {
             _hasConnectedBefore = true;
             _scheduleEmit(tables: {'*'}, immediate: true);
           }
+          unawaited(_applyMissedDelta());
           break;
         case RealtimeSubscribeStatus.channelError:
           debugPrint('[RT] channelError: $error');
@@ -382,9 +368,40 @@ class V3MasterRealtimeManager {
           break;
         case RealtimeSubscribeStatus.closed:
           debugPrint('[RT] closed');
+          unawaited(_scheduleReconnect());
           break;
       }
     });
+  }
+
+  Future<void> _loadInitialCachesWithRetry({int maxAttempts = 3}) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final results = await _bootstrapLoader.loadFull();
+        _applyBootstrapResults(results);
+        return;
+      } catch (e) {
+        lastError = e;
+        if (attempt >= maxAttempts) break;
+        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+      }
+    }
+    throw StateError('Bootstrap init failed after $maxAttempts attempts: $lastError');
+  }
+
+  void _applyBootstrapResults(Map<String, List<dynamic>> results) {
+    for (final table in V3RealtimeTableRegistry.defaults) {
+      final rawRows = results[table.name] ?? const <dynamic>[];
+      final normalizedRows = _normalizeRowsForTable(table.name, rawRows);
+      _cacheStore.replaceAll(table.name, normalizedRows);
+    }
+
+    _rebuildRoleCachesFromAuth();
+    _rebuildAssignedCacheFromOperativna();
+
+    final globalSettings = appSettingsCache['global'];
+    if (globalSettings != null) _applyAppSettings(globalSettings);
   }
 
   Future<void> _scheduleReconnect() async {
@@ -500,7 +517,18 @@ class V3MasterRealtimeManager {
 
   Stream<int> tableRevisionStream(String table) {
     final normalized = table.trim();
-    return onRevisions.map((snapshot) => snapshot[normalized] ?? _cacheStore.revision(normalized)).distinct();
+    return Stream<int>.multi(
+      (controller) {
+        controller.add(_cacheStore.revision(normalized));
+        final sub =
+            onRevisions.map((snapshot) => snapshot[normalized] ?? _cacheStore.revision(normalized)).distinct().listen(
+                  controller.add,
+                  onError: controller.addError,
+                );
+        controller.onCancel = sub.cancel;
+      },
+      isBroadcast: true,
+    ).distinct();
   }
 
   Stream<int> tablesRevisionStream(List<String> tables) {
@@ -509,14 +537,26 @@ class V3MasterRealtimeManager {
       return onRevisions.map((_) => 0).distinct();
     }
 
-    return onRevisions.map((snapshot) {
+    int buildHashFromSnapshot(Map<String, int>? snapshot) {
       var hash = 17;
       for (final table in normalized) {
-        final revision = snapshot[table] ?? _cacheStore.revision(table);
+        final revision = snapshot?[table] ?? _cacheStore.revision(table);
         hash = (hash * 31) ^ revision;
       }
       return hash;
-    }).distinct();
+    }
+
+    return Stream<int>.multi(
+      (controller) {
+        controller.add(buildHashFromSnapshot(null));
+        final sub = onRevisions.map(buildHashFromSnapshot).distinct().listen(
+              controller.add,
+              onError: controller.addError,
+            );
+        controller.onCancel = sub.cancel;
+      },
+      isBroadcast: true,
+    ).distinct();
   }
 
   void v3UpsertToCache(String table, Map<String, dynamic> row) {

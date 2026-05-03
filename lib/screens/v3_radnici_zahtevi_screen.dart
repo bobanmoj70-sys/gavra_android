@@ -145,71 +145,76 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final zahteviRaw = _getMonitoringZahteviRaw();
-    final obrada = zahteviRaw.where((z) {
-      final status = (z['status']?.toString() ?? '').trim();
-      return V3StatusPolicy.isPending(status) || V3StatusPolicy.isOfferLike(status);
-    }).length;
-    final odobreno = zahteviRaw.where((z) => V3StatusPolicy.isApproved(z['status']?.toString())).length;
-    final odbijeno = zahteviRaw.where((z) => V3StatusPolicy.isRejected(z['status']?.toString())).length;
-    final otkazano = zahteviRaw.where((z) => V3StatusPolicy.isCanceled(z['status']?.toString())).length;
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_auth', 'v3_zahtevi']),
+      builder: (context, _) {
+        final zahteviRaw = _getMonitoringZahteviRaw();
+        final obrada = zahteviRaw.where((z) {
+          final status = (z['status']?.toString() ?? '').trim();
+          return V3StatusPolicy.isPending(status) || V3StatusPolicy.isOfferLike(status);
+        }).length;
+        final odobreno = zahteviRaw.where((z) => V3StatusPolicy.isApproved(z['status']?.toString())).length;
+        final odbijeno = zahteviRaw.where((z) => V3StatusPolicy.isRejected(z['status']?.toString())).length;
+        final otkazano = zahteviRaw.where((z) => V3StatusPolicy.isCanceled(z['status']?.toString())).length;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Monitoring zahteva',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-      ),
-      body: V3ContainerUtils.backgroundContainer(
-        gradient: Theme.of(context).backgroundGradient,
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    if (obrada > 0) _badge('🟡 $obrada obrada', Colors.amber),
-                    if (odobreno > 0) _badge('🟢 $odobreno odobreno', Colors.greenAccent),
-                    if (odbijeno > 0) _badge('🔴 $odbijeno odbijeno', Colors.redAccent),
-                    if (otkazano > 0) _badge('⛔ $otkazano otkazano', Colors.orange),
-                    if (zahteviRaw.isEmpty)
-                      Text(
-                        'Nema zahteva',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
-                      ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: zahteviRaw.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Nema zahteva',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: zahteviRaw.length,
-                        itemBuilder: (_, i) => _MonitoringCardRadnik(row: zahteviRaw[i]),
-                      ),
-              ),
-            ],
+        return Scaffold(
+          extendBodyBehindAppBar: true,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            foregroundColor: Colors.white,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              'Monitoring zahteva',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ),
-        ),
-      ),
+          body: V3ContainerUtils.backgroundContainer(
+            gradient: Theme.of(context).backgroundGradient,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        if (obrada > 0) _badge('🟡 $obrada obrada', Colors.amber),
+                        if (odobreno > 0) _badge('🟢 $odobreno odobreno', Colors.greenAccent),
+                        if (odbijeno > 0) _badge('🔴 $odbijeno odbijeno', Colors.redAccent),
+                        if (otkazano > 0) _badge('⛔ $otkazano otkazano', Colors.orange),
+                        if (zahteviRaw.isEmpty)
+                          Text(
+                            'Nema zahteva',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: zahteviRaw.isEmpty
+                        ? Center(
+                            child: Text(
+                              'Nema zahteva',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: zahteviRaw.length,
+                            itemBuilder: (_, i) => _MonitoringCardRadnik(row: zahteviRaw[i]),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
