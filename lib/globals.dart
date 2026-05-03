@@ -206,6 +206,7 @@ bool isNeradanDan({
 List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
   final normalizedGrad = grad.toLowerCase();
   final normalizedSezona = sezona.toLowerCase();
+  final effectiveSezona = _allowedNavBarTypes.contains(normalizedSezona) ? normalizedSezona : 'zimski';
 
   if (day != null && day.trim().isNotEmpty) {
     final normalizedDay = V3DanHelper.normalizeToWorkdayFull(day);
@@ -220,7 +221,7 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
     }
   }
 
-  if (normalizedSezona == 'custom') {
+  if (effectiveSezona == 'custom') {
     final cityMap = customRasporedByDayNotifier.value[normalizedGrad];
 
     if (day != null && day.trim().isNotEmpty) {
@@ -233,10 +234,10 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
       }
     }
 
-    return <String>[];
+    return rasporedNotifier.value['${normalizedGrad}_zimski'] ?? <String>[];
   }
 
-  final key = '${grad.toLowerCase()}_${sezona.toLowerCase()}';
+  final key = '${normalizedGrad}_${effectiveSezona}';
   return rasporedNotifier.value[key] ?? [];
 }
 
