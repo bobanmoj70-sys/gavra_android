@@ -43,6 +43,8 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> gorivoCache = {};
   final Map<String, Map<String, dynamic>> finansijeCache = {};
   final Map<String, Map<String, dynamic>> racuniCache = {};
+  final Map<String, Map<String, dynamic>> trenutnaDodelaCache = {};
+  final Map<String, Map<String, dynamic>> trenutnaDodelaSlotCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
   final Map<String, Map<String, dynamic>> kapacitetSlotsCache = {};
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
@@ -205,6 +207,8 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
     _cacheStore.registerTable('v3_finansije', finansijeCache);
     _cacheStore.registerTable('v3_racuni', racuniCache);
+    _cacheStore.registerTable('v3_trenutna_dodela', trenutnaDodelaCache);
+    _cacheStore.registerTable('v3_trenutna_dodela_slot', trenutnaDodelaSlotCache);
     _cacheStore.registerTable('v3_operativna_nedelja', operativnaNedeljaCache);
     _cacheStore.registerTable('v3_kapacitet_slots', kapacitetSlotsCache);
     _cacheStore.registerTable('v3_app_settings', appSettingsCache);
@@ -350,13 +354,16 @@ class V3MasterRealtimeManager {
       _isSubscribing = false;
       switch (status) {
         case RealtimeSubscribeStatus.subscribed:
+          final isFirstSubscribe = !_hasConnectedBefore;
           _reconnectAttempts = 0;
           debugPrint('[RT] subscribed (hasConnectedBefore=$_hasConnectedBefore)');
-          if (!_hasConnectedBefore) {
+          if (isFirstSubscribe) {
             _hasConnectedBefore = true;
             _scheduleEmit(tables: {'*'}, immediate: true);
+            unawaited(_applyMissedDelta());
+          } else {
+            unawaited(_resyncCachesAfterReconnect());
           }
-          unawaited(_applyMissedDelta());
           break;
         case RealtimeSubscribeStatus.channelError:
           debugPrint('[RT] channelError: $error');
@@ -372,6 +379,19 @@ class V3MasterRealtimeManager {
           break;
       }
     });
+  }
+
+  Future<void> _resyncCachesAfterReconnect() async {
+    debugPrint('[RT] reconnect → full cache resync');
+    try {
+      final results = await _bootstrapLoader.loadFull();
+      _applyBootstrapResults(results);
+      _scheduleEmit(tables: {'*'}, immediate: true);
+      debugPrint('[RT] reconnect resync → completed');
+    } catch (e) {
+      debugPrint('[RT] reconnect resync error: $e');
+      await _applyMissedDelta();
+    }
   }
 
   Future<void> _loadInitialCachesWithRetry({int maxAttempts = 3}) async {
@@ -616,6 +636,10 @@ class V3MasterRealtimeManager {
         return finansijeCache;
       case 'v3_racuni':
         return racuniCache;
+      case 'v3_trenutna_dodela':
+        return trenutnaDodelaCache;
+      case 'v3_trenutna_dodela_slot':
+        return trenutnaDodelaSlotCache;
       case 'v3_operativna_nedelja':
         return operativnaNedeljaCache;
       case 'v3_kapacitet_slots':

@@ -24,9 +24,11 @@ class V3BootstrapLoader {
       'v3_gorivo': (results[4] as List).cast<dynamic>(),
       'v3_finansije': (results[5] as List).cast<dynamic>(),
       'v3_racuni': (results[6] as List).cast<dynamic>(),
-      'v3_operativna_nedelja': (results[7] as List).cast<dynamic>(),
-      'v3_kapacitet_slots': (results[8] as List).cast<dynamic>(),
-      'v3_app_settings': (results[9] as List).cast<dynamic>(),
+      'v3_trenutna_dodela': (results[7] as List).cast<dynamic>(),
+      'v3_trenutna_dodela_slot': (results[8] as List).cast<dynamic>(),
+      'v3_operativna_nedelja': (results[9] as List).cast<dynamic>(),
+      'v3_kapacitet_slots': (results[10] as List).cast<dynamic>(),
+      'v3_app_settings': (results[11] as List).cast<dynamic>(),
     };
   }
 
@@ -49,6 +51,8 @@ class V3BootstrapLoader {
       case 'v3_racuni':
       case 'v3_gorivo':
       case 'v3_app_settings':
+      case 'v3_trenutna_dodela':
+      case 'v3_trenutna_dodela_slot':
         response = await _client.from(table).select().gte('updated_at', iso);
         break;
       case 'v3_auth':

@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v3_putnik.dart';
@@ -42,8 +43,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String _selectedDay = 'Ponedeljak';
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
-  RealtimeChannel? _trenutnaDodelaChannel;
-  int _dodelaReconnectAttempts = 0;
+  StreamSubscription<int>? _trenutnaDodelaRevisionSub;
 
   /// ISO datum za izabrani dan u tekućoj nedelji.
   String get _selectedDatumIso =>
@@ -87,47 +87,13 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   }
 
   void _startTrenutnaDodelaRealtime() {
-    final existing = _trenutnaDodelaChannel;
-    if (existing != null) {
-      supabase.removeChannel(existing);
-      _trenutnaDodelaChannel = null;
-    }
-
-    final channel = supabase.channel('v3_trenutna_dodela_admin_raspored');
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: V3TrenutnaDodelaService.tableName,
-      callback: (_) {
-        _refreshDodelaFromRealtime();
-      },
-    );
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: V3TrenutnaDodelaSlotService.tableName,
-      callback: (_) {
-        _refreshDodelaFromRealtime();
-      },
-    );
-    channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.subscribed) {
-        _dodelaReconnectAttempts = 0;
-      }
-      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
-        debugPrint('[V3AdminRasporedScreen] dodela realtime $status: $error');
-        if (mounted) {
-          _dodelaReconnectAttempts += 1;
-          final capped = _dodelaReconnectAttempts.clamp(1, 5);
-          final delayMs = 500 * (1 << capped);
-          Future<void>.delayed(Duration(milliseconds: delayMs), () {
-            if (mounted) _startTrenutnaDodelaRealtime();
-          });
-        }
-      }
+    _trenutnaDodelaRevisionSub?.cancel();
+    _trenutnaDodelaRevisionSub = V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+      V3TrenutnaDodelaService.tableName,
+      V3TrenutnaDodelaSlotService.tableName,
+    ]).listen((_) {
+      unawaited(_refreshDodelaFromRealtime());
     });
-
-    _trenutnaDodelaChannel = channel;
   }
 
   Future<void> _refreshDodelaFromRealtime() async {
@@ -155,11 +121,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   @override
   void dispose() {
-    final channel = _trenutnaDodelaChannel;
-    _trenutnaDodelaChannel = null;
-    if (channel != null) {
-      supabase.removeChannel(channel);
-    }
+    unawaited(_trenutnaDodelaRevisionSub?.cancel());
+    _trenutnaDodelaRevisionSub = null;
     super.dispose();
   }
 

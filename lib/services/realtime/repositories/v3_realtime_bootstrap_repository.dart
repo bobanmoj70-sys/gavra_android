@@ -57,6 +57,18 @@ class V3RealtimeBootstrapRepository {
     );
     results.add(
       await _fetchTableRows(
+        table: 'v3_trenutna_dodela',
+        query: () => supabase.from('v3_trenutna_dodela').select(),
+      ),
+    );
+    results.add(
+      await _fetchTableRows(
+        table: 'v3_trenutna_dodela_slot',
+        query: () => supabase.from('v3_trenutna_dodela_slot').select(),
+      ),
+    );
+    results.add(
+      await _fetchTableRows(
         table: 'v3_operativna_nedelja',
         query: () => supabase.from('v3_operativna_nedelja').select(),
       ),

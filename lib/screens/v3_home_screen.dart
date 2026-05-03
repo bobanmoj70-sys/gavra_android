@@ -1,7 +1,8 @@
+import 'dart:async';
+
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v3_adresa.dart';
@@ -60,8 +61,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   late Stream<List<V3OperativnaNedeljaEntry>> _operativnaStream;
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
-  RealtimeChannel? _trenutnaDodelaChannel;
-  int _dodelaReconnectAttempts = 0;
+  StreamSubscription<int>? _trenutnaDodelaRevisionSub;
 
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u aktivnoj sedmici.
   String get _selectedDatumIso =>
@@ -125,47 +125,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   }
 
   void _startTrenutnaDodelaRealtime() {
-    final existing = _trenutnaDodelaChannel;
-    if (existing != null) {
-      supabase.removeChannel(existing);
-      _trenutnaDodelaChannel = null;
-    }
-
-    final channel = supabase.channel('v3_trenutna_dodela_home');
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: V3TrenutnaDodelaService.tableName,
-      callback: (_) {
-        _refreshDodelaFromRealtime();
-      },
-    );
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: V3TrenutnaDodelaSlotService.tableName,
-      callback: (_) {
-        _refreshDodelaFromRealtime();
-      },
-    );
-    channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.subscribed) {
-        _dodelaReconnectAttempts = 0;
-      }
-      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
-        debugPrint('[V3HomeScreen] dodela realtime $status: $error');
-        if (mounted) {
-          _dodelaReconnectAttempts += 1;
-          final capped = _dodelaReconnectAttempts.clamp(1, 5);
-          final delayMs = 500 * (1 << capped);
-          Future<void>.delayed(Duration(milliseconds: delayMs), () {
-            if (mounted) _startTrenutnaDodelaRealtime();
-          });
-        }
-      }
+    _trenutnaDodelaRevisionSub?.cancel();
+    _trenutnaDodelaRevisionSub = V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+      V3TrenutnaDodelaService.tableName,
+      V3TrenutnaDodelaSlotService.tableName,
+    ]).listen((_) {
+      unawaited(_refreshDodelaFromRealtime());
     });
-
-    _trenutnaDodelaChannel = channel;
   }
 
   Future<void> _refreshDodelaFromRealtime() async {
@@ -227,11 +193,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    final channel = _trenutnaDodelaChannel;
-    _trenutnaDodelaChannel = null;
-    if (channel != null) {
-      supabase.removeChannel(channel);
-    }
+    unawaited(_trenutnaDodelaRevisionSub?.cancel());
+    _trenutnaDodelaRevisionSub = null;
     super.dispose();
   }
 

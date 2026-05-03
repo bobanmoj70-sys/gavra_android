@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../globals.dart';
 import '../models/v3_putnik.dart';
@@ -59,8 +58,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   String _selectedVreme = '';
   bool _isLoading = true;
   bool _loadingDodela = false;
-  RealtimeChannel? _trenutnaDodelaChannel;
-  int _dodelaReconnectAttempts = 0;
+  StreamSubscription<int>? _trenutnaDodelaRevisionSub;
   final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   Map<String, int> _optimizedOrderByPutnikId = const <String, int>{};
@@ -132,53 +130,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     final vozacAuthId = (vozac?.id?.toString() ?? '').trim();
     if (vozacAuthId.isEmpty) return;
 
-    final existing = _trenutnaDodelaChannel;
-    if (existing != null) {
-      supabase.removeChannel(existing);
-      _trenutnaDodelaChannel = null;
-    }
-
-    final channel = supabase.channel('v3_trenutna_dodela_vozac_$vozacAuthId');
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: V3TrenutnaDodelaService.tableName,
-      callback: (payload) {
-        final newVozacId = payload.newRecord[V3TrenutnaDodelaService.colVozacId]?.toString().trim() ?? '';
-        final oldVozacId = payload.oldRecord[V3TrenutnaDodelaService.colVozacId]?.toString().trim() ?? '';
-        if (newVozacId != vozacAuthId && oldVozacId != vozacAuthId) return;
-        _refreshDodelaFromRealtime();
-      },
-    );
-    channel.onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: V3TrenutnaDodelaSlotService.tableName,
-      callback: (payload) {
-        final newVozacId = payload.newRecord[V3TrenutnaDodelaSlotService.colVozacId]?.toString().trim() ?? '';
-        final oldVozacId = payload.oldRecord[V3TrenutnaDodelaSlotService.colVozacId]?.toString().trim() ?? '';
-        if (newVozacId != vozacAuthId && oldVozacId != vozacAuthId) return;
-        _refreshDodelaFromRealtime();
-      },
-    );
-    channel.subscribe((status, [error]) {
-      if (status == RealtimeSubscribeStatus.subscribed) {
-        _dodelaReconnectAttempts = 0;
-      }
-      if (status == RealtimeSubscribeStatus.channelError || status == RealtimeSubscribeStatus.timedOut) {
-        debugPrint('[V3VozacScreen] dodela realtime $status: $error');
-        if (mounted) {
-          _dodelaReconnectAttempts += 1;
-          final capped = _dodelaReconnectAttempts.clamp(1, 5);
-          final delayMs = 500 * (1 << capped); // 1s→2s→4s→8s→16s max
-          Future<void>.delayed(Duration(milliseconds: delayMs), () {
-            if (mounted) _startTrenutnaDodelaRealtime();
-          });
-        }
-      }
+    _trenutnaDodelaRevisionSub?.cancel();
+    _trenutnaDodelaRevisionSub = V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+      V3TrenutnaDodelaService.tableName,
+      V3TrenutnaDodelaSlotService.tableName,
+    ]).listen((_) {
+      unawaited(_refreshDodelaFromRealtime());
     });
-
-    _trenutnaDodelaChannel = channel;
   }
 
   Future<void> _refreshDodelaFromRealtime() async {
@@ -297,11 +255,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
   @override
   void dispose() {
-    final channel = _trenutnaDodelaChannel;
-    _trenutnaDodelaChannel = null;
-    if (channel != null) {
-      supabase.removeChannel(channel);
-    }
+    unawaited(_trenutnaDodelaRevisionSub?.cancel());
+    _trenutnaDodelaRevisionSub = null;
     super.dispose();
   }
 
