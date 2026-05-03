@@ -310,15 +310,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         if (mounted) V3AppSnackBar.success(context, V3PutnikProfilMessages.tripCanceled(dan, grad));
       } else {
         // Sačuvaj izmenu po kontekstu (putnik + dan + grad)
-        final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
-        final tipPutnika = putnikCache?['tip_putnika'] as String? ?? 'dnevni';
-        final brojMesta = tipPutnika == 'posiljka' ? 0 : 1; // posiljka ne zauzima putničko mesto
         await V3ZahtevService.sacuvajPolazakPutnikaPoKontekstu(
           putnikId: putnikId,
           datum: datumPolaska,
           grad: grad,
           novoVreme: validNovoVreme,
-          brojMesta: brojMesta,
           koristiSekundarnu: koristiSekundarnu,
           updatedBy: V3UuidUtils.normalizeUuid(putnikId),
         );
@@ -392,211 +388,221 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
           backgroundColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: V3ContainerUtils.gradientContainer(
-            width: 320,
-            gradient: V3ThemeManager().currentGradient,
-            borderRadius: BorderRadius.circular(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Title
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          insetPadding: EdgeInsets.zero,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          child: SizedBox.expand(
+            child: V3ContainerUtils.gradientContainer(
+              gradient: V3ThemeManager().currentGradient,
+              borderRadius: BorderRadius.zero,
+              child: SafeArea(
+                child: SingleChildScrollView(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        grad == 'BC' ? '🏙️ BC polazak' : '🌆 VS polazak',
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _getDanLabel(dan),
-                        style: TextStyle(color: V3StyleHelper.whiteAlpha5, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(color: Colors.white12, height: 1),
-                // Address Selector (Prikazuje se samo ako postoji druga adresa)
-                if (hasSecondary)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                    child: InkWell(
-                      onTap: () => setDialogState(() => koristiSekundarnu = !koristiSekundarnu),
-                      borderRadius: BorderRadius.circular(8),
-                      child: V3ContainerUtils.styledContainer(
-                        padding: const EdgeInsets.all(10),
-                        backgroundColor: V3StyleHelper.whiteAlpha05,
-                        border: Border.all(
-                          color: Colors.white12,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Row(
+                      // Title
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Column(
                           children: [
-                            Icon(
-                              koristiSekundarnu ? Icons.location_on : Icons.location_on_outlined,
-                              color: Colors.white54,
-                              size: 20,
+                            Text(
+                              grad == 'BC' ? '🏙️ BC polazak' : '🌆 VS polazak',
+                              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    koristiSekundarnu ? 'Druga adresa' : 'Primarna adresa',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  Text(
-                                    koristiSekundarnu
-                                        ? secondaryNaziv
-                                        : (grad == 'BC'
-                                            ? (V3AdresaService.getAdresaById(putnikCache?['adresa_bc_id'] as String?)
-                                                    ?.naziv ??
-                                                'Glavna adresa')
-                                            : (V3AdresaService.getAdresaById(putnikCache?['adresa_vs_id'] as String?)
-                                                    ?.naziv ??
-                                                'Glavna adresa')),
-                                    style: TextStyle(
-                                      color: koristiSekundarnu ? Colors.greenAccent : Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: koristiSekundarnu,
-                              onChanged: (val) => setDialogState(() => koristiSekundarnu = val),
-                              activeColor: Colors.orange,
-                              activeTrackColor: Colors.orange.withValues(alpha: 0.3),
+                            const SizedBox(height: 2),
+                            Text(
+                              _getDanLabel(dan),
+                              style: TextStyle(color: V3StyleHelper.whiteAlpha5, fontSize: 12),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                // Grid vremena
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Otkaži dugme
-                      if (hasActive)
-                        SizedBox(
-                          width: double.infinity,
-                          child: V3ButtonUtils.outlinedButton(
-                            onPressed: () async {
-                              Navigator.of(dialogCtx).pop();
-                              await _updatePolazak(dan, grad, null, trenutniInfo: info);
-                            },
-                            text: 'Otkaži termin',
-                            icon: Icons.cancel_outlined,
-                            borderColor: Colors.redAccent,
-                            foregroundColor: Colors.redAccent,
-                            fontSize: 14,
+                      const Divider(color: Colors.white12, height: 1),
+                      // Address Selector (Prikazuje se samo ako postoji druga adresa)
+                      if (hasSecondary)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                          child: InkWell(
+                            onTap: () => setDialogState(() => koristiSekundarnu = !koristiSekundarnu),
                             borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      if (hasActive) const SizedBox(height: 10),
-                      if (hasActive) const Divider(color: Colors.white24, height: 1),
-                      if (hasActive) const SizedBox(height: 10),
-                      // Wrap grid
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: vremena.map((vreme) {
-                          final isSelected =
-                              currentVreme != null && V3StringUtils.trimTimeToHhMm(currentVreme) == vreme;
-                          // Scenario 5: zaključaj dugme 15 min pre polaska
-                          final parts = vreme.split(':');
-                          final polazak = DateTime(
-                            datumPolaska.year,
-                            datumPolaska.month,
-                            datumPolaska.day,
-                            int.parse(parts[0]),
-                            int.parse(parts[1]),
-                          );
-                          final isLocked = now.isAfter(polazak.subtract(const Duration(minutes: 15)));
-                          return SizedBox(
-                            width: 82,
-                            child: OutlinedButton(
-                              onPressed: isLocked
-                                  ? () async {
-                                      Navigator.of(dialogCtx).pop();
-                                      final unlockAt = V3DanHelper.nextSchedulingUnlock(now: now);
-                                      final unlockStr =
-                                          '${unlockAt.day}.${unlockAt.month}.${unlockAt.year}. ${unlockAt.hour.toString().padLeft(2, '0')}:${unlockAt.minute.toString().padLeft(2, '0')}';
-                                      await Future<void>.delayed(const Duration(milliseconds: 120));
-                                      if (!mounted) return;
-                                      V3AppSnackBar.info(
-                                          ctx, V3PutnikProfilMessages.schedulingLocked(vreme, unlockStr));
-                                    }
-                                  : () async {
-                                      Navigator.of(dialogCtx).pop();
-                                      await _updatePolazak(dan, grad, vreme,
-                                          trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
-                                    },
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: isLocked
-                                    ? V3StyleHelper.whiteAlpha05
-                                    : isSelected
-                                        ? Colors.green.withValues(alpha: 0.45)
-                                        : V3StyleHelper.whiteAlpha15,
-                                side: BorderSide(
-                                  color: isLocked
-                                      ? Colors.white12
-                                      : isSelected
-                                          ? Colors.greenAccent
-                                          : Colors.white60,
-                                  width: isSelected ? 2.5 : 1.5,
-                                ),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: V3ContainerUtils.styledContainer(
+                              padding: const EdgeInsets.all(10),
+                              backgroundColor: V3StyleHelper.whiteAlpha05,
+                              border: Border.all(
+                                color: Colors.white12,
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Row(
                                 children: [
-                                  if (isSelected) const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
-                                  Text(
-                                    vreme,
-                                    style: TextStyle(
-                                      color: isLocked
-                                          ? Colors.white24
-                                          : isSelected
-                                              ? Colors.white
-                                              : Colors.white,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                      fontSize: 14,
+                                  Icon(
+                                    koristiSekundarnu ? Icons.location_on : Icons.location_on_outlined,
+                                    color: Colors.white54,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          koristiSekundarnu ? 'Druga adresa' : 'Primarna adresa',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                        Text(
+                                          koristiSekundarnu
+                                              ? secondaryNaziv
+                                              : (grad == 'BC'
+                                                  ? (V3AdresaService.getAdresaById(
+                                                              putnikCache?['adresa_bc_id'] as String?)
+                                                          ?.naziv ??
+                                                      'Glavna adresa')
+                                                  : (V3AdresaService.getAdresaById(
+                                                              putnikCache?['adresa_vs_id'] as String?)
+                                                          ?.naziv ??
+                                                      'Glavna adresa')),
+                                          style: TextStyle(
+                                            color: koristiSekundarnu ? Colors.greenAccent : Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
+                                  ),
+                                  Switch(
+                                    value: koristiSekundarnu,
+                                    onChanged: (val) => setDialogState(() => koristiSekundarnu = val),
+                                    activeColor: Colors.orange,
+                                    activeTrackColor: Colors.orange.withValues(alpha: 0.3),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ),
+                      // Grid vremena
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Otkaži dugme
+                            if (hasActive)
+                              SizedBox(
+                                width: double.infinity,
+                                child: V3ButtonUtils.outlinedButton(
+                                  onPressed: () async {
+                                    Navigator.of(dialogCtx).pop();
+                                    await _updatePolazak(dan, grad, null, trenutniInfo: info);
+                                  },
+                                  text: 'Otkaži termin',
+                                  icon: Icons.cancel_outlined,
+                                  borderColor: Colors.redAccent,
+                                  foregroundColor: Colors.redAccent,
+                                  fontSize: 14,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            if (hasActive) const SizedBox(height: 10),
+                            if (hasActive) const Divider(color: Colors.white24, height: 1),
+                            if (hasActive) const SizedBox(height: 10),
+                            // Grid 2 kolone
+                            GridView.count(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 3.2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              children: vremena.map((vreme) {
+                                final isSelected =
+                                    currentVreme != null && V3StringUtils.trimTimeToHhMm(currentVreme) == vreme;
+                                // Scenario 5: zaključaj dugme 15 min pre polaska
+                                final parts = vreme.split(':');
+                                final polazak = DateTime(
+                                  datumPolaska.year,
+                                  datumPolaska.month,
+                                  datumPolaska.day,
+                                  int.parse(parts[0]),
+                                  int.parse(parts[1]),
+                                );
+                                final isLocked = now.isAfter(polazak.subtract(const Duration(minutes: 15)));
+                                return OutlinedButton(
+                                  onPressed: isLocked
+                                      ? () async {
+                                          Navigator.of(dialogCtx).pop();
+                                          final unlockAt = V3DanHelper.nextSchedulingUnlock(now: now);
+                                          final unlockStr =
+                                              '${unlockAt.day}.${unlockAt.month}.${unlockAt.year}. ${unlockAt.hour.toString().padLeft(2, '0')}:${unlockAt.minute.toString().padLeft(2, '0')}';
+                                          await Future<void>.delayed(const Duration(milliseconds: 120));
+                                          if (!mounted) return;
+                                          V3AppSnackBar.info(
+                                              ctx, V3PutnikProfilMessages.schedulingLocked(vreme, unlockStr));
+                                        }
+                                      : () async {
+                                          Navigator.of(dialogCtx).pop();
+                                          await _updatePolazak(dan, grad, vreme,
+                                              trenutniInfo: info, koristiSekundarnu: koristiSekundarnu);
+                                        },
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: isLocked
+                                        ? V3StyleHelper.whiteAlpha05
+                                        : isSelected
+                                            ? Colors.green.withValues(alpha: 0.45)
+                                            : V3StyleHelper.whiteAlpha15,
+                                    side: BorderSide(
+                                      color: isLocked
+                                          ? Colors.white12
+                                          : isSelected
+                                              ? Colors.greenAccent
+                                              : Colors.white60,
+                                      width: isSelected ? 2.5 : 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isSelected)
+                                        const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                                      Text(
+                                        vreme,
+                                        style: TextStyle(
+                                          color: isLocked
+                                              ? Colors.white24
+                                              : isSelected
+                                                  ? Colors.white
+                                                  : Colors.white,
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Zatvori
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: V3ButtonUtils.textButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(),
+                          text: 'Zatvori',
+                          foregroundColor: Colors.white54,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                // Zatvori
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: V3ButtonUtils.textButton(
-                    onPressed: () => Navigator.of(dialogCtx).pop(),
-                    text: 'Zatvori',
-                    foregroundColor: Colors.white54,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

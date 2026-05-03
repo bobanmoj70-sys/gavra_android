@@ -37,11 +37,13 @@ async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: st
 
   if (!putnikId || !grad || !datum) return;
 
+  const effectiveBrojMesta = isPosiljka ? 0 : 1;
+
   await client
     .from("v3_operativna_nedelja")
     .update({
       polazak_at: selectedHHmm,
-      ...(isPosiljka ? { broj_mesta: 0 } : {}),
+      broj_mesta: effectiveBrojMesta,
       otkazano_at: null,
       otkazano_by: null,
       updated_by: putnikId,

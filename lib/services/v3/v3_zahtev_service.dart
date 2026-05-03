@@ -96,13 +96,12 @@ class V3ZahtevService {
     required DateTime datum,
     required String grad,
     required String novoVreme,
-    required int brojMesta,
     bool koristiSekundarnu = false,
     String? updatedBy,
   }) async {
     final normalizedBrojMesta = V3PutnikService.normalizeBrojMestaForPutnik(
       putnikId: putnikId,
-      brojMesta: brojMesta,
+      brojMesta: 1,
     );
     final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
     if (aktivni.isNotEmpty) {

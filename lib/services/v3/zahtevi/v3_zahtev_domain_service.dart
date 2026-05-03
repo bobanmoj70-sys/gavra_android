@@ -46,6 +46,7 @@ class V3ZahtevDomainService {
       'scheduled_at': null,
       'alternativa_pre_at': null,
       'alternativa_posle_at': null,
+      'broj_mesta': 1,
       if (createdAtIso != null) 'created_at': createdAtIso,
       if (updatedBy != null) 'updated_by': updatedBy,
     };

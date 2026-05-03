@@ -396,7 +396,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final textStyle = _getStatusTextStyle();
     final Color textColor = textStyle.primary;
     final Color secondaryTextColor = textStyle.secondary;
-    final int brojMesta = widget.entry?.brojMesta ?? widget.zahtev?.brojMesta ?? 1;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -444,20 +443,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                 ),
                               ),
                             ),
-                            if (brojMesta > 1)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 4),
-                                child: V3ContainerUtils.styledContainer(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  backgroundColor: textColor.withOpacity(0.18),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: textColor.withOpacity(0.45), width: 0.6),
-                                  child: Text(
-                                    'x$brojMesta',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: textColor),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                         if (hasAdresa)
