@@ -13,7 +13,7 @@ class V3RealtimeBootstrapRepository {
       _withTimeout(
         'v3_zahtevi',
         supabase.from('v3_zahtevi').select(
-            'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at'),
+            'id, datum, grad, trazeni_polazak_at, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at'),
       ),
       _withTimeout('v3_gorivo', supabase.from('v3_gorivo').select()),
       _withTimeout('v3_finansije', supabase.from('v3_finansije').select()),

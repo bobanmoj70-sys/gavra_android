@@ -58,7 +58,7 @@ class V3BootstrapLoader {
         response = await _client
             .from('v3_zahtevi')
             .select(
-                'id, datum, grad, trazeni_polazak_at, broj_mesta, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
+                'id, datum, grad, trazeni_polazak_at, status, polazak_at, koristi_sekundarnu, adresa_override_id, alternativa_pre_at, alternativa_posle_at, created_at, updated_at, created_by, scheduled_at')
             .gte('updated_at', iso);
         break;
       case 'v3_operativna_nedelja':
