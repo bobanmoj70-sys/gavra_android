@@ -7,7 +7,6 @@ import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
-import 'v3_putnik_service.dart';
 
 class V3OperativnaNedeljaEntry {
   final String id;
@@ -19,7 +18,6 @@ class V3OperativnaNedeljaEntry {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? updatedBy;
-  final int brojMesta;
   final DateTime? pokupljenAt;
   final String? pokupljenBy;
   final String? otkazanoBy;
@@ -39,7 +37,6 @@ class V3OperativnaNedeljaEntry {
     this.createdAt,
     this.updatedAt,
     this.updatedBy,
-    this.brojMesta = 1,
     this.pokupljenAt,
     this.pokupljenBy,
     this.otkazanoBy,
@@ -66,7 +63,6 @@ class V3OperativnaNedeljaEntry {
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
       updatedBy: json['updated_by'] as String?,
-      brojMesta: (json['broj_mesta'] as num?)?.toInt() ?? 1,
       pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
       pokupljenBy: json['pokupljen_by'] as String?,
       otkazanoBy: json['otkazano_by'] as String?,
@@ -159,8 +155,6 @@ class V3OperativnaNedeljaService {
   }) async {
     try {
       final actor = V3UuidUtils.normalizeUuid(createdBy);
-      const normalizedBrojMesta = 1;
-
       // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
@@ -170,10 +164,10 @@ class V3OperativnaNedeljaService {
       }).toList();
 
       if (postojeci.isNotEmpty) {
-        // UPDATE: prepiši polazak_at i broj_mesta
+        // UPDATE: prepiši polazak_at
         final updatedRow = await _repo.updateByIdReturningSingle(postojeci.first['id'] as String, {
           'polazak_at': polazakAt,
-          'broj_mesta': normalizedBrojMesta,
+          'broj_mesta': 1,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_override_id': adresaIdOverride, // null = briše override
@@ -186,7 +180,7 @@ class V3OperativnaNedeljaService {
           'datum': datum,
           'grad': grad,
           'polazak_at': polazakAt,
-          'broj_mesta': normalizedBrojMesta,
+          'broj_mesta': 1,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,

@@ -322,7 +322,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       vreme: vreme,
       gradOf: (entry) => entry.grad,
       vremeOf: (entry) => entry.polazakAt,
-      seatsOf: (entry) => entry.brojMesta,
       statusOf: (entry) => entry.statusFinal,
       otkazanoAtOf: (entry) => entry.otkazanoAt,
     );
@@ -791,7 +790,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                         itemCount: zapisi.length,
                                         itemBuilder: (_, i) {
                                           final z = zapisi[i];
-                                          final redniBroj = zapisi.sublist(0, i).fold(1, (sum, e) => sum + e.brojMesta);
+                                          final redniBroj = i + 1;
                                           final terminDodeljen = vozacTermin != null;
                                           final indivVozac =
                                               _getVozacZaPutnika(z.putnikId, _selectedGrad, slotVreme(z));

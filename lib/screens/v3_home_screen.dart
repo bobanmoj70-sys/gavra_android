@@ -871,7 +871,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               vreme: vreme,
               gradOf: (entry) => entry.grad,
               vremeOf: (entry) => entry.polazakAt,
-              seatsOf: (entry) => entry.brojMesta,
               statusOf: (entry) => entry.statusFinal,
               otkazanoAtOf: (entry) => entry.otkazanoAt,
             );
@@ -1238,8 +1237,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                           ? V3CardColorPolicy.vozacColorOr(indivVozac.boja)
                                           : getVozacColorForTermin(grad, vreme);
 
-                                      final redniBroj =
-                                          resolvedZapisi.sublist(0, i).fold(0, (sum, e) => sum + e.entry.brojMesta) + 1;
+                                      final redniBroj = i + 1;
 
                                       return Padding(
                                         padding: const EdgeInsets.only(bottom: 8),

@@ -6,7 +6,6 @@ class V3Zahtev {
   final DateTime datum;
   final String grad;
   final String trazeniPolazakAt;
-  final int brojMesta;
   final String status; // 'obrada', 'odobreno', 'alternativa', 'otkazano', 'odbijeno'
   final String? polazakAt;
   final bool koristiSekundarnu;
@@ -23,7 +22,6 @@ class V3Zahtev {
     required this.datum,
     required this.grad,
     required this.trazeniPolazakAt,
-    this.brojMesta = 1,
     this.status = 'obrada',
     this.polazakAt,
     this.koristiSekundarnu = false,
@@ -44,7 +42,6 @@ class V3Zahtev {
       datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
       grad: json['grad'] as String? ?? '',
       trazeniPolazakAt: json['trazeni_polazak_at'] as String? ?? '',
-      brojMesta: json['broj_mesta'] as int? ?? 1,
       status: json['status'] as String? ?? 'obrada',
       polazakAt: json['polazak_at'] as String?,
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
@@ -66,7 +63,6 @@ class V3Zahtev {
       'datum': V3DateUtils.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       'trazeni_polazak_at': trazeniPolazakAt.isEmpty ? null : trazeniPolazakAt,
-      'broj_mesta': brojMesta,
       'status': status,
       'polazak_at': polazakAt,
       'koristi_sekundarnu': koristiSekundarnu,

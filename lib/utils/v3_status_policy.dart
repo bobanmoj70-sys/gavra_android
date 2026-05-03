@@ -224,12 +224,6 @@ class V3StatusPolicy {
     return statusPriority(status) + (pokupljen ? 10 : 0);
   }
 
-  static int parseSeats(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 1;
-  }
-
   static int compareEntriesForDisplay<T>({
     required T a,
     required T b,
@@ -339,7 +333,6 @@ class V3StatusPolicy {
     required String vreme,
     required String? Function(T item) gradOf,
     required String? Function(T item) vremeOf,
-    required int Function(T item) seatsOf,
     required String? Function(T item) statusOf,
     required Object? Function(T item) otkazanoAtOf,
   }) {
@@ -354,7 +347,7 @@ class V3StatusPolicy {
       if (itemVreme != vremeNorm) return false;
 
       return countsAsOccupied(status: statusOf(item), otkazanoAt: otkazanoAtOf(item));
-    }).fold(0, (sum, item) => sum + seatsOf(item));
+    }).fold(0, (sum, item) => sum + 1);
   }
 }
 

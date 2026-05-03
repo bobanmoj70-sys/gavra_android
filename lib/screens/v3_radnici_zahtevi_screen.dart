@@ -30,7 +30,6 @@ class _OpRed {
     required this.datum,
     required this.grad,
     required this.polazakAt,
-    required this.brojMesta,
     required this.status,
     required this.updatedAt,
   });
@@ -39,7 +38,6 @@ class _OpRed {
   final DateTime datum;
   final String grad;
   final String polazakAt;
-  final int brojMesta;
   final _OpStatus status;
   final DateTime updatedAt;
 
@@ -62,7 +60,6 @@ class _OpRed {
       datum: datum,
       grad: (r['grad']?.toString() ?? '').toUpperCase(),
       polazakAt: r['polazak_at']?.toString() ?? '',
-      brojMesta: (r['broj_mesta'] as num?)?.toInt() ?? 1,
       status: status,
       updatedAt: updatedAt,
     );
@@ -347,7 +344,6 @@ class _OpKartica extends StatelessWidget {
             const SizedBox(width: 6),
           ],
         ),
-
       ),
     );
   }

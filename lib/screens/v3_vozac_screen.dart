@@ -706,7 +706,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       vreme: vremeNorm,
       gradOf: (row) => row['grad']?.toString(),
       vremeOf: (row) => row['vreme']?.toString() ?? row['polazak_at']?.toString(),
-      seatsOf: (row) => V3StatusPolicy.parseSeats(row['broj_mesta']),
       statusOf: (row) => row['status']?.toString(),
       otkazanoAtOf: (row) => row['otkazano_at'],
     );
