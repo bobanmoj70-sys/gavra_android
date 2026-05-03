@@ -218,11 +218,16 @@ void main() async {
     final supabaseReady = await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
     if (supabaseReady) {
       debugPrint('🚀 [main] 4. Supabase init completed');
+      if (startupPhaseNotifier.value == V3StartupPhase.booting) {
+        startupPhaseNotifier.value = V3StartupPhase.dbReady;
+      }
     } else {
       debugPrint('⚠️ [main] Supabase init incomplete, nastavljam sa fallback tokom.');
+      startupPhaseNotifier.value = V3StartupPhase.degraded;
     }
   } catch (e) {
     debugPrint('❌ [main] Supabase.initialize greška/timeout: $e');
+    startupPhaseNotifier.value = V3StartupPhase.degraded;
   }
 
   // ODMAH POKREĆEMO UI KAKO BI IZBEGLI CRN OS EKRAN
@@ -240,7 +245,20 @@ void main() async {
 
 /// Pokretanje servisa u pozadini kako UI ne bi čekao i pravio deadlock
 Future<void> _postRunAppInitialization() async {
-  // 1. Pokreni V3 Realtime Manager (background)
+  // 1. Kritični app servisi (settings + update gate) pre ostalih background taskova
+  try {
+    debugPrint('🚀 [main] 6. _initAppServices start (critical)');
+    await _initAppServices().timeout(const Duration(seconds: 8));
+    debugPrint('🚀 [main] 6. _initAppServices completed');
+    if (startupPhaseNotifier.value != V3StartupPhase.realtimeReady) {
+      startupPhaseNotifier.value = V3StartupPhase.dbReady;
+    }
+  } catch (e) {
+    debugPrint('⚠️ [main] _initAppServices timeout/greška: $e');
+    startupPhaseNotifier.value = V3StartupPhase.degraded;
+  }
+
+  // 2. Pokreni V3 Realtime Manager (background)
   if (!isSupabaseReady) {
     try {
       await _ensureSupabaseInitialized().timeout(const Duration(seconds: 4));
@@ -250,27 +268,36 @@ Future<void> _postRunAppInitialization() async {
   }
 
   if (isSupabaseReady) {
-    debugPrint('🚀 [main] 6. V3MasterRealtimeManager.initV3 start (background)');
+    debugPrint('🚀 [main] 7. V3MasterRealtimeManager.initV3 start (background)');
     _startBackgroundTask(
       label: 'V3MasterRealtimeManager.initV3',
-      task: () => V3MasterRealtimeManager.instance.initV3(),
+      task: () async {
+        try {
+          await V3MasterRealtimeManager.instance.initV3();
+          startupPhaseNotifier.value = V3StartupPhase.realtimeReady;
+        } catch (e) {
+          startupPhaseNotifier.value = V3StartupPhase.degraded;
+          rethrow;
+        }
+      },
       timeout: const Duration(seconds: 12),
       retries: 1,
     );
   } else {
     debugPrint('⚠️ [main] Preskačem initV3: Supabase nije inicijalizovan.');
+    startupPhaseNotifier.value = V3StartupPhase.degraded;
   }
 
-  // 2. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
+  // 3. 🎨 Tema - učitaj iz secure storage (ui će automatski reagovati na promenu teme)
   try {
-    debugPrint('🚀 [main] 7. loadThemeFromStorage start');
+    debugPrint('🚀 [main] 8. loadThemeFromStorage start');
     await V3ThemeManager().loadThemeFromStorage().timeout(const Duration(seconds: 3));
-    debugPrint('🚀 [main] 7. loadThemeFromStorage completed');
+    debugPrint('🚀 [main] 8. loadThemeFromStorage completed');
   } catch (e) {
     debugPrint('⚠️ [main] Theme load timeout/greška: $e');
   }
 
-  // 3. Pokreni sve ostale servise sa malom pauzom
+  // 4. Pokreni sve ostale servise sa malom pauzom
   _startBackgroundTask(
     label: 'startup tasks',
     task: () async {
@@ -319,12 +346,6 @@ Future<void> _doStartupTasks() async {
     label: 'notification handlers init',
     task: _initNotificationHandlers,
     timeout: const Duration(seconds: 8),
-    retries: 2,
-  );
-  _startBackgroundTask(
-    label: 'app services init',
-    task: _initAppServices,
-    timeout: const Duration(seconds: 10),
     retries: 2,
   );
 }
@@ -1048,10 +1069,14 @@ Future<void> _initAppServices() async {
     }
   }
 
+  Map<String, dynamic>? settings;
+
   // Učitaj nav_bar_type iz baze
   try {
-    final settings = await V3AppSettingsService.loadGlobal(
-      selectColumns: 'nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at',
+    settings = await V3AppSettingsService.loadGlobal(
+      selectColumns: 'nav_bar_type, nav_bar_type_next, nav_bar_type_effective_at, '
+          'latest_version_android, min_supported_version_android, force_update_android, store_url_android, maintenance_mode_android, maintenance_title_android, maintenance_message_android, '
+          'latest_version_ios, min_supported_version_ios, force_update_ios, store_url_ios, maintenance_mode_ios, maintenance_title_ios, maintenance_message_ios',
     );
 
     final navType = resolveEffectiveNavBarType(
@@ -1069,9 +1094,11 @@ Future<void> _initAppServices() async {
   }
 
   // Provera da li je dostupna nova verzija aplikacije
-  unawaited(
-    V3AppUpdateService.refreshUpdateInfo().catchError((Object e) => debugPrint('⚠️ [main] App update info greška: $e')),
-  );
+  try {
+    await V3AppUpdateService.refreshUpdateInfo(appSettingsRow: settings);
+  } catch (e) {
+    debugPrint('⚠️ [main] App update info greška: $e');
+  }
 }
 
 class MyApp extends StatefulWidget {

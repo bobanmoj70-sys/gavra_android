@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
@@ -230,6 +231,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (putnikId.isNotEmpty) {
         unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
       }
+      unawaited(V3AppUpdateService.refreshUpdateInfo()
+          .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
 
       _safePushReplacement(
         V3PutnikProfilScreen(putnikData: Map<String, dynamic>.from(restored)),
@@ -273,7 +276,18 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   Future<void> _refreshOnResume() async {
     if (_isResumeRefreshing || !mounted) return;
     _isResumeRefreshing = true;
-    _isResumeRefreshing = false;
+    try {
+      await _runStartupStep<void>(
+        label: 'resume realtime refresh',
+        action: () => V3MasterRealtimeManager.instance.initV3(),
+      );
+      await _runStartupStep<void>(
+        label: 'resume update refresh',
+        action: () => V3AppUpdateService.refreshUpdateInfo(),
+      );
+    } finally {
+      _isResumeRefreshing = false;
+    }
   }
 
   Future<void> _stopAudio() async {
@@ -478,6 +492,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (putnikId.isNotEmpty) {
         unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
       }
+      unawaited(V3AppUpdateService.refreshUpdateInfo()
+          .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
       _safePushReplacement(V3PutnikProfilScreen(putnikData: putnik));
     } catch (e) {
       debugPrint('[V3WelcomeScreen] onLoginVerified error: $e');

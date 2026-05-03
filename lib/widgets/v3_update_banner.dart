@@ -3,6 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
+import '../services/v3/v3_app_update_service.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
@@ -41,22 +42,32 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
     if (!mounted) return;
 
     if (info == null || !info.isForced) {
-      if (_forceDialogOpen) {
-        final nav = Navigator.of(context, rootNavigator: true);
-        if (nav.canPop()) {
-          nav.pop();
+      _closeForceDialogIfOpen();
+      return;
+    }
+
+    if (!info.isMaintenance) {
+      final shouldBypass = V3AppUpdateService.shouldBypassForceUpdateForCurrentOperator();
+      if (shouldBypass) {
+        _closeForceDialogIfOpen();
+        if (updateInfoNotifier.value != null) {
+          updateInfoNotifier.value = null;
         }
-        _forceDialogOpen = false;
-        _dialogSignature = null;
+        return;
       }
+    }
+
+    final latestInfo = updateInfoNotifier.value;
+    if (!mounted || latestInfo == null || !latestInfo.isForced) {
+      _closeForceDialogIfOpen();
       return;
     }
 
     final signature = [
-      info.isMaintenance,
-      info.latestVersion,
-      info.maintenanceTitle,
-      info.maintenanceMessage,
+      latestInfo.isMaintenance,
+      latestInfo.latestVersion,
+      latestInfo.maintenanceTitle,
+      latestInfo.maintenanceMessage,
     ].join('|');
 
     if (_forceDialogOpen && _dialogSignature == signature) return;
@@ -72,12 +83,10 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
       barrierLabel: 'force_update',
       barrierColor: Colors.black.withValues(alpha: 0.72),
       transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (dialogContext, _, __) => info.isMaintenance
-          ? _MaintenanceDialog(info: info)
-          : _ForceUpdateDialog(info: info),
+      pageBuilder: (dialogContext, _, __) =>
+          latestInfo.isMaintenance ? _MaintenanceDialog(info: latestInfo) : _ForceUpdateDialog(info: latestInfo),
       transitionBuilder: (_, animation, __, child) {
-        final curved =
-            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         return FadeTransition(
           opacity: curved,
           child: ScaleTransition(
@@ -90,6 +99,16 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
       _forceDialogOpen = false;
       _dialogSignature = null;
     });
+  }
+
+  void _closeForceDialogIfOpen() {
+    if (!_forceDialogOpen) return;
+    final nav = Navigator.of(context, rootNavigator: true);
+    if (nav.canPop()) {
+      nav.pop();
+    }
+    _forceDialogOpen = false;
+    _dialogSignature = null;
   }
 
   @override
@@ -106,8 +125,7 @@ class _MaintenanceDialog extends StatefulWidget {
   State<_MaintenanceDialog> createState() => _MaintenanceDialogState();
 }
 
-class _MaintenanceDialogState extends State<_MaintenanceDialog>
-    with SingleTickerProviderStateMixin {
+class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
 
@@ -161,8 +179,7 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog>
                 child: V3ContainerUtils.styledContainer(
                   backgroundColor: const Color(0xFF161A1E),
                   borderRadius: BorderRadius.circular(24),
-                  border:
-                      Border.all(color: const Color(0xFFFFD54F), width: 1.5),
+                  border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.44),
@@ -179,14 +196,11 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Icon(Icons.construction_rounded,
-                                color: Color(0xFFFFD54F), size: 34),
+                            Icon(Icons.construction_rounded, color: Color(0xFFFFD54F), size: 34),
                             SizedBox(width: 8),
-                            Icon(Icons.engineering_rounded,
-                                color: Color(0xFFFFD54F), size: 34),
+                            Icon(Icons.engineering_rounded, color: Color(0xFFFFD54F), size: 34),
                             SizedBox(width: 8),
-                            Icon(Icons.warning_amber_rounded,
-                                color: Color(0xFFFFD54F), size: 34),
+                            Icon(Icons.warning_amber_rounded, color: Color(0xFFFFD54F), size: 34),
                           ],
                         ),
                       ),
@@ -204,8 +218,7 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog>
                       const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: const Color(0x26FFD54F),
                           borderRadius: BorderRadius.circular(12),
@@ -252,8 +265,7 @@ class _ForceUpdateDialog extends StatefulWidget {
   State<_ForceUpdateDialog> createState() => _ForceUpdateDialogState();
 }
 
-class _ForceUpdateDialogState extends State<_ForceUpdateDialog>
-    with SingleTickerProviderStateMixin {
+class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTickerProviderStateMixin {
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
   String _installedVersion = '';
@@ -326,9 +338,7 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog>
                 child: V3ContainerUtils.styledContainer(
                   backgroundColor: const Color(0xFF171C2C),
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(
-                      color: Colors.redAccent.withValues(alpha: 0.32),
-                      width: 1.4),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.32), width: 1.4),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.42),
@@ -363,8 +373,7 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog>
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.system_update_rounded,
-                              color: Colors.white, size: 40),
+                          child: const Icon(Icons.system_update_rounded, color: Colors.white, size: 40),
                         ),
                       ),
                       const SizedBox(height: 22),
@@ -380,13 +389,10 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog>
                       ),
                       const SizedBox(height: 10),
                       V3ContainerUtils.styledContainer(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        backgroundColor:
-                            Colors.redAccent.withValues(alpha: 0.18),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        backgroundColor: Colors.redAccent.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                            color: Colors.redAccent.withValues(alpha: 0.38)),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.38)),
                         child: Text(
                           'verzija ${_installedVersion.isNotEmpty ? _installedVersion : widget.info.latestVersion}',
                           style: const TextStyle(
@@ -415,16 +421,14 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog>
                           icon: const Icon(Icons.download_rounded, size: 20),
                           label: const Text(
                             'Ažuriraj aplikaciju',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 15),
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.redAccent,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             elevation: 8,
-                            shadowColor:
-                                Colors.redAccent.withValues(alpha: 0.45),
+                            shadowColor: Colors.redAccent.withValues(alpha: 0.45),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),

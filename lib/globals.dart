@@ -249,6 +249,15 @@ bool get isWinter => navBarTypeNotifier.value == 'zimski';
 /// Koristi se u celoj aplikaciji za pristup kredencijalima
 final V2ConfigService configService = V2ConfigService();
 
+enum V3StartupPhase {
+  booting,
+  dbReady,
+  realtimeReady,
+  degraded,
+}
+
+final ValueNotifier<V3StartupPhase> startupPhaseNotifier = ValueNotifier<V3StartupPhase>(V3StartupPhase.booting);
+
 /// UPDATE INFO - informacije o obaveznom update-u
 /// null = nema obaveznog update-a, ili još nije provereno
 class V2UpdateInfo {

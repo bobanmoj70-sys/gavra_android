@@ -11,16 +11,22 @@ import 'v3_vozac_service.dart';
 class V3AppUpdateService {
   V3AppUpdateService._();
 
-  static final V3AppSettingsRepository _repository = V3AppSettingsRepository();
-  static const Set<String> _updateGateBypassUserIds = <String>{
-    '824f7bd7-e19c-4471-b7a2-d6031d810242',
-  };
+  static const String bojanUserId = '824f7bd7-e19c-4471-b7a2-d6031d810242';
 
-  static Future<void> refreshUpdateInfo(
-      {Map<String, dynamic>? appSettingsRow}) async {
+  static final V3AppSettingsRepository _repository = V3AppSettingsRepository();
+  static int _refreshTokenCounter = 0;
+
+  static Future<void> refreshUpdateInfo({Map<String, dynamic>? appSettingsRow}) async {
+    final refreshToken = ++_refreshTokenCounter;
+
+    void setUpdateInfoIfLatest(V2UpdateInfo? info) {
+      if (refreshToken != _refreshTokenCounter) return;
+      updateInfoNotifier.value = info;
+    }
+
     try {
       if (!Platform.isAndroid && !Platform.isIOS) {
-        updateInfoNotifier.value = null;
+        setUpdateInfoIfLatest(null);
         return;
       }
 
@@ -32,14 +38,13 @@ class V3AppUpdateService {
           );
 
       if (row == null) {
-        updateInfoNotifier.value = null;
+        setUpdateInfoIfLatest(null);
         return;
       }
 
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
-      final playStoreUrl =
-          'https://play.google.com/store/apps/details?id=${packageInfo.packageName}';
+      final playStoreUrl = 'https://play.google.com/store/apps/details?id=${packageInfo.packageName}';
 
       final key = Platform.isIOS ? 'ios' : 'android';
       final selected = _resolvePlatformConfig(row, key);
@@ -47,73 +52,68 @@ class V3AppUpdateService {
       final latest = (selected['latest'] ?? '').toString().trim();
       final minSupported = (selected['minSupported'] ?? '').toString().trim();
       final maintenanceMode = selected['maintenanceMode'] == true;
-      final maintenanceTitle =
-          (selected['maintenanceTitle'] ?? '').toString().trim();
-      final maintenanceMessage =
-          (selected['maintenanceMessage'] ?? '').toString().trim();
+      final maintenanceTitle = (selected['maintenanceTitle'] ?? '').toString().trim();
+      final maintenanceMessage = (selected['maintenanceMessage'] ?? '').toString().trim();
       var storeUrl = (selected['storeUrl'] ?? '').toString().trim();
       if (Platform.isAndroid && storeUrl.isEmpty) {
         storeUrl = playStoreUrl;
       }
       final forceFlag = selected['force'] == true;
 
-      if (_isUpdateGateBypassedForOperator()) {
-        updateInfoNotifier.value = null;
-        return;
-      }
-
       if (maintenanceMode) {
-        updateInfoNotifier.value = V2UpdateInfo(
+        setUpdateInfoIfLatest(V2UpdateInfo(
           latestVersion: latest.isNotEmpty ? latest : currentVersion,
           storeUrl: storeUrl,
           isForced: true,
           isMaintenance: true,
-          maintenanceTitle: maintenanceTitle.isNotEmpty
-              ? maintenanceTitle
-              : 'Malo čačkamo ispod haube 🔧',
+          maintenanceTitle: maintenanceTitle.isNotEmpty ? maintenanceTitle : 'Malo čačkamo ispod haube 🔧',
           maintenanceMessage: maintenanceMessage.isNotEmpty
               ? maintenanceMessage
               : 'Radovi su u toku, šlemovi su na glavama i traka je razvučena. Vrati se uskoro — biće bolje nego pre 😄',
-        );
+        ));
         return;
       }
 
       if (storeUrl.isEmpty) {
-        updateInfoNotifier.value = null;
+        setUpdateInfoIfLatest(null);
         return;
       }
 
       if (!forceFlag) {
-        updateInfoNotifier.value = null;
+        setUpdateInfoIfLatest(null);
+        return;
+      }
+
+      if (shouldBypassForceUpdateForCurrentOperator()) {
+        setUpdateInfoIfLatest(null);
         return;
       }
 
       final requiredVersion = minSupported.isNotEmpty ? minSupported : latest;
       if (requiredVersion.isEmpty) {
-        updateInfoNotifier.value = null;
+        setUpdateInfoIfLatest(null);
         return;
       }
 
       if (!_isVersionLower(currentVersion, requiredVersion)) {
-        updateInfoNotifier.value = null;
+        setUpdateInfoIfLatest(null);
         return;
       }
 
       final effectiveLatest = latest.isNotEmpty ? latest : requiredVersion;
 
-      updateInfoNotifier.value = V2UpdateInfo(
+      setUpdateInfoIfLatest(V2UpdateInfo(
         latestVersion: effectiveLatest,
         storeUrl: storeUrl,
         isForced: true,
-      );
+      ));
     } catch (e) {
       debugPrint('⚠️ [V3AppUpdateService] refreshUpdateInfo greška: $e');
-      updateInfoNotifier.value = null;
+      setUpdateInfoIfLatest(null);
     }
   }
 
-  static Map<String, dynamic> _resolvePlatformConfig(
-      Map<String, dynamic> row, String key) {
+  static Map<String, dynamic> _resolvePlatformConfig(Map<String, dynamic> row, String key) {
     if (key == 'ios') {
       return {
         'latest': row['latest_version_ios'],
@@ -141,34 +141,30 @@ class V3AppUpdateService {
     return _compareVersions(current, required) < 0;
   }
 
-  static bool _isUpdateGateBypassedForOperator() {
-    final putnikId =
-        (V3PutnikService.currentPutnik?['id'] ?? '').toString().trim();
-    if (putnikId.isNotEmpty && _updateGateBypassUserIds.contains(putnikId))
-      return true;
+  static bool shouldBypassForceUpdateForCurrentOperator() {
+    final putnikId = (V3PutnikService.currentPutnik?['id'] ?? '').toString().trim();
+    if (_isBojanUserId(putnikId)) return true;
 
     final vozacId = V3VozacService.currentVozac?.id.trim() ?? '';
-    if (vozacId.isNotEmpty && _updateGateBypassUserIds.contains(vozacId))
-      return true;
+    return _isBojanUserId(vozacId);
+  }
 
-    return false;
+  static bool _isBojanUserId(String rawUserId) {
+    final normalizedUserId = rawUserId.trim().toLowerCase();
+    if (normalizedUserId.isEmpty) return false;
+    return normalizedUserId == bojanUserId;
   }
 
   static int _compareVersions(String left, String right) {
     List<int> parse(String input) {
       final cleaned = input.trim().split('+').first.split('-').first;
       if (cleaned.isEmpty) return const [0];
-      return cleaned
-          .split('.')
-          .map((segment) => int.tryParse(segment) ?? 0)
-          .toList(growable: false);
+      return cleaned.split('.').map((segment) => int.tryParse(segment) ?? 0).toList(growable: false);
     }
 
     final leftParts = parse(left);
     final rightParts = parse(right);
-    final maxLength = leftParts.length > rightParts.length
-        ? leftParts.length
-        : rightParts.length;
+    final maxLength = leftParts.length > rightParts.length ? leftParts.length : rightParts.length;
 
     for (var index = 0; index < maxLength; index++) {
       final leftValue = index < leftParts.length ? leftParts[index] : 0;

@@ -32,6 +32,9 @@ class V3MasterRealtimeManager {
   bool _isSubscribing = false;
   bool _hasConnectedBefore = false;
   AppLifecycleListener? _lifecycleListener;
+  Future<void>? _resumeReconnectInFlight;
+  DateTime? _lastResumeReconnectAt;
+  static const Duration _resumeReconnectCooldown = Duration(seconds: 3);
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
@@ -288,17 +291,14 @@ class V3MasterRealtimeManager {
       return;
     }
     try {
-      _registerCacheStoreIfNeeded();
-      await _loadInitialCachesWithRetry();
-
       _lifecycleListener ??= AppLifecycleListener(
         onResume: () {
-          if (!_isInitialized) return;
-          if (_isSubscribing) return;
-          debugPrint('[RT] app resumed → reconnect + missed delta');
-          unawaited(_setupRealtime());
+          unawaited(_handleAppResume());
         },
       );
+
+      _registerCacheStoreIfNeeded();
+      await _loadInitialCachesWithRetry();
 
       await _setupRealtime();
       _isInitialized = true;
@@ -320,6 +320,11 @@ class V3MasterRealtimeManager {
   Future<void> _setupRealtime() async {
     if (!isSupabaseReady) {
       debugPrint('[RT] Supabase nije spreman, preskačem setupRealtime.');
+      return;
+    }
+
+    if (_isSubscribing) {
+      debugPrint('[RT] setupRealtime već u toku, preskačem paralelni poziv.');
       return;
     }
 
@@ -379,6 +384,42 @@ class V3MasterRealtimeManager {
           break;
       }
     });
+  }
+
+  Future<void> _handleAppResume() async {
+    if (!isSupabaseReady) return;
+
+    if (!_isInitialized) {
+      debugPrint('[RT] app resumed → initV3 retry (not initialized yet)');
+      await initV3();
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastRun = _lastResumeReconnectAt;
+    if (lastRun != null && now.difference(lastRun) < _resumeReconnectCooldown) {
+      debugPrint('[RT] app resumed → reconnect cooldown aktivan, preskačem.');
+      return;
+    }
+
+    final inFlight = _resumeReconnectInFlight;
+    if (inFlight != null) {
+      debugPrint('[RT] app resumed → reconnect već u toku, preskačem.');
+      return;
+    }
+
+    _lastResumeReconnectAt = now;
+    final operation = _setupRealtime();
+    _resumeReconnectInFlight = operation;
+    debugPrint('[RT] app resumed → reconnect + missed delta');
+
+    try {
+      await operation;
+    } finally {
+      if (identical(_resumeReconnectInFlight, operation)) {
+        _resumeReconnectInFlight = null;
+      }
+    }
   }
 
   Future<void> _resyncCachesAfterReconnect() async {

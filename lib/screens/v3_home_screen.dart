@@ -10,6 +10,7 @@ import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_dodela_resolver_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
@@ -51,7 +52,7 @@ class V3HomeScreen extends StatefulWidget {
 
 class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMixin {
   static const Set<String> _adminUserIds = <String>{
-    '824f7bd7-e19c-4471-b7a2-d6031d810242',
+    V3AppUpdateService.bojanUserId,
   };
 
   bool _isLoading = true;

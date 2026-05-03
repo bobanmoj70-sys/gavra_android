@@ -99,6 +99,16 @@ class V3ClosedAuthService {
     await _storage.write(key: _manualSmsVozacAuthIdKey, value: authId.trim());
   }
 
+  static Future<Set<String>> getStoredManualSmsAuthIds() async {
+    final putnikAuthId = (await _storage.read(key: _manualSmsPutnikAuthIdKey))?.trim() ?? '';
+    final vozacAuthId = (await _storage.read(key: _manualSmsVozacAuthIdKey))?.trim() ?? '';
+
+    return <String>{
+      if (putnikAuthId.isNotEmpty) putnikAuthId,
+      if (vozacAuthId.isNotEmpty) vozacAuthId,
+    };
+  }
+
   /// Obriši sačuvani putnik telefon (pri odjavi).
   static Future<void> clearManualSmsPutnikPhone() async {
     await _storage.delete(key: _manualSmsPutnikPhoneKey);
