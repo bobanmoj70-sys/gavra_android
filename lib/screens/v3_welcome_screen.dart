@@ -6,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/v3_vozac.dart';
-import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
@@ -36,7 +35,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   static const String _fadeAnimationKey = 'welcome_fade';
   static const String _slideAnimationKey = 'welcome_slide';
   static const String _pulseAnimationKey = 'welcome_pulse';
-  static const Duration _startupTimeout = Duration(seconds: 8);
+  static const Duration _startupTimeout = Duration(seconds: 5);
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isAudioPlaying = false;
@@ -106,14 +105,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   Future<void> _init() async {
-    unawaited(() async {
-      try {
-        await V3MasterRealtimeManager.instance.initV3().timeout(_startupTimeout);
-      } catch (e) {
-        debugPrint('[V3WelcomeScreen] initV3 error: $e');
-      }
-    }());
-
     final vozacRestored = await _runStartupStep<bool>(
           label: 'auto-login vozac',
           action: _tryAutoLoginVozac,

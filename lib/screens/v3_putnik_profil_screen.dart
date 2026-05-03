@@ -573,9 +573,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                       Text(
                                         vreme,
                                         style: TextStyle(
-                                          color: isLocked
-                                              ? Colors.white24
-                                              : Colors.white,
+                                          color: isLocked ? Colors.white24 : Colors.white,
                                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                                           fontSize: 13,
                                         ),
