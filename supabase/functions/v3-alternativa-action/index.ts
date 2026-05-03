@@ -41,7 +41,6 @@ async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: st
     .from("v3_operativna_nedelja")
     .update({
       polazak_at: selectedHHmm,
-      broj_mesta: isPosiljka ? 0 : 1,
       otkazano_at: null,
       otkazano_by: null,
       updated_by: putnikId,

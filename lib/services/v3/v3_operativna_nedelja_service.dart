@@ -167,7 +167,6 @@ class V3OperativnaNedeljaService {
         // UPDATE: prepiši polazak_at
         final updatedRow = await _repo.updateByIdReturningSingle(postojeci.first['id'] as String, {
           'polazak_at': polazakAt,
-          'broj_mesta': 1,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           'adresa_override_id': adresaIdOverride, // null = briše override
@@ -180,7 +179,6 @@ class V3OperativnaNedeljaService {
           'datum': datum,
           'grad': grad,
           'polazak_at': polazakAt,
-          'broj_mesta': 1,
           if (actor != null) 'updated_by': actor,
           if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
           if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
