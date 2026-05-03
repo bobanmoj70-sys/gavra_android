@@ -153,17 +153,13 @@ class V3OperativnaNedeljaService {
     required String datum, // yyyy-MM-dd
     required String grad,
     required String polazakAt, // HH:mm
-    required int brojMesta,
     String? createdBy,
     bool? koristiSekundarnu,
     String? adresaIdOverride,
   }) async {
     try {
       final actor = V3UuidUtils.normalizeUuid(createdBy);
-      final normalizedBrojMesta = V3PutnikService.normalizeBrojMestaForPutnik(
-        putnikId: putnikId,
-        brojMesta: brojMesta,
-      );
+      const normalizedBrojMesta = 1;
 
       // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;

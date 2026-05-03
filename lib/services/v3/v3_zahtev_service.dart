@@ -99,10 +99,6 @@ class V3ZahtevService {
     bool koristiSekundarnu = false,
     String? updatedBy,
   }) async {
-    final normalizedBrojMesta = V3PutnikService.normalizeBrojMestaForPutnik(
-      putnikId: putnikId,
-      brojMesta: 1,
-    );
     final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
     if (aktivni.isNotEmpty) {
       final row = aktivni.first;
@@ -128,7 +124,7 @@ class V3ZahtevService {
       datum: datum,
       grad: grad,
       trazeniPolazakAt: novoVreme,
-      brojMesta: normalizedBrojMesta,
+      brojMesta: 1,
       status: 'obrada',
       koristiSekundarnu: koristiSekundarnu,
     );

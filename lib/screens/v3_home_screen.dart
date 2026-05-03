@@ -283,7 +283,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   void _showDodajTerminDialog() {
     V3Putnik? selectedPutnik;
     V3Adresa? selectedAdresa; // override adresa (null = koristi putnikovu)
-    int brojMesta = 1;
     bool isLoading = false;
 
     // Spoji sve tipove putnika iz V3
@@ -422,31 +421,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             }),
                           ),
                           const SizedBox(height: 12),
-                          // Broj mesta
-                          V3ContainerUtils.iconContainer(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            backgroundColor: Colors.grey.shade100,
-                            borderRadiusGeometry: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade400),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.event_seat, color: Colors.grey),
-                                const SizedBox(width: 12),
-                                const Text('Broj mesta:', style: TextStyle(fontSize: 16)),
-                                const SizedBox(width: 8),
-                                DropdownButton<int>(
-                                  value: brojMesta,
-                                  underline: const SizedBox(),
-                                  isDense: true,
-                                  items: [1, 2, 3, 4, 5]
-                                      .map((v) =>
-                                          DropdownMenuItem(value: v, child: Text(v == 1 ? '1 mesto' : '$v mesta')))
-                                      .toList(),
-                                  onChanged: (v) => setS(() => brojMesta = v ?? 1),
-                                ),
-                              ],
-                            ),
-                          ),
                           // Adresa override — samo kad je putnik odabran
                           if (selectedPutnik != null) ...[
                             const SizedBox(height: 12),
@@ -525,7 +499,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         datum: isoDate,
                                         grad: _selectedGrad,
                                         polazakAt: _selectedVreme,
-                                        brojMesta: brojMesta,
                                         createdBy: V3UuidUtils.normalizeUuid(vozacId),
                                         koristiSekundarnu: koristiSekundarnu,
                                         adresaIdOverride: adresaIdOverride,

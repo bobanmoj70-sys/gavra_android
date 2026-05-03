@@ -301,14 +301,6 @@ class _MonitoringCardDaily extends StatelessWidget {
                     '${zahtev.grad} · ${V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
-                  if (zahtev.brojMesta > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(
-                        '👥 ${zahtev.brojMesta} mesta',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                      ),
-                    ),
                   V3ZahtevTimelapseWidget(zahtev: zahtev),
                 ],
               ),
@@ -442,14 +434,6 @@ class _ZahtevCard extends StatelessWidget {
                       if (danLabel.isNotEmpty) ...[
                         const SizedBox(width: 6),
                         _InfoChip(icon: Icons.calendar_today, label: danLabel, color: Colors.white54),
-                      ],
-                      if (zahtev.brojMesta > 1) ...[
-                        const SizedBox(width: 6),
-                        _InfoChip(
-                          icon: Icons.event_seat,
-                          label: '×${zahtev.brojMesta}',
-                          color: Colors.purple.shade200,
-                        ),
                       ],
                     ],
                   ),

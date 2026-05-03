@@ -226,14 +226,6 @@ class _MonitoringCardUcenik extends StatelessWidget {
                     '${zahtev.grad} · ${V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
-                  if (zahtev.brojMesta > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(
-                        '👥 ${zahtev.brojMesta} mesta',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                      ),
-                    ),
                   V3ZahtevTimelapseWidget(zahtev: zahtev),
                 ],
               ),
@@ -301,14 +293,6 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
                     '${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
-                  if (zahtev.brojMesta > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(
-                        '👥 ${zahtev.brojMesta} mesta',
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
-                      ),
-                    ),
                   // ── Timelapse ──────────────────────────────────
                   V3ZahtevTimelapseWidget(zahtev: zahtev),
                 ],

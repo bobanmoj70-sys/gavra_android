@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
 
       const { data: occupiedRows, error: occupiedError } = await client
         .from("v3_operativna_nedelja")
-        .select("broj_mesta")
+        .select("id")
         .eq("datum", datumIso)
         .eq("grad", grad)
         .eq("polazak_at", selectedHHmm)
@@ -211,13 +211,7 @@ Deno.serve(async (req) => {
         return json(200, { ok: false, reason: "accept_update_error", warning: occupiedError.message });
       }
 
-      const occupied = Array.isArray(occupiedRows)
-        ? occupiedRows.reduce((sum: number, row: any) => {
-            const seats = Number(row?.broj_mesta);
-            const normalizedSeats = Number.isFinite(seats) ? Math.max(0, seats) : 1;
-            return sum + normalizedSeats;
-          }, 0)
-        : 0;
+      const occupied = Array.isArray(occupiedRows) ? occupiedRows.length : 0;
       if (occupied >= maxMesta) {
         return json(200, {
           ok: false,
