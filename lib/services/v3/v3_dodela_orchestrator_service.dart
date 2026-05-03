@@ -25,6 +25,11 @@ class V3DodelaOrchestratorService {
       includeRow: includeRow,
     );
 
+    // Obrisi stare termin dodele za ovaj slot pre upisa novog vozaca
+    final terminIds =
+        matchedRows.map((r) => r['id']?.toString() ?? '').where((id) => id.isNotEmpty).toList(growable: false);
+    await V3TrenutnaDodelaService.deleteByTerminIds(terminIds);
+
     await V3TrenutnaDodelaService.upsertActiveTerminDodele(
       matchedRows
           .map((row) => (
