@@ -828,17 +828,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   Map<String, int> _getUceniciBcVsSummary() {
     final grouped = _getUceniciSaDodeljenimVremenomDanasPoGradu();
-    final bc = grouped['BC'] ?? const <String>[];
+    final bcIds = grouped['BC'] ?? const <String>[];
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
-    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList();
+    // vsTotal = samo oni koji imaju i BC i VS (presek po ID-u)
+    final vsTotal = bcIds.where((id) => vsSet.contains(id)).length;
 
     return {
-      'bcTotal': bc.length,
-      'vsTotal': vsSet.length,
-      'preostalo': bezVs.length,
+      'bcTotal': bcIds.length,
+      'vsTotal': vsTotal,
+      'preostalo': bcIds.length - vsTotal,
     };
   }
 
+  // Vraca Map sa listama putnikId-eva (ne imena!) za BC i VS.
   Map<String, List<String>> _getUceniciSaDodeljenimVremenomDanasPoGradu() {
     final rm = V3MasterRealtimeManager.instance;
     final now = DateTime.now();
@@ -849,8 +851,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .map((p) => p['id'] as String)
         .toSet();
 
-    final bcNames = <String>{};
-    final vsNames = <String>{};
+    final bcIds = <String>{};
+    final vsIds = <String>{};
 
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
@@ -864,12 +866,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final datumOnly = DateTime(datum.year, datum.month, datum.day);
       if (datumOnly != today) continue;
 
-      final ime = (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
-      if (ime.isEmpty) continue;
-
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
       if (grad == 'VS') {
-        vsNames.add(ime);
+        vsIds.add(putnikId);
         continue;
       }
 
@@ -881,24 +880,26 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         if (!V3StatusPolicy.isApproved(status)) continue;
         final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
         if (polazakAt.isEmpty) continue;
-        bcNames.add(ime);
+        bcIds.add(putnikId);
       }
     }
 
-    final bc = bcNames.toList()..sort();
-    final vs = vsNames.toList()..sort();
-
     return {
-      'BC': bc,
-      'VS': vs,
+      'BC': bcIds.toList(),
+      'VS': vsIds.toList(),
     };
   }
 
   void _showUceniciDanasPopup(BuildContext context) {
+    final rm = V3MasterRealtimeManager.instance;
     final grouped = _getUceniciSaDodeljenimVremenomDanasPoGradu();
-    final bc = grouped['BC'] ?? const <String>[];
+    final bcIds = grouped['BC'] ?? const <String>[];
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
-    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList()..sort();
+    // bezVs = ID-evi koji su u BC ali nisu u VS
+    final bezVsIds = bcIds.where((id) => !vsSet.contains(id)).toList();
+    // za prikaz - lookup imena po ID-u
+    String idToIme(String id) => (rm.putniciCache[id]?['ime_prezime']?.toString() ?? id).trim();
+    final bezVs = bezVsIds.map(idToIme).toList()..sort();
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
@@ -952,17 +953,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
   Map<String, int> _getDnevniBcVsSummary() {
     final grouped = _getDnevniSaDodeljenimVremenomDanasPoGradu();
-    final bc = grouped['BC'] ?? const <String>[];
+    final bcIds = grouped['BC'] ?? const <String>[];
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
-    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList();
+    // vsTotal = samo oni koji imaju i BC i VS (presek po ID-u)
+    final vsTotal = bcIds.where((id) => vsSet.contains(id)).length;
 
     return {
-      'bcTotal': bc.length,
-      'vsTotal': vsSet.length,
-      'preostalo': bezVs.length,
+      'bcTotal': bcIds.length,
+      'vsTotal': vsTotal,
+      'preostalo': bcIds.length - vsTotal,
     };
   }
 
+  // Vraca Map sa listama putnikId-eva (ne imena!) za BC i VS.
   Map<String, List<String>> _getDnevniSaDodeljenimVremenomDanasPoGradu() {
     final rm = V3MasterRealtimeManager.instance;
     final now = DateTime.now();
@@ -973,8 +976,8 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         .map((p) => p['id'] as String)
         .toSet();
 
-    final bcNames = <String>{};
-    final vsNames = <String>{};
+    final bcIds = <String>{};
+    final vsIds = <String>{};
 
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
@@ -988,12 +991,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final datumOnly = DateTime(datum.year, datum.month, datum.day);
       if (datumOnly != today) continue;
 
-      final ime = (rm.putniciCache[putnikId]?['ime_prezime']?.toString() ?? '').trim();
-      if (ime.isEmpty) continue;
-
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
       if (grad == 'VS') {
-        vsNames.add(ime);
+        vsIds.add(putnikId);
         continue;
       }
 
@@ -1005,24 +1005,26 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         if (!V3StatusPolicy.isApproved(status)) continue;
         final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
         if (polazakAt.isEmpty) continue;
-        bcNames.add(ime);
+        bcIds.add(putnikId);
       }
     }
 
-    final bc = bcNames.toList()..sort();
-    final vs = vsNames.toList()..sort();
-
     return {
-      'BC': bc,
-      'VS': vs,
+      'BC': bcIds.toList(),
+      'VS': vsIds.toList(),
     };
   }
 
   void _showDnevniDanasPopup(BuildContext context) {
+    final rm = V3MasterRealtimeManager.instance;
     final grouped = _getDnevniSaDodeljenimVremenomDanasPoGradu();
-    final bc = grouped['BC'] ?? const <String>[];
+    final bcIds = grouped['BC'] ?? const <String>[];
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
-    final bezVs = bc.where((ime) => !vsSet.contains(ime)).toList()..sort();
+    // bezVs = ID-evi koji su u BC ali nisu u VS
+    final bezVsIds = bcIds.where((id) => !vsSet.contains(id)).toList();
+    // za prikaz - lookup imena po ID-u
+    String idToIme(String id) => (rm.putniciCache[id]?['ime_prezime']?.toString() ?? id).trim();
+    final bezVs = bezVsIds.map(idToIme).toList()..sort();
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
