@@ -377,6 +377,72 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     return null;
   }
 
+  String? _resolveAdresaId() {
+    final overrideId = widget.entry?.adresaIdOverride;
+    if (overrideId != null && overrideId.isNotEmpty) {
+      return overrideId;
+    }
+    final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
+    final koristiSekundarnu = widget.entry?.koristiSekundarnu ?? false;
+    if (grad == 'BC') {
+      return koristiSekundarnu ? (widget.putnik.adresaBcId2 ?? widget.putnik.adresaBcId) : widget.putnik.adresaBcId;
+    }
+    if (grad == 'VS') {
+      return koristiSekundarnu ? (widget.putnik.adresaVsId2 ?? widget.putnik.adresaVsId) : widget.putnik.adresaVsId;
+    }
+    return null;
+  }
+
+  double? _toDoubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  ({double lat, double lng})? _resolveAdresaCoords() {
+    final adresaId = _resolveAdresaId();
+    if (adresaId == null || adresaId.isEmpty) return null;
+    final row = V3MasterRealtimeManager.instance.adreseCache[adresaId];
+    if (row == null) return null;
+    final lat = _toDoubleOrNull(row['gps_lat']);
+    final lng = _toDoubleOrNull(row['gps_lng']);
+    if (lat == null || lng == null) return null;
+    return (lat: lat, lng: lng);
+  }
+
+  Future<void> _openHereWeGoForPutnik() async {
+    final coords = _resolveAdresaCoords();
+    if (coords == null) {
+      if (mounted) V3AppSnackBar.error(context, 'Nema GPS koordinata za ovu adresu');
+      return;
+    }
+
+    final lat = coords.lat.toStringAsFixed(6);
+    final lng = coords.lng.toStringAsFixed(6);
+    final appUri = Uri.parse('here-route://mylocation/$lat,$lng?m=d');
+    final installUri = Uri.parse('https://play.google.com/store/apps/details?id=com.here.app.maps');
+
+    if (await canLaunchUrl(appUri)) {
+      await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('da bi ste koristi ovu funkciju molimo instalirajte here we go'),
+        action: SnackBarAction(
+          label: 'INSTALIRAJ',
+          onPressed: () async {
+            await launchUrl(installUri, mode: LaunchMode.externalApplication);
+          },
+        ),
+      ),
+    );
+  }
+
   // ─── Build ─────────────────────────────────────────────────────
 
   @override
@@ -393,6 +459,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
+    final bool hasAdresaCoords = _resolveAdresaCoords() != null;
     final textStyle = _getStatusTextStyle();
     final Color textColor = textStyle.primary;
     final Color secondaryTextColor = textStyle.secondary;
@@ -448,9 +515,29 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         if (hasAdresa)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: V3SafeText.userAddress(
-                              adresaNaziv,
-                              style: TextStyle(fontSize: 13, color: secondaryTextColor, fontWeight: FontWeight.w500),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: V3SafeText.userAddress(
+                                    adresaNaziv,
+                                    style:
+                                        TextStyle(fontSize: 13, color: secondaryTextColor, fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                if (hasAdresaCoords)
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _openHereWeGoForPutnik,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: Text(
+                                        '📍',
+                                        style: TextStyle(fontSize: 16, color: secondaryTextColor),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                       ],
