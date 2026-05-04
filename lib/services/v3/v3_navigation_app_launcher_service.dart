@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:android_intent_plus/android_intent.dart';
 
-import 'v3_osrm_route_service.dart';
+import 'v3_route_models.dart';
 
 class V3NavigationAppLauncherService {
   static const String _herePackage = 'com.here.app.maps';

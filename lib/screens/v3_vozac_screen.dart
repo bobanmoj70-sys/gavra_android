@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
@@ -13,8 +14,9 @@ import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
-import '../services/v3/v3_osrm_route_service.dart';
+import '../services/v3/v3_ors_route_service.dart';
 import '../services/v3/v3_putnik_adresa_resolver_service.dart';
+import '../services/v3/v3_route_models.dart';
 import '../services/v3/v3_route_waypoint_resolver_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
@@ -59,11 +61,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   bool _isLoading = true;
   bool _loadingDodela = false;
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
-  final V3OsrmRouteService _osrmRouteService = V3OsrmRouteService();
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
-  Map<String, int> _optimizedOrderByPutnikId = const <String, int>{};
-  List<V3RouteWaypoint> _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
-  V3RouteWaypoint? _lastFixedDestination;
 
   int? _lastRealtimeTick;
 
@@ -79,6 +77,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   List<Map<String, String>> _assignedSlotRows = <Map<String, String>>[];
   bool _autoStopInProgress = false;
   bool _isNavigating = false;
+  final List<String> _optimizedPutnikIds = [];
 
   int _timeToMinutes(String hhmm) {
     final parts = hhmm.split(':');
@@ -222,25 +221,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   List<_PutnikEntry> _sortPutniciForDisplay(
     List<_PutnikEntry> putnici,
   ) {
-    final sorted = List<_PutnikEntry>.from(putnici);
-
-    // Ako nema optimizovanog redosleda — ne sortiramo, vraćamo kako je došlo iz baze
-    if (_optimizedOrderByPutnikId.isEmpty) return sorted;
-
-    // Optimizovani redosled: pokupljeni/otkazani idu na kraj
-    sorted.sort((a, b) {
-      final aCompleted = a.entry?.pokupljenAt != null || a.entry?.otkazanoAt != null;
-      final bCompleted = b.entry?.pokupljenAt != null || b.entry?.otkazanoAt != null;
-      if (aCompleted != bCompleted) return aCompleted ? 1 : -1;
-
-      final aIndex = _optimizedOrderByPutnikId[a.putnik.id];
-      final bIndex = _optimizedOrderByPutnikId[b.putnik.id];
-      if (aIndex != null && bIndex != null) return aIndex.compareTo(bIndex);
-      if (aIndex != null) return -1;
-      if (bIndex != null) return 1;
-      return 0;
-    });
-    return sorted;
+    return List<_PutnikEntry>.from(putnici);
   }
 
   @override
@@ -249,6 +230,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     _selectedDate = V3DanHelper.defaultWorkdayDate();
     // Ako je tracking već aktivan (npr. vozač se vratio back), obnovi state
     _isNavigating = V3VozacLocationTrackingService.instance.isRunning;
+    _optimizedPutnikIds.clear(); // Reset optimizacije za novi termin
     _startTrenutnaDodelaRealtime();
     _initData();
   }
@@ -314,10 +296,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   Future<void> _startDriverLocationTracking() async {
     final vozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
     if (vozacId.isEmpty) return;
-    V3VozacLocationTrackingService.instance.onLocationSent = (position) {
-      if (!_isNavigating) return;
-      unawaited(_optimizeCurrentRouteAndApplyOrder());
-    };
     await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
   }
 
@@ -506,6 +484,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
 
     V3StateUtils.safeSetState(this, () {
       _mojiPutnici = putniciZaPrikaz;
+      _applyOptimizedOrderToPutnici(); // Zadrzi optimizovan redosled cak i kad stignu realtime podaci
     });
 
     _maybeAutoStopTrackingForCompletedTermin(putniciZaPrikaz);
@@ -538,15 +517,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     setState(() {
       final normalizedGrad = grad.toUpperCase();
       final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
-      final hasContextChanged =
-          _selectedGrad != normalizedGrad || V3TimeUtils.normalizeToHHmm(_selectedVreme) != normalizedVreme;
       _selectedGrad = normalizedGrad;
       _selectedVreme = normalizedVreme;
-      if (hasContextChanged) {
-        _optimizedOrderByPutnikId = const <String, int>{};
-        _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
-        _lastFixedDestination = null;
-      }
     });
     _rebuild();
   }
@@ -617,15 +589,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
         final firstTerm = dayTerms.first;
         _selectedGrad = firstTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
         _selectedVreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme']?.toString());
-      }
-
-      final hasContextChanged = !V3DanHelper.dateOnly(_selectedDate).isAtSameMomentAs(previousDate) ||
-          _selectedGrad != previousGrad ||
-          V3TimeUtils.normalizeToHHmm(_selectedVreme) != previousVreme;
-      if (hasContextChanged) {
-        _optimizedOrderByPutnikId = const <String, int>{};
-        _lastOptimizedWaypoints = const <V3RouteWaypoint>[];
-        _lastFixedDestination = null;
       }
     });
 
@@ -802,13 +765,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
     return (waypoints: resolved, unresolvedCount: resolvedOrNull.length - resolved.length);
   }
 
+  void _applyOptimizedOrderToPutnici() {
+    if (_optimizedPutnikIds.isEmpty) return;
+
+    _mojiPutnici.sort((a, b) {
+      int indexA = _optimizedPutnikIds.indexOf(a.putnik.id);
+      int indexB = _optimizedPutnikIds.indexOf(b.putnik.id);
+
+      if (indexA == -1) indexA = 999;
+      if (indexB == -1) indexB = 999;
+
+      return indexA.compareTo(indexB);
+    });
+  }
+
   Future<
       ({
-        List<V3RouteWaypoint> optimized,
+        List<V3RouteWaypoint> waypointsToOpen,
         int unresolvedCount,
-      })?> _optimizeCurrentRouteAndApplyOrder() async {
+      })?> _buildHereRouteWaypoints({bool doOptimize = false}) async {
     final resolveResult = await _resolveWaypointsForCurrentOrder();
-    final resolved = resolveResult.waypoints;
+    var resolved = resolveResult.waypoints;
     final unresolvedCount = resolveResult.unresolvedCount;
 
     if (resolved.isEmpty) {
@@ -818,67 +795,77 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       return null;
     }
 
-    final fixedDestination = await _resolveFixedOppositeDestination();
-    debugPrint(
-        '[OPT] fixedDestination=${fixedDestination?.label} coord=${fixedDestination?.coordinate.latitude},${fixedDestination?.coordinate.longitude}');
+    // --- NOVA LOGIKA: OPEN ROUTE SERVICE OPTIMIZACIJA NA START ---
+    if (resolved.length > 1) {
+      if (doOptimize) {
+        try {
+          Position? currentPos = await Geolocator.getLastKnownPosition();
+          currentPos ??= await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+              timeLimit: Duration(seconds: 5),
+            ),
+          );
 
-    // Koristimo poslednju poznatu poziciju vozača kao fiksnu startnu tačku optimizacije
-    final driverPos = V3VozacLocationTrackingService.instance.lastKnownPosition;
-    final driverCoord =
-        driverPos != null ? V3RouteCoordinate(latitude: driverPos.latitude, longitude: driverPos.longitude) : null;
-    debugPrint('[OPT] driverCoord=${driverCoord?.latitude},${driverCoord?.longitude} (null=${driverCoord == null})');
+          final driverCoord = V3RouteCoordinate(latitude: currentPos.latitude, longitude: currentPos.longitude);
+          final optimizedIndices = await V3OrsRouteService().optimizeWaypoints(
+            driverLocation: driverCoord,
+            waypoints: resolved,
+          );
 
-    final optimized = await _osrmRouteService.optimizeWaypoints(
-      resolved,
-      fixedDestination: fixedDestination,
-      currentLocation: driverCoord,
-    );
-
-    final putnikIds = _mojiPutnici.map((item) => item.putnik.id).toSet();
-    final optimizedOrderById = <String, int>{
-      for (int i = 0; i < optimized.length; i++)
-        if (putnikIds.contains(optimized[i].id)) optimized[i].id: i,
-    };
-    final reordered = List<_PutnikEntry>.from(_mojiPutnici)
-      ..sort((a, b) {
-        final aIndex = optimizedOrderById[a.putnik.id];
-        final bIndex = optimizedOrderById[b.putnik.id];
-        if (aIndex != null && bIndex != null && aIndex != bIndex) {
-          return aIndex.compareTo(bIndex);
+          if (optimizedIndices != null && optimizedIndices.length == resolved.length) {
+            final optimizedResolved = <V3RouteWaypoint>[];
+            _optimizedPutnikIds.clear();
+            for (final index in optimizedIndices) {
+              optimizedResolved.add(resolved[index]);
+              _optimizedPutnikIds.add(resolved[index].id);
+            }
+            resolved = optimizedResolved;
+            debugPrint('[ORS] Putnici uspešno reoptimizovani!');
+            // Re-sortiraj `_mojiPutnici` odmah nakon optimizacije
+            if (mounted) {
+              _applyOptimizedOrderToPutnici();
+              V3StateUtils.safeSetState(this, () {});
+            }
+          }
+        } catch (e) {
+          debugPrint('[ORS] Optimizacija preskočena/greška: $e');
         }
-        if (aIndex != null && bIndex == null) return -1;
-        if (aIndex == null && bIndex != null) return 1;
-        return 0;
-      });
+      } else if (_optimizedPutnikIds.isNotEmpty) {
+        // Ako već imamo optimizaciju, primeni isti redosled bez ponovnog API poziva
+        final optimizedResolved = <V3RouteWaypoint>[];
+        for (final id in _optimizedPutnikIds) {
+          final foundIndex = resolved.indexWhere((w) => w.id == id);
+          if (foundIndex != -1) {
+            optimizedResolved.add(resolved[foundIndex]);
+          }
+        }
+        // Dodaj preostale koji nisu bili u optimizovanom nizu
+        for (final wp in resolved) {
+          if (!_optimizedPutnikIds.contains(wp.id)) {
+            optimizedResolved.add(wp);
+          }
+        }
+        resolved = optimizedResolved;
+      }
+    }
+    // --- KRAJ NOVE LOGIKE ---
 
-    if (!mounted) return null;
+    final fixedDestination = await _resolveFixedOppositeDestination();
+    final waypointsToOpen = <V3RouteWaypoint>[
+      ...resolved,
+      if (fixedDestination != null) fixedDestination,
+    ];
 
-    V3StateUtils.safeSetState(this, () {
-      _optimizedOrderByPutnikId = optimizedOrderById;
-      _lastOptimizedWaypoints = optimized;
-      _lastFixedDestination = fixedDestination;
-      _mojiPutnici = reordered;
-    });
-    debugPrint(
-        '[OPT] Applied reordered: ${reordered.map((p) => '${p.putnik.imePrezime}(opt=${optimizedOrderById[p.putnik.id]})').join(' -> ')}');
-
-    // Sačuvaj optimizovane waypoints u slot da orchestrator može da ih čita
-    // Destinacija se dodaje na kraj da OSRM zna pravi smer pri ETA računanju
+    // Sačuvaj waypoints u trenutno aktivan slot da server može da koristi fallback koordinate.
     if (_selectedDatumIso.isNotEmpty && _selectedGrad.isNotEmpty && _selectedVreme.isNotEmpty) {
-      final waypointsJson = optimized
+      final waypointsJson = waypointsToOpen
           .map((w) => <String, dynamic>{
                 'id': w.id,
                 'lat': w.coordinate.latitude,
                 'lng': w.coordinate.longitude,
               })
           .toList();
-      if (fixedDestination != null) {
-        waypointsJson.add(<String, dynamic>{
-          'id': fixedDestination.id,
-          'lat': fixedDestination.coordinate.latitude,
-          'lng': fixedDestination.coordinate.longitude,
-        });
-      }
       final currentVozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
       try {
         await V3TrenutnaDodelaSlotService.updateWaypointsJson(
@@ -888,48 +875,39 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
           vozacId: currentVozacId,
           waypoints: waypointsJson,
         );
-        debugPrint('[OPT] updateWaypointsJson OK');
+        debugPrint('[HERE] updateWaypointsJson OK');
       } catch (e) {
-        debugPrint('[OPT] updateWaypointsJson failed: $e');
+        debugPrint('[HERE] updateWaypointsJson failed: $e');
       }
     }
 
     return (
-      optimized: optimized,
+      waypointsToOpen: waypointsToOpen,
       unresolvedCount: unresolvedCount,
     );
   }
 
   Future<void> _handleOpenMap() async {
+    if (!_isNavigating && _optimizedPutnikIds.isEmpty) {
+      if (mounted) V3AppSnackBar.warning(context, 'Prvo započnite vožnju (START) da bi se ruta optimizovala.');
+      return;
+    }
+
     if (_mojiPutnici.isEmpty) {
       if (mounted) V3AppSnackBar.warning(context, 'Nema putnika za izabrani termin.');
       return;
     }
 
-    // Koristi već optimizovani redosled ako postoji — isti kao kartice na ekranu
-    List<V3RouteWaypoint> waypointsToOpen;
-    V3RouteWaypoint? destination;
-    if (_lastOptimizedWaypoints.isNotEmpty) {
-      waypointsToOpen = _lastOptimizedWaypoints;
-      destination = _lastFixedDestination;
-    } else {
-      final optimization = await _optimizeCurrentRouteAndApplyOrder();
-      if (optimization == null) return;
-      waypointsToOpen = optimization.optimized;
-      destination = _lastFixedDestination;
-    }
-
-    // Dodaj finalnu destinaciju (suprotni grad) na kraj
-    if (destination != null) {
-      waypointsToOpen = [...waypointsToOpen, destination];
-    }
+    final preparedRoute = await _buildHereRouteWaypoints(doOptimize: false);
+    if (preparedRoute == null) return;
+    final waypointsToOpen = preparedRoute.waypointsToOpen;
 
     try {
       await V3NavigationAppLauncherService.launchHereWeGoAppOnly(
         waypoints: waypointsToOpen,
       );
       if (!mounted) return;
-      V3AppSnackBar.success(context, 'MAPA otvorena sa istim redosledom kao kartice.');
+      V3AppSnackBar.success(context, 'HERE WeGo otvoren sa trenutnim redosledom stanica.');
     } catch (e) {
       if (mounted) {
         V3AppSnackBar.error(context, 'MAPA nije otvorena: $e');
@@ -980,24 +958,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
       }
     }
 
-    final optimization = await _optimizeCurrentRouteAndApplyOrder();
-    debugPrint('[START] optimization result: $optimization');
-    if (optimization == null || !mounted) {
-      debugPrint('[START] => optimization null or not mounted, returning');
+    final preparedRoute = await _buildHereRouteWaypoints(doOptimize: true);
+    debugPrint('[START] prepared route result: $preparedRoute');
+    if (preparedRoute == null || !mounted) {
+      debugPrint('[START] => prepared route null or not mounted, returning');
       return;
     }
 
     debugPrint(
-        '[START] optimized.length=${optimization.optimized.length} unresolvedCount=${optimization.unresolvedCount}');
-    V3AppSnackBar.success(context, 'Ruta optimizovana (OSRM).');
+        '[START] waypoints.length=${preparedRoute.waypointsToOpen.length} unresolvedCount=${preparedRoute.unresolvedCount}');
+    V3AppSnackBar.success(context, 'Ruta pripremljena za HERE WeGo.');
     _isNavigating = true;
     // Odmah izračunaj ETA bez čekanja na GPS pomak
     unawaited(V3VozacLocationTrackingService.instance.forceComputeEta());
 
-    if (optimization.unresolvedCount > 0) {
+    if (preparedRoute.unresolvedCount > 0) {
       V3AppSnackBar.warning(
         context,
-        'Preskočeno adresa bez koordinata: ${optimization.unresolvedCount}.',
+        'Preskočeno adresa bez koordinata: ${preparedRoute.unresolvedCount}.',
       );
     }
   }
@@ -1165,9 +1143,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
                                 child: _buildAppBarBtn(
                                   context: context,
                                   label: 'MAPA',
-                                  color: Colors.blue,
+                                  color: (!_isNavigating && _optimizedPutnikIds.isEmpty)
+                                      ? Colors.grey // Inaktivno dok se ne klikne START
+                                      : Colors.blue,
                                   height: appBarButtonHeight,
                                   onTap: () {
+                                    if (!_isNavigating && _optimizedPutnikIds.isEmpty) {
+                                      V3AppSnackBar.warning(
+                                          context, 'Prvo kliknite START za izabrani termin da ruta bude optimizovana.');
+                                      return;
+                                    }
                                     _handleOpenMap();
                                   },
                                 ),

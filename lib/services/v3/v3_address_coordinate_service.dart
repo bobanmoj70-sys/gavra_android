@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import '../../utils/v3_geo_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_adresa_service.dart';
-import 'v3_osrm_route_service.dart';
+import 'v3_route_models.dart';
 
 class V3AddressCoordinateService {
   V3AddressCoordinateService({http.Client? client}) : _client = client ?? http.Client();

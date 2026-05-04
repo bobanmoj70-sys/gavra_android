@@ -432,7 +432,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: const Text('da bi ste koristi ovu funkciju molimo instalirajte here we go'),
+        content: const Text('Da biste koristili ovu funkciju, molimo instalirajte HERE WeGo.'),
         action: SnackBarAction(
           label: 'INSTALIRAJ',
           onPressed: () async {

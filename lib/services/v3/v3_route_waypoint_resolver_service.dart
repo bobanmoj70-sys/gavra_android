@@ -1,8 +1,8 @@
 import '../../models/v3_putnik.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_address_coordinate_service.dart';
-import 'v3_osrm_route_service.dart';
 import 'v3_putnik_adresa_resolver_service.dart';
+import 'v3_route_models.dart';
 
 /// Rešava V3RouteWaypoint za putnika koristeći njegovu adresu iz profila.
 class V3RouteWaypointResolverService {
