@@ -32,7 +32,7 @@ class V3FinansijeService {
 
   static bool _isPoDanuTip(String tip) {
     final normalized = tip.trim().toLowerCase();
-    return normalized == 'radnik' || normalized == 'ucenik' || normalized == 'vozac';
+    return normalized == 'radnik' || normalized == 'ucenik';
   }
 
   static double _cenaZaTip({

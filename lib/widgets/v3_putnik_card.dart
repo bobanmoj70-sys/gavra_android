@@ -110,23 +110,22 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     required String tipPutnika,
     required bool isPoDanuModel,
   }) {
-    if (isPoDanuModel) {
-      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
-      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
-        putnikId: widget.putnik.id,
-        mesec: datumRef.month,
-        godina: datumRef.year,
-      );
-      final brojVoznji = summary.brojVoznji;
-      return (
-        defaultCena: widget.putnik.cenaPoDanu * brojVoznji,
-        brojVoznji: brojVoznji,
-      );
-    }
+    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+    final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+      putnikId: widget.putnik.id,
+      mesec: datumRef.month,
+      godina: datumRef.year,
+    );
 
-    final tip = tipPutnika.trim().toLowerCase();
-    final cena = (tip == 'dnevni' || tip == 'posiljka') ? widget.putnik.cenaPoPokupljenju : widget.putnik.cenaPoDanu;
-    return (defaultCena: cena, brojVoznji: 1);
+    final brojVoznji = summary.brojVoznji;
+    final cenaPoModelu = isPoDanuModel ? widget.putnik.cenaPoDanu : widget.putnik.cenaPoPokupljenju;
+    final ukupnaObaveza = cenaPoModelu * brojVoznji;
+    final preostaloZaNaplatu = ukupnaObaveza - summary.ukupanIznos;
+
+    return (
+      defaultCena: preostaloZaNaplatu > 0 ? preostaloZaNaplatu : 0.0,
+      brojVoznji: brojVoznji,
+    );
   }
 
   // ─── Akcije ────────────────────────────────────────────────────

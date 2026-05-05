@@ -131,7 +131,7 @@ class V3PutnikStatistikaService {
 
   static bool _isPoDanuTip(String tip) {
     final normalized = tip.trim().toLowerCase();
-    return normalized == 'radnik' || normalized == 'ucenik' || normalized == 'vozac';
+    return normalized == 'radnik' || normalized == 'ucenik';
   }
 
   static double _cenaZaTip({
