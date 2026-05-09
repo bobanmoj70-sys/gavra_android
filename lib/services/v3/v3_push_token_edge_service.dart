@@ -31,7 +31,6 @@ class V3PushTokenEdgeService {
     required String v3AuthId,
     String? pushToken,
     String? installationId,
-    String? pushToken2,
   }) async {
     final targetId = v3AuthId.trim();
     final safePushToken = (pushToken ?? '').trim();

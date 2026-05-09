@@ -72,12 +72,10 @@ class V3PutnikService {
     required String putnikId,
     required String pushToken,
     String? installationId,
-    String? pushToken2,
   }) async {
     final safeId = putnikId.trim();
     final safeToken = pushToken.trim();
     final safeInstallationId = (installationId ?? '').trim();
-    final safeToken2 = (pushToken2 ?? '').trim();
     if (safeId.isEmpty || safeInstallationId.isEmpty) return;
 
     try {
@@ -85,7 +83,6 @@ class V3PutnikService {
         v3AuthId: safeId,
         pushToken: safeToken,
         installationId: safeInstallationId,
-        pushToken2: safeToken2,
       );
     } catch (e) {
       debugPrint('[V3PutnikService] writePushTokenOnLogin error: $e');

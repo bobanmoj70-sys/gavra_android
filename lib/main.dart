@@ -486,8 +486,6 @@ Future<void> _syncRefreshedPushToken(String token) async {
   if (safeToken.isEmpty) return;
   if (_lastSyncedPushToken == safeToken) return;
   final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
-  final tokenResult = await V3PushTokenProvider.getBestToken();
-  final apnsToken = tokenResult?.apnsToken?.trim() ?? '';
 
   Future<bool> doSyncAttempt() async {
     final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
@@ -496,7 +494,6 @@ Future<void> _syncRefreshedPushToken(String token) async {
         putnikId: putnikId,
         pushToken: safeToken,
         installationId: installationId,
-        pushToken2: apnsToken,
       );
       return true;
     }
@@ -507,7 +504,6 @@ Future<void> _syncRefreshedPushToken(String token) async {
         vozacId: vozacId,
         pushToken: safeToken,
         installationId: installationId,
-        pushToken2: apnsToken,
       );
       return true;
     }

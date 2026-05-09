@@ -136,12 +136,6 @@ class V3PushTokenProvider {
         }
       }
 
-      final safeToken = (token ?? '').trim();
-      if (safeToken.isNotEmpty) {
-        await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
-        return V3PushTokenResult(token: safeToken, apnsToken: safeApnsToken);
-      }
-
       final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
       if (fallbackToken.isNotEmpty) {
         debugPrint('[PushTokenProvider] iOS using last known FCM token fallback.');
