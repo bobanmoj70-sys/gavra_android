@@ -64,6 +64,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   Map<String, String> _activeVozacBySlotKey = const {};
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
 
+  void _handleActiveWeekChanged() {
+    if (!mounted) return;
+    setState(() {
+      _syncSelectedSlotForDatum(_selectedDatumIso);
+      _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
+    });
+  }
+
   /// Vraća ISO datum (yyyy-MM-dd) za izabrani dan u aktivnoj sedmici.
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
@@ -188,12 +196,16 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     super.initState();
     _selectedDay = V3DanHelper.defaultWorkdayFullName();
     _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
+    appSettingsActiveWeekStartNotifier.addListener(_handleActiveWeekChanged);
+    appSettingsActiveWeekEndNotifier.addListener(_handleActiveWeekChanged);
     _startTrenutnaDodelaRealtime();
     _initData();
   }
 
   @override
   void dispose() {
+    appSettingsActiveWeekStartNotifier.removeListener(_handleActiveWeekChanged);
+    appSettingsActiveWeekEndNotifier.removeListener(_handleActiveWeekChanged);
     unawaited(_trenutnaDodelaRevisionSub?.cancel());
     _trenutnaDodelaRevisionSub = null;
     super.dispose();
