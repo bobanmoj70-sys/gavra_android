@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -55,10 +56,21 @@ class V3RolePermissionService {
     final alreadyPrompted = await _storage.read(key: key) == 'true';
     if (alreadyPrompted) return;
 
-    // Na iOS-u push dozvolu traži Firebase (messaging.requestPermission)
-    // u V3PushTokenProvider._tryGetFcmTokenIos() — ovde je skip da se ne prikazuje dupli dijalog.
+    // Na iOS-u push dozvolu tražimo kroz Firebase u istom login trenutku
+    // kao i Android, da tok bude platformski konzistentan.
     if (Platform.isIOS) {
-      await _storage.write(key: key, value: 'true');
+      try {
+        final settings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        debugPrint('[Permissions][iOS] Push dozvola status: ${settings.authorizationStatus}');
+      } catch (e) {
+        debugPrint('[Permissions][iOS] Push dozvola greška: $e');
+      } finally {
+        await _storage.write(key: key, value: 'true');
+      }
       return;
     }
 

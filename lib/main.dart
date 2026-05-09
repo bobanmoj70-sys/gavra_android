@@ -560,13 +560,6 @@ Future<void> _initIosFcmHandlers() async {
 
     final messaging = FirebaseMessaging.instance;
 
-    final settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    debugPrint('[FCM][iOS] Dozvola za notifikacije status: ${settings.authorizationStatus}');
-
     await messaging.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,

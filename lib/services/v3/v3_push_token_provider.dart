@@ -97,15 +97,6 @@ class V3PushTokenProvider {
         await messaging.setAutoInitEnabled(true);
       } catch (_) {}
 
-      // Omogućavamo pop-up asinhrono, ne blokirajući aplikaciju nikakvim pauziranjem ili timeout-om
-      try {
-        messaging.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-      } catch (_) {}
-
       // Ne gubimo puno vremena na APNs, ako postoji učita ga
       String? apnsToken;
       for (var attempt = 1; attempt <= 3; attempt++) {

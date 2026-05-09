@@ -227,6 +227,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       if (!mounted) return false;
 
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
+
       final putnikId = restored['id']?.toString().trim() ?? '';
       if (putnikId.isNotEmpty) {
         unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));
