@@ -868,6 +868,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
       if (grad == 'VS') {
+        final status = V3StatusPolicy.deriveOperativnaStatus(
+          otkazanoAt: r['otkazano_at'],
+          polazakAt: r['polazak_at'],
+        );
+        if (!V3StatusPolicy.isApproved(status)) continue;
+        final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
+        if (polazakAt.isEmpty) continue;
         vsIds.add(putnikId);
         continue;
       }
@@ -993,6 +1000,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
       if (grad == 'VS') {
+        final status = V3StatusPolicy.deriveOperativnaStatus(
+          otkazanoAt: r['otkazano_at'],
+          polazakAt: r['polazak_at'],
+        );
+        if (!V3StatusPolicy.isApproved(status)) continue;
+        final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
+        if (polazakAt.isEmpty) continue;
         vsIds.add(putnikId);
         continue;
       }
