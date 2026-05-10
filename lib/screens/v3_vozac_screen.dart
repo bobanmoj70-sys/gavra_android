@@ -782,7 +782,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> {
   void _applyOptimizedOrderToPutnici() {
     if (_optimizedPutnikIds.isEmpty) return;
 
-    // Kad je aktivna navigacija nakon klika, zadržavamo strogi nalog ORS optimizacije
+    // Kad je aktivna navigacija nakon klika, zadržavamo strogi optimizovani redosled
     _mojiPutnici.sort((a, b) {
       // Završeni svakako idu na dno
       final isCompletedA = _isPutnikEntryCompleted(a);
