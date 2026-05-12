@@ -11,7 +11,7 @@ class V3RolePermissionService {
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
 
-  static const String _pushPromptedKey = 'v3_perm_push_prompted_v1';
+  static const String _pushPromptedKey = 'v3_perm_push_prompted_v2';
   static const String _notifListenerPromptedKey = 'v3_perm_notif_listener_prompted_v1';
 
   static const MethodChannel _wakelockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
