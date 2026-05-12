@@ -57,17 +57,16 @@ class V3RolePermissionService {
     if (Platform.isIOS) {
       try {
         var settings = await FirebaseMessaging.instance.getNotificationSettings();
-        
+
         // Ako je denied (od ranije odbijeno) ili notDetermined (nikad nije pitao)
         if (settings.authorizationStatus == AuthorizationStatus.denied ||
             settings.authorizationStatus == AuthorizationStatus.notDetermined) {
-          
           settings = await FirebaseMessaging.instance.requestPermission(
             alert: true,
             badge: true,
             sound: true,
           );
-          
+
           debugPrint('[Permissions][iOS] Push dozvola novi status: ${settings.authorizationStatus}');
         } else {
           debugPrint('[Permissions][iOS] Push dozvola već postoji: ${settings.authorizationStatus}');

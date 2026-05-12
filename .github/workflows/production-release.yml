@@ -330,6 +330,30 @@ jobs:
             exit 1
           fi
 
+      - name: Enable Push Notifications Entitlements
+        run: |
+          python3 - <<'PY'
+          import re
+          import os
+
+          pbxproj_path = "ios/Runner.xcodeproj/project.pbxproj"
+          if os.path.exists(pbxproj_path):
+              with open(pbxproj_path, "r", encoding="utf-8") as file:
+                  content = file.read()
+
+              modified_content = re.sub(
+                  r'(PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.*?);)',
+                  r'\1 CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;',
+                  content
+              )
+
+              with open(pbxproj_path, "w", encoding="utf-8") as file:
+                  file.write(modified_content)
+              print("Uspesno povezan Runner.entitlements za Push Notifikacije.")
+          else:
+              print("project.pbxproj fajl nije nadjen.")
+          PY
+
       - name: Build iOS IPA
         run: |
           flutter build ipa --release --export-options-plist=$HOME/export_options.plist
