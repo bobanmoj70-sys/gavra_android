@@ -168,6 +168,27 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     return bc.isEmpty || vs.isEmpty;
   }
 
+  Future<Map<String, dynamic>?> _getPutnikWithAddressRefresh(String authId) async {
+    Map<String, dynamic>? putnik = await V3PutnikService.getActiveById(authId).timeout(
+      _startupTimeout,
+      onTimeout: () => null,
+    );
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (putnik == null || !_hasMissingPassengerAddresses(putnik)) {
+        return putnik;
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      putnik = await V3PutnikService.getActiveById(authId).timeout(
+        _startupTimeout,
+        onTimeout: () => putnik,
+      );
+    }
+
+    return putnik;
+  }
+
   String _extractPassengerPhone(Map<String, dynamic> putnik) {
     final phone = (putnik['telefon_1'] ?? putnik['telefon'] ?? '').toString().trim();
     return V3ClosedAuthService.normalizePhone(phone);
@@ -477,10 +498,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         }
       }
 
-      putnik = await V3PutnikService.getActiveById(resolvedId).timeout(
-        _startupTimeout,
-        onTimeout: () => null,
-      );
+      putnik = await _getPutnikWithAddressRefresh(resolvedId);
 
       if (!mounted) return;
 
