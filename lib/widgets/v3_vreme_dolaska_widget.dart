@@ -184,7 +184,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           ),
           const SizedBox(height: 6),
           Text(
-            minutes <= 0 ? 'Stiže uskoro' : 'za $minutes min',
+            'za $minutes min',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.greenAccent,

@@ -57,16 +57,20 @@ Deno.serve(async (req) => {
     });
 
     // 1. Pronađi aktivan slot za ovog vozača
-    const { data: slotRow, error: slotError } = await client
+    const { data: slotRows, error: slotError } = await client
       .from("v3_trenutna_dodela_slot")
       .select("datum, grad, vreme")
       .eq("vozac_v3_auth_id", vozacId)
       .eq("status", "aktivan")
-      .maybeSingle();
+      .order("datum", { ascending: false })
+      .order("vreme", { ascending: false })
+      .limit(1);
 
     if (slotError) {
       return json(200, { ok: false, reason: "slot_lookup_error", warning: slotError.message });
     }
+
+    const slotRow = Array.isArray(slotRows) && slotRows.length > 0 ? slotRows[0] : null;
 
     if (!slotRow) {
       await client.from("v3_eta_results").delete().eq("vozac_id", vozacId);
@@ -89,6 +93,7 @@ Deno.serve(async (req) => {
     }
 
     if (!dodelaRows || dodelaRows.length === 0) {
+      await client.from("v3_eta_results").delete().eq("vozac_id", vozacId);
       return json(200, { ok: true, reason: "no_active_dodele", updated: 0 });
     }
 
