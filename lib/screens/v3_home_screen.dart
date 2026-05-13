@@ -605,6 +605,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     );
   }
 
+  void _openDialogAfterMenuClose(VoidCallback openDialog) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      openDialog();
+    });
+  }
+
   // ─── Dialog: Račun za postojeću firmu (B2B) ──────────────────────
   void _showRacunZaFirmeDialog() {
     final firme = V3MasterRealtimeManager.instance.racuniCache.values.toList()
@@ -630,6 +637,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   // ─── Dialog: Novi račun za fizičko lice ───────────────────────────
   void _showNoviRacunDialog() {
+    final imeCtrl = TextEditingController();
+    final adresaCtrl = TextEditingController();
+    final opisCtrl = TextEditingController();
+    final iznosCtrl = TextEditingController();
     final kolicinaCtrl = TextEditingController(text: '1');
     String jedMera = 'usluga';
     DateTime datumPrometa = DateTime.now();
@@ -644,14 +655,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _dialogField(V3TextUtils.imeController, 'Ime i prezime kupca'),
+                _dialogField(imeCtrl, 'Ime i prezime kupca'),
                 const SizedBox(height: 8),
-                _dialogField(V3TextUtils.adresaController, 'Adresa kupca'),
+                _dialogField(adresaCtrl, 'Adresa kupca'),
                 const SizedBox(height: 8),
-                _dialogField(V3TextUtils.opisController, 'Opis usluge'),
+                _dialogField(opisCtrl, 'Opis usluge'),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: _dialogField(V3TextUtils.iznosController, 'Cena', numeric: true)),
+                  Expanded(child: _dialogField(iznosCtrl, 'Cena', numeric: true)),
                   const SizedBox(width: 8),
                   Expanded(child: _dialogField(kolicinaCtrl, 'Količina', numeric: true)),
                 ]),
@@ -707,31 +718,34 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
             ),
             V3ButtonUtils.successButton(
               onPressed: () async {
-                if (V3TextUtils.isEmpty('ime') || V3TextUtils.isEmpty('opis')) {
+                if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
                   V3AppSnackBar.error(ctx, '⚠️ Popunite ime i opis');
                   return;
                 }
-                final cena = double.tryParse(V3TextUtils.getControllerText('iznos').trim()) ?? 0;
+                final cena = double.tryParse(iznosCtrl.text.trim()) ?? 0;
                 final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
                 if (cena <= 0) {
                   V3AppSnackBar.error(ctx, '⚠️ Unesite ispravnu cenu');
                   return;
                 }
 
-                Navigator.pop(ctx);
                 final broj = await V3RacunService.getNextBrojRacuna();
-                if (!mounted) return;
+                if (!ctx.mounted) return;
                 await V3RacunService.stampajRacun(
                   brojRacuna: broj,
-                  imePrezimeKupca: V3TextUtils.getControllerText('ime').trim(),
-                  adresaKupca: V3TextUtils.getControllerText('adresa').trim(),
-                  opisUsluge: V3TextUtils.getControllerText('opis').trim(),
+                  imePrezimeKupca: imeCtrl.text.trim(),
+                  adresaKupca: adresaCtrl.text.trim(),
+                  opisUsluge: opisCtrl.text.trim(),
                   cena: cena,
                   kolicina: kolicina,
                   jedinicaMere: jedMera,
                   datumPrometa: datumPrometa,
-                  context: context,
+                  context: ctx,
                 );
+
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                }
               },
               text: 'Štampaj',
             ),
@@ -739,10 +753,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         ),
       ),
     ).then((_) {
-      V3TextUtils.disposeController('ime');
-      V3TextUtils.disposeController('adresa');
-      V3TextUtils.disposeController('opis');
-      V3TextUtils.disposeController('iznos');
+      imeCtrl.dispose();
+      adresaCtrl.dispose();
+      opisCtrl.dispose();
+      iznosCtrl.dispose();
       kolicinaCtrl.dispose();
     });
   }
@@ -1121,9 +1135,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         context: context,
                                       );
                                     } else if (val == 'racun_postojeci') {
-                                      _showRacunZaFirmeDialog();
+                                      _openDialogAfterMenuClose(_showRacunZaFirmeDialog);
                                     } else if (val == 'racun_novi') {
-                                      _showNoviRacunDialog();
+                                      _openDialogAfterMenuClose(_showNoviRacunDialog);
                                     }
                                   },
                                   child: V3ContainerUtils.iconContainer(
@@ -1642,8 +1656,11 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               V3AppSnackBar.warning(context, '⚠️ Unesite ispravnu cenu');
               return;
             }
-            Navigator.pop(context);
+
+            final ctx = context;
             final broj = await V3RacunService.getNextBrojRacuna();
+            if (!ctx.mounted) return;
+
             await V3RacunService.stampajRacuneZaFirme(
               racuniPodaci: [
                 {
@@ -1662,6 +1679,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               context: widget.parentContext,
               datumPrometa: datumPrometa,
             );
+
+            if (ctx.mounted) {
+              Navigator.pop(ctx);
+            }
           },
           text: 'Štampaj',
         ),

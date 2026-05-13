@@ -41,6 +41,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   static final RegExp _timePattern = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
   static final RegExp _dateIsoPattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
+  void _runAfterMenuClose(Future<void> Function() action) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await action();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1346,17 +1353,18 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               );
                               if (val == null) return;
                               if (val == '__custom_times__') {
-                                await _openCustomScheduleEditor();
+                                _runAfterMenuClose(_openCustomScheduleEditor);
                                 return;
                               }
                               if (val == '__non_working_days__') {
-                                await _openNeradniDaniEditor();
+                                _runAfterMenuClose(_openNeradniDaniEditor);
                                 return;
                               }
                               if (val == '__vozaci__') {
-                                if (context.mounted) {
+                                _runAfterMenuClose(() async {
+                                  if (!mounted) return;
                                   V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
-                                }
+                                });
                                 return;
                               }
                             },

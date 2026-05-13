@@ -13,8 +13,9 @@ class V3TextUtils {
 
   /// Брише контролер
   static void disposeController(String key) {
-    _controllers[key]?.dispose();
-    _controllers.remove(key);
+    final controller = _controllers[key];
+    if (controller == null) return;
+    controller.clear();
   }
 
   /// Очисти текст у контролеру
