@@ -53,21 +53,27 @@ class V3RolePermissionService {
   // ─────────────────────────────────────────────────────────────────────
 
   static Future<void> _requestPushOnce(String key) async {
-    // Proveravamo stvarni status dozvole kroz Firebase za iOS
+    // Na iOS-u dozvole imaju stanja koja direktno možemo proveravati (i tražiti iznova ako nije određeno).
+    // Za one koji su već "denied" (odbijeni), moramo im izbaciti sistemski upit ili obavestiti.
     if (Platform.isIOS) {
       try {
         var settings = await FirebaseMessaging.instance.getNotificationSettings();
 
-        // Ako je denied (od ranije odbijeno) ili notDetermined (nikad nije pitao)
-        if (settings.authorizationStatus == AuthorizationStatus.denied ||
-            settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
           settings = await FirebaseMessaging.instance.requestPermission(
             alert: true,
             badge: true,
             sound: true,
           );
-
-          debugPrint('[Permissions][iOS] Push dozvola novi status: ${settings.authorizationStatus}');
+          debugPrint('[Permissions][iOS] Push tražen, status: ${settings.authorizationStatus}');
+        } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+          debugPrint('[Permissions][iOS] Dozvola odbijena. Možemo baciti popup ka settingsima.');
+          // Ovde možemo naknadno otvoriti podešavanja aplikacije, a za sad radimo request permission bez provisiona
+          settings = await FirebaseMessaging.instance.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
         } else {
           debugPrint('[Permissions][iOS] Push dozvola već postoji: ${settings.authorizationStatus}');
         }

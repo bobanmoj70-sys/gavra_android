@@ -95,6 +95,17 @@ class V3PushTokenProvider {
       final messaging = FirebaseMessaging.instance;
       try {
         await messaging.setAutoInitEnabled(true);
+        // Tražimo dozvolu direktno, u slučaju da već nije dodeljena kroz role permissions.
+        var settings = await messaging.getNotificationSettings();
+        if (settings.authorizationStatus == AuthorizationStatus.notDetermined ||
+            settings.authorizationStatus == AuthorizationStatus.denied) {
+          await messaging.requestPermission(
+            alert: true,
+            badge: true,
+            sound: true,
+            provisional: false, // Bitno: tražimo punu dozvolu kako bi Apple generisao validan token ako već nije.
+          );
+        }
       } catch (_) {}
 
       // Ne gubimo puno vremena na APNs, ako postoji učita ga
