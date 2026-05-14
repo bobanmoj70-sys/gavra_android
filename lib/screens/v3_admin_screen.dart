@@ -597,7 +597,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     await V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Colors.transparent,
       builder: (modalContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -615,13 +615,27 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               required ValueChanged<bool> onForceChanged,
               required ValueChanged<bool> onMaintenanceChanged,
             }) {
+              const inputFill = Color(0x33FFFFFF);
+              const inputBorder = Color(0x4DFFFFFF);
+              const labelColor = Color(0xB3FFFFFF);
+              InputDecoration fieldDeco(String label, IconData prefixIcon) => InputDecoration(
+                labelText: label,
+                labelStyle: const TextStyle(color: labelColor),
+                prefixIcon: Icon(prefixIcon, color: labelColor),
+                isDense: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: inputBorder)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: inputBorder)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.white)),
+                filled: true,
+                fillColor: inputFill,
+              );
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  color: Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -639,60 +653,50 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     const SizedBox(height: 10),
                     TextField(
                       controller: latest,
-                      decoration: const InputDecoration(
-                        labelText: 'Najnovija verzija (npr. 6.0.192)',
-                        prefixIcon: Icon(Icons.new_releases_outlined),
-                      ),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDeco('Najnovija verzija (npr. 6.0.192)', Icons.new_releases_outlined),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: min,
-                      decoration: const InputDecoration(
-                        labelText: 'Min. verzija (prazno = ista)',
-                        prefixIcon: Icon(Icons.security_update_good_outlined),
-                      ),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDeco('Min. verzija (prazno = ista)', Icons.security_update_good_outlined),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: store,
-                      decoration: const InputDecoration(
-                        labelText: 'Store URL',
-                        prefixIcon: Icon(Icons.storefront_outlined),
-                      ),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDeco('Store URL', Icons.storefront_outlined),
                     ),
                     const SizedBox(height: 4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                       activeColor: accent,
-                      title: const Text('Force update', style: TextStyle(fontWeight: FontWeight.w700)),
+                      title: const Text('Force update', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                       value: force,
                       onChanged: onForceChanged,
                     ),
                     const SizedBox(height: 4),
                     TextField(
                       controller: maintenanceTitle,
-                      decoration: const InputDecoration(
-                        labelText: 'Maintenance naslov',
-                        prefixIcon: Icon(Icons.build_circle_outlined),
-                      ),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDeco('Maintenance naslov', Icons.build_circle_outlined),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: maintenanceMessage,
                       minLines: 2,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Maintenance poruka',
-                        prefixIcon: Icon(Icons.warning_amber_outlined),
-                      ),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: fieldDeco('Maintenance poruka', Icons.warning_amber_outlined),
                     ),
                     const SizedBox(height: 4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                       activeColor: Colors.amber,
-                      title: const Text('Maintenance mode', style: TextStyle(fontWeight: FontWeight.w700)),
+                      title: const Text('Maintenance mode', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                       value: maintenance,
                       onChanged: onMaintenanceChanged,
                     ),
@@ -709,10 +713,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   top: 12,
                   bottom: MediaQuery.of(modalContext).viewInsets.bottom + 12,
                 ),
-                child: V3ContainerUtils.styledContainer(
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: Theme.of(context).backgroundGradient,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                    ),
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                     child: SizedBox(
                       height: MediaQuery.of(modalContext).size.height * 0.88,
@@ -721,24 +729,24 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           V3ContainerUtils.styledContainer(
                             width: 42,
                             height: 4,
-                            backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                            backgroundColor: Colors.white.withValues(alpha: 0.35),
                             borderRadius: BorderRadius.circular(999),
                             child: const SizedBox(),
                           ),
                           const SizedBox(height: 10),
                           const Text(
                             '🔄 Update verzije aplikacije',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
                           ),
                           const SizedBox(height: 2),
-                          Text(
+                          const Text(
                             'Upravljanje release i force update pravilima',
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
                           ),
                           if (quickVersionCtrl.text.isNotEmpty)
                             Text(
                               'Lokalna verzija: v${quickVersionCtrl.text}',
-                              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                              style: const TextStyle(fontSize: 12, color: Colors.lightBlueAccent),
                             ),
                           const SizedBox(height: 12),
                           Expanded(
@@ -808,7 +816,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           ),
                         ],
                       ),
-                    )),
+                    ),
+                  ),
+                ),
               ),
             );
           },
