@@ -59,11 +59,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     return _versionPattern.hasMatch(value.trim());
   }
 
-  bool _isValidUrl(String value) {
-    final uri = Uri.tryParse(value.trim());
-    return uri != null && uri.hasScheme && uri.host.isNotEmpty;
-  }
-
   Future<Map<String, dynamic>> _loadUpdateSettings() async {
     try {
       return await V3AppSettingsService.loadGlobal(
