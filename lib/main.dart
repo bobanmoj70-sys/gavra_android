@@ -37,6 +37,69 @@ Future<void>? _iosFcmHandlersInitInFlight;
 String _lastSyncedPushToken = '';
 bool _fcmChannelInitialized = false;
 bool _iosFcmHandlersInitialized = false;
+final Map<String, DateTime> _canceledStatusPushSeenAt = <String, DateTime>{};
+const Duration _canceledStatusPushDedupWindow = Duration(seconds: 20);
+
+bool _isCanceledZahtevStatusPush({
+  required String type,
+  required String title,
+  required String body,
+  required Map<String, String> data,
+}) {
+  if (type.trim() != 'zahtev_status') return false;
+
+  final normalizedStatus = (data['status'] ?? data['zahtev_status'] ?? '').trim().toLowerCase();
+  if (normalizedStatus == 'otkazano' ||
+      normalizedStatus == 'otkazan' ||
+      normalizedStatus == 'cancelled' ||
+      normalizedStatus == 'canceled') {
+    return true;
+  }
+
+  final text = '${title.toLowerCase()} ${body.toLowerCase()}';
+  return text.contains('otkaz');
+}
+
+String _canceledZahtevStatusDedupKey({
+  required String title,
+  required String body,
+  required Map<String, String> data,
+}) {
+  final putnikId = (data['v3_auth_id'] ?? data['putnik_id'] ?? '').trim();
+  final zahtevId = (data['zahtev_id'] ?? '').trim();
+  final status = (data['status'] ?? 'otkazano').trim().toLowerCase();
+  return [
+    putnikId,
+    zahtevId,
+    status,
+    title.trim().toLowerCase(),
+    body.trim().toLowerCase(),
+  ].join('|');
+}
+
+bool _isDuplicateCanceledZahtevStatusPush({
+  required String type,
+  required String title,
+  required String body,
+  required Map<String, String> data,
+}) {
+  if (!_isCanceledZahtevStatusPush(type: type, title: title, body: body, data: data)) {
+    return false;
+  }
+
+  final now = DateTime.now();
+  final staleCutoff = now.subtract(const Duration(minutes: 2));
+  _canceledStatusPushSeenAt.removeWhere((_, ts) => ts.isBefore(staleCutoff));
+
+  final key = _canceledZahtevStatusDedupKey(title: title, body: body, data: data);
+  final lastSeen = _canceledStatusPushSeenAt[key];
+  if (lastSeen != null && now.difference(lastSeen) <= _canceledStatusPushDedupWindow) {
+    return true;
+  }
+
+  _canceledStatusPushSeenAt[key] = now;
+  return false;
+}
 
 void _startBackgroundTask({
   required String label,
@@ -429,6 +492,16 @@ Future<void> _showForegroundPushNotification({
 }) async {
   if (title.isEmpty && body.isEmpty) return;
 
+  if (_isDuplicateCanceledZahtevStatusPush(
+    type: payload,
+    title: title,
+    body: body,
+    data: data,
+  )) {
+    debugPrint('[Push] Preskočen dupli otkazano zahtev_status push.');
+    return;
+  }
+
   await _ensureLocalNotificationsInitialized();
   final androidDetails = AndroidNotificationDetails(
     'gavra_push_v2',
@@ -755,6 +828,11 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
 
   switch (type) {
     case 'v3_alternativa':
+      final launchMarker = (data['google.message_id'] ?? '').trim();
+      if (Platform.isAndroid && launchMarker.startsWith('gavra_alt_')) {
+        debugPrint('[FCM launch] Android alternativa tap detektovan — preskačem ponovno prikazivanje notifikacije.');
+        return;
+      }
       await _showAlternativaFromData(data);
       return;
 
