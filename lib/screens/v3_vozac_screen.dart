@@ -423,10 +423,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozac == null) return;
     final rm = V3MasterRealtimeManager.instance;
 
-    String operativnaVreme(Map<String, dynamic> row) {
-      return ((row['polazak_at'] as String?) ?? '');
-    }
-
     final selectedVNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
 
     // 1. Moji termini za ovaj datum (izvor dodele: v3_trenutna_dodela)
@@ -511,28 +507,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       Map<String, dynamic>? matchedEntryData;
       if (entryId.isNotEmpty) {
         matchedEntryData = rm.operativnaNedeljaCache[entryId];
-      }
-
-      if (matchedEntryData == null && putnikId != null && putnikId.isNotEmpty) {
-        DateTime? bestUpdatedAt;
-        for (final r in rm.operativnaNedeljaCache.values) {
-          if (r['created_by']?.toString() != putnikId) continue;
-          if (V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '') != _selectedDatumIso) continue;
-          if (r['grad']?.toString().toUpperCase() != _selectedGrad) continue;
-          if (V3TimeUtils.normalizeToHHmm(operativnaVreme(r)) != selectedVNorm) continue;
-
-          final updatedAtRaw = r['updated_at']?.toString();
-          final updatedAt = updatedAtRaw != null ? DateTime.tryParse(updatedAtRaw) : null;
-          if (matchedEntryData == null) {
-            matchedEntryData = r;
-            bestUpdatedAt = updatedAt;
-            continue;
-          }
-          if (updatedAt != null && (bestUpdatedAt == null || updatedAt.isAfter(bestUpdatedAt))) {
-            matchedEntryData = r;
-            bestUpdatedAt = updatedAt;
-          }
-        }
       }
 
       if (matchedEntryData != null) {
