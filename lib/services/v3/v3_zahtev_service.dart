@@ -215,6 +215,11 @@ class V3ZahtevService {
         operativnaId: row['id']?.toString(),
         otkazaoBy: otkazaoPutnikId,
       );
+
+      await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+        operativnaRow: row,
+        updatedBy: updBy,
+      );
     }
 
     await _syncOperativnaAssignmentsForContext(
@@ -263,6 +268,10 @@ class V3ZahtevService {
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
+          await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+            operativnaRow: row,
+            updatedBy: updBy,
+          );
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
@@ -289,6 +298,10 @@ class V3ZahtevService {
         if (operativnaId != null && operativnaId.isNotEmpty) {
           final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row2);
+          await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+            operativnaRow: row2,
+            updatedBy: updBy,
+          );
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
