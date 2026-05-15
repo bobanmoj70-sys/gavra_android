@@ -100,6 +100,91 @@ class V3OperativnaNedeljaService {
   V3OperativnaNedeljaService._();
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
 
+  static DateTime _zahtevOrderingTs(Map<String, dynamic> row) {
+    final updated = V3DateUtils.parseTs(row['updated_at']?.toString());
+    if (updated != null) return updated;
+    final created = V3DateUtils.parseTs(row['created_at']?.toString());
+    if (created != null) return created;
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static bool _isZahtevVisible(Map<String, dynamic> row) {
+    final status = row['status']?.toString();
+    return !V3StatusPolicy.isCanceledOrRejected(status);
+  }
+
+  static Future<void> _syncZahtevForVozacContext({
+    required String putnikId,
+    required String datum,
+    required String grad,
+    required String polazakAt,
+    String? updatedBy,
+    bool? koristiSekundarnu,
+    String? adresaIdOverride,
+  }) async {
+    final gradNorm = grad.trim().toUpperCase();
+    if (putnikId.isEmpty || datum.isEmpty || gradNorm.isEmpty || polazakAt.isEmpty) return;
+
+    final zahtevCache = V3MasterRealtimeManager.instance.zahteviCache.values;
+    final contextRows = zahtevCache.where((row) {
+      final rowPutnikId = (row['created_by']?.toString() ?? '').trim();
+      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '');
+      final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+      return rowPutnikId == putnikId && rowDatum == datum && rowGrad == gradNorm;
+    }).toList();
+
+    final visibleRows = contextRows.where(_isZahtevVisible).toList()
+      ..sort((a, b) => _zahtevOrderingTs(b).compareTo(_zahtevOrderingTs(a)));
+
+    final actor = V3UuidUtils.normalizeUuid(updatedBy);
+    final zahtevPayload = {
+      'status': 'odobreno',
+      'trazeni_polazak_at': polazakAt,
+      'polazak_at': polazakAt,
+      'alternativa_pre_at': null,
+      'alternativa_posle_at': null,
+      if (actor != null) 'updated_by': actor,
+      if (koristiSekundarnu != null) 'koristi_sekundarnu': koristiSekundarnu,
+      'adresa_override_id': adresaIdOverride,
+    };
+
+    if (visibleRows.isNotEmpty) {
+      final primaryId = (visibleRows.first['id']?.toString() ?? '').trim();
+      if (primaryId.isNotEmpty) {
+        final updated = await supabase.from('v3_zahtevi').update(zahtevPayload).eq('id', primaryId).select().single();
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', updated);
+      }
+
+      for (final stale in visibleRows.skip(1)) {
+        final staleId = (stale['id']?.toString() ?? '').trim();
+        if (staleId.isEmpty) continue;
+        final canceled = await supabase
+            .from('v3_zahtevi')
+            .update({
+              'status': 'otkazano',
+              if (actor != null) 'updated_by': actor,
+            })
+            .eq('id', staleId)
+            .select()
+            .single();
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', canceled);
+      }
+      return;
+    }
+
+    final inserted = await supabase
+        .from('v3_zahtevi')
+        .insert({
+          'datum': datum,
+          'grad': gradNorm,
+          'created_by': putnikId,
+          ...zahtevPayload,
+        })
+        .select()
+        .single();
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', inserted);
+  }
+
   static Future<void> syncTerminDodelaFromSlotForRow({
     required Map<String, dynamic> operativnaRow,
     String? updatedBy,
@@ -241,6 +326,15 @@ class V3OperativnaNedeljaService {
         } catch (e) {
           debugPrint('[V3OperativnaNedeljaService] sync assignment after update error: $e');
         }
+        await _syncZahtevForVozacContext(
+          putnikId: putnikId,
+          datum: datum,
+          grad: grad,
+          polazakAt: polazakAt,
+          updatedBy: actor,
+          koristiSekundarnu: koristiSekundarnu,
+          adresaIdOverride: adresaIdOverride,
+        );
       } else {
         // INSERT direktno u operativna_nedelja
         final insertedRow = await _repo.insertReturning({
@@ -261,6 +355,15 @@ class V3OperativnaNedeljaService {
         } catch (e) {
           debugPrint('[V3OperativnaNedeljaService] sync assignment after insert error: $e');
         }
+        await _syncZahtevForVozacContext(
+          putnikId: putnikId,
+          datum: datum,
+          grad: grad,
+          polazakAt: polazakAt,
+          updatedBy: actor,
+          koristiSekundarnu: koristiSekundarnu,
+          adresaIdOverride: adresaIdOverride,
+        );
       }
     } catch (e) {
       debugPrint('[V3OperativnaNedeljaService] createOrUpdateByVozac error: $e');
