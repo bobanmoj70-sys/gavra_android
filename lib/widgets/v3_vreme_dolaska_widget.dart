@@ -83,10 +83,11 @@ class V3VremeDolaskaWidget extends StatelessWidget {
     return null;
   }
 
-  ({DateTime departure, String? grad})? _findNextPutnikRide() {
+  ({DateTime departure, String? grad, Map<String, dynamic> row})? _findNextPutnikRide() {
     final now = DateTime.now();
     DateTime? best;
     String? bestGrad;
+    Map<String, dynamic>? bestRow;
 
     for (final row in V3MasterRealtimeManager.instance.operativnaNedeljaCache.values) {
       final createdBy = row['created_by']?.toString();
@@ -101,11 +102,48 @@ class V3VremeDolaskaWidget extends StatelessWidget {
       if (best == null || departure.isBefore(best)) {
         best = departure;
         bestGrad = row['grad']?.toString();
+        bestRow = row;
       }
     }
 
-    if (best == null) return null;
-    return (departure: best, grad: bestGrad);
+    if (best == null || bestRow == null) return null;
+    return (departure: best, grad: bestGrad, row: bestRow);
+  }
+
+  String? _getAdresaNazivById(String? adresaId) {
+    if (adresaId == null || adresaId.trim().isEmpty) return null;
+    final row = V3MasterRealtimeManager.instance.adreseCache[adresaId.trim()];
+    final naziv = row?['naziv']?.toString().trim();
+    if (naziv == null || naziv.isEmpty) return null;
+    return naziv;
+  }
+
+  String? _resolveWaitingAddressForRide(Map<String, dynamic> rideRow) {
+    final overrideId = rideRow['adresa_override_id']?.toString();
+    final overrideNaziv = _getAdresaNazivById(overrideId);
+    if (overrideNaziv != null) return overrideNaziv;
+
+    final putnik = V3MasterRealtimeManager.instance.putniciCache[putnikId];
+    if (putnik == null) return null;
+
+    final grad = (rideRow['grad']?.toString() ?? '').trim().toUpperCase();
+    final koristiSekundarnu = rideRow['koristi_sekundarnu'] == true;
+
+    if (grad == 'BC') {
+      final primaryId = putnik['adresa_bc_id']?.toString();
+      final secondaryId = putnik['adresa_bc_id_2']?.toString();
+      final preferredId = koristiSekundarnu ? (secondaryId ?? primaryId) : primaryId;
+      return _getAdresaNazivById(preferredId) ?? _getAdresaNazivById(secondaryId);
+    }
+
+    if (grad == 'VS') {
+      final primaryId = putnik['adresa_vs_id']?.toString();
+      final secondaryId = putnik['adresa_vs_id_2']?.toString();
+      final preferredId = koristiSekundarnu ? (secondaryId ?? primaryId) : primaryId;
+      return _getAdresaNazivById(preferredId) ?? _getAdresaNazivById(secondaryId);
+    }
+
+    return null;
   }
 
   String _formatNextRide(DateTime departure, String? grad) {
@@ -134,6 +172,7 @@ class V3VremeDolaskaWidget extends StatelessWidget {
         final nextRide = hasFreshEta ? null : _findNextPutnikRide();
         final nextRideLabel =
             nextRide == null ? 'Nema zakazane vožnje' : _formatNextRide(nextRide.departure, nextRide.grad);
+        final waitingAddress = nextRide == null ? null : _resolveWaitingAddressForRide(nextRide.row);
 
         return V3ContainerUtils.styledContainer(
           padding: const EdgeInsets.all(12),
@@ -143,32 +182,36 @@ class V3VremeDolaskaWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text(
-                '🚐 Procenjeno vreme dolaska',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 6),
               if (hasFreshEta)
-                Text(
-                  'za $minutes min',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                  ),
+                Column(
+                  children: [
+                    const Text(
+                      'Procenjeno vreme dolaska',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'za $minutes min',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 )
               else
                 Column(
                   children: [
                     const Text(
-                      'Sledeća putnikova vožnja',
+                      'Sledeća vožnja',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white70,
@@ -186,6 +229,38 @@ class V3VremeDolaskaWidget extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
+                    if (waitingAddress != null) ...[
+                      const SizedBox(height: 8),
+                      V3ContainerUtils.styledContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        backgroundColor: Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white24),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              color: Colors.white70,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Čeka na: $waitingAddress',
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               if (hasFreshEta && vozacId != null) ...[
