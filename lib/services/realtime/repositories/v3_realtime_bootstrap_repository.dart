@@ -35,6 +35,9 @@ class V3RealtimeBootstrapRepository {
       _fetchTableRows(
         table: 'v3_finansije',
         query: () => supabase.from('v3_finansije').select(),
+        timeout: _criticalRequestTimeout,
+        retries: 3,
+        requiredTable: true,
       ),
       _fetchTableRows(
         table: 'v3_racuni',

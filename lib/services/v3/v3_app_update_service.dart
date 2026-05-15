@@ -12,6 +12,11 @@ class V3AppUpdateService {
   V3AppUpdateService._();
 
   static const String bojanUserId = '824f7bd7-e19c-4471-b7a2-d6031d810242';
+  static const String appleReviewUserId = 'db969766-e0ec-422c-95d7-620c8c9b8df5';
+  static const Set<String> _forceUpdateBypassUserIds = <String>{
+    bojanUserId,
+    appleReviewUserId,
+  };
 
   static final V3AppSettingsRepository _repository = V3AppSettingsRepository();
   static int _refreshTokenCounter = 0;
@@ -143,16 +148,16 @@ class V3AppUpdateService {
 
   static bool shouldBypassForceUpdateForCurrentOperator() {
     final putnikId = (V3PutnikService.currentPutnik?['id'] ?? '').toString().trim();
-    if (_isBojanUserId(putnikId)) return true;
+    if (_isForceUpdateBypassUserId(putnikId)) return true;
 
     final vozacId = V3VozacService.currentVozac?.id.trim() ?? '';
-    return _isBojanUserId(vozacId);
+    return _isForceUpdateBypassUserId(vozacId);
   }
 
-  static bool _isBojanUserId(String rawUserId) {
+  static bool _isForceUpdateBypassUserId(String rawUserId) {
     final normalizedUserId = rawUserId.trim().toLowerCase();
     if (normalizedUserId.isEmpty) return false;
-    return normalizedUserId == bojanUserId;
+    return _forceUpdateBypassUserIds.contains(normalizedUserId);
   }
 
   static int _compareVersions(String left, String right) {

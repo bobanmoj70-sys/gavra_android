@@ -31,6 +31,7 @@ class V3MasterRealtimeManager {
   int _reconnectAttempts = 0;
   bool _isSubscribing = false;
   bool _hasConnectedBefore = false;
+  DateTime? _lastSubscribedAt;
   AppLifecycleListener? _lifecycleListener;
   Future<void>? _resumeReconnectInFlight;
   DateTime? _lastResumeReconnectAt;
@@ -320,9 +321,13 @@ class V3MasterRealtimeManager {
     _isSubscribing = true;
 
     channel.subscribe((status, [error]) {
+      if (_channel != channel) {
+        return;
+      }
       _isSubscribing = false;
       switch (status) {
         case RealtimeSubscribeStatus.subscribed:
+          _lastSubscribedAt = DateTime.now();
           final isFirstSubscribe = !_hasConnectedBefore;
           _reconnectAttempts = 0;
           debugPrint('[RT] subscribed (hasConnectedBefore=$_hasConnectedBefore)');
@@ -470,17 +475,34 @@ class V3MasterRealtimeManager {
     if (globalSettings != null) _applyAppSettings(globalSettings);
   }
 
+  bool _isScheduleReconnectRunning = false;
+
   Future<void> _scheduleReconnect() async {
-    if (_isSubscribing) return;
-    _reconnectAttempts += 1;
-    final cappedAttempt = _reconnectAttempts > 6 ? 6 : _reconnectAttempts;
-    final baseMs = 500 * (1 << cappedAttempt);
-    final jitter = Random().nextInt(250);
-    await Future<void>.delayed(Duration(milliseconds: (baseMs + jitter).toInt()));
+    if (_isSubscribing || _isScheduleReconnectRunning) return;
+    _isScheduleReconnectRunning = true;
+    final scheduledAt = DateTime.now();
     try {
-      await _setupRealtime();
-    } catch (e) {
-      debugPrint('[RT] reconnect error: $e');
+      _reconnectAttempts += 1;
+      final cappedAttempt = _reconnectAttempts > 6 ? 6 : _reconnectAttempts;
+      final baseMs = 500 * (1 << cappedAttempt);
+      final jitter = Random().nextInt(250);
+      await Future<void>.delayed(Duration(milliseconds: (baseMs + jitter).toInt()));
+
+      if (_isSubscribing) return;
+
+      final recoveredAt = _lastSubscribedAt;
+      if (recoveredAt != null && recoveredAt.isAfter(scheduledAt)) {
+        debugPrint('[RT] reconnect skipped (already recovered)');
+        return;
+      }
+
+      try {
+        await _setupRealtime();
+      } catch (e) {
+        debugPrint('[RT] reconnect error: $e');
+      }
+    } finally {
+      _isScheduleReconnectRunning = false;
     }
   }
 
