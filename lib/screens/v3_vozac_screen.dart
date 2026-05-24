@@ -1037,7 +1037,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           'v3_adrese',
           'v3_kapacitet_slots',
           'v3_app_settings',
-          'v3_eta_results'
+          'v3_eta_results',
+          'v3_finansije',
         ],
       ),
       builder: (context, snapshot) {

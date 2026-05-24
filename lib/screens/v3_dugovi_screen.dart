@@ -212,11 +212,6 @@ class _DugCard extends StatelessWidget {
   final V3Dug dug;
   final VoidCallback onNaplati;
 
-  String _resolveVozacIme(String? vozacId) {
-    final id = (vozacId ?? '').trim();
-    if (id.isEmpty) return 'Nepoznato';
-    return V3VozacService.getVozacById(id)?.imePrezime ?? id;
-  }
 
   String _formatTs(DateTime? ts) {
     if (ts == null) return '-';
@@ -234,8 +229,8 @@ class _DugCard extends StatelessWidget {
     final obracunStr =
         '${dug.brojVoznji} × ${dug.cena.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
     final uplataStr = '${dug.uplaceno.toStringAsFixed(0)} RSD';
-    final naplatioStr = _resolveVozacIme(dug.naplacenoBy);
-    final azuriraoStr = _resolveVozacIme(dug.updatedBy);
+    final naplatioStr = (dug.uplaceno > 0 && dug.vozacIme.isNotEmpty) ? dug.vozacIme : null;
+    final azuriraoStr = null;
     final naplacenoAtStr = _formatTs(dug.naplacenoAt ?? dug.createdAt);
     final updatedAtStr = _formatTs(dug.updatedAt);
     final finansijeNaziv = (dug.finansijeNaziv ?? '').trim();
@@ -283,14 +278,20 @@ class _DugCard extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text('Uplaćeno: $uplataStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Naplatio: $naplatioStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  if (naplatioStr != null) ...[
+                    Text('Naplatio: $naplatioStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    const SizedBox(height: 1),
+                  ],
+                  if (dug.uplaceno > 0) ...[
+                    Text('Naplaćeno (created_at): $naplacenoAtStr',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    const SizedBox(height: 1),
+                  ],
                   const SizedBox(height: 1),
-                  Text('Naplaćeno (created_at): $naplacenoAtStr',
-                      style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  const SizedBox(height: 1),
-                  Text('Updated by: $azuriraoStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  const SizedBox(height: 1),
-                  Text('Updated at: $updatedAtStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  if (dug.updatedAt != null) ...[
+                    Text('Updated at: $updatedAtStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    const SizedBox(height: 1),
+                  ],
                   if (finansijeNaziv.isNotEmpty) ...[
                     const SizedBox(height: 1),
                     Text('Finansije naziv: $finansijeNaziv',

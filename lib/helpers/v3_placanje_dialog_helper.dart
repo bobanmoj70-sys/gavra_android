@@ -15,7 +15,7 @@ class V3PlacanjeRezultat {
     required this.iznos,
     required this.mesec,
     required this.godina,
-    this.brojVoznji = 1,
+    this.brojVoznji = 0,
   });
 }
 
@@ -209,7 +209,7 @@ class V3PlacanjeDialogHelper {
     required String imePrezime,
     required double defaultCena,
     bool snimiMesecnuUplatu = false,
-    int brojVoznji = 1,
+    int brojVoznji = 0,
   }) async {
     final dialogRezultat = await _prikaziDialog(
       context: context,

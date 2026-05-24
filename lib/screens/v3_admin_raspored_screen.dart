@@ -332,10 +332,13 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (mounted) setState(() {});
 
       if (mounted) {
+        final putnikSuffix =
+            assignedCount > 0 ? '📋 $assignedCount putnika raspoređeno' : '📅 Slot rezervisan (trenutno nema putnika)';
+
         V3AppSnackBar.success(
             context,
             '✅ ${vozac.imePrezime} → $grad $vreme ($datum)\n'
-            '📋 $assignedCount putnika raspoređeno');
+            '$putnikSuffix');
       }
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
@@ -638,6 +641,19 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               }))
             : <V3OperativnaNedeljaEntry>[];
 
+        final Map<String, int?> calculatedRanks = {};
+        int currentRank = 0;
+        for (var z in zapisi) {
+          final putnik = V3PutnikService.getPutnikById(z.putnikId);
+          final tip = (putnik?.tipPutnika ?? 'dnevni').toLowerCase().trim();
+          if (tip != 'posiljka') {
+            currentRank++;
+            calculatedRanks[z.id] = currentRank;
+          } else {
+            calculatedRanks[z.id] = null;
+          }
+        }
+
         return Scaffold(
           extendBodyBehindAppBar: true,
           extendBody: true,
@@ -759,20 +775,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                         itemCount: zapisi.length,
                                         itemBuilder: (_, i) {
                                           final z = zapisi[i];
-                                          int redniCounter = 0;
-                                          for (int j = 0; j <= i; j++) {
-                                            final kandidat = zapisi[j];
-                                            final kandidatPutnik = V3PutnikService.getPutnikById(kandidat.putnikId) ??
-                                                V3Putnik(
-                                                  id: kandidat.putnikId,
-                                                  imePrezime: 'Nepoznat putnik',
-                                                  tipPutnika: 'dnevni',
-                                                );
-                                            final kandidatTip = kandidatPutnik.tipPutnika.toLowerCase().trim();
-                                            if (kandidatTip != 'posiljka') {
-                                              redniCounter += 1;
-                                            }
-                                          }
+                                          final redniBroj = calculatedRanks[z.id];
                                           final terminDodeljen = vozacTermin != null;
                                           final indivVozac =
                                               _getVozacZaPutnika(z.putnikId, _selectedGrad, slotVreme(z));
@@ -788,8 +791,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                                 imePrezime: 'Nepoznat putnik',
                                                 tipPutnika: 'dnevni',
                                               );
-                                          final tip = putnik.tipPutnika.toLowerCase().trim();
-                                          final int? redniBroj = tip == 'posiljka' ? null : redniCounter;
                                           return Padding(
                                             padding: const EdgeInsets.only(bottom: 6),
                                             child: V3PutnikCard(

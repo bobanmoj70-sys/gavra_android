@@ -44,10 +44,21 @@ class V3FinansijeService {
     return _isPoDanuTip(tip) ? cenaPoDanu : cenaPoPokupljenju;
   }
 
+  static int? _parseInternalInt(dynamic val) {
+    if (val == null) return null;
+    if (val is num) return val.toInt();
+    if (val is String) return int.tryParse(val);
+    return null;
+  }
+
   static String _masterKategorija() => 'operativna_naplata';
 
+  static String _getLockKey(String putnikId, int mesec, int godina) =>
+      'finansije_master:${putnikId.trim().toLowerCase()}:$mesec:$godina';
+
   static bool _isMesecnaEvidencija(Map<String, dynamic> row) {
-    if (row['tip']?.toString() != 'prihod') return false;
+    final tip = (row['tip']?.toString() ?? '').toLowerCase();
+    if (tip != 'prihod') return false;
     final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
     return kategorija == _masterKategorija() || kategorija == 'operativna_realizacija';
   }
@@ -77,9 +88,10 @@ class V3FinansijeService {
     required int mesec,
   }) {
     return _naplataRows().where((row) {
-      if ((row['putnik_v3_auth_id']?.toString() ?? '') != putnikId) return false;
-      final rowGodina = (row['godina'] as num?)?.toInt();
-      final rowMesec = (row['mesec'] as num?)?.toInt();
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnikId.trim().toLowerCase()) return false;
+      final rowGodina = _parseInternalInt(row['godina']);
+      final rowMesec = _parseInternalInt(row['mesec']);
       return rowGodina == godina && rowMesec == mesec;
     });
   }
@@ -154,7 +166,8 @@ class V3FinansijeService {
     if (putnik.isEmpty) return null;
 
     final candidates = _naplataRows().where((row) {
-      if ((row['putnik_v3_auth_id']?.toString() ?? '') != putnik) return false;
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnik.toLowerCase()) return false;
       final createdAt = row['created_at']?.toString() ?? '';
       return createdAt.isNotEmpty;
     }).toList();
@@ -183,13 +196,14 @@ class V3FinansijeService {
     if (putnik.isEmpty) return (brojVoznji: 0, ukupanIznos: 0.0);
 
     final naplataRows = _naplataRows().where((row) {
-      if ((row['putnik_v3_auth_id']?.toString() ?? '') != putnik) return false;
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnik.toLowerCase()) return false;
       if (godina != null) {
-        final rowGodina = (row['godina'] as num?)?.toInt();
+        final rowGodina = _parseInternalInt(row['godina']);
         if (rowGodina != godina) return false;
       }
       if (mesec != null) {
-        final rowMesec = (row['mesec'] as num?)?.toInt();
+        final rowMesec = _parseInternalInt(row['mesec']);
         if (rowMesec != mesec) return false;
       }
       return true;
@@ -222,7 +236,7 @@ class V3FinansijeService {
     final isPoDanu = _isPoDanuTip(tip);
     final safeDogadjajId = (dogadjajId ?? '').trim();
 
-    final lockKey = 'realizacija:$safePutnikId:${datum.month}:${datum.year}';
+    final lockKey = _getLockKey(safePutnikId, datum.month, datum.year);
     if (_mesecnaNaplataLocks.contains(lockKey)) return;
     _mesecnaNaplataLocks.add(lockKey);
 
@@ -231,11 +245,13 @@ class V3FinansijeService {
     try {
       // 1. Pronađi postojeći master red za ovaj mesec
       final existingMesecna = cache.where((row) {
-        if (!_isMesecnaEvidencija(row)) return false;
-        if ((row['putnik_v3_auth_id']?.toString() ?? '') != safePutnikId) return false;
-        final rG = (row['godina'] as num?)?.toInt();
-        final rM = (row['mesec'] as num?)?.toInt();
-        return rG == datum.year && rM == datum.month;
+        final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+        if (rPutnikId != safePutnikId.toLowerCase()) return false;
+        final rG = _parseInternalInt(row['godina']);
+        final rM = _parseInternalInt(row['mesec']);
+        if (rG != datum.year || rM != datum.month) return false;
+        // Smatramo ga master redom ako se podudaraju putnik i mesec/godina
+        return (row['tip']?.toString().toLowerCase() ?? '') == 'prihod';
       }).toList();
 
       if (existingMesecna.isNotEmpty) {
@@ -348,7 +364,7 @@ class V3FinansijeService {
     final dugovi = <V3Dug>[];
     final now = DateTime.now();
 
-    for (final putnikData in rm.getCache('v3_auth').values) {
+    for (final putnikData in rm.putniciCache.values) {
       final putnikId = putnikData['id']?.toString().trim() ?? '';
       if (putnikId.isEmpty) continue;
 
@@ -383,7 +399,7 @@ class V3FinansijeService {
         final brojVoznji = summary.brojVoznji;
         if (brojVoznji <= 0) continue; // Samo oni koji su se vozili
 
-        final vozacData = naplatioById != null ? rm.getCache('v3_auth')[naplatioById] : null;
+        final vozacData = naplatioById != null ? rm.vozaciCache[naplatioById] : null;
         final vozacIme = vozacData?['ime_prezime']?.toString() ?? '';
 
         final ukupnaObaveza = brojVoznji * cena;
@@ -450,7 +466,7 @@ class V3FinansijeService {
       throw ArgumentError('Iznos naplate mora biti veći od nule.');
     }
 
-    final lockKey = '$safePutnikId:$mesec:$godina';
+    final lockKey = _getLockKey(safePutnikId, mesec, godina);
     if (_mesecnaNaplataLocks.contains(lockKey)) {
       debugPrint('[V3FinansijeService] sacuvajMesecnuNaplatu skipped (lock): $lockKey');
       return;
@@ -460,11 +476,13 @@ class V3FinansijeService {
     try {
       final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
       final existing = cache.where((row) {
-        if (!_isMesecnaEvidencija(row)) return false;
-        if ((row['putnik_v3_auth_id']?.toString() ?? '') != safePutnikId) return false;
-        final rG = (row['godina'] as num?)?.toInt();
-        final rM = (row['mesec'] as num?)?.toInt();
-        return rG == godina && rM == mesec;
+        final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+        if (rPutnikId != safePutnikId.toLowerCase()) return false;
+        final rG = _parseInternalInt(row['godina']);
+        final rM = _parseInternalInt(row['mesec']);
+        if (rG != godina || rM != mesec) return false;
+        // Širimo pretragu na bilo koji prihodni red za ovog putnika/mesec
+        return (row['tip']?.toString().toLowerCase() ?? '') == 'prihod';
       }).toList();
 
       Map<String, dynamic> row;
