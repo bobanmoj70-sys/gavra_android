@@ -21,6 +21,7 @@ import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
 import '../services/v3/v3_blocking_screen_service.dart';
+import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -282,8 +283,29 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final vozacId = vozac.id?.toString() ?? '';
     if (vozacId.isEmpty) return;
 
-    // Start tracking
+    // Pokreni tracking sa istom logikom kao normalni START
     await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
+
+    // Upisi slot u bazu (isto kao normalni START)
+    try {
+      await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
+        datumIso: V3DanHelper.toIsoDate(DateTime.now()),
+        grad: _blockingGrad ?? '',
+        vreme: _blockingVreme ?? '',
+        vozacId: vozacId,
+        updatedBy: vozacId,
+      );
+
+      // Obavesti putnike da je vozač krenuo
+      await V3DriverPushNotificationService.notifyPassengersDriverStarted(
+        vozacId: vozacId,
+        datumIso: V3DanHelper.toIsoDate(DateTime.now()),
+        grad: _blockingGrad ?? '',
+        vreme: _blockingVreme ?? '',
+      );
+    } catch (e) {
+      debugPrint('[BlockingScreen] notify passengers / upsert slot error: $e');
+    }
 
     // Dismiss blocking screen
     setState(() {

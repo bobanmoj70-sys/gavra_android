@@ -302,11 +302,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.detached) return;
-    if (!V3VozacLocationTrackingService.instance.isRunning) return;
-
-    V3VozacLocationTrackingService.instance.stop();
-    _isNavigating = false;
+    // Tracking se zaustavlja SAMO kada su svi putnici pokupljeni/otkazani
+    // ili kada je aplikacija stvarno ubijena (detached)
+    // NE zaustavljati pri promeni ekrana ili background
+    
+    if (state == AppLifecycleState.detached) {
+      // SAMO kad je app stvarno ubijena
+      V3VozacLocationTrackingService.instance.stop();
+      _isNavigating = false;
+    }
+    // Za sve druge stateove (paused, inactive, resumed) - NE RADITI NIŠTA
   }
 
   Future<void> _initData() async {
@@ -962,9 +967,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  void _handleStartStopTap() {
+  void _handleStartTap() {
+    // SAMO START - manualni STOP je uklonjen
     if (V3VozacLocationTrackingService.instance.isRunning) {
-      unawaited(_handleStopNavigation());
+      V3AppSnackBar.info(context, 'Tracking je već pokrenut. Zaustaviće se automatski kada završite sa poslom.');
       return;
     }
 
@@ -1094,11 +1100,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label: V3VozacLocationTrackingService.instance.isRunning ? 'STOP' : 'START',
-                                  color: V3VozacLocationTrackingService.instance.isRunning ? Colors.red : Colors.green,
+                                  label: V3VozacLocationTrackingService.instance.isRunning ? 'TRACKING AKTIVAN' : 'START',
+                                  color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.green,
                                   height: appBarButtonHeight,
                                   onTap: () {
-                                    _handleStartStopTap();
+                                    _handleStartTap();
                                   },
                                 ),
                               ),
