@@ -89,7 +89,7 @@ class V3VozacLocationTrackingService {
         final terminResponse = await Supabase.instance.client
             .from('v3_operativna_nedelja')
             .select('pokupljen_at, otkazano_at')
-            .in_('id', terminIds);
+            .inFilter('id', terminIds);
 
         // Proveri da li bar jedan termin nije pokupljen/otkazan
         for (final termin in terminResponse) {
