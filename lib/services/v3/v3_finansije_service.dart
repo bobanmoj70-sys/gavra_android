@@ -9,7 +9,8 @@ import 'repositories/v3_finansije_repository.dart';
 
 class V3NaplataInfo {
   final bool isPaid;
-  final double iznos;
+  final double ukupanIznos;
+  final double poslednjiIznos;
   final DateTime? paidAt;
   final String? paidBy;
   final DateTime? updatedAt;
@@ -17,7 +18,8 @@ class V3NaplataInfo {
 
   const V3NaplataInfo({
     required this.isPaid,
-    required this.iznos,
+    required this.ukupanIznos,
+    required this.poslednjiIznos,
     this.paidAt,
     this.paidBy,
     this.updatedAt,
@@ -68,8 +70,8 @@ class V3FinansijeService {
   }
 
   static DateTime? _naplacenoAt(Map<String, dynamic> row) {
-    // Kod unifikovanog reda, updated_at je bolji pokazatelj vremena poslednje uplate
-    final ts = row['updated_at'] ?? row['created_at'];
+    // Koristimo created_at za stvarni datum uplate, ne updated_at
+    final ts = row['created_at'];
     return V3DateUtils.parseTs(ts?.toString());
   }
 
@@ -150,10 +152,13 @@ class V3FinansijeService {
     _sortByCreatedAtDesc(candidates);
     final latest = candidates.first;
 
-    final ukupno = candidates.fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
+    final ukupanIznos = candidates.fold<double>(0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0));
+    final poslednjiIznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
+    
     return V3NaplataInfo(
-      isPaid: ukupno > 0,
-      iznos: ukupno,
+      isPaid: ukupanIznos > 0,
+      ukupanIznos: ukupanIznos,
+      poslednjiIznos: poslednjiIznos,
       paidAt: _naplacenoAt(latest),
       paidBy: latest['naplaceno_by']?.toString(),
       updatedAt: V3DateUtils.parseTs(latest['updated_at']?.toString()),
@@ -176,10 +181,11 @@ class V3FinansijeService {
     _sortByCreatedAtDesc(candidates);
     final latest = candidates.first;
 
-    final iznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
+    final poslednjiIznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
     return V3NaplataInfo(
-      isPaid: iznos > 0,
-      iznos: iznos,
+      isPaid: poslednjiIznos > 0,
+      ukupanIznos: poslednjiIznos,
+      poslednjiIznos: poslednjiIznos,
       paidAt: _naplacenoAt(latest),
       paidBy: latest['naplaceno_by']?.toString(),
       updatedAt: V3DateUtils.parseTs(latest['updated_at']?.toString()),

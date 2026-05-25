@@ -41,7 +41,7 @@ class V3PlacanjeDialogHelper {
     final years = List.generate(6, (i) => currentYear - 1 + i);
     final zadnjaNaplata = V3FinansijeService.getLatestNaplataForPutnik(putnikId);
     final vremePlacen = zadnjaNaplata?.paidAt;
-    final zadnjiIznos = zadnjaNaplata?.iznos ?? 0.0;
+    final zadnjiIznos = zadnjaNaplata?.poslednjiIznos ?? 0.0;
     final naplatioIme = (zadnjaNaplata?.paidBy == null)
         ? 'Nepoznato'
         : (V3VozacService.getVozacById(zadnjaNaplata!.paidBy!)?.imePrezime ?? 'Nepoznato');
