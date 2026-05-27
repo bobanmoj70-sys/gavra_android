@@ -41,6 +41,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
   List<Map<String, dynamic>> _naplate = [];
   List<Map<String, dynamic>> _pokupio = [];
+  List<Map<String, dynamic>> _dodao = [];
   double _ukupnoIznos = 0;
   double? _predaoIznos; // za PDF/clipboard — ažurira ga footer
 
@@ -89,16 +90,35 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     if (_selectedVozacId == null) return;
 
     final vozacId = _selectedVozacId!;
-    
+    final datumIso = V3DateUtils.parseIsoDatePart(_selectedDate.toIso8601String());
+
     final naplateRows = V3FinansijeService.getNaplataRowsZaVozacaDan(
       vozacId: vozacId,
       dan: _selectedDate,
     );
-    
-    // TODO: Implementirati prikaz pokupljenih putnika iz v3_operativna_nedelja
+
+    // Pokupljeni putnici — vozac ih je pokupio tog dana
+    final pokupljeniRows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values
+        .where((r) {
+          final rDatum = V3DateUtils.parseIsoDatePart(r['datum']?.toString() ?? '');
+          final rPokupljenBy = r['pokupljen_by']?.toString() ?? '';
+          return rDatum == datumIso && rPokupljenBy == vozacId;
+        })
+        .toList(growable: false);
+
+    // Dodati putnici — vozac ih je uneo ili azurirao (updated_by = vozacId)
+    final dodatiRows = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values
+        .where((r) {
+          final rDatum = V3DateUtils.parseIsoDatePart(r['datum']?.toString() ?? '');
+          final rUpdatedBy = r['updated_by']?.toString() ?? '';
+          return rDatum == datumIso && rUpdatedBy == vozacId;
+        })
+        .toList(growable: false);
+
     setState(() {
       _naplate = naplateRows;
-      _pokupio = [];
+      _pokupio = pokupljeniRows;
+      _dodao = dodatiRows;
       _ukupnoIznos = naplateRows.fold<double>(
         0, (sum, row) => sum + ((row['iznos'] as num?)?.toDouble() ?? 0),
       );
@@ -149,7 +169,22 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       }
       buf.writeln('─────────────────────────');
     }
-    
+
+    // Prikaz dodatih putnika
+    if (_dodao.isNotEmpty) {
+      buf.writeln('DODATI PUTNICI (${_dodao.length}):');
+      for (int i = 0; i < _dodao.length; i++) {
+        final p = _dodao[i];
+        final putnikId = p['created_by']?.toString() ?? '';
+        final putnik = rm.putniciCache[putnikId];
+        final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+        final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
+        final polazakAt = p['polazak_at']?.toString() ?? '';
+        buf.writeln('  ${i + 1}. $putnikIme — $grad $polazakAt');
+      }
+      buf.writeln('─────────────────────────');
+    }
+
     // Prikaz naplata
     buf.writeln('NAPLATE (${_naplate.length}):');
     for (int i = 0; i < _naplate.length; i++) {
@@ -245,6 +280,50 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                         (V3DateUtils.parseTs(_pokupio[i]['datum']?.toString()) ?? DateTime.now()).hour,
                         (V3DateUtils.parseTs(_pokupio[i]['datum']?.toString()) ?? DateTime.now()).minute
                       ), style: baseStyle),
+                    ],
+                  ),
+              ],
+            ),
+            pw.SizedBox(height: 14),
+            pw.Divider(),
+            pw.SizedBox(height: 8),
+          ],
+
+          // Dodati putnici
+          if (_dodao.isNotEmpty) ...[
+            pw.Text('DODATI PUTNICI (${_dodao.length})', style: headerStyle),
+            pw.SizedBox(height: 6),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+              columnWidths: const {
+                0: pw.FixedColumnWidth(24),
+                1: pw.FlexColumnWidth(4),
+                2: pw.FixedColumnWidth(60),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [
+                    _pdfCell('#', style: boldStyle),
+                    _pdfCell('Ime', style: boldStyle),
+                    _pdfCell('Termin', style: boldStyle),
+                  ],
+                ),
+                for (int i = 0; i < _dodao.length; i++)
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(
+                      color: i.isEven ? PdfColors.white : PdfColors.grey50,
+                    ),
+                    children: [
+                      _pdfCell('${i + 1}.', style: baseStyle),
+                      _pdfCell(
+                        (rm.putniciCache[_dodao[i]['created_by']?.toString() ?? '']?['ime_prezime']?.toString() ?? 'Nepoznato'),
+                        style: baseStyle
+                      ),
+                      _pdfCell(
+                        '${(_dodao[i]['grad']?.toString() ?? '').trim().toUpperCase()} ${_dodao[i]['polazak_at']?.toString() ?? ''}',
+                        style: baseStyle
+                      ),
                     ],
                   ),
               ],
@@ -457,7 +536,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                     : Column(
                         children: [
                           Expanded(
-                            child: (_naplate.isEmpty && _pokupio.isEmpty)
+                            child: (_naplate.isEmpty && _pokupio.isEmpty && _dodao.isEmpty)
                                 ? Center(
                                     child: Text(
                                       'Nema akcija za ${_formatDatum(_selectedDate)}',
@@ -466,14 +545,17 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                                   )
                                 : ListView.builder(
                                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    itemCount: _pokupio.length + _naplate.length,
+                                    itemCount: _dodao.length + _pokupio.length + _naplate.length,
                                     itemBuilder: (_, i) {
-                                      if (i < _pokupio.length) {
-                                        return _PokupioCard(p: _pokupio[i], index: i);
-                                      } else {
-                                        final naplataIndex = i - _pokupio.length;
-                                        return _NaplataCard(n: _naplate[naplataIndex], index: naplataIndex);
+                                      if (i < _dodao.length) {
+                                        return _DodaoCard(p: _dodao[i], index: i);
                                       }
+                                      if (i < _dodao.length + _pokupio.length) {
+                                        final pokupioIndex = i - _dodao.length;
+                                        return _PokupioCard(p: _pokupio[pokupioIndex], index: pokupioIndex);
+                                      }
+                                      final naplataIndex = i - _dodao.length - _pokupio.length;
+                                      return _NaplataCard(n: _naplate[naplataIndex], index: naplataIndex);
                                     },
                                   ),
                           ),
@@ -551,6 +633,51 @@ class _PokupioCard extends StatelessWidget {
               style: const TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(width: 10),
           Text(vreme, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DodaoCard extends StatelessWidget {
+  const _DodaoCard({required this.p, required this.index});
+  final Map<String, dynamic> p;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
+    final polazakAt = p['polazak_at']?.toString() ?? '';
+    final putnikId = p['created_by']?.toString() ?? '';
+    final rm = V3MasterRealtimeManager.instance;
+    final putnik = rm.putniciCache[putnikId];
+    final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text('➕', style: const TextStyle(color: Colors.white70, fontSize: 16)),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(putnikIme, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                if (grad.isNotEmpty)
+                  Text('$grad $polazakAt', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+              ],
+            ),
+          ),
+          Text('DODAO',
+              style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
