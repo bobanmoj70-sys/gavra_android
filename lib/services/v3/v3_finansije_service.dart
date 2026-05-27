@@ -274,7 +274,7 @@ class V3FinansijeService {
           final danIso = V3DateUtils.parseIsoDatePart(datum.toIso8601String());
           final opCache = V3MasterRealtimeManager.instance.getCache('v3_operativna_nedelja');
           final vecVozioDanas = opCache.values.any((r) =>
-              (r['putnik_id']?.toString() ?? '') == safePutnikId &&
+              (r['created_by']?.toString() ?? '') == safePutnikId &&
               V3DateUtils.parseIsoDatePart(r['datum']?.toString() ?? '') ==
                   danIso && // Proveravamo da li je putnik već pokupljen danas
               // Uklonjena provera za operativnaId jer se više ne prosleđuje
@@ -549,13 +549,15 @@ class V3FinansijeService {
 
         final currentIznos = (latest['iznos'] as num?)?.toDouble() ?? 0.0;
         final currentBrojVoznji = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
-        final mergedBrojVoznji = brojVoznji > currentBrojVoznji ? brojVoznji : currentBrojVoznji;
+        // Broj vožnji se ne menja pri plaćanju - samo pri pokupljanju (evidentirajRealizacijuPriPokupljanju)
+        // Zadržavamo trenutnu vrednost da ne bi smanjili broj vožnji ako se u međuvremenu povećao
+        final finalBrojVoznji = currentBrojVoznji;
 
         row = await _repo.updateByIdReturning(existingId, {
           'iznos': currentIznos + iznos,
           'poslednja_dopuna': iznos, // Čuvamo iznos poslednje dopune
           'naplaceno_by': naplacenoBy,
-          'broj_voznji': mergedBrojVoznji,
+          'broj_voznji': finalBrojVoznji,
           'updated_at': DateTime.now().toIso8601String(),
           'dogadjaj_id': _uuid.v4(),
         });
