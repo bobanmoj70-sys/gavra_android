@@ -276,6 +276,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         if (entry.value != vozacId) return false;
         final terminData = V3MasterRealtimeManager.instance.operativnaNedeljaCache[entry.key];
         if (terminData == null) return false;
+        // Preskoči otkazane ili već pokupljene termine — nema smisla tražiti tracking
+        if (terminData['otkazano_at'] != null || terminData['pokupljen_at'] != null) {
+          return false;
+        }
         final terminGrad = (terminData['grad'] as String? ?? '').trim().toUpperCase();
         final terminVreme = V3TimeUtils.normalizeToHHmm(terminData['polazak_at'] as String?);
         return terminGrad == gradUp && terminVreme == vremeNorm;
