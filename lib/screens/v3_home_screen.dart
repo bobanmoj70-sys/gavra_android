@@ -35,6 +35,7 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
@@ -262,16 +263,25 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
       // Check if driver has slot assignment for this termin
       final today = V3DanHelper.toIsoDate(DateTime.now());
+      final gradUp = grad.trim().toUpperCase();
+      final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
       final slotKey = V3TrenutnaDodelaSlotService.slotKey(
         datumIso: today,
         grad: grad,
         vreme: vreme,
       );
-      final hasSlot = _activeVozacBySlotKey[slotKey] == vozacId;
+      final hasSlotRaw = _activeVozacBySlotKey[slotKey] == vozacId;
+      // Slot je relevantan samo ako postoji bar jedan aktivni putnik za taj termin
+      final hasSlot = hasSlotRaw &&
+          V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.any((row) {
+            final rDatum = V3DateUtils.parseIsoDatePart(row['datum']?.toString() ?? '');
+            final rGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+            final rVreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString() ?? '');
+            final isActive = row['otkazano_at'] == null && row['pokupljen_at'] == null;
+            return rDatum == today && rGrad == gradUp && rVreme == vremeNorm && isActive;
+          });
 
       // Check if driver has individual passenger assignments for this SPECIFIC termin
-      final gradUp = grad.trim().toUpperCase();
-      final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
       final hasIndividualAssignments = _activeVozacByTerminId.entries.any((entry) {
         if (entry.value != vozacId) return false;
         final terminData = V3MasterRealtimeManager.instance.operativnaNedeljaCache[entry.key];
