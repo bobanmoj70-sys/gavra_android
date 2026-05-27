@@ -33,6 +33,7 @@ dependencies:
   dropdown_button2: ^2.3.9
   flutter_secure_storage: ^10.0.0
   wakelock_plus: ^1.2.8
+  flutter_background_service: ^5.1.0
   google_fonts: ^6.0.0
 
   shimmer: ^3.0.0

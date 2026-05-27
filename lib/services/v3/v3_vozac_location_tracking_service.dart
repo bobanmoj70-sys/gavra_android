@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'v3_blocking_screen_service.dart';
@@ -16,18 +17,19 @@ class V3VozacLocationTrackingService {
   V3VozacLocationTrackingService._();
 
   static final V3VozacLocationTrackingService instance = V3VozacLocationTrackingService._();
-  static const Duration _interval = Duration(seconds: 30);
 
-  Timer? _timer;
-  bool _inFlight = false;
   String _activeVozacId = '';
   Position? _lastSentPosition;
   bool _blockingScreenInitialized = false;
+  bool _inFlight = false;
+  bool _isRunning = false;
 
-  /// Poziva se nakon svakog uspješnog slanja GPS pozicije.
+  /// Poziva se nakon svakog uspješnog slanja GPS pozicije (foreground).
   void Function(Position position)? onLocationSent;
 
-  bool get isRunning => _timer != null;
+  bool get isRunning => _isRunning;
+
+  String? get activeVozacId => _activeVozacId.isNotEmpty ? _activeVozacId : null;
   Position? get lastKnownPosition => _lastSentPosition;
 
   Future<void> clearEtaForVozac({required String vozacId}) async {
@@ -45,18 +47,25 @@ class V3VozacLocationTrackingService {
     final normalizedVozacId = vozacId.trim();
     if (normalizedVozacId.isEmpty) return;
 
-    if (_activeVozacId == normalizedVozacId && _timer != null) return;
+    if (_activeVozacId == normalizedVozacId && _isRunning) return;
 
-    // SAMO ako je drugi vozač, onda stop
+    // Ako je drugi vozač — stop pre nego što pokrenemo novi
     if (_activeVozacId != normalizedVozacId) {
-      stop();
+      await stop();
     }
     _activeVozacId = normalizedVozacId;
+    _isRunning = true;
 
-    await _sendCurrentLocation();
-    _timer = Timer.periodic(_interval, (_) {
-      unawaited(_sendCurrentLocation());
-    });
+    final service = FlutterBackgroundService();
+    final isServiceRunning = await service.isRunning();
+    if (!isServiceRunning) {
+      await service.startService();
+    }
+    // Prosledi vozac_id background servisu
+    service.invoke('set_vozac_id', {'vozac_id': normalizedVozacId});
+
+    // Odmah pošalji i iz foreground-a (za brzu povratnu informaciju)
+    unawaited(_sendCurrentLocation());
 
     // Deblokiraj ekran ako je bio blokiran
     V3BlockingScreenService.instance.onBlockingScreenDismissed();
@@ -73,29 +82,31 @@ class V3VozacLocationTrackingService {
     debugPrint('[V3VozacLocationTrackingService] Blocking screen service initialized');
   }
 
-  void stop() {
+  Future<void> stop() async {
     final vozacIdToClean = _activeVozacId;
-    _timer?.cancel();
-    _timer = null;
     _activeVozacId = '';
-    _inFlight = false;
     _lastSentPosition = null;
+    _isRunning = false;
     onLocationSent = null;
+
+    final service = FlutterBackgroundService();
+    if (await service.isRunning()) {
+      service.invoke('stop');
+    }
+
     if (vozacIdToClean.isNotEmpty) {
       unawaited(clearEtaForVozac(vozacId: vozacIdToClean));
     }
   }
 
+  /// Pomoćna metoda za odmah slanje iz foreground-a (za brz UI feedback).
   Future<void> _sendCurrentLocation() async {
     if (_inFlight || _activeVozacId.isEmpty) return;
     _inFlight = true;
 
     try {
       final locationStatus = await checkLocationPrerequisites();
-      if (locationStatus != V3LocationPrereqStatus.ok) {
-        debugPrint('[V3VozacLocationTrackingService] location unavailable: $locationStatus');
-        return;
-      }
+      if (locationStatus != V3LocationPrereqStatus.ok) return;
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -106,7 +117,7 @@ class V3VozacLocationTrackingService {
 
       _lastSentPosition = position;
       onLocationSent?.call(position);
-      // Fire-and-forget: server računa ETA za sve putnike ovog vozača
+
       unawaited(
         _invokeComputeEta(
           vozacId: _activeVozacId,
@@ -122,7 +133,6 @@ class V3VozacLocationTrackingService {
   }
 
   /// Odmah poziva ETA edge funkciju sa poslednjom poznatom pozicijom.
-  /// Koristi se nakon optimizacije rute kada vozač stoji (pomak < threshold).
   Future<void> forceComputeEta() async {
     final pos = _lastSentPosition;
     if (pos == null || _activeVozacId.isEmpty) return;

@@ -12,8 +12,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_background_service_android/flutter_background_service_android.dart';
 
 import 'globals.dart';
+import 'services/v3/v3_background_location_handler.dart';
 import 'screens/v3_putnik_profil_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
@@ -221,10 +224,20 @@ Future<void> _ensureLocalNotificationsInitialized() async {
       enableVibration: true,
     );
 
+    const AndroidNotificationChannel gpsTrackingChannel = AndroidNotificationChannel(
+      'gavra_gps_tracking',
+      'GPS Tracking',
+      description: 'Praćenje lokacije vozača tokom vožnje',
+      importance: Importance.low,
+      playSound: false,
+      enableVibration: false,
+    );
+
     final androidImpl =
         flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.createNotificationChannel(channel);
     await androidImpl?.createNotificationChannel(alternativaChannel);
+    await androidImpl?.createNotificationChannel(gpsTrackingChannel);
 
     if (!_notificationLaunchHandled) {
       final launchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
@@ -324,6 +337,32 @@ void main() async {
   } catch (e) {
     debugPrint('❌ [main] Supabase.initialize greška/timeout: $e');
     startupPhaseNotifier.value = V3StartupPhase.degraded;
+  }
+
+  // FOREGROUND SERVICE - konfiguracija za background GPS tracking
+  try {
+    debugPrint('🚀 [main] 4b. Foreground service config start');
+    final service = FlutterBackgroundService();
+    await service.configure(
+      androidConfiguration: AndroidConfiguration(
+        onStart: onBackgroundServiceStart,
+        autoStart: false,
+        isForegroundMode: true,
+        notificationChannelId: 'gavra_gps_tracking',
+        initialNotificationTitle: 'GPS Tracking',
+        initialNotificationContent: 'Praćenje lokacije aktivno',
+        foregroundServiceNotificationId: 888,
+        foregroundServiceTypes: [AndroidForegroundType.location],
+      ),
+      iosConfiguration: IosConfiguration(
+        autoStart: false,
+        onForeground: onBackgroundServiceStart,
+        onBackground: (_) => true,
+      ),
+    );
+    debugPrint('🚀 [main] 4b. Foreground service config completed');
+  } catch (e) {
+    debugPrint('⚠️ [main] Foreground service config greška: $e');
   }
 
   // ODMAH POKREĆEMO UI KAKO BI IZBEGLI CRN OS EKRAN
