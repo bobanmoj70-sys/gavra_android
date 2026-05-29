@@ -95,7 +95,7 @@ jobs:
               raise SystemExit("pubspec.yaml version format must be x.y.z+n")
 
           major, minor, patch, build = map(int, match.groups())
-          new_patch = patch + run_number
+          new_patch = patch
           new_build = build + run_number
           new_version = f"{major}.{minor}.{new_patch}+{new_build}"
 
@@ -258,7 +258,7 @@ jobs:
               raise SystemExit("pubspec.yaml version format must be x.y.z+n")
 
           major, minor, patch, build = map(int, match.groups())
-          new_patch = patch + run_number
+          new_patch = patch
           new_build = build + run_number
           new_version = f"{major}.{minor}.{new_patch}+{new_build}"
 
