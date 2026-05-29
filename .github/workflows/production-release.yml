@@ -13,6 +13,9 @@ on:
           - ios
           - both
 
+permissions:
+  contents: write
+
 jobs:
   android-release:
     if: ${{ github.event.inputs.target == 'android' || github.event.inputs.target == 'both' }}
