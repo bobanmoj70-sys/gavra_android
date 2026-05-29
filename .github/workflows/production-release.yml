@@ -192,7 +192,7 @@ jobs:
           fi
 
       - name: Upload to Google Play Production
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@v1.1.5
         with:
           serviceAccountJson: android/play-service-account.json
           packageName: com.gavra013.gavra_android
