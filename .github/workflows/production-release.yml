@@ -23,6 +23,8 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+    outputs:
+      new_sha: ${{ steps.commit_push.outputs.new_sha }}
 
     steps:
       - name: Checkout
@@ -56,6 +58,7 @@ jobs:
           PY
 
       - name: Commit and push version bump
+        id: commit_push
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -64,6 +67,7 @@ jobs:
           git commit -m "Bump version to $(grep '^version:' pubspec.yaml | awk '{print $2}') [skip ci]"
           git pull --rebase https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          echo "new_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   android-release:
     needs: version-bump
@@ -72,8 +76,14 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: Checkout
+      - name: Checkout bumped commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version-bump.outputs.new_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug pubspec version
+        run: cat pubspec.yaml | grep '^version:'
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -206,8 +216,14 @@ jobs:
       BUNDLE_ID: com.gavra013.gavra013ios
 
     steps:
-      - name: Checkout
+      - name: Checkout bumped commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version-bump.outputs.new_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug pubspec version
+        run: cat pubspec.yaml | grep '^version:'
 
       - name: Select Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
