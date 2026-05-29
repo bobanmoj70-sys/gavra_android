@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 
@@ -234,6 +235,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     List<_PutnikEntry> putnici,
   ) {
     if (_etaSecondsCache.isEmpty) {
+      debugPrint('[SORT] ETA cache empty, keeping original order');
       return List<_PutnikEntry>.from(putnici);
     }
     final sorted = List<_PutnikEntry>.from(putnici);
@@ -249,6 +251,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final etaB = _etaSecondsCache[b.putnik.id] ?? 999999;
       return etaA.compareTo(etaB);
     });
+
+    // Log sortirani redosled
+    final buf = StringBuffer('[SORT] order:');
+    for (final p in sorted) {
+      final eta = _etaSecondsCache[p.putnik.id] ?? -1;
+      buf.write(' ${p.putnik.imePrezime}=${eta}s');
+    }
+    debugPrint(buf.toString());
+
     return sorted;
   }
 
@@ -979,17 +990,28 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     await _startDriverLocationTracking();
 
     // Odmah dohvati prvi ETA da sortiramo kartice — ne čekamo realtime sync
-    final pos = V3VozacLocationTrackingService.instance.lastKnownPosition;
+    // GPS uzimamo direktno ovde jer _sendCurrentLocation() još uvek trči u pozadini
+    // i lastKnownPosition je verovatno null u ovom trenutku.
     final vid = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (pos != null && vid.isNotEmpty) {
+    if (vid.isNotEmpty) {
       try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 12),
+          ),
+        );
+        debugPrint('[START] direct GPS: ${position.latitude}, ${position.longitude}');
+
         final etaMap = await V3VozacLocationTrackingService.instance.computeEta(
           vozacId: vid,
-          lat: pos.latitude,
-          lng: pos.longitude,
+          lat: position.latitude,
+          lng: position.longitude,
           grad: _selectedGrad,
           vreme: _selectedVreme,
         );
+        debugPrint('[START] ETA map: $etaMap');
+
         if (mounted && etaMap.isNotEmpty) {
           setState(() {
             _etaSecondsCache
@@ -997,6 +1019,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
               ..addAll(etaMap);
           });
           _refreshPutniciOrderFromEtaCache();
+          debugPrint('[START] cards re-sorted by ETA');
+        } else {
+          debugPrint('[START] ETA map empty, cards not re-sorted');
         }
       } catch (e) {
         debugPrint('[START] immediate ETA fetch error: $e');
