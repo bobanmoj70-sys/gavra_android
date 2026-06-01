@@ -386,7 +386,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
             ..addAll(etaResult.etaMap);
         });
         _refreshPutniciOrderFromEtaCache();
-        debugPrint('[RESTORE] cards re-sorted by ETA');
+        debugPrint('[RESTORE] cards re-sorted by OSRM order');
       } else if (_optimizedPutnikIds.isNotEmpty) {
         setState(() {
           _applyOptimizedOrderToPutnici();
@@ -1159,7 +1159,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                 ..addAll(etaResult.etaMap);
             });
             _refreshPutniciOrderFromEtaCache();
-            debugPrint('[START] cards re-sorted by ETA');
+            debugPrint('[START] cards re-sorted by OSRM order');
           } else if (_optimizedPutnikIds.isNotEmpty) {
             setState(() {
               _applyOptimizedOrderToPutnici();
