@@ -1081,6 +1081,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         );
         debugPrint('[START] direct GPS: ${position.latitude}, ${position.longitude}');
 
+        try {
+          await V3TrenutnaDodelaSlotService.updateCurrentLocation(
+            datumIso: _selectedDatumIso,
+            grad: _selectedGrad,
+            vreme: _selectedVreme,
+            vozacId: vid,
+            lat: position.latitude,
+            lng: position.longitude,
+          );
+        } catch (e) {
+          debugPrint('[START] immediate location save error: $e');
+        }
+
         final etaResult = await V3VozacLocationTrackingService.instance.computeEta(
           vozacId: vid,
           lat: position.latitude,
