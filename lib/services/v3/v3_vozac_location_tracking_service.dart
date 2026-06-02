@@ -85,6 +85,24 @@ class V3VozacLocationTrackingService {
     }
   }
 
+  Future<void> _ensureActiveSlotRow() async {
+    if (_activeVozacId.isEmpty || _activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
+      return;
+    }
+
+    try {
+      await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
+        datumIso: _activeDatumIso,
+        grad: _activeGrad,
+        vreme: _activeVreme,
+        vozacId: _activeVozacId,
+        updatedBy: _activeVozacId,
+      );
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] Failed to upsert active slot on termin change: $e');
+    }
+  }
+
   void setActiveTermin({required String datumIso, required String grad, required String vreme}) {
     _activeDatumIso = _normalizeDateIso(datumIso);
     _activeGrad = grad.trim().toUpperCase();
@@ -93,6 +111,16 @@ class V3VozacLocationTrackingService {
     // Prosledi background servisu da i on šalje pravilne vrednosti
     final service = FlutterBackgroundService();
     service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
+
+    if (_isRunning && _activeVozacId.isNotEmpty) {
+      service.invoke('set_vozac_id', {
+        'vozac_id': _activeVozacId,
+        'datum_iso': _activeDatumIso,
+        'grad': _activeGrad,
+        'vreme': _activeVreme,
+      });
+      unawaited(_ensureActiveSlotRow());
+    }
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) async {
@@ -231,7 +259,10 @@ class V3VozacLocationTrackingService {
           lng: position.longitude,
           grad: _activeGrad,
           vreme: _activeVreme,
-        ).catchError((Object e) => debugPrint('[V3VozacLocationTrackingService] computeEta error: $e')),
+        ).catchError((Object e) {
+          debugPrint('[V3VozacLocationTrackingService] computeEta error: $e');
+          return (etaMap: <String, int>{}, order: <String>[]);
+        }),
       );
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] send error: $e');
@@ -251,7 +282,10 @@ class V3VozacLocationTrackingService {
         lng: pos.longitude,
         grad: _activeGrad,
         vreme: _activeVreme,
-      ).catchError((Object e) => debugPrint('[V3VozacLocationTrackingService] forceComputeEta error: $e')),
+      ).catchError((Object e) {
+        debugPrint('[V3VozacLocationTrackingService] forceComputeEta error: $e');
+        return (etaMap: <String, int>{}, order: <String>[]);
+      }),
     );
   }
 
