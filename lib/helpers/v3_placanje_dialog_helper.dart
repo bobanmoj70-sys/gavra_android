@@ -32,8 +32,39 @@ class V3PlacanjeDialogHelper {
     required String putnikId,
     required String imePrezime,
     required double defaultCena,
+    double? cenaPoModelu,
   }) async {
     final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
+    var _autoIznosEnabled = true;
+    var _suppressAutoIznosListener = false;
+
+    void _setIznosController(double iznos) {
+      final value = iznos.isFinite ? iznos : 0.0;
+      _suppressAutoIznosListener = true;
+      _iznosController.text = value.toStringAsFixed(0);
+      _iznosController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _iznosController.text.length),
+      );
+      _suppressAutoIznosListener = false;
+    }
+
+    double _predlozeniIznosZaMesecGodinu(int mesec, int godina) {
+      final cena = cenaPoModelu ?? 0.0;
+      if (cena <= 0) return defaultCena;
+      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+        putnikId: putnikId,
+        mesec: mesec,
+        godina: godina,
+      );
+      final ukupnaObaveza = cena * summary.brojVoznji;
+      final preostaloZaNaplatu = ukupnaObaveza - summary.ukupanIznos;
+      return preostaloZaNaplatu > 0 ? preostaloZaNaplatu : 0.0;
+    }
+
+    _iznosController.addListener(() {
+      if (_suppressAutoIznosListener) return;
+      _autoIznosEnabled = false;
+    });
 
     int _selectedMonth = DateTime.now().month;
     int _selectedYear = DateTime.now().year;
@@ -51,6 +82,29 @@ class V3PlacanjeDialogHelper {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           final cs = Theme.of(context).colorScheme;
+
+          ({Color color, FontWeight weight}) _mesecStyle(int mesec) {
+            final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+              putnikId: putnikId,
+              mesec: mesec,
+              godina: _selectedYear,
+            );
+            final uplaceno = summary.ukupanIznos;
+            if (uplaceno <= 0) {
+              return (color: cs.onSurface, weight: FontWeight.w500);
+            }
+
+            final cena = cenaPoModelu ?? 0.0;
+            if (cena > 0) {
+              final ukupnaObaveza = cena * summary.brojVoznji;
+              if (ukupnaObaveza > 0 && uplaceno + 0.009 < ukupnaObaveza) {
+                return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
+              }
+            }
+
+            return (color: const Color(0xFF00C853), weight: FontWeight.w700);
+          }
+
           return AlertDialog(
             backgroundColor: cs.surface,
             shape: RoundedRectangleBorder(
@@ -62,16 +116,6 @@ class V3PlacanjeDialogHelper {
             actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             title: Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.payments_outlined, color: cs.primary, size: 20),
-                ),
-                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Naplata: $imePrezime',
@@ -130,26 +174,36 @@ class V3PlacanjeDialogHelper {
                     Expanded(
                       child: DropdownButtonFormField<int>(
                         decoration: const InputDecoration(
-                          labelText: 'Mesec',
                           prefixIcon: Icon(Icons.calendar_month_outlined),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
                         value: _selectedMonth,
                         isExpanded: true,
                         items: List.generate(12, (i) => i + 1).map((m) {
+                          final mesecStyle = _mesecStyle(m);
                           return DropdownMenuItem(
                             value: m,
-                            child: Text(V3DateUtils.mesecNaziv(m)),
+                            child: Text(
+                              V3DateUtils.mesecNaziv(m),
+                              style: TextStyle(
+                                color: mesecStyle.color,
+                                fontWeight: mesecStyle.weight,
+                              ),
+                            ),
                           );
                         }).toList(),
-                        onChanged: (v) => setState(() => _selectedMonth = v!),
+                        onChanged: (v) => setState(() {
+                          _selectedMonth = v!;
+                          if (_autoIznosEnabled) {
+                            _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                          }
+                        }),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<int>(
                         decoration: const InputDecoration(
-                          labelText: 'Godina',
                           prefixIcon: Icon(Icons.event_outlined),
                           contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         ),
@@ -158,7 +212,12 @@ class V3PlacanjeDialogHelper {
                         items: years.map((y) {
                           return DropdownMenuItem(value: y, child: Text('$y.'));
                         }).toList(),
-                        onChanged: (v) => setState(() => _selectedYear = v!),
+                        onChanged: (v) => setState(() {
+                          _selectedYear = v!;
+                          if (_autoIznosEnabled) {
+                            _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                          }
+                        }),
                       ),
                     ),
                   ],
@@ -208,6 +267,7 @@ class V3PlacanjeDialogHelper {
     required String putnikId,
     required String imePrezime,
     required double defaultCena,
+    double? cenaPoModelu,
     bool snimiMesecnuUplatu = false,
     int brojVoznji = 0,
   }) async {
@@ -216,6 +276,7 @@ class V3PlacanjeDialogHelper {
       putnikId: putnikId,
       imePrezime: imePrezime,
       defaultCena: defaultCena,
+      cenaPoModelu: cenaPoModelu,
     );
     if (dialogRezultat == null) return null;
 

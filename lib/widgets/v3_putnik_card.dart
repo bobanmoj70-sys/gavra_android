@@ -274,6 +274,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         putnikId: widget.putnik.id,
         imePrezime: widget.putnik.imePrezime,
         defaultCena: defaultCena,
+        cenaPoModelu: cenaPoModelu,
         snimiMesecnuUplatu: isPoDanuModel,
         brojVoznji: defaults.brojVoznji,
       );
