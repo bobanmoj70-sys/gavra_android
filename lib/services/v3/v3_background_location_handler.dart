@@ -5,6 +5,8 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../utils/v3_time_utils.dart';
+
 /// Konstante za background servis
 const String _kVozacId = 'vozac_id';
 const String _kSetSupabaseConfig = 'set_supabase_config';
@@ -81,11 +83,13 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   // Glavni isolate šalje vozac_id preko invoke
   service.on('set_vozac_id').listen((event) {
     final id = (event?[_kVozacId] as String?)?.trim();
+    debugPrint('[BG] set_vozac_id event received: id=$id');
     if (id != null && id.isNotEmpty) {
       _bgVozacId = id;
       final datumIso = (event?['datum_iso'] ?? '').toString().trim();
       final grad = (event?['grad'] ?? '').toString().trim().toUpperCase();
-      final vreme = (event?['vreme'] ?? '').toString().trim();
+      final vreme = V3TimeUtils.normalizeToHHmm((event?['vreme'] ?? '').toString());
+      debugPrint('[BG] set_vozac_id termin: datum=$datumIso grad=$grad vreme=$vreme');
       if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
       if (grad.isNotEmpty) _bgGrad = grad;
       if (vreme.isNotEmpty) _bgVreme = vreme;
@@ -95,9 +99,12 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
 
   // Glavni isolate šalje aktivni termin (grad+vreme)
   service.on('set_termin').listen((event) {
-    _bgDatumIso = (event?['datum_iso'] ?? '').toString().trim();
-    _bgGrad = (event?['grad'] ?? '').toString().trim().toUpperCase();
-    _bgVreme = (event?['vreme'] ?? '').toString().trim();
+    final datumIso = (event?['datum_iso'] ?? '').toString().trim();
+    final grad = (event?['grad'] ?? '').toString().trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm((event?['vreme'] ?? '').toString());
+    if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
+    if (grad.isNotEmpty) _bgGrad = grad;
+    if (vreme.isNotEmpty) _bgVreme = vreme;
     debugPrint('[BG] Termin ažuriran: datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme');
   });
 }
@@ -114,6 +121,12 @@ void _bgStartTimer() {
 Future<void> _bgSendLocation() async {
   final vozacId = _bgVozacId;
   if (vozacId == null || vozacId.isEmpty || _bgInFlight) return;
+
+  if (_bgDatumIso.isEmpty || _bgGrad.isEmpty || _bgVreme.isEmpty) {
+    debugPrint('[BG] Preskačem upis lokacije: termin nije postavljen (datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme)');
+    debugPrint('[BG] Stack trace: ${StackTrace.current}');
+    return;
+  }
 
   final client = _bgSupabaseClient;
   if (client == null) {
@@ -148,13 +161,8 @@ Future<void> _bgSendLocation() async {
       ),
     );
 
-    if (_bgDatumIso.isEmpty || _bgGrad.isEmpty || _bgVreme.isEmpty) {
-      debugPrint('[BG] Preskačem upis lokacije: termin nije postavljen (datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme)');
-    }
-
     // Čuvaj trenutnu lokaciju u waypoints_json
-    if (_bgDatumIso.isNotEmpty && _bgGrad.isNotEmpty && _bgVreme.isNotEmpty) {
-      try {
+    try {
         final currentLocation = <Map<String, dynamic>>[
           {
             'lat': position.latitude,
@@ -181,7 +189,6 @@ Future<void> _bgSendLocation() async {
       } catch (e) {
         debugPrint('[BG] Greška pri čuvanju trenutne lokacije: $e');
       }
-    }
 
     await activeClient.functions.invoke(
       'v3-compute-eta',

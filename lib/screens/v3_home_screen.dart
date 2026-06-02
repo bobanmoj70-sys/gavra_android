@@ -329,31 +329,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     // Start tracking
     await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
 
-    // Compute ETA za optimizaciju rute
-    if (_blockingGrad != null && _blockingVreme != null) {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 12),
-          ),
-        );
-        debugPrint('[BLOCKING] GPS: ${position.latitude}, ${position.longitude}');
-
-        final etaResult = await V3VozacLocationTrackingService.instance.computeEta(
-          vozacId: vozacId,
-          lat: position.latitude,
-          lng: position.longitude,
-          grad: _blockingGrad!,
-          vreme: _blockingVreme!,
-        );
-        debugPrint('[BLOCKING] ETA map: ${etaResult.etaMap}');
-        debugPrint('[BLOCKING] optimized order: ${etaResult.order}');
-      } catch (e) {
-        debugPrint('[BLOCKING] ETA compute error: $e');
-      }
-    }
-
     // Dismiss blocking screen
     setState(() {
       _showBlockingScreen = false;

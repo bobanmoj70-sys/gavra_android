@@ -246,7 +246,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         return isCompletedA ? 1 : -1;
       }
 
-      // Koristi OSRM optimizovani redosled ako je dostupan
+      // Koristi OSRM optimizovani redosled ako je dostupan (foreground)
       if (sharedOptimizedIds.isNotEmpty) {
         int indexA = sharedOptimizedIds.indexOf(a.putnik.id);
         int indexB = sharedOptimizedIds.indexOf(b.putnik.id);
@@ -255,7 +255,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         return indexA.compareTo(indexB);
       }
 
-      // Fallback: sortira po ETA ako optimizovani redosled nije dostupan
+      // Fallback: order_index iz realtime cache-a (background ažuriranja)
+      if (_orderIndexCache.isNotEmpty) {
+        final orderA = _orderIndexCache[a.putnik.id] ?? 999;
+        final orderB = _orderIndexCache[b.putnik.id] ?? 999;
+        return orderA.compareTo(orderB);
+      }
+
+      // Poslednji fallback: sortira po ETA sekundama
       final etaA = sharedEtaCache[a.putnik.id] ?? 999999;
       final etaB = sharedEtaCache[b.putnik.id] ?? 999999;
       return etaA.compareTo(etaB);
@@ -444,18 +451,24 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Future<void> _startDriverLocationTracking() async {
     final vozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
     if (vozacId.isEmpty) return;
-    
+
+    // Ako termin još nije izabran, pokušaj automatski izbor
+    if (_selectedVreme.isEmpty) {
+      _selectFirstTermin();
+    }
+    if (_selectedVreme.isEmpty) {
+      debugPrint('[V3VozacScreen] Nemam termin za tracking, preskačem');
+      return;
+    }
+
     // Postavi aktivni termin pre pokretanja tracking-a
     V3VozacLocationTrackingService.instance.setActiveTermin(
       datumIso: _selectedDatumIso,
       grad: _selectedGrad,
       vreme: _selectedVreme,
     );
-    
-    await V3VozacLocationTrackingService.instance.start(
-      vozacId: vozacId,
-      sendImmediateLocation: false,
-    );
+
+    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
   }
 
   bool _isPutnikEntryCompleted(_PutnikEntry item) {
@@ -1066,52 +1079,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     await _startDriverLocationTracking();
-
-    // Odmah dohvati prvi ETA da sortiramo kartice — ne čekamo realtime sync
-    // GPS uzimamo direktno ovde jer _sendCurrentLocation() još uvek trči u pozadini
-    // i lastKnownPosition je verovatno null u ovom trenutku.
-    final vid = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (vid.isNotEmpty) {
-      try {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 12),
-          ),
-        );
-        debugPrint('[START] direct GPS: ${position.latitude}, ${position.longitude}');
-
-        try {
-          await V3TrenutnaDodelaSlotService.updateCurrentLocation(
-            datumIso: _selectedDatumIso,
-            grad: _selectedGrad,
-            vreme: _selectedVreme,
-            vozacId: vid,
-            lat: position.latitude,
-            lng: position.longitude,
-          );
-        } catch (e) {
-          debugPrint('[START] immediate location save error: $e');
-        }
-
-        final etaResult = await V3VozacLocationTrackingService.instance.computeEta(
-          vozacId: vid,
-          lat: position.latitude,
-          lng: position.longitude,
-          grad: _selectedGrad,
-          vreme: _selectedVreme,
-        );
-        debugPrint('[START] ETA map: ${etaResult.etaMap}');
-        debugPrint('[START] optimized order: ${etaResult.order}');
-
-        if (mounted) {
-          _refreshPutniciOrderFromEtaCache();
-          debugPrint('[START] cards re-sorted by OSRM order');
-        }
-      } catch (e) {
-        debugPrint('[START] immediate ETA fetch error: $e');
-      }
-    }
 
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {

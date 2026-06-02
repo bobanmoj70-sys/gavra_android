@@ -135,7 +135,7 @@ class V3VozacLocationTrackingService {
     }
   }
 
-  Future<void> start({required String vozacId, bool sendImmediateLocation = true}) async {
+  Future<void> start({required String vozacId}) async {
     final normalizedVozacId = vozacId.trim();
     if (normalizedVozacId.isEmpty) return;
 
@@ -167,10 +167,15 @@ class V3VozacLocationTrackingService {
       }
     }
 
+    await _syncBackgroundSupabaseConfig(service);
+
     _isRunning = true;
 
-    await _syncBackgroundSupabaseConfig(service);
-    _syncBackgroundTermin(service);
+    // Prosledi termin background servisu ako je setovan
+    if (_activeDatumIso.isNotEmpty || _activeGrad.isNotEmpty || _activeVreme.isNotEmpty) {
+      debugPrint('[V3VozacLocationTrackingService] Šaljem termin background servisu: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
+      service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
+    }
 
     // Prosledi vozac_id background servisu (+ fallback aktivni termin)
     service.invoke('set_vozac_id', {
@@ -179,11 +184,6 @@ class V3VozacLocationTrackingService {
       'grad': _activeGrad,
       'vreme': _activeVreme,
     });
-
-    // Odmah pošalji i iz foreground-a (za brzu povratnu informaciju)
-    if (sendImmediateLocation) {
-      unawaited(_sendCurrentLocation());
-    }
 
     // Deblokiraj ekran ako je bio blokiran
     V3BlockingScreenService.instance.onBlockingScreenDismissed();
@@ -203,12 +203,11 @@ class V3VozacLocationTrackingService {
   Future<void> stop() async {
     final vozacIdToClean = _activeVozacId;
     _activeVozacId = '';
-    _activeDatumIso = '';
-    _activeGrad = '';
-    _activeVreme = '';
     _lastSentPosition = null;
     _isRunning = false;
     onLocationSent = null;
+    _optimizedPutnikIds.clear();
+    _etaSecondsCache.clear();
 
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
@@ -217,58 +216,6 @@ class V3VozacLocationTrackingService {
 
     if (vozacIdToClean.isNotEmpty) {
       await clearEtaForVozac(vozacId: vozacIdToClean);
-    }
-  }
-
-  /// Pomoćna metoda za odmah slanje iz foreground-a (za brz UI feedback).
-  Future<void> _sendCurrentLocation() async {
-    if (_inFlight || _activeVozacId.isEmpty) return;
-    _inFlight = true;
-
-    try {
-      final locationStatus = await checkLocationPrerequisites();
-      if (locationStatus != V3LocationPrereqStatus.ok) return;
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 12),
-        ),
-      );
-
-      _lastSentPosition = position;
-      onLocationSent?.call(position);
-
-      // Čuvaj trenutnu lokaciju u waypoints_json
-      if (_activeDatumIso.isNotEmpty && _activeGrad.isNotEmpty && _activeVreme.isNotEmpty) {
-        unawaited(
-          V3TrenutnaDodelaSlotService.updateCurrentLocation(
-            datumIso: _activeDatumIso,
-            grad: _activeGrad,
-            vreme: _activeVreme,
-            vozacId: _activeVozacId,
-            lat: position.latitude,
-            lng: position.longitude,
-          ).catchError((Object e) => debugPrint('[V3VozacLocationTrackingService] updateCurrentLocation error: $e')),
-        );
-      }
-
-      unawaited(
-        computeEta(
-          vozacId: _activeVozacId,
-          lat: position.latitude,
-          lng: position.longitude,
-          grad: _activeGrad,
-          vreme: _activeVreme,
-        ).catchError((Object e) {
-          debugPrint('[V3VozacLocationTrackingService] computeEta error: $e');
-          return (etaMap: <String, int>{}, order: <String>[]);
-        }),
-      );
-    } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] send error: $e');
-    } finally {
-      _inFlight = false;
     }
   }
 
