@@ -22,6 +22,21 @@ SupabaseClient? _bgSupabaseClient;
 String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
 
+Future<void> _bgClearEtaForVozac(String vozacId) async {
+  final normalized = vozacId.trim();
+  if (normalized.isEmpty) return;
+
+  _bgTryInitSupabaseClient();
+  final client = _bgSupabaseClient;
+  if (client == null) return;
+
+  try {
+    await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
+  } catch (e) {
+    debugPrint('[BG] ETA cleanup error: $e');
+  }
+}
+
 void _bgTryInitSupabaseClient() {
   if (_bgSupabaseClient != null) return;
   if (_bgSupabaseUrl.isEmpty || _bgSupabaseAnonKey.isEmpty) return;
@@ -49,8 +64,12 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   });
 
   service.on(_kActionStop).listen((event) {
+    final vozacIdToClean = _bgVozacId;
     _bgTimer?.cancel();
     _bgTimer = null;
+    if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
+      unawaited(_bgClearEtaForVozac(vozacIdToClean));
+    }
     _bgVozacId = null;
     _bgDatumIso = '';
     _bgSupabaseUrl = '';
@@ -154,7 +173,7 @@ Future<void> _bgSendLocation() async {
             .eq('status', 'aktivan')
             .select('datum');
 
-        if (updatedRows is List && updatedRows.isEmpty) {
+        if (updatedRows.isEmpty) {
           debugPrint('[BG] updateCurrentLocation: 0 rows updated for slot=$_bgDatumIso|$_bgGrad|$_bgVreme vozac=$vozacId');
         }
 

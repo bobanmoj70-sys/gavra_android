@@ -187,7 +187,7 @@ class V3VozacLocationTrackingService {
     }
 
     if (vozacIdToClean.isNotEmpty) {
-      unawaited(clearEtaForVozac(vozacId: vozacIdToClean));
+      await clearEtaForVozac(vozacId: vozacIdToClean);
     }
   }
 

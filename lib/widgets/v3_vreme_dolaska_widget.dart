@@ -35,18 +35,6 @@ class V3VremeDolaskaWidget extends StatelessWidget {
     return (etaSeconds: eta, isStale: stale, vozacId: vozacId);
   }
 
-  /// Proverava da li putnik ima barem jedan aktivni termin (nije pokupljen ni otkazan).
-  bool _putnikHasActiveTermin() {
-    for (final row in V3MasterRealtimeManager.instance.operativnaNedeljaCache.values) {
-      final createdBy = row['created_by']?.toString();
-      if (createdBy != putnikId) continue;
-      if (row['pokupljen_at'] != null) continue;
-      if (row['otkazano_at'] != null) continue;
-      return true;
-    }
-    return false;
-  }
-
   int _buildEtaMinutes(int etaSeconds) {
     if (etaSeconds <= 0) return 0;
     return (etaSeconds / 60).ceil();
@@ -176,8 +164,7 @@ class V3VremeDolaskaWidget extends StatelessWidget {
         final isStale = etaState.isStale;
         final vozacId = etaState.vozacId;
 
-        final hasActiveTermin = _putnikHasActiveTermin();
-        final hasFreshEta = eta != null && !isStale && hasActiveTermin;
+        final hasFreshEta = eta != null && !isStale;
         final minutes = hasFreshEta ? _buildEtaMinutes(eta) : null;
         final nextRide = hasFreshEta ? null : _findNextPutnikRide();
         final nextRideLabel =
