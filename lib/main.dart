@@ -347,7 +347,7 @@ void main() async {
       androidConfiguration: AndroidConfiguration(
         onStart: onBackgroundServiceStart,
         autoStart: false,
-        isForegroundMode: true,
+        isForegroundMode: false,
         notificationChannelId: 'gavra_gps_tracking',
         initialNotificationTitle: 'GPS Tracking',
         initialNotificationContent: 'Praćenje lokacije aktivno',
@@ -356,7 +356,7 @@ void main() async {
       ),
       iosConfiguration: IosConfiguration(
         autoStart: false,
-        onForeground: onBackgroundServiceStart,
+        onForeground: null,
         onBackground: (_) => true,
       ),
     );
