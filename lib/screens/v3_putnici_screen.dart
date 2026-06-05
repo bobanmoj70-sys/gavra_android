@@ -444,9 +444,7 @@ class _PutnikCard extends StatelessWidget {
                   )),
                 ],
               ),
-              const SizedBox(height: 6),
-              // ── Last seen row ────────────────────────────────────
-              _LastSeenRow(putnik: putnik),
+              _buildLastSeenBtn(context),
             ],
           ),
         ),
@@ -454,9 +452,42 @@ class _PutnikCard extends StatelessWidget {
     );
   }
 
+  Widget _buildLastSeenBtn(BuildContext context) {
+    final s1 = putnik.lastSeenAt;
+    final s2 = putnik.lastSeenAt2;
+    if (s1 == null && s2 == null) return const SizedBox.shrink();
+
+    String pad(int n) => n.toString().padLeft(2, '0');
+    String fmt(DateTime dt) {
+      final d = dt.toLocal();
+      return '${pad(d.day)}.${pad(d.month)}.${d.year}  ${pad(d.hour)}:${pad(d.minute)}';
+    }
+
+    final label = [
+      if (s1 != null) fmt(s1),
+      if (s2 != null) fmt(s2),
+    ].join('   ');
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: _actionBtn(
+              context: context,
+              label: label,
+              color: Colors.amber,
+              onPressed: () {},
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _actionBtn({
     required BuildContext context,
-    required IconData icon,
+    IconData? icon,
     required String label,
     required Color color,
     required VoidCallback onPressed,
