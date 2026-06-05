@@ -613,45 +613,6 @@ class _PutnikCard extends StatelessWidget {
   }
 }
 
-// ─── Last Seen Row ────────────────────────────────────────────────────────────
-
-class _LastSeenRow extends StatelessWidget {
-  const _LastSeenRow({required this.putnik});
-  final V3Putnik putnik;
-
-  String _fmt(DateTime dt) {
-    final d = dt.toLocal();
-    String pad(int n) => n.toString().padLeft(2, '0');
-    return '${pad(d.day)}.${pad(d.month)}.${d.year}  ${pad(d.hour)}:${pad(d.minute)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s1 = putnik.lastSeenAt;
-    final s2 = putnik.lastSeenAt2;
-    if (s1 == null && s2 == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        children: [
-          const Icon(Icons.access_time, size: 12, color: Colors.white30),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              [
-                if (s1 != null) '📱 ${_fmt(s1)}',
-                if (s2 != null) '📱₂ ${_fmt(s2)}',
-              ].join('   '),
-              style: const TextStyle(fontSize: 10, color: Colors.white38),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── Add / Edit Dialog ────────────────────────────────────────────────────────
 
 class _PutnikDialog extends StatefulWidget {
