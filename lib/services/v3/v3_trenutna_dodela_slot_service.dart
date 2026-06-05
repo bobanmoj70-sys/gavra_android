@@ -211,7 +211,8 @@ class V3TrenutnaDodelaSlotService {
         .select('datum');
 
     if (updatedRows.isEmpty) {
-      debugPrint('[V3TrenutnaDodelaSlotService] updateWaypointsJson: 0 rows updated for slot=$datum|$gradNorm|$vremeNorm vozac=$vozacIdNorm');
+      debugPrint(
+          '[V3TrenutnaDodelaSlotService] updateWaypointsJson: 0 rows updated for slot=$datum|$gradNorm|$vremeNorm vozac=$vozacIdNorm');
     }
   }
 
@@ -249,8 +250,46 @@ class V3TrenutnaDodelaSlotService {
         .select('datum');
 
     if (updatedRows.isEmpty) {
-      debugPrint('[V3TrenutnaDodelaSlotService] updateCurrentLocation: 0 rows updated for slot=$datum|$gradNorm|$vremeNorm vozac=$vozacIdNorm');
+      debugPrint(
+          '[V3TrenutnaDodelaSlotService] updateCurrentLocation: 0 rows updated for slot=$datum|$gradNorm|$vremeNorm vozac=$vozacIdNorm');
     }
+  }
+
+  static Future<void> mergePassengersIntoWaypointsJson({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+    required String vozacId,
+    required List<Map<String, dynamic>> passengers,
+  }) async {
+    final datum = _normalizeDatumIso(datumIso);
+    final gradNorm = _normalizeGrad(grad);
+    final vremeNorm = _normalizeVreme(vreme);
+    final vozacIdNorm = vozacId.trim();
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozacIdNorm.isEmpty) return;
+
+    final rows = await supabase
+        .from(tableName)
+        .select('id, $colWaypointsJson')
+        .eq(colDatum, datum)
+        .eq(colGrad, gradNorm)
+        .eq(colVreme, vremeNorm)
+        .eq(colVozacId, vozacIdNorm)
+        .eq(colStatus, statusAktivan);
+
+    if ((rows as List<dynamic>).isEmpty) return;
+
+    final row = rows.first;
+    final rowId = row['id']?.toString().trim() ?? '';
+    if (rowId.isEmpty) return;
+
+    final existing = row[colWaypointsJson];
+    final merged = <String, dynamic>{
+      if (existing is Map) ...Map<String, dynamic>.from(existing as Map<String, dynamic>),
+      'passengers': passengers,
+    };
+
+    await supabase.from(tableName).update({colWaypointsJson: merged}).eq('id', rowId);
   }
 
   static Future<void> deleteBySlot({

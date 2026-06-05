@@ -75,6 +75,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Map<String, String> _allTerminToVozac = <String, String>{};
   bool _autoStopInProgress = false;
   bool _isNavigating = false;
+  String _lastSyncedPassengersSignature = '';
   bool _hasSentRouteToMap = false;
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
@@ -652,6 +653,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // dok je computeEta() poziv još uvek u toku.
     if (_isNavigating) {
       _refreshPutniciOrderFromEtaCache();
+      unawaited(_syncPassengersToSlotIfNeeded());
     }
 
     _maybeAutoStopTrackingForCompletedTermin(putniciZaPrikaz);
@@ -897,6 +899,63 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     );
   }
 
+  String _passengersSignature() {
+    final preostali = _mojiPutnici.where((p) => !_isPutnikEntryCompleted(p));
+    return preostali.map((p) => '${p.putnik.id}|${p.entry?.id ?? ""}').join(',');
+  }
+
+  Future<void> _syncPassengersToSlotIfNeeded() async {
+    if (!_isNavigating) return;
+    final sig = _passengersSignature();
+    if (sig == _lastSyncedPassengersSignature) return;
+    _lastSyncedPassengersSignature = sig;
+    unawaited(_syncPassengersToSlot());
+  }
+
+  Future<void> _syncPassengersToSlot() async {
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isEmpty || _selectedGrad.isEmpty || _selectedVreme.isEmpty) return;
+
+    final preostali = _mojiPutnici.where((item) => !_isPutnikEntryCompleted(item)).toList(growable: false);
+
+    final passengerData = <Map<String, dynamic>>[];
+    for (final item in preostali) {
+      final terminId = (item.entry?.id ?? '').trim();
+      if (terminId.isEmpty) continue;
+
+      final grad = (item.entry?.grad ?? _selectedGrad).trim().toUpperCase();
+      final waypoint = await _routeWaypointResolverService.resolveWaypointForPutnikModel(
+        putnik: item.putnik,
+        grad: grad,
+        koristiSekundarnu: item.entry?.koristiSekundarnu ?? false,
+        adresaIdOverride: (item.entry?.adresaIdOverride ?? '').trim(),
+        waypointId: item.putnik.id,
+        waypointLabel: item.putnik.imePrezime,
+      );
+      if (waypoint == null) continue;
+
+      passengerData.add(<String, dynamic>{
+        'putnik_id': item.putnik.id,
+        'termin_id': terminId,
+        'lat': waypoint.coordinate.latitude,
+        'lng': waypoint.coordinate.longitude,
+      });
+    }
+
+    try {
+      await V3TrenutnaDodelaSlotService.mergePassengersIntoWaypointsJson(
+        datumIso: _selectedDatumIso,
+        grad: _selectedGrad,
+        vreme: _selectedVreme,
+        vozacId: vozacId,
+        passengers: passengerData,
+      );
+      debugPrint('[SYNC] passengers synced to slot: ${passengerData.length}');
+    } catch (e) {
+      debugPrint('[SYNC] mergePassengersIntoWaypointsJson error: $e');
+    }
+  }
+
   Future<({List<V3RouteWaypoint> waypoints, int unresolvedCount})> _resolveWaypointsForCurrentOrder() async {
     final preostali = _mojiPutnici.where((item) => !_isPutnikEntryCompleted(item)).toList(growable: false);
     debugPrint('[WAYPOINTS] resolving ${preostali.length} preostalih (od ${_mojiPutnici.length} ukupno)...');
@@ -1058,6 +1117,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     await _startDriverLocationTracking();
+
+    unawaited(_syncPassengersToSlot());
 
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
