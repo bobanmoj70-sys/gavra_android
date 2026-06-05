@@ -18,10 +18,152 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
   static const Color _accent = Color(0xFFFF9800);
   bool _isCreatingInitialData = false;
   bool _isSavingFuelData = false;
+  bool _isDodavanjeGoriva = false;
 
   double? _toDoubleOrNull(String input) {
     final normalized = input.trim().replaceAll(',', '.');
     return double.tryParse(normalized);
+  }
+
+  Future<void> _openDopunaSheet({required V3PumpaRezervoar? rezervoar, required V3PumpaStanje? stanje}) async {
+    final String? id =
+        stanje?.id.isNotEmpty == true ? stanje!.id : (rezervoar?.id.isNotEmpty == true ? rezervoar!.id : null);
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nema reda za dopunu. Prvo dodaj početne podatke.')),
+      );
+      return;
+    }
+
+    final trenutno = stanje?.trenutnoStanje ?? rezervoar?.trenutnoLitara ?? 0;
+    final kapacitet = stanje?.kapacitetLitri ?? rezervoar?.kapacitetMax ?? 0;
+    final dodatoCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: V3ContainerUtils.styledContainer(
+            backgroundColor: const Color(0xFF1D1D1D),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: Theme.of(context).glassBorder),
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Dodaj gorivo',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Trenutno: ${V3FormatUtils.formatGorivo(trenutno)} L / kapacitet ${V3FormatUtils.formatGorivo(kapacitet)} L',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      const SizedBox(height: 12),
+                      _fuelField(controller: dodatoCtrl, label: 'Koliko litara je dopunjeno (L)'),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isDodavanjeGoriva ? null : () => Navigator.of(context).pop(),
+                              child: const Text('Otkaži'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _isDodavanjeGoriva
+                                  ? null
+                                  : () async {
+                                      if (formKey.currentState?.validate() != true) return;
+
+                                      final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
+                                      if (dodato <= 0) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Unesi pozitivan broj litara.')),
+                                        );
+                                        return;
+                                      }
+
+                                      final novoStanje = trenutno + dodato;
+                                      if (novoStanje > kapacitet) {
+                                        final potvrda = await showDialog<bool>(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: const Color(0xFF1D1D1D),
+                                            title: const Text('Prekoračenje kapaciteta',
+                                                style: TextStyle(color: Colors.white)),
+                                            content: Text(
+                                              'Novo stanje ${V3FormatUtils.formatGorivo(novoStanje)} L premašuje kapacitet ${V3FormatUtils.formatGorivo(kapacitet)} L.\n\nIpak dodati?',
+                                              style: const TextStyle(color: Colors.white70),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Ne'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                                                child: const Text('Da'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (potvrda != true) return;
+                                      }
+
+                                      setState(() => _isDodavanjeGoriva = true);
+                                      final success = await V3GorivoService.updateRezervoar(id, novoStanje);
+                                      if (!mounted) return;
+
+                                      setState(() => _isDodavanjeGoriva = false);
+                                      Navigator.of(context).pop();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            success
+                                                ? 'Gorivo dodato. Novo stanje: ${V3FormatUtils.formatGorivo(novoStanje)} L'
+                                                : 'Greška pri dodavanju goriva.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: _isDodavanjeGoriva
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Text('Dodaj'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _openEditFuelDataSheet({required V3PumpaRezervoar? rezervoar, required V3PumpaStanje? stanje}) async {
@@ -292,6 +434,25 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
               kapacitet: kapacitet,
               procenat: procenat,
               ispodAlarma: ispodAlarma,
+            ),
+            SizedBox(height: isCompact ? 10 : 12),
+            Align(
+              alignment: Alignment.center,
+              child: ElevatedButton.icon(
+                onPressed: _isDodavanjeGoriva ? null : () => _openDopunaSheet(rezervoar: r, stanje: stanje),
+                icon: _isDodavanjeGoriva
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.add_circle_outline),
+                label: Text(_isDodavanjeGoriva ? 'Dodavanje...' : 'Dodaj gorivo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ),
             SizedBox(height: isCompact ? 12 : 16),
           ] else ...[
