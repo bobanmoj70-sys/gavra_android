@@ -90,16 +90,16 @@ class V3PlacanjeDialogHelper {
               godina: _selectedYear,
             );
             final uplaceno = summary.ukupanIznos;
-            if (uplaceno <= 0) {
-              return (color: cs.onSurface, weight: FontWeight.w500);
-            }
-
             final cena = cenaPoModelu ?? 0.0;
             if (cena > 0) {
               final ukupnaObaveza = cena * summary.brojVoznji;
               if (ukupnaObaveza > 0 && uplaceno + 0.009 < ukupnaObaveza) {
                 return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
               }
+            }
+
+            if (uplaceno <= 0) {
+              return (color: cs.onSurface, weight: FontWeight.w500);
             }
 
             return (color: const Color(0xFF00C853), weight: FontWeight.w700);
