@@ -501,7 +501,6 @@ Deno.serve(async (req) => {
         putnik_id: putnikId,
         vozac_id: vozacId,
         eta_seconds: cumulative,
-        order_index: tripRank, // OSRM optimizovani redosled (0 = prvi putnik za pokupiti)
         computed_at: now,
       });
     }
@@ -517,6 +516,28 @@ Deno.serve(async (req) => {
 
     if (upsertError) {
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
+    }
+
+    // 13. Update v3_trenutna_dodela_slot waypoints_json with location + optimized_order
+    if (activeSlotDatumi.length > 0) {
+      const waypointsJson = {
+        location: {
+          lat: driverLat,
+          lng: driverLng,
+          timestamp: new Date().toISOString(),
+        },
+        optimized_order: upsertRows.map((r) => r.putnik_id),
+      };
+      const { error: slotUpdateError } = await client
+        .from("v3_trenutna_dodela_slot")
+        .update({ waypoints_json: waypointsJson })
+        .eq("vozac_v3_auth_id", vozacId)
+        .eq("status", "aktivan")
+        .eq("grad", activeGrad)
+        .in("datum", activeSlotDatumi);
+      if (slotUpdateError) {
+        console.warn(`[v3-compute-eta] slot waypoints update error: ${slotUpdateError.message}`);
+      }
     }
 
     console.log(`[v3-compute-eta] ✅ vozac=${vozacId.substring(0, 8)} updated=${upsertRows.length} putnika`);

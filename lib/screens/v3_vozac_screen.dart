@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 
@@ -76,7 +75,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Map<String, String> _allTerminToVozac = <String, String>{};
   bool _autoStopInProgress = false;
   bool _isNavigating = false;
-  final Map<String, int> _orderIndexCache = {};
   bool _hasSentRouteToMap = false;
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
@@ -231,12 +229,47 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return rows;
   }
 
+  List<String> _getOptimizedOrderFromSlotCache() {
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isEmpty) return const [];
+
+    final datumIso = _selectedDatumIso;
+    final grad = _selectedGrad;
+    final vreme = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+
+    final slotCache = V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache;
+    for (final row in slotCache.values) {
+      final rowVozac = (row['vozac_v3_auth_id']?.toString() ?? '').trim();
+      final rowDatum = (row['datum']?.toString() ?? '').trim();
+      final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+      final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
+      final rowStatus = (row['status']?.toString() ?? '').trim();
+
+      if (rowVozac == vozacId &&
+          rowDatum == datumIso &&
+          rowGrad == grad &&
+          rowVreme == vreme &&
+          rowStatus == 'aktivan') {
+        final waypointsJson = row['waypoints_json'];
+        if (waypointsJson is Map) {
+          final order = waypointsJson['optimized_order'];
+          if (order is List) {
+            return order.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+          }
+        }
+        break;
+      }
+    }
+    return const [];
+  }
+
   List<_PutnikEntry> _sortPutniciForDisplay(
     List<_PutnikEntry> putnici,
   ) {
     final sorted = List<_PutnikEntry>.from(putnici);
     final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
     final sharedEtaCache = V3VozacLocationTrackingService.instance.etaSecondsCache;
+    final slotOptimizedOrder = _getOptimizedOrderFromSlotCache();
 
     sorted.sort((a, b) {
       // Završeni (pokupljeni/otkazani) idu na kraj
@@ -255,11 +288,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         return indexA.compareTo(indexB);
       }
 
-      // Fallback: order_index iz realtime cache-a (background ažuriranja)
-      if (_orderIndexCache.isNotEmpty) {
-        final orderA = _orderIndexCache[a.putnik.id] ?? 999;
-        final orderB = _orderIndexCache[b.putnik.id] ?? 999;
-        return orderA.compareTo(orderB);
+      // Fallback: optimized_order iz slot cache-a (background ažuriranja)
+      if (slotOptimizedOrder.isNotEmpty) {
+        int indexA = slotOptimizedOrder.indexOf(a.putnik.id);
+        int indexB = slotOptimizedOrder.indexOf(b.putnik.id);
+        if (indexA == -1) indexA = 999;
+        if (indexB == -1) indexB = 999;
+        return indexA.compareTo(indexB);
       }
 
       // Poslednji fallback: sortira po ETA sekundama
@@ -280,43 +315,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return sorted;
   }
 
-  void _refreshEtaCacheFromManager() {
-    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (vozacId.isEmpty) {
-      _orderIndexCache.clear();
-      return;
-    }
-
-    final nextOrder = <String, int>{};
-    final etaRows = V3MasterRealtimeManager.instance.etaResultsCache.values;
-    for (final row in etaRows) {
-      final rowVozacId = (row['vozac_id']?.toString() ?? '').trim();
-      if (rowVozacId != vozacId) continue;
-
-      final putnikId = (row['putnik_id']?.toString() ?? '').trim();
-      if (putnikId.isEmpty) continue;
-
-      final orderRaw = row['order_index'];
-      int? orderIndex;
-      if (orderRaw is num) {
-        orderIndex = orderRaw.toInt();
-      } else if (orderRaw is String) {
-        orderIndex = int.tryParse(orderRaw);
-      }
-      if (orderIndex != null && orderIndex >= 0) {
-        nextOrder[putnikId] = orderIndex;
-      }
-    }
-
-    _orderIndexCache
-      ..clear()
-      ..addAll(nextOrder);
-  }
-
   void _refreshPutniciOrderFromEtaCache() {
     final sharedEtaCache = V3VozacLocationTrackingService.instance.etaSecondsCache;
     final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    if (sharedEtaCache.isEmpty && sharedOptimizedIds.isEmpty) return;
+    final slotOrder = _getOptimizedOrderFromSlotCache();
+    if (sharedEtaCache.isEmpty && sharedOptimizedIds.isEmpty && slotOrder.isEmpty) return;
     if (_mojiPutnici.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
     if (mounted) {
@@ -379,7 +382,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Tracking se zaustavlja SAMO kada su svi putnici pokupljeni/otkazani
     // ili kada je aplikacija stvarno ubijena (detached)
     // NE zaustavljati pri promeni ekrana ili background
-    
+
     if (state == AppLifecycleState.detached) {
       // SAMO kad je app stvarno ubijena
       V3VozacLocationTrackingService.instance.stop();
@@ -638,7 +641,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       );
     }
 
-    _refreshEtaCacheFromManager();
     final putniciZaPrikaz = _sortPutniciForDisplay(putnici);
 
     V3StateUtils.safeSetState(this, () {
@@ -917,29 +919,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final resolved = resolvedOrNull.whereType<V3RouteWaypoint>().toList(growable: false);
     debugPrint('[WAYPOINTS] resolved=${resolved.length} unresolved=${resolvedOrNull.length - resolved.length}');
     return (waypoints: resolved, unresolvedCount: resolvedOrNull.length - resolved.length);
-  }
-
-  void _applyOptimizedOrderToPutnici() {
-    final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    if (sharedOptimizedIds.isEmpty) return;
-
-    // Kad je aktivna navigacija nakon klika, zadržavamo strogi optimizovani redosled
-    _mojiPutnici.sort((a, b) {
-      // Završeni svakako idu na dno
-      final isCompletedA = _isPutnikEntryCompleted(a);
-      final isCompletedB = _isPutnikEntryCompleted(b);
-      if (isCompletedA != isCompletedB) {
-        return isCompletedA ? 1 : -1;
-      }
-
-      int indexA = sharedOptimizedIds.indexOf(a.putnik.id);
-      int indexB = sharedOptimizedIds.indexOf(b.putnik.id);
-
-      if (indexA == -1) indexA = 999;
-      if (indexB == -1) indexB = 999;
-
-      return indexA.compareTo(indexB);
-    });
   }
 
   Future<
@@ -1248,7 +1227,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label: V3VozacLocationTrackingService.instance.isRunning ? 'TRACKING AKTIVAN' : 'START',
+                                  label:
+                                      V3VozacLocationTrackingService.instance.isRunning ? 'TRACKING AKTIVAN' : 'START',
                                   color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.green,
                                   height: appBarButtonHeight,
                                   onTap: () {

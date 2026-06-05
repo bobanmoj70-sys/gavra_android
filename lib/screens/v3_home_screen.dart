@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../globals.dart';
 import '../models/v3_adresa.dart';
@@ -12,6 +11,7 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_app_update_service.dart';
+import '../services/v3/v3_blocking_screen_service.dart';
 import '../services/v3/v3_dodela_resolver_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
@@ -19,16 +19,15 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
-import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
-import '../services/v3/v3_blocking_screen_service.dart';
-import '../services/v3/v3_driver_push_notification_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -36,15 +35,14 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
+import '../widgets/v3_blocking_screen_widget.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
-import '../widgets/v3_blocking_screen_widget.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
@@ -69,7 +67,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
-  
+
   // Blocking screen state
   String? _blockingGrad;
   String? _blockingVreme;
@@ -245,7 +243,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final vozac = V3VozacService.currentVozac;
     if (vozac == null) return;
 
-    final vozacId = vozac.id?.toString() ?? '';
+    final vozacId = vozac.id.toString();
     if (vozacId.isEmpty) return;
 
     // Set callback FIRST — initializeBlockingScreen may fire it immediately
@@ -314,7 +312,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final vozac = V3VozacService.currentVozac;
     if (vozac == null) return;
 
-    final vozacId = vozac.id?.toString() ?? '';
+    final vozacId = vozac.id.toString();
     if (vozacId.isEmpty) return;
 
     // Postavi aktivni termin pre pokretanja tracking-a
@@ -934,458 +932,462 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               }).toList()
                 ..sort((a, b) {
                   return V3StatusPolicy.compareEntriesForDisplay<V3OperativnaNedeljaEntry>(
-                a: a,
-                b: b,
-                currentVozacId: currentVozacId,
-                otkazanoAtOf: (entry) => entry.otkazanoAt,
-                pokupljenAtOf: (entry) => entry.pokupljenAt,
-                putnikIdOf: (entry) => entry.putnikId,
-                assignedVozacIdForEntry: (entry) {
-                  final indiv = _getVozacZaPutnika(
-                    entry.putnikId,
-                    entry.grad ?? '',
-                    slotVreme(entry),
-                    _selectedDatumIso,
+                    a: a,
+                    b: b,
+                    currentVozacId: currentVozacId,
+                    otkazanoAtOf: (entry) => entry.otkazanoAt,
+                    pokupljenAtOf: (entry) => entry.pokupljenAt,
+                    putnikIdOf: (entry) => entry.putnikId,
+                    assignedVozacIdForEntry: (entry) {
+                      final indiv = _getVozacZaPutnika(
+                        entry.putnikId,
+                        entry.grad ?? '',
+                        slotVreme(entry),
+                        _selectedDatumIso,
+                      );
+                      return indiv?.id;
+                    },
+                    putnikNameById: (putnikId) => V3PutnikService.getPutnikById(putnikId)?.imePrezime ?? '',
                   );
-                  return indiv?.id;
-                },
-                putnikNameById: (putnikId) => V3PutnikService.getPutnikById(putnikId)?.imePrezime ?? '',
-              );
-            });
+                });
 
-          final resolvedZapisi = prikazaniZapisi.map((z) {
-            final p = _resolvePutnik(z);
-            final putnik = p ??
-                V3Putnik(
-                  id: z.putnikId,
-                  imePrezime: 'Nepoznat putnik',
-                  tipPutnika: 'dnevni',
+              final resolvedZapisi = prikazaniZapisi.map((z) {
+                final p = _resolvePutnik(z);
+                final putnik = p ??
+                    V3Putnik(
+                      id: z.putnikId,
+                      imePrezime: 'Nepoznat putnik',
+                      tipPutnika: 'dnevni',
+                    );
+                return (entry: z, putnik: putnik);
+              }).toList();
+
+              // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
+              int getPutnikCount(String grad, String vreme) {
+                return V3StatusPolicy.countOccupiedSeatsForSlot<V3OperativnaNedeljaEntry>(
+                  items: sviZapisi,
+                  grad: grad,
+                  vreme: vreme,
+                  includeItem: (entry) {
+                    final tip =
+                        (V3MasterRealtimeManager.instance.putniciCache[entry.putnikId]?['tip_putnika'] as String?)
+                            ?.toLowerCase()
+                            .trim();
+                    return tip != 'posiljka';
+                  },
+                  gradOf: (entry) => entry.grad,
+                  vremeOf: (entry) => entry.polazakAt,
+                  statusOf: (entry) => entry.statusFinal,
+                  otkazanoAtOf: (entry) => entry.otkazanoAt,
                 );
-            return (entry: z, putnik: putnik);
-          }).toList();
+              }
 
-          // Brojač po gradu/vremenu za bottom nav bar (nav bar prikazuje oba grada)
-          int getPutnikCount(String grad, String vreme) {
-            return V3StatusPolicy.countOccupiedSeatsForSlot<V3OperativnaNedeljaEntry>(
-              items: sviZapisi,
-              grad: grad,
-              vreme: vreme,
-              includeItem: (entry) {
-                final tip = (V3MasterRealtimeManager.instance.putniciCache[entry.putnikId]?['tip_putnika'] as String?)
-                    ?.toLowerCase()
-                    .trim();
-                return tip != 'posiljka';
-              },
-              gradOf: (entry) => entry.grad,
-              vremeOf: (entry) => entry.polazakAt,
-              statusOf: (entry) => entry.statusFinal,
-              otkazanoAtOf: (entry) => entry.otkazanoAt,
-            );
-          }
+              // Kapacitet
+              int? getKapacitet(String grad, String vreme) {
+                final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+                return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
+              }
 
-          // Kapacitet
-          int? getKapacitet(String grad, String vreme) {
-            final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
-            return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
-          }
+              Color? getVozacColorForTermin(String grad, String vreme) {
+                final rm = V3MasterRealtimeManager.instance;
+                final vozacId = V3StatusPolicy.sharedVozacIdForTermin(
+                  operativnaRows: rm.operativnaNedeljaCache.values,
+                  grad: grad,
+                  vreme: vreme,
+                  datumIso: _selectedDatumIso,
+                  vozacIdForRow: _vozacIdForOperativnaRow,
+                  isVisibleRow: _isVisibleOperativnaRow,
+                  vremeKolona: 'polazak_at',
+                );
+                final resolvedVozacId = (vozacId ?? '').trim().isNotEmpty
+                    ? vozacId!.trim()
+                    : V3DodelaResolverService.resolveVozacIdForSlot(
+                        datumIso: _selectedDatumIso,
+                        grad: grad,
+                        vreme: vreme,
+                        activeVozacBySlotKey: _activeVozacBySlotKey,
+                      );
+                if (resolvedVozacId.isNotEmpty) {
+                  final vozac = V3VozacService.getVozacById(resolvedVozacId);
+                  if (vozac != null) return V3CardColorPolicy.vozacColorOr(vozac.boja);
+                }
 
-          Color? getVozacColorForTermin(String grad, String vreme) {
-            final rm = V3MasterRealtimeManager.instance;
-            final vozacId = V3StatusPolicy.sharedVozacIdForTermin(
-              operativnaRows: rm.operativnaNedeljaCache.values,
-              grad: grad,
-              vreme: vreme,
-              datumIso: _selectedDatumIso,
-              vozacIdForRow: _vozacIdForOperativnaRow,
-              isVisibleRow: _isVisibleOperativnaRow,
-              vremeKolona: 'polazak_at',
-            );
-            final resolvedVozacId = (vozacId ?? '').trim().isNotEmpty
-                ? vozacId!.trim()
-                : V3DodelaResolverService.resolveVozacIdForSlot(
-                    datumIso: _selectedDatumIso,
-                    grad: grad,
-                    vreme: vreme,
-                    activeVozacBySlotKey: _activeVozacBySlotKey,
-                  );
-            if (resolvedVozacId.isNotEmpty) {
-              final vozac = V3VozacService.getVozacById(resolvedVozacId);
-              if (vozac != null) return V3CardColorPolicy.vozacColorOr(vozac.boja);
-            }
+                return null;
+              }
 
-            return null;
-          }
+              final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
+              final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
+              final appBarHeight = 106 + (headerScaleExtra * 20);
+              final headerControlHeight = 33 + (headerScaleExtra * 8);
+              final weekRange = V3DanHelper.schedulingWeekRange();
+              final ponedeljak = weekRange.start;
+              final petak = weekRange.end;
+              final aktivnaNedelja =
+                  'Operativna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
-          final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
-          final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
-          final appBarHeight = 106 + (headerScaleExtra * 20);
-          final headerControlHeight = 33 + (headerScaleExtra * 8);
-          final weekRange = V3DanHelper.schedulingWeekRange();
-          final ponedeljak = weekRange.start;
-          final petak = weekRange.end;
-          final aktivnaNedelja =
-              'Operativna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
-
-          return V3ContainerUtils.gradientContainer(
-            gradient: V3ThemeManager().currentGradient,
-            child: Stack(
-              children: [
-                Scaffold(
-                  backgroundColor: Colors.transparent,
-                  appBar: PreferredSize(
-                    preferredSize: Size.fromHeight(appBarHeight),
-                    child: V3ContainerUtils.iconContainer(
-                      backgroundColor: Theme.of(context).glassContainer,
-                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                      borderRadiusGeometry: const BorderRadius.only(
-                        bottomLeft: Radius.circular(25),
-                        bottomRight: Radius.circular(25),
-                      ),
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              // Red 1 - naslov
-                              Row(
+              return V3ContainerUtils.gradientContainer(
+                gradient: V3ThemeManager().currentGradient,
+                child: Stack(
+                  children: [
+                    Scaffold(
+                      backgroundColor: Colors.transparent,
+                      appBar: PreferredSize(
+                        preferredSize: Size.fromHeight(appBarHeight),
+                        child: V3ContainerUtils.iconContainer(
+                          backgroundColor: Theme.of(context).glassContainer,
+                          border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                          borderRadiusGeometry: const BorderRadius.only(
+                            bottomLeft: Radius.circular(25),
+                            bottomRight: Radius.circular(25),
+                          ),
+                          child: SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Center(
-                                      child: Text(
-                                        'R E Z E R V A C I J E',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w800,
-                                          color: Theme.of(context).colorScheme.onPrimary,
-                                          letterSpacing: 1.4,
-                                          shadows: const [
-                                            Shadow(blurRadius: 12, color: Colors.black87),
-                                            Shadow(offset: Offset(2, 2), blurRadius: 6, color: Colors.black54),
-                                          ],
+                                  // Red 1 - naslov
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            'R E Z E R V A C I J E',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w800,
+                                              color: Theme.of(context).colorScheme.onPrimary,
+                                              letterSpacing: 1.4,
+                                              shadows: const [
+                                                Shadow(blurRadius: 12, color: Colors.black87),
+                                                Shadow(offset: Offset(2, 2), blurRadius: 6, color: Colors.black54),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                  Text(
+                                    aktivnaNedelja,
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
                                     ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // Red 2 - dan
+                                  Row(
+                                    children: [
+                                      // Sat sa sekundama
+                                      Expanded(
+                                        child: V3ContainerUtils.iconContainer(
+                                          height: headerControlHeight,
+                                          padding: const EdgeInsets.all(6),
+                                          backgroundColor: Theme.of(context).glassContainer,
+                                          borderRadiusGeometry: BorderRadius.circular(14),
+                                          border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                          child: Center(
+                                            child: V3LiveClockText(
+                                              style: TextStyle(
+                                                color: Theme.of(context).colorScheme.onPrimary,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      // Dan dropdown
+                                      Expanded(
+                                        child: V3ContainerUtils.iconContainer(
+                                          height: headerControlHeight,
+                                          padding: const EdgeInsets.all(6),
+                                          backgroundColor: Theme.of(context).glassContainer,
+                                          borderRadiusGeometry: BorderRadius.circular(14),
+                                          border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton2<String>(
+                                              value: _selectedDay,
+                                              customButton: Center(
+                                                child: Text(
+                                                  _selectedDay,
+                                                  style: TextStyle(
+                                                    color: Theme.of(context).colorScheme.onPrimary,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                  ),
+                                                  maxLines: 1,
+                                                  softWrap: false,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              dropdownStyleData: DropdownStyleData(
+                                                width: 170,
+                                                maxHeight: 320,
+                                                decoration: BoxDecoration(
+                                                  gradient: Theme.of(context).backgroundGradient,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                                ),
+                                                elevation: 8,
+                                              ),
+                                              menuItemStyleData: const MenuItemStyleData(
+                                                height: 44,
+                                              ),
+                                              items: V3DanHelper.workdayNames
+                                                  .map((d) => DropdownMenuItem(
+                                                        value: d,
+                                                        child: Center(
+                                                          child: Text(
+                                                            d,
+                                                            style: TextStyle(
+                                                              color: Theme.of(context).colorScheme.onPrimary,
+                                                              fontWeight: FontWeight.w700,
+                                                            ),
+                                                            maxLines: 1,
+                                                            softWrap: false,
+                                                            overflow: TextOverflow.ellipsis,
+                                                            textAlign: TextAlign.center,
+                                                          ),
+                                                        ),
+                                                      ))
+                                                  .toList(),
+                                              onChanged: (val) {
+                                                setState(() {
+                                                  _selectedDay = V3DanHelper.normalizeToWorkdayFull(val!);
+                                                  _syncSelectedSlotForDatum(_selectedDatumIso);
+                                                  _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              Text(
-                                aktivnaNedelja,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      body: Column(
+                        children: [
+                          // Forced update gate
+                          const V3UpdateBanner(),
+                          const V3NeradniDaniBanner(
+                            margin: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
+                          ),
+                          // Action buttons
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _V3HomeButton(
+                                    label: 'Dodaj',
+                                    icon: Icons.person_add,
+                                    onTap: _showDodajTerminDialog,
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 4),
-                              // Red 2 - dan
-                              Row(
-                                children: [
-                                  // Sat sa sekundama
+                                const SizedBox(width: 4),
+                                if (!_isAdmin) ...[
                                   Expanded(
-                                    child: V3ContainerUtils.iconContainer(
-                                      height: headerControlHeight,
-                                      padding: const EdgeInsets.all(6),
-                                      backgroundColor: Theme.of(context).glassContainer,
-                                      borderRadiusGeometry: BorderRadius.circular(14),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                      child: Center(
-                                        child: V3LiveClockText(
-                                          style: TextStyle(
-                                            color: Theme.of(context).colorScheme.onPrimary,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 14,
-                                          ),
-                                        ),
+                                    child: _V3HomeButton(
+                                      label: 'Ja',
+                                      icon: Icons.person,
+                                      onTap: () => V3NavigationUtils.pushScreen(
+                                        context,
+                                        const V3VozacScreen(),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  // Dan dropdown
+                                ],
+                                if (_isAdmin) ...[
                                   Expanded(
-                                    child: V3ContainerUtils.iconContainer(
-                                      height: headerControlHeight,
-                                      padding: const EdgeInsets.all(6),
-                                      backgroundColor: Theme.of(context).glassContainer,
-                                      borderRadiusGeometry: BorderRadius.circular(14),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton2<String>(
-                                          value: _selectedDay,
-                                          customButton: Center(
-                                            child: Text(
-                                              _selectedDay,
-                                              style: TextStyle(
-                                                color: Theme.of(context).colorScheme.onPrimary,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                              maxLines: 1,
-                                              softWrap: false,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          dropdownStyleData: DropdownStyleData(
-                                            width: 170,
-                                            maxHeight: 320,
-                                            decoration: BoxDecoration(
-                                              gradient: Theme.of(context).backgroundGradient,
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                            ),
-                                            elevation: 8,
-                                          ),
-                                          menuItemStyleData: const MenuItemStyleData(
-                                            height: 44,
-                                          ),
-                                          items: V3DanHelper.workdayNames
-                                              .map((d) => DropdownMenuItem(
-                                                    value: d,
-                                                    child: Center(
-                                                      child: Text(
-                                                        d,
-                                                        style: TextStyle(
-                                                          color: Theme.of(context).colorScheme.onPrimary,
-                                                          fontWeight: FontWeight.w700,
-                                                        ),
-                                                        maxLines: 1,
-                                                        softWrap: false,
-                                                        overflow: TextOverflow.ellipsis,
-                                                        textAlign: TextAlign.center,
-                                                      ),
-                                                    ),
-                                                  ))
-                                              .toList(),
-                                          onChanged: (val) {
-                                            setState(() {
-                                              _selectedDay = V3DanHelper.normalizeToWorkdayFull(val!);
-                                              _syncSelectedSlotForDatum(_selectedDatumIso);
-                                              _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
-                                            });
-                                          },
-                                        ),
+                                    child: _V3HomeButton(
+                                      label: 'Admin',
+                                      icon: Icons.admin_panel_settings,
+                                      onTap: () => V3NavigationUtils.pushScreen(
+                                        context,
+                                        const V3AdminScreen(),
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  body: Column(
-                    children: [
-                      // Forced update gate
-                      const V3UpdateBanner(),
-                      const V3NeradniDaniBanner(
-                        margin: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
-                      ),
-                      // Action buttons
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _V3HomeButton(
-                                label: 'Dodaj',
-                                icon: Icons.person_add,
-                                onTap: _showDodajTerminDialog,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            if (!_isAdmin) ...[
-                              Expanded(
-                                child: _V3HomeButton(
-                                  label: 'Ja',
-                                  icon: Icons.person,
-                                  onTap: () => V3NavigationUtils.pushScreen(
-                                    context,
-                                    const V3VozacScreen(),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: _V3HomeButton(
+                                      label: 'Ja',
+                                      icon: Icons.person,
+                                      onTap: () => V3NavigationUtils.pushScreen(
+                                        context,
+                                        const V3VozacScreen(),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            if (_isAdmin) ...[
-                              Expanded(
-                                child: _V3HomeButton(
-                                  label: 'Admin',
-                                  icon: Icons.admin_panel_settings,
-                                  onTap: () => V3NavigationUtils.pushScreen(
-                                    context,
-                                    const V3AdminScreen(),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: _V3HomeButton(
-                                  label: 'Ja',
-                                  icon: Icons.person,
-                                  onTap: () => V3NavigationUtils.pushScreen(
-                                    context,
-                                    const V3VozacScreen(),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: PopupMenuButton<String>(
-                                  tooltip: 'Štampaj',
-                                  offset: const Offset(0, -150),
-                                  onSelected: (val) {
-                                    if (val == 'spisak') {
-                                      V3PrintingService.printPutniksList(
-                                        datumIso: _selectedDatumIso,
-                                        dan: _selectedDay,
-                                        vreme: _selectedVreme,
-                                        grad: _selectedGrad,
-                                        context: context,
-                                      );
-                                    } else if (val == 'racun_postojeci') {
-                                      _openDialogAfterMenuClose(_showRacunZaFirmeDialog);
-                                    } else if (val == 'racun_novi') {
-                                      _openDialogAfterMenuClose(_showNoviRacunDialog);
-                                    }
-                                  },
-                                  child: V3ContainerUtils.iconContainer(
-                                    padding: const EdgeInsets.all(6),
-                                    backgroundColor: Theme.of(context).glassContainer,
-                                    border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                    borderRadiusGeometry: BorderRadius.circular(12),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.print, color: Theme.of(context).colorScheme.onPrimary, size: 18),
-                                        const SizedBox(height: 4),
-                                        SizedBox(
-                                          height: V3ContainerUtils.responsiveHeight(context, 16),
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text('Štampaj',
-                                                style: TextStyle(
-                                                    color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                                          ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: PopupMenuButton<String>(
+                                      tooltip: 'Štampaj',
+                                      offset: const Offset(0, -150),
+                                      onSelected: (val) {
+                                        if (val == 'spisak') {
+                                          V3PrintingService.printPutniksList(
+                                            datumIso: _selectedDatumIso,
+                                            dan: _selectedDay,
+                                            vreme: _selectedVreme,
+                                            grad: _selectedGrad,
+                                            context: context,
+                                          );
+                                        } else if (val == 'racun_postojeci') {
+                                          _openDialogAfterMenuClose(_showRacunZaFirmeDialog);
+                                        } else if (val == 'racun_novi') {
+                                          _openDialogAfterMenuClose(_showNoviRacunDialog);
+                                        }
+                                      },
+                                      child: V3ContainerUtils.iconContainer(
+                                        padding: const EdgeInsets.all(6),
+                                        backgroundColor: Theme.of(context).glassContainer,
+                                        border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                        borderRadiusGeometry: BorderRadius.circular(12),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.print, color: Theme.of(context).colorScheme.onPrimary, size: 18),
+                                            const SizedBox(height: 4),
+                                            SizedBox(
+                                              height: V3ContainerUtils.responsiveHeight(context, 16),
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text('Štampaj',
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w600)),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      itemBuilder: (_) => [
+                                        const PopupMenuItem(
+                                          value: 'spisak',
+                                          child: Row(children: [
+                                            Icon(Icons.list_alt, color: Colors.blue),
+                                            SizedBox(width: 8),
+                                            Text('Štampaj spisak'),
+                                          ]),
+                                        ),
+                                        const PopupMenuDivider(),
+                                        const PopupMenuItem(
+                                          value: 'racun_postojeci',
+                                          child: Row(children: [
+                                            Icon(Icons.people, color: Colors.green),
+                                            SizedBox(width: 8),
+                                            Text('Račun - postojeći'),
+                                          ]),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'racun_novi',
+                                          child: Row(children: [
+                                            Icon(Icons.person_add, color: Colors.orange),
+                                            SizedBox(width: 8),
+                                            Text('Račun - novi'),
+                                          ]),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  itemBuilder: (_) => [
-                                    const PopupMenuItem(
-                                      value: 'spisak',
-                                      child: Row(children: [
-                                        Icon(Icons.list_alt, color: Colors.blue),
-                                        SizedBox(width: 8),
-                                        Text('Štampaj spisak'),
-                                      ]),
-                                    ),
-                                    const PopupMenuDivider(),
-                                    const PopupMenuItem(
-                                      value: 'racun_postojeci',
-                                      child: Row(children: [
-                                        Icon(Icons.people, color: Colors.green),
-                                        SizedBox(width: 8),
-                                        Text('Račun - postojeći'),
-                                      ]),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'racun_novi',
-                                      child: Row(children: [
-                                        Icon(Icons.person_add, color: Colors.orange),
-                                        SizedBox(width: 8),
-                                        Text('Račun - novi'),
-                                      ]),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      // Lista putnika/termina + floating neradan-banер
-                      Expanded(
-                        child: ValueListenableBuilder<List<Map<String, String>>>(
-                          valueListenable: neradniDaniNotifier,
-                          builder: (context, rules, _) {
-                            int redniCounter = 0;
-                            final redniBrojevi = <int?>[];
-                            for (final row in resolvedZapisi) {
-                              final tip = row.putnik.tipPutnika.toLowerCase().trim();
-                              if (tip == 'posiljka') {
-                                redniBrojevi.add(null);
-                              } else {
-                                redniCounter += 1;
-                                redniBrojevi.add(redniCounter);
-                              }
-                            }
+                                ],
+                              ],
+                            ),
+                          ),
+                          // Lista putnika/termina + floating neradan-banер
+                          Expanded(
+                            child: ValueListenableBuilder<List<Map<String, String>>>(
+                              valueListenable: neradniDaniNotifier,
+                              builder: (context, rules, _) {
+                                int redniCounter = 0;
+                                final redniBrojevi = <int?>[];
+                                for (final row in resolvedZapisi) {
+                                  final tip = row.putnik.tipPutnika.toLowerCase().trim();
+                                  if (tip == 'posiljka') {
+                                    redniBrojevi.add(null);
+                                  } else {
+                                    redniCounter += 1;
+                                    redniBrojevi.add(redniCounter);
+                                  }
+                                }
 
-                            return resolvedZapisi.isEmpty
-                                ? Center(
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                      child: V3ContainerUtils.iconContainer(
-                                        padding: const EdgeInsets.all(16),
-                                        backgroundColor: Theme.of(context).glassContainer,
-                                        border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                                        borderRadiusGeometry: BorderRadius.circular(12),
-                                        child: const Text(
-                                          'Nema planiranih putnika.',
-                                          style:
-                                              TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                return resolvedZapisi.isEmpty
+                                    ? Center(
+                                        child: Container(
+                                          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                          child: V3ContainerUtils.iconContainer(
+                                            padding: const EdgeInsets.all(16),
+                                            backgroundColor: Theme.of(context).glassContainer,
+                                            border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                            borderRadiusGeometry: BorderRadius.circular(12),
+                                            child: const Text(
+                                              'Nema planiranih putnika.',
+                                              style: TextStyle(
+                                                  color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.only(top: 4, bottom: 16),
-                                    itemCount: resolvedZapisi.length,
-                                    itemBuilder: (ctx, i) {
-                                      final row = resolvedZapisi[i];
-                                      final z = row.entry;
-                                      final p = row.putnik;
+                                      )
+                                    : ListView.builder(
+                                        padding: const EdgeInsets.only(top: 4, bottom: 16),
+                                        itemCount: resolvedZapisi.length,
+                                        itemBuilder: (ctx, i) {
+                                          final row = resolvedZapisi[i];
+                                          final z = row.entry;
+                                          final p = row.putnik;
 
-                                      final grad = z.grad ?? '';
-                                      final vreme = slotVreme(z);
-                                      final indivVozac = _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
-                                      final vozacBoja = indivVozac != null
-                                          ? V3CardColorPolicy.vozacColorOr(indivVozac.boja)
-                                          : getVozacColorForTermin(grad, vreme);
-                                      final redniBroj = redniBrojevi[i];
+                                          final grad = z.grad ?? '';
+                                          final vreme = slotVreme(z);
+                                          final indivVozac =
+                                              _getVozacZaPutnika(z.putnikId, grad, vreme, _selectedDatumIso);
+                                          final vozacBoja = indivVozac != null
+                                              ? V3CardColorPolicy.vozacColorOr(indivVozac.boja)
+                                              : getVozacColorForTermin(grad, vreme);
+                                          final redniBroj = redniBrojevi[i];
 
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 8),
-                                        child: V3PutnikCard(
-                                          putnik: p,
-                                          entry: z,
-                                          redniBroj: redniBroj,
-                                          vozacBoja: vozacBoja,
-                                        ),
+                                          return Padding(
+                                            padding: const EdgeInsets.only(bottom: 8),
+                                            child: V3PutnikCard(
+                                              putnik: p,
+                                              entry: z,
+                                              redniBroj: redniBroj,
+                                              vozacBoja: vozacBoja,
+                                            ),
+                                          );
+                                        },
                                       );
-                                    },
-                                  );
-                          },
-                        ),
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  // Bottom nav bar
-                  bottomNavigationBar: ValueListenableBuilder<String>(
-                    valueListenable: navBarTypeNotifier,
-                    builder: (ctx, navType, _) {
-                      return _buildBottomNavBar(getPutnikCount, getKapacitet, getVozacColorForTermin);
-                    },
-                  ),
+                      // Bottom nav bar
+                      bottomNavigationBar: ValueListenableBuilder<String>(
+                        valueListenable: navBarTypeNotifier,
+                        builder: (ctx, navType, _) {
+                          return _buildBottomNavBar(getPutnikCount, getKapacitet, getVozacColorForTermin);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
           if (_showBlockingScreen && _blockingGrad != null && _blockingVreme != null)
             V3BlockingScreenWidget(
               grad: _blockingGrad!,
@@ -1443,8 +1445,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           vsVremena: _vsVremena,
         );
       },
-  );
-}
+    );
+  }
 }
 
 // ─── Dijalog: Račun za firmu — sadržaj ────────────────────────────────────────

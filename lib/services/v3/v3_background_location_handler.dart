@@ -123,7 +123,8 @@ Future<void> _bgSendLocation() async {
   if (vozacId == null || vozacId.isEmpty || _bgInFlight) return;
 
   if (_bgDatumIso.isEmpty || _bgGrad.isEmpty || _bgVreme.isEmpty) {
-    debugPrint('[BG] Preskačem upis lokacije: termin nije postavljen (datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme)');
+    debugPrint(
+        '[BG] Preskačem upis lokacije: termin nije postavljen (datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme)');
     debugPrint('[BG] Stack trace: ${StackTrace.current}');
     return;
   }
@@ -148,8 +149,7 @@ Future<void> _bgSendLocation() async {
     }
 
     final permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
       debugPrint('[BG] Dozvola za lokaciju nije odobrena (background ne traži permission)');
       return;
     }
@@ -160,35 +160,6 @@ Future<void> _bgSendLocation() async {
         timeLimit: Duration(seconds: 12),
       ),
     );
-
-    // Čuvaj trenutnu lokaciju u waypoints_json
-    try {
-        final currentLocation = <Map<String, dynamic>>[
-          {
-            'lat': position.latitude,
-            'lng': position.longitude,
-            'timestamp': DateTime.now().toIso8601String(),
-          }
-        ];
-
-        final updatedRows = await activeClient
-            .from('v3_trenutna_dodela_slot')
-            .update({'waypoints_json': currentLocation})
-            .eq('datum', _bgDatumIso)
-            .eq('grad', _bgGrad)
-            .eq('vreme', _bgVreme)
-            .eq('vozac_v3_auth_id', vozacId)
-            .eq('status', 'aktivan')
-            .select('datum');
-
-        if (updatedRows.isEmpty) {
-          debugPrint('[BG] updateCurrentLocation: 0 rows updated for slot=$_bgDatumIso|$_bgGrad|$_bgVreme vozac=$vozacId');
-        }
-
-        debugPrint('[BG] Trenutna lokacija sačuvana');
-      } catch (e) {
-        debugPrint('[BG] Greška pri čuvanju trenutne lokacije: $e');
-      }
 
     await activeClient.functions.invoke(
       'v3-compute-eta',

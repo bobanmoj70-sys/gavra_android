@@ -19,16 +19,6 @@ class V3PosiljkeZahteviScreen extends StatefulWidget {
 }
 
 class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
-  static const String _sistemAkterId = '4feffa3a-8b4d-4e28-9b8b-c0af3c48ea4e';
-
-  bool _isSistemAkter(String? akterId, Map<String, Map<String, dynamic>> authCache) {
-    final id = (akterId ?? '').trim();
-    if (id.isEmpty) return false;
-    if (id == _sistemAkterId) return true;
-    final tip = (authCache[id]?['tip']?.toString() ?? '').trim().toLowerCase();
-    return tip == 'sistem';
-  }
-
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
   /// Svi zahtevi čiji putnik ima tip == 'posiljka' i koje je sam poslao

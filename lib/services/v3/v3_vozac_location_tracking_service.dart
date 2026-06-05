@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../globals.dart';
 import '../../utils/v3_time_utils.dart';
 import 'v3_blocking_screen_service.dart';
@@ -27,11 +28,12 @@ class V3VozacLocationTrackingService {
   String _activeVreme = '';
   Position? _lastSentPosition;
   bool _blockingScreenInitialized = false;
-  bool _inFlight = false;
+  final bool _inFlight = false;
   bool _isRunning = false;
 
   /// Optimizovani redosled putnika (deljen između ekrana)
   final List<String> _optimizedPutnikIds = [];
+
   /// ETA vrednosti (deljene između ekrana)
   final Map<String, int> _etaSecondsCache = {};
 
@@ -59,14 +61,6 @@ class V3VozacLocationTrackingService {
       return '$y-$m-$d';
     }
     return value.split('T').first;
-  }
-
-  void _syncBackgroundTermin(FlutterBackgroundService service) {
-    if (_activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
-      debugPrint('[V3VozacLocationTrackingService] Active termin not set, skipping background termin sync');
-      return;
-    }
-    service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
   }
 
   Future<void> _syncBackgroundSupabaseConfig(FlutterBackgroundService service) async {
@@ -173,7 +167,8 @@ class V3VozacLocationTrackingService {
 
     // Prosledi termin background servisu ako je setovan
     if (_activeDatumIso.isNotEmpty || _activeGrad.isNotEmpty || _activeVreme.isNotEmpty) {
-      debugPrint('[V3VozacLocationTrackingService] Šaljem termin background servisu: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
+      debugPrint(
+          '[V3VozacLocationTrackingService] Šaljem termin background servisu: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
       service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
     }
 

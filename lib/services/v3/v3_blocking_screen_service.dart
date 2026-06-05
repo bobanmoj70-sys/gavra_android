@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,10 +21,8 @@ class V3BlockingScreenService {
   Future<void> initialize() async {
     dispose(); // očisti prethodne timere pre nego što zakazujemo nove
     try {
-      final response = await Supabase.instance.client
-          .from('v3_app_settings')
-          .select('bc_custom_by_day, vs_custom_by_day')
-          .single();
+      final response =
+          await Supabase.instance.client.from('v3_app_settings').select('bc_custom_by_day, vs_custom_by_day').single();
 
       final bcSchedule = response['bc_custom_by_day'] as Map<String, dynamic>;
       final vsSchedule = response['vs_custom_by_day'] as Map<String, dynamic>;
@@ -37,8 +35,7 @@ class V3BlockingScreenService {
   }
 
   /// Planira blokirajuće ekrane na osnovu rasporeda
-  void _scheduleBlockingScreens(
-      Map<String, dynamic> bcSchedule, Map<String, dynamic> vsSchedule) {
+  void _scheduleBlockingScreens(Map<String, dynamic> bcSchedule, Map<String, dynamic> vsSchedule) {
     _terminTimers?.clear();
     _terminTimers = {};
 
