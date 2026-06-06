@@ -52,32 +52,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
     }
   }
 
-  Future<void> _potvrdi(String id) async {
-    try {
-      await supabase.functions.invoke(
-        'v3-ai-uci',
-        body: {'action': 'potvrdi', 'id': id},
-      );
-      V3AppSnackBar.success(context, 'Znanje potvrdjeno');
-      await _loadZnanje();
-    } catch (e) {
-      V3AppSnackBar.error(context, 'Greska: $e');
-    }
-  }
-
-  Future<void> _odbij(String id) async {
-    try {
-      await supabase.functions.invoke(
-        'v3-ai-uci',
-        body: {'action': 'odbij', 'id': id},
-      );
-      V3AppSnackBar.success(context, 'Znanje odbijeno');
-      await _loadZnanje();
-    } catch (e) {
-      V3AppSnackBar.error(context, 'Greska: $e');
-    }
-  }
-
   Future<void> _uci() async {
     setState(() => _loading = true);
     try {
@@ -232,14 +206,11 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
         final atribut = z['atribut'] as String?;
         final zakljucak = z['zakljucak'] as String? ?? '';
         final confidence = (z['confidence'] as num?)?.toDouble() ?? 0.0;
-        final potvrdjeno = z['potvrdjeno'] as bool? ?? false;
-        final id = z['id'] as String? ?? '';
 
         return Card(
           color: Colors.white.withOpacity(0.12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: potvrdjeno ? const BorderSide(color: Colors.green, width: 1.5) : BorderSide.none,
           ),
           margin: const EdgeInsets.only(bottom: 10),
           child: Padding(
@@ -284,8 +255,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
                         ),
                       ),
                     ],
-                    const Spacer(),
-                    if (potvrdjeno) const Icon(Icons.check_circle, color: Colors.green, size: 18),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -294,35 +263,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
                 const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _ConfidenceBar(confidence: confidence),
-                    const Spacer(),
-                    if (!potvrdjeno)
-                      TextButton.icon(
-                        onPressed: () => _potvrdi(id),
-                        icon: const Icon(Icons.check, size: 18),
-                        label: const Text('Potvrdi'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    TextButton.icon(
-                      onPressed: () => _odbij(id),
-                      icon: const Icon(Icons.close, size: 18),
-                      label: Text(potvrdjeno ? 'Odbij' : 'Odbij'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
+                _ConfidenceBar(confidence: confidence),
               ],
             ),
           ),
