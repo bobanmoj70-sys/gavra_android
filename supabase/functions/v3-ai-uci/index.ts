@@ -505,6 +505,54 @@ serve(async (req) => {
         JSON.stringify({ message: "Znanje odbaceno (confidence smanjen)", znanje: data }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    } else if (action === "nauci_chat") {
+      const tip = body.tip || "hipoteza";
+      const entitet = body.entitet;
+      const atribut = body.atribut || null;
+      const zakljucak = body.zakljucak;
+
+      if (!entitet || !zakljucak) {
+        return new Response(
+          JSON.stringify({ error: "Nedostaje entitet ili zakljucak" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: existing } = await supabase
+        .from("ai_znanje")
+        .select("id")
+        .eq("entitet", entitet)
+        .eq("atribut", atribut || "")
+        .eq("zakljucak", zakljucak)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(
+          JSON.stringify({ message: "Ovo znanje vec postoji", znanje: existing }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data, error } = await supabase
+        .from("ai_znanje")
+        .insert({
+          tip,
+          entitet,
+          atribut,
+          zakljucak,
+          confidence: 0.9,
+          potvrdjeno: true,
+          nauceno_od: "chat",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return new Response(
+        JSON.stringify({ message: "Znanje nauceno iz chata", znanje: data }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const saved = await saveFindings(supabase, allFindings);

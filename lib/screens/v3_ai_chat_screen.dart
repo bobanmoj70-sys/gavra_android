@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/v3_theme_manager.dart';
-import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 
 class V3AiChatScreen extends StatefulWidget {
@@ -272,9 +271,7 @@ class _ChatBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: message.isUser
-              ? Colors.blue.withOpacity(0.3)
-              : Colors.white.withOpacity(0.12),
+          color: message.isUser ? Colors.blue.withOpacity(0.3) : Colors.white.withOpacity(0.12),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
