@@ -380,7 +380,7 @@ function analyzeTable(table: SchemaTable): Array<{
                 tip: "pravilo",
                 entitet: name,
                 atribut: "bc_custom_by_day",
-                zakljucak: `BC (Beograd centar) polasci u ${dan}: ${vremena.join(", ")}.`,
+                zakljucak: `BC (Bela Crkva) polasci u ${dan}: ${vremena.join(", ")}.`,
                 confidence: 0.9,
                 nauceno_od: "podaci",
               });
@@ -391,7 +391,7 @@ function analyzeTable(table: SchemaTable): Array<{
             tip: "pravilo",
             entitet: name,
             atribut: "bc_custom_by_day",
-            zakljucak: `BC raspored važi za dane: ${sviDani}. Svaki dan ima razlicite ili iste termine.`,
+            zakljucak: `BC (Bela Crkva) raspored važi za dane: ${sviDani}. Svaki dan ima razlicite ili iste termine.`,
             confidence: 0.85,
             nauceno_od: "podaci",
           });
@@ -404,7 +404,7 @@ function analyzeTable(table: SchemaTable): Array<{
                 tip: "pravilo",
                 entitet: name,
                 atribut: "vs_custom_by_day",
-                zakljucak: `VS (Vozdovacka skupstina) polasci u ${dan}: ${vremena.join(", ")}.`,
+                zakljucak: `VS (Vrsac) polasci u ${dan}: ${vremena.join(", ")}.`,
                 confidence: 0.9,
                 nauceno_od: "podaci",
               });
@@ -415,7 +415,7 @@ function analyzeTable(table: SchemaTable): Array<{
             tip: "pravilo",
             entitet: name,
             atribut: "vs_custom_by_day",
-            zakljucak: `VS raspored važi za dane: ${sviDani}. Svaki dan ima razlicite ili iste termine.`,
+            zakljucak: `VS (Vrsac) raspored važi za dane: ${sviDani}. Svaki dan ima razlicite ili iste termine.`,
             confidence: 0.85,
             nauceno_od: "podaci",
           });
