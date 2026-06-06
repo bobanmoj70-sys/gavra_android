@@ -152,6 +152,33 @@ function analyzeTable(table: SchemaTable): Array<{
       confidence: 0.7,
       nauceno_od: "ime_tabele",
     });
+  } else if (name.includes("app_settings")) {
+    findings.push({
+      tip: "tabela",
+      entitet: name,
+      atribut: null,
+      zakljucak: `Tabela "${name}" sadrzi globalna podesavanja aplikacije i raspored polazaka. Ima ${table.row_count} redova.`,
+      confidence: 0.8,
+      nauceno_od: "ime_tabele",
+    });
+  } else if (name.includes("eta_results")) {
+    findings.push({
+      tip: "tabela",
+      entitet: name,
+      atribut: null,
+      zakljucak: `Tabela "${name}" sadrzi rezultate procene vremena dolaska (ETA). Koristi se za prikaz vremena dolaska putnicima. Ima ${table.row_count} redova.`,
+      confidence: 0.85,
+      nauceno_od: "ime_tabele",
+    });
+  } else if (name.includes("racuni")) {
+    findings.push({
+      tip: "tabela",
+      entitet: name,
+      atribut: null,
+      zakljucak: `Tabela "${name}" predstavlja izdate racune/fakture. Ima ${table.row_count} redova.`,
+      confidence: 0.8,
+      nauceno_od: "ime_tabele",
+    });
   } else {
     findings.push({
       tip: "tabela",
