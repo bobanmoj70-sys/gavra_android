@@ -368,6 +368,58 @@ function analyzeTable(table: SchemaTable): Array<{
           confidence: 0.85,
           nauceno_od: "podaci",
         });
+
+        // Izdvoji konkretna vremena iz JSON-a
+        const bcJson = first["bc_custom_by_day"] as Record<string, string[]> | undefined;
+        const vsJson = first["vs_custom_by_day"] as Record<string, string[]> | undefined;
+
+        if (bcJson && typeof bcJson === "object") {
+          for (const [dan, vremena] of Object.entries(bcJson)) {
+            if (Array.isArray(vremena) && vremena.length > 0) {
+              findings.push({
+                tip: "pravilo",
+                entitet: name,
+                atribut: "bc_custom_by_day",
+                zakljucak: `BC (Beograd centar) polasci u ${dan}: ${vremena.join(", ")}.`,
+                confidence: 0.9,
+                nauceno_od: "podaci",
+              });
+            }
+          }
+          const sviDani = Object.keys(bcJson).join(", ");
+          findings.push({
+            tip: "pravilo",
+            entitet: name,
+            atribut: "bc_custom_by_day",
+            zakljucak: `BC raspored važi za dane: ${sviDani}. Svaki dan ima razlicite ili iste termine.`,
+            confidence: 0.85,
+            nauceno_od: "podaci",
+          });
+        }
+
+        if (vsJson && typeof vsJson === "object") {
+          for (const [dan, vremena] of Object.entries(vsJson)) {
+            if (Array.isArray(vremena) && vremena.length > 0) {
+              findings.push({
+                tip: "pravilo",
+                entitet: name,
+                atribut: "vs_custom_by_day",
+                zakljucak: `VS (Vozdovacka skupstina) polasci u ${dan}: ${vremena.join(", ")}.`,
+                confidence: 0.9,
+                nauceno_od: "podaci",
+              });
+            }
+          }
+          const sviDani = Object.keys(vsJson).join(", ");
+          findings.push({
+            tip: "pravilo",
+            entitet: name,
+            atribut: "vs_custom_by_day",
+            zakljucak: `VS raspored važi za dane: ${sviDani}. Svaki dan ima razlicite ili iste termine.`,
+            confidence: 0.85,
+            nauceno_od: "podaci",
+          });
+        }
       }
       if (first["neradni_dani"]) {
         findings.push({
