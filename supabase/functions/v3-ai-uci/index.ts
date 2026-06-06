@@ -356,6 +356,94 @@ function analyzeTable(table: SchemaTable): Array<{
         }
       }
     }
+
+    // Pametna analiza v3_app_settings (podesavanja i raspored)
+    if (name.includes("app_settings")) {
+      if (first["bc_custom_by_day"] || first["vs_custom_by_day"]) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: `U ovoj tabeli se cuvaju podesavanja rasporeda polazaka (red voznje). Postoje JSON polja bc_custom_by_day i vs_custom_by_day sa vremenima polazaka.`,
+          confidence: 0.85,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["neradni_dani"]) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: "neradni_dani",
+          zakljucak: "Neradni dani se cuvaju kao JSON niz sa datumima i scope poljima.",
+          confidence: 0.8,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["active_week_start"] && first["active_week_end"]) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: `Aktivna operativna nedelja: ${first["active_week_start"]} do ${first["active_week_end"]}.`,
+          confidence: 0.85,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["latest_version_android"] || first["latest_version_ios"]) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: "Ova tabela takodje sadrzi informacije o verziji aplikacije i store URL-ovima.",
+          confidence: 0.75,
+          nauceno_od: "podaci",
+        });
+      }
+    }
+
+    // Pametna analiza v3_kapacitet_slots (red voznje, raspored mesta)
+    if (name.includes("kapacitet")) {
+      const slotKeys = keys.filter((k) => k.includes("slot") || k.includes("termin") || k.includes("vreme") || k.includes("at"));
+      if (slotKeys.length > 0) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: `Ova tabela predstavlja raspored mesta (red voznje). Ima ${slotKeys.length} kolona vezano za termine/vremena.`,
+          confidence: 0.85,
+          nauceno_od: "podaci",
+        });
+      }
+    }
+
+    // Pametna analiza v3_zahtevi (zahtevi za voznju)
+    if (name.includes("zahtevi") && first["status"] !== undefined) {
+      const statusi = new Set<string>();
+      for (const row of table.sample_data) {
+        if (row["status"]) statusi.add(String(row["status"]));
+      }
+      const statusList = Array.from(statusi).join(", ");
+      if (statusList) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: "status",
+          zakljucak: `Statusi zahteva: ${statusList}. Ovo su razlicita stanja u kojima moze biti zahtev.`,
+          confidence: 0.8,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["trazeni_polazak_at"] || first["polazak_at"]) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: "Zahtevi sadrze vreme polaska (trazeni i potvrdjeni). Ovo je vezano za raspored/red voznje.",
+          confidence: 0.8,
+          nauceno_od: "podaci",
+        });
+      }
+    }
   }
 
   return findings;
