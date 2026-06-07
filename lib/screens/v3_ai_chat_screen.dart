@@ -47,6 +47,18 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
     return DateTime.now().difference(_lastZnanjeLoad!).inMinutes > 5;
   }
 
+  Future<void> _uci() async {
+    try {
+      final response = await supabase.functions.invoke(
+        'v3-ai-uci',
+        body: {'action': 'ucisve'},
+      );
+      debugPrint('[AI Chat] Ucenje zavrseno: ${response.data}');
+    } catch (e) {
+      debugPrint('[AI Chat] Greska pri ucenju: $e');
+    }
+  }
+
   void _ask() async {
     final question = _questionCtrl.text.trim();
     if (question.isEmpty) return;
@@ -62,7 +74,19 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
       await _loadZnanje();
     }
 
-    final answer = _generateAnswer(question);
+    var answer = _generateAnswer(question);
+
+    // Ako nema znanja — pokreni ucenje i probaj ponovo
+    if (answer.startsWith('Nemam dovoljno znanja')) {
+      setState(() {
+        _messages.add(_ChatMessage(text: 'Učim iz baze, sačekaj...', isUser: false));
+      });
+      _scrollToBottom();
+
+      await _uci();
+      await _loadZnanje();
+      answer = _generateAnswer(question);
+    }
 
     setState(() {
       _messages.add(_ChatMessage(text: answer, isUser: false));
