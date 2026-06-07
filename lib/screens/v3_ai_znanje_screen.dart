@@ -22,6 +22,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
   String? _error;
   Timer? _autoUciTimer;
   bool _autoUcenjeEnabled = false;
+  bool _isLoadingZnanje = false;
+  DateTime? _lastZnanjeLoad;
 
   @override
   void initState() {
@@ -59,6 +61,9 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
   }
 
   Future<void> _loadZnanje() async {
+    if (_isLoadingZnanje) return;
+    _isLoadingZnanje = true;
+    _lastZnanjeLoad = DateTime.now();
     setState(() {
       _loading = true;
       _error = null;
@@ -82,6 +87,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
         _error = e.toString();
         _loading = false;
       });
+    } finally {
+      _isLoadingZnanje = false;
     }
   }
 
@@ -145,8 +152,9 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
         build: () => _znanje.length,
       ),
       builder: (context, snapshot) {
-        // Kad realtime signalizira promenu, osvezi podatke
-        if (snapshot.hasData && !_loading) {
+        // Kad realtime signalizira promenu, osvezi podatke (ali sa cooldown)
+        final cooldownOk = _lastZnanjeLoad == null || DateTime.now().difference(_lastZnanjeLoad!).inSeconds > 3;
+        if (snapshot.hasData && !_loading && !_isLoadingZnanje && cooldownOk) {
           WidgetsBinding.instance.addPostFrameCallback((_) => _loadZnanje());
         }
         return V3ContainerUtils.gradientContainer(
