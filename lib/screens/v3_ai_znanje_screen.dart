@@ -3,7 +3,6 @@ import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart'
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/v3_theme_manager.dart';
-import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 
 class V3AiZnanjeScreen extends StatefulWidget {
@@ -61,24 +60,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
       });
     } finally {
       _isLoadingZnanje = false;
-    }
-  }
-
-  Future<void> _uci() async {
-    setState(() => _loading = true);
-    try {
-      final response = await supabase.functions.invoke(
-        'v3-ai-uci',
-        body: {'action': 'ucisve'},
-      );
-
-      final data = response.data as Map<String, dynamic>?;
-      final msg = data?['message'] as String? ?? 'Ucenje zavrseno';
-      V3AppSnackBar.success(context, msg);
-      await _loadZnanje();
-    } catch (e) {
-      V3AppSnackBar.error(context, 'Greska pri ucenju: $e');
-      setState(() => _loading = false);
     }
   }
 
@@ -142,13 +123,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
                 '🧠 AI Znanje',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.psychology, color: Colors.white),
-                  onPressed: _uci,
-                  tooltip: 'Nauci sve',
-                ),
-              ],
+              actions: const [],
             ),
             body: _buildBody(),
           ),
@@ -185,21 +160,11 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
     }
 
     if (_znanje.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'AI jos nema nikakvo znanje.',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _uci,
-              icon: const Icon(Icons.psychology),
-              label: const Text('Nauci iz baze'),
-            ),
-          ],
+      return const Center(
+        child: Text(
+          'AI jos nema nikakvo znanje.\nIdi u AI Chat i postavi pitanje -\nAI ce sam nauciti iz baze.',
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+          textAlign: TextAlign.center,
         ),
       );
     }
