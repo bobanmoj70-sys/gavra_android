@@ -13,8 +13,23 @@ from datetime import datetime
 
 from data.etl import extract_finances
 from models.financial_model import FinancialMLModel
+from api.vozilo_routes import router as vozilo_router, init_vozilo_model
+from api.gorivo_routes import router as gorivo_router, init_gorivo_model
+from api.putnik_routes import router as putnik_router, init_putnik_model
+from api.zahtevi_routes import router as zahtevi_router, init_zahtevi_model
 
-app = FastAPI(title="Gavra Financial ML API", version="1.0.0")
+app = FastAPI(title="Gavra ML API", version="3.0.0")
+
+# Include all routers
+app.include_router(vozilo_router)
+app.include_router(gorivo_router)
+app.include_router(putnik_router)
+app.include_router(zahtevi_router)
+
+init_vozilo_model()
+init_gorivo_model()
+init_putnik_model()
+init_zahtevi_model()
 
 # Initialize model
 financial_model = FinancialMLModel()
@@ -38,7 +53,7 @@ class AnalysisRequest(BaseModel):
 @app.get("/")
 async def root():
     return {
-        "message": "Gavra Financial ML API",
+        "message": "Gavra ML API (Finansije, Vozila, Gorivo, Putnici, Zahtevi)",
         "status": "running",
         "model_trained": financial_model.is_trained
     }
