@@ -177,7 +177,7 @@ class V3TrenutnaDodelaSlotService {
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
-    await supabase.from(tableName).upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme');
+    await supabase.from(tableName).upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId');
     await _deactivateOtherActiveSlotsForVozacOnDate(
       datum: datum,
       vozac: vozac,
