@@ -95,42 +95,85 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
     _scrollToBottom();
   }
 
+  /// Normalizuje pitanje — prevodi padeže i varijante u bazne oblike
+  String _normalize(String q) {
+    var n = q;
+    // Gradovi i lokacije
+    n = n.replaceAll('bele crkve', 'bela crkva');
+    n = n.replaceAll('crkve', 'crkva');
+    n = n.replaceAll('vrsca', 'vrsac');
+    // Padeži i varijante
+    n = n.replaceAll('voznji', 'voznje');
+    n = n.replaceAll('rasporeda', 'raspored');
+    n = n.replaceAll('polazaka', 'polasci');
+    n = n.replaceAll('reda', 'red');
+    n = n.replaceAll('pazara', 'pazar');
+    n = n.replaceAll('putnika', 'putnik');
+    n = n.replaceAll('vozaca', 'vozac');
+    n = n.replaceAll('vozila', 'vozilo');
+    n = n.replaceAll('zahteva', 'zahtev');
+    n = n.replaceAll('adrese', 'adresa');
+    n = n.replaceAll('dugovanja', 'dug');
+    n = n.replaceAll('dugovanje', 'dug');
+    n = n.replaceAll('cene', 'cena');
+    n = n.replaceAll('iznosa', 'iznos');
+    n = n.replaceAll('prihoda', 'prihod');
+    n = n.replaceAll('rashoda', 'rashod');
+    // Dani — sve varijante u nominativ
+    n = n.replaceAll('ponedeljkom', 'ponedeljak');
+    n = n.replaceAll('utorkom', 'utorak');
+    n = n.replaceAll('sredom', 'sreda');
+    n = n.replaceAll('cetvrtkom', 'cetvrtak');
+    n = n.replaceAll('petkom', 'petak');
+    n = n.replaceAll('subotom', 'subota');
+    n = n.replaceAll('nedeljom', 'nedelja');
+    // Skracenice gradova (word boundaries via spaces/punctuation)
+    n = n.replaceAll(' bc ', ' bela crkva ');
+    n = n.replaceAll(' bc,', ' bela crkva,');
+    n = n.replaceAll(' bc.', ' bela crkva.');
+    n = n.replaceAll(' vs ', ' vrsac ');
+    n = n.replaceAll(' vs,', ' vrsac,');
+    n = n.replaceAll(' vs.', ' vrsac.');
+    return n;
+  }
+
   String _generateAnswer(String question) {
-    final q = question.toLowerCase().trim();
+    final qRaw = question.toLowerCase().trim();
+    final q = _normalize(qRaw);
 
     // Pozdravi i osnovni razgovor
     final pozdravi = ['zdravo', 'cao', 'ćao', 'halo', 'hej', 'hello', 'hi', 'dobar dan', 'dobro jutro', 'dobro vece'];
     for (final p in pozdravi) {
-      if (q == p || q.startsWith('$p ')) {
+      if (qRaw == p || qRaw.startsWith('$p ')) {
         return 'Zdravo! Ja sam Gavra AI. Mogu da ti pomognem sa informacijama iz baze — recimo o vozacima, putnicima, finansijama, rasporedu, zahtevima. Sta te zanima?';
       }
     }
 
     // Zahvalnica / zavrsetak
-    if (q == 'hvala' ||
-        q == 'hvala ti' ||
-        q == 'fala' ||
-        q == 'ok' ||
-        q == 'super' ||
-        q == 'odlicno' ||
-        q == 'sve je u redu') {
+    if (qRaw == 'hvala' ||
+        qRaw == 'hvala ti' ||
+        qRaw == 'fala' ||
+        qRaw == 'ok' ||
+        qRaw == 'super' ||
+        qRaw == 'odlicno' ||
+        qRaw == 'sve je u redu') {
       return 'Nema na cemu! Slobodno pitaj ako ti jos nesto treba.';
     }
 
     // Ko si ti / sta si ti
-    if (q.contains('ko si ti') ||
-        q.contains('sta si ti') ||
-        q.contains('ko si') ||
-        q.contains('sta radis') ||
-        q.contains('sta znas')) {
+    if (qRaw.contains('ko si ti') ||
+        qRaw.contains('sta si ti') ||
+        qRaw.contains('ko si') ||
+        qRaw.contains('sta radis') ||
+        qRaw.contains('sta znas')) {
       return 'Ja sam AI asistent aplikacije Gavra. Ucim iz baze podataka i mogu da ti dam informacije o korisnicima, vozilima, finansijama, rasporedu polazaka, zahtevima i adresama. Sta te zanima?';
     }
 
     // Filtriraj relevantna znanja
     final relevantni = _znanje.where((z) {
-      final zakljucak = (z['zakljucak'] ?? '').toString().toLowerCase();
-      final entitet = (z['entitet'] ?? '').toString().toLowerCase();
-      final atribut = (z['atribut'] ?? '').toString().toLowerCase();
+      final zakljucak = _normalize((z['zakljucak'] ?? '').toString().toLowerCase());
+      final entitet = _normalize((z['entitet'] ?? '').toString().toLowerCase());
+      final atribut = _normalize((z['atribut'] ?? '').toString().toLowerCase());
 
       // Heuristika: poklapa li se bilo koja rec iz pitanja sa zakljuckom/entitetom
       final reci = q.split(RegExp(r'\s+'));
