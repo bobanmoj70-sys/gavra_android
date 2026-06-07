@@ -144,11 +144,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.white),
-                  onPressed: _loadZnanje,
-                  tooltip: 'Osvezi',
-                ),
-                IconButton(
                   icon: const Icon(Icons.psychology, color: Colors.white),
                   onPressed: _uci,
                   tooltip: 'Nauci sve',
