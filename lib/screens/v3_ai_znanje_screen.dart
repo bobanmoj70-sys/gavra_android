@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,11 +20,42 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
   List<dynamic> _znanje = [];
   bool _loading = true;
   String? _error;
+  Timer? _autoUciTimer;
+  bool _autoUcenjeEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadZnanje();
+  }
+
+  @override
+  void dispose() {
+    _autoUciTimer?.cancel();
+    super.dispose();
+  }
+
+  void _toggleAutoUcenje() {
+    setState(() {
+      _autoUcenjeEnabled = !_autoUcenjeEnabled;
+    });
+    if (_autoUcenjeEnabled) {
+      _startAutoUcenje();
+      V3AppSnackBar.success(context, 'Auto-učenje uključeno (svakih 5 min)');
+    } else {
+      _stopAutoUcenje();
+      V3AppSnackBar.info(context, 'Auto-učenje isključeno');
+    }
+  }
+
+  void _startAutoUcenje() {
+    _autoUciTimer?.cancel();
+    _autoUciTimer = Timer.periodic(const Duration(minutes: 5), (_) => _uci());
+  }
+
+  void _stopAutoUcenje() {
+    _autoUciTimer?.cancel();
+    _autoUciTimer = null;
   }
 
   Future<void> _loadZnanje() async {
@@ -134,6 +167,14 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
                   icon: const Icon(Icons.refresh, color: Colors.white),
                   onPressed: _loadZnanje,
                   tooltip: 'Osvezi',
+                ),
+                IconButton(
+                  icon: Icon(
+                    _autoUcenjeEnabled ? Icons.auto_mode : Icons.auto_mode_outlined,
+                    color: _autoUcenjeEnabled ? Colors.greenAccent : Colors.white,
+                  ),
+                  onPressed: _toggleAutoUcenje,
+                  tooltip: _autoUcenjeEnabled ? 'Auto-učenje aktivno' : 'Uključi auto-učenje',
                 ),
                 IconButton(
                   icon: const Icon(Icons.psychology, color: Colors.white),

@@ -523,6 +523,96 @@ function analyzeTable(table: SchemaTable): Array<{
         });
       }
     }
+
+    // Pametna analiza v3_finansije (prihodi i rashodi)
+    if (name.includes("finansije")) {
+      if (first["tip"] !== undefined) {
+        const tipovi = new Set<string>();
+        let ukupanPrihod = 0;
+        let ukupanRashod = 0;
+        for (const row of table.sample_data) {
+          const tip = String(row["tip"] ?? "");
+          if (tip) tipovi.add(tip);
+          const iznos = Number(row["iznos"] || 0);
+          if (tip === "prihod") ukupanPrihod += iznos;
+          if (tip === "rashod") ukupanRashod += iznos;
+        }
+        const tipList = Array.from(tipovi).join(", ");
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: "tip",
+          zakljucak: `Finansije imaju tipove: ${tipList}. Svaki zapis je ili prihod ili rashod.`,
+          confidence: 0.85,
+          nauceno_od: "podaci",
+        });
+        if (ukupanPrihod > 0 || ukupanRashod > 0) {
+          findings.push({
+            tip: "pravilo",
+            entitet: name,
+            atribut: null,
+            zakljucak: `Ukupan prihod iz uzorka: ${ukupanPrihod.toFixed(2)}, ukupan rashod: ${ukupanRashod.toFixed(2)}.`,
+            confidence: 0.8,
+            nauceno_od: "podaci",
+          });
+        }
+      }
+      if (first["isplata_iz"] !== undefined) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: "isplata_iz",
+          zakljucak: "Finansijski zapisi beleze izvor isplate (npr. 'pazar' za gotovinsko placanje).",
+          confidence: 0.75,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["broj_voznji"] !== undefined) {
+        const ukupnoVoznji = table.sample_data.reduce((sum, row) => sum + Number(row["broj_voznji"] || 0), 0);
+        const ukupnoOtkazivanja = table.sample_data.reduce((sum, row) => sum + Number(row["broj_otkazivanja"] || 0), 0);
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: `Iz finansijskih zapisa: ukupno voznji ${ukupnoVoznji}, otkazivanja ${ukupnoOtkazivanja}.`,
+          confidence: 0.8,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["mesec"] !== undefined && first["godina"] !== undefined) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: null,
+          zakljucak: "Finansije se filtriraju po mesecu i godini za izvestaje.",
+          confidence: 0.75,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["naplaceno_by"] !== undefined) {
+        findings.push({
+          tip: "pravilo",
+          entitet: name,
+          atribut: "naplaceno_by",
+          zakljucak: "Kolona 'naplaceno_by' pokazuje ko je naplatio (vozac). Povezano sa tabelom v3_auth.",
+          confidence: 0.75,
+          nauceno_od: "podaci",
+        });
+      }
+      if (first["poslednja_dopuna"] !== undefined) {
+        const ukupnoDopuna = table.sample_data.reduce((sum, row) => sum + Number(row["poslednja_dopuna"] || 0), 0);
+        if (ukupnoDopuna > 0) {
+          findings.push({
+            tip: "pravilo",
+            entitet: name,
+            atribut: "poslednja_dopuna",
+            zakljucak: `Ukupno dopuna iz uzorka: ${ukupnoDopuna.toFixed(2)}. Ovo je iznos koji je putnik doplatio nakon inicijalne naplate.`,
+            confidence: 0.75,
+            nauceno_od: "podaci",
+          });
+        }
+      }
+    }
   }
 
   return findings;

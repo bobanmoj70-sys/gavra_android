@@ -18,6 +18,7 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
   final List<_ChatMessage> _messages = [];
   bool _thinking = false;
   List<dynamic> _znanje = [];
+  DateTime? _lastZnanjeLoad;
 
   @override
   void initState() {
@@ -34,10 +35,16 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
       final data = response.data as Map<String, dynamic>?;
       setState(() {
         _znanje = data?['znanje'] as List<dynamic>? ?? [];
+        _lastZnanjeLoad = DateTime.now();
       });
     } catch (e) {
       debugPrint('[AI Chat] Greska pri ucitavanju znanja: $e');
     }
+  }
+
+  bool get _znanjeZastarelo {
+    if (_lastZnanjeLoad == null) return true;
+    return DateTime.now().difference(_lastZnanjeLoad!).inMinutes > 5;
   }
 
   void _ask() async {
@@ -51,7 +58,7 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
     _questionCtrl.clear();
     _scrollToBottom();
 
-    if (_znanje.isEmpty) {
+    if (_znanje.isEmpty || _znanjeZastarelo) {
       await _loadZnanje();
     }
 
