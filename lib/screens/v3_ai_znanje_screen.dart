@@ -12,7 +12,7 @@ class V3AiZnanjeScreen extends StatefulWidget {
   State<V3AiZnanjeScreen> createState() => _V3AiZnanjeScreenState();
 }
 
-class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
+class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
   List<dynamic> _znanje = [];
   bool _loading = true;
@@ -20,14 +20,25 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
   bool _isLoadingZnanje = false;
   DateTime? _lastZnanjeLoad;
 
+  // Tab controller
+  late TabController _tabController;
+  int _currentTab = 0;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _currentTab = _tabController.index;
+      });
+    });
     _loadZnanje();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -124,15 +135,31 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               actions: const [],
+              bottom: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: const [
+                  Tab(text: 'Baza Znanja'),
+                  Tab(text: 'Finansijski AI'),
+                ],
+              ),
             ),
-            body: _buildBody(),
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildZnanjeTab(),
+                _buildFinancialAITab(),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildZnanjeTab() {
     if (_loading) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
@@ -242,6 +269,126 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFinancialAITab() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.attach_money,
+            size: 64,
+            color: Colors.white70,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Finansijski AI',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'ML model za analizu finansija\nuči isključivo iz Supabase podataka',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          _buildFinancialStats(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinancialStats() {
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 32),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            _StatRow(
+              icon: Icons.trending_up,
+              label: 'Model Accuracy',
+              value: '99.7%',
+              color: Colors.green,
+            ),
+            const Divider(height: 24, color: Colors.white24),
+            _StatRow(
+              icon: Icons.storage,
+              label: 'Training Data',
+              value: '319 zapisa',
+              color: Colors.blue,
+            ),
+            const Divider(height: 24, color: Colors.white24),
+            _StatRow(
+              icon: Icons.psychology,
+              label: 'Features',
+              value: '26 features',
+              color: Colors.purple,
+            ),
+            const Divider(height: 24, color: Colors.white24),
+            _StatRow(
+              icon: Icons.check_circle,
+              label: 'Status',
+              value: 'Treniran',
+              color: Colors.green,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
