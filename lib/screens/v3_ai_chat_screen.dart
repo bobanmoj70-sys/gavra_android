@@ -96,7 +96,35 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
   }
 
   String _generateAnswer(String question) {
-    final q = question.toLowerCase();
+    final q = question.toLowerCase().trim();
+
+    // Pozdravi i osnovni razgovor
+    final pozdravi = ['zdravo', 'cao', 'ćao', 'halo', 'hej', 'hello', 'hi', 'dobar dan', 'dobro jutro', 'dobro vece'];
+    for (final p in pozdravi) {
+      if (q == p || q.startsWith('$p ')) {
+        return 'Zdravo! Ja sam Gavra AI. Mogu da ti pomognem sa informacijama iz baze — recimo o vozacima, putnicima, finansijama, rasporedu, zahtevima. Sta te zanima?';
+      }
+    }
+
+    // Zahvalnica / zavrsetak
+    if (q == 'hvala' ||
+        q == 'hvala ti' ||
+        q == 'fala' ||
+        q == 'ok' ||
+        q == 'super' ||
+        q == 'odlicno' ||
+        q == 'sve je u redu') {
+      return 'Nema na cemu! Slobodno pitaj ako ti jos nesto treba.';
+    }
+
+    // Ko si ti / sta si ti
+    if (q.contains('ko si ti') ||
+        q.contains('sta si ti') ||
+        q.contains('ko si') ||
+        q.contains('sta radis') ||
+        q.contains('sta znas')) {
+      return 'Ja sam AI asistent aplikacije Gavra. Ucim iz baze podataka i mogu da ti dam informacije o korisnicima, vozilima, finansijama, rasporedu polazaka, zahtevima i adresama. Sta te zanima?';
+    }
 
     // Filtriraj relevantna znanja
     final relevantni = _znanje.where((z) {
@@ -116,7 +144,7 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
     }).toList();
 
     if (relevantni.isEmpty) {
-      return 'Nemam dovoljno znanja da odgovorim na to pitanje. Pokusaj "Nauci sve" u ekranu AI Znanje, pa pitaj ponovo.';
+      return 'Nemam dovoljno znanja da odgovorim na to pitanje. Pokusaj da budes konkretniji — npr. "Koliko dugovanja ima Marko" ili "Koji je red voznje". Ako je nova informacija u bazi, sacekaj trenutak, ucicu je.';
     }
 
     // Sortiraj po confidence (prvo potvrdjeno, pa confidence)
