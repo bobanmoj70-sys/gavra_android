@@ -613,6 +613,95 @@ function analyzeTable(table: SchemaTable): Array<{
         }
       }
     }
+
+    // Analiza pojedinacnih redova za sve tabele
+    const skipCols = new Set(["id", "created_at", "updated_at", "deleted_at"]);
+    for (const row of table.sample_data) {
+      if (name.includes("auth")) {
+        const ime = row["ime"] || row["full_name"] || row["name"] || row["username"];
+        const tel = row["telefon"] || row["phone"];
+        const uloga = row["uloga"] || row["role"] || row["tip"];
+        const grad = row["grad"] || row["city"];
+        if (ime) {
+          findings.push({
+            tip: "podatak",
+            entitet: name,
+            atribut: "korisnik",
+            zakljucak: `Korisnik: ${ime}${tel ? ", tel: " + tel : ""}${uloga ? ", uloga: " + uloga : ""}${grad ? ", grad: " + grad : ""}.`,
+            confidence: 0.9,
+            nauceno_od: "podaci",
+          });
+        }
+      } else if (name.includes("zahtevi")) {
+        const putnik = row["ime_putnika"] || row["putnik"] || row["korisnik_ime"] || row["ime"];
+        const vozacId = row["vozac_id"] || row["dodeljen_vozac_id"];
+        const polazak = row["trazeni_polazak_at"] || row["polazak_at"];
+        const cena = row["cena"] || row["iznos"];
+        const status = row["status"];
+        const odLok = row["od_lokacija"] || row["od"];
+        const doLok = row["do_lokacija"] || row["do"];
+        if (putnik || vozacId) {
+          findings.push({
+            tip: "podatak",
+            entitet: name,
+            atribut: null,
+            zakljucak: `Zahtev: ${putnik ? "putnik " + putnik : "zahtev"}${odLok ? " od " + odLok : ""}${doLok ? " do " + doLok : ""}${polazak ? ", polazak: " + polazak : ""}${cena ? ", cena: " + cena : ""}${status ? ", status: " + status : ""}${vozacId ? ", vozac_id: " + vozacId : ""}.`,
+            confidence: 0.9,
+            nauceno_od: "podaci",
+          });
+        }
+      } else if (name.includes("finansije")) {
+        const tip = row["tip"];
+        const iznos = row["iznos"];
+        const isplataIz = row["isplata_iz"];
+        const naplacenoBy = row["naplaceno_by"];
+        const mesec = row["mesec"];
+        const godina = row["godina"];
+        const datum = row["datum"] || row["created_at"];
+        if (iznos !== undefined) {
+          findings.push({
+            tip: "podatak",
+            entitet: name,
+            atribut: null,
+            zakljucak: `Finansije: ${tip || "transakcija"} od ${iznos}${isplataIz ? " din, placeno iz: " + isplataIz : ""}${naplacenoBy ? ", naplatio: " + naplacenoBy : ""}${datum ? ", datum: " + datum : ""}${mesec ? ", mesec: " + mesec : ""}${godina ? ", godina: " + godina : ""}.`,
+            confidence: 0.9,
+            nauceno_od: "podaci",
+          });
+        }
+      } else if (name.includes("racuni")) {
+        const iznos = row["iznos"];
+        const status = row["status"];
+        const datum = row["datum"] || row["created_at"];
+        const korisnikId = row["korisnik_id"] || row["user_id"];
+        if (iznos !== undefined) {
+          findings.push({
+            tip: "podatak",
+            entitet: name,
+            atribut: null,
+            zakljucak: `Racun: iznos ${iznos}${status ? ", status: " + status : ""}${datum ? ", datum: " + datum : ""}${korisnikId ? ", korisnik_id: " + korisnikId : ""}.`,
+            confidence: 0.9,
+            nauceno_od: "podaci",
+          });
+        }
+      } else {
+        const parts: string[] = [];
+        for (const [key, val] of Object.entries(row)) {
+          if (skipCols.has(key)) continue;
+          if (val === null || val === undefined) continue;
+          parts.push(`${key}=${val}`);
+        }
+        if (parts.length > 0) {
+          findings.push({
+            tip: "podatak",
+            entitet: name,
+            atribut: null,
+            zakljucak: `Red iz ${name}: ${parts.join(", ")}.`,
+            confidence: 0.7,
+            nauceno_od: "podaci",
+          });
+        }
+      }
+    }
   }
 
   return findings;
@@ -626,29 +715,32 @@ async function saveFindings(supabase: SupabaseClient, findings: Array<{
   confidence: number;
   nauceno_od: string;
 }>): Promise<number> {
+  if (findings.length === 0) return 0;
+
+  // Batch deduplikacija — uzmi sve postojece za entitete koje imamo
+  const entiteti = [...new Set(findings.map((f) => f.entitet))];
+  const { data: existingRows } = await supabase
+    .from("ai_znanje")
+    .select("entitet,atribut,zakljucak")
+    .in("entitet", entiteti);
+
+  const existingSet = new Set(
+    (existingRows || []).map((e) => `${e.entitet}|${e.atribut || ""}|${e.zakljucak}`)
+  );
+
+  const toInsert = findings.filter(
+    (f) => !existingSet.has(`${f.entitet}|${f.atribut || ""}|${f.zakljucak}`)
+  );
+
+  if (toInsert.length === 0) return 0;
+
+  // Batch insert po 500
+  const BATCH_SIZE = 500;
   let saved = 0;
-
-  for (const f of findings) {
-    const { data: existing } = await supabase
-      .from("ai_znanje")
-      .select("id")
-      .eq("entitet", f.entitet)
-      .eq("atribut", f.atribut || "")
-      .eq("zakljucak", f.zakljucak)
-      .maybeSingle();
-
-    if (existing) continue;
-
-    const { error } = await supabase.from("ai_znanje").insert({
-      tip: f.tip,
-      entitet: f.entitet,
-      atribut: f.atribut,
-      zakljucak: f.zakljucak,
-      confidence: f.confidence,
-      nauceno_od: f.nauceno_od,
-    });
-
-    if (!error) saved++;
+  for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+    const batch = toInsert.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("ai_znanje").insert(batch);
+    if (!error) saved += batch.length;
   }
 
   return saved;

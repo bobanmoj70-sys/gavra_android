@@ -127,8 +127,8 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
       return ((b['confidence'] ?? 0) as num).compareTo((a['confidence'] ?? 0) as num);
     });
 
-    // Uzmi top 5
-    final top = relevantni.take(5).toList();
+    // Uzmi top 50 (vise red-level podataka)
+    final top = relevantni.take(50).toList();
 
     // Generisi odgovor
     final buffer = StringBuffer();
