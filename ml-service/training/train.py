@@ -29,7 +29,7 @@ def train_financial_model():
         print("ERROR: No data extracted from Supabase")
         return None
     
-    print(f"  ✓ Extracted {len(df)} financial records")
+    print(f"  [OK] Extracted {len(df)} financial records")
     
     # 2. Train model
     print("\n[Step 2/3] Training ML model...")

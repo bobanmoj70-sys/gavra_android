@@ -22,9 +22,9 @@ financial_model = FinancialMLModel()
 # Load model if available
 try:
     financial_model.load()
-    print("✓ Financial ML Model loaded successfully")
+    print("[OK] Financial ML Model loaded successfully")
 except:
-    print("✗ No saved model found. Train model first.")
+    print("[MISSING] No saved model found. Train model first.")
 
 # Pydantic models
 class PredictionRequest(BaseModel):

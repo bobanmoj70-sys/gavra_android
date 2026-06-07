@@ -12,7 +12,9 @@ if (-not (Test-Path $logPath)) {
 
 $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $mlLog = "$logPath\ml-api-$timestamp.log"
+$mlErrLog = "$logPath\ml-api-error-$timestamp.log"
 $ngrokLog = "$logPath\ngrok-$timestamp.log"
+$ngrokErrLog = "$logPath\ngrok-error-$timestamp.log"
 
 # Check if ML API is already running
 $mlApiRunning = Get-Process | Where-Object { $_.ProcessName -like "*python*" -and $_.CommandLine -like "*api/main.py*" }
@@ -21,7 +23,7 @@ if ($mlApiRunning) {
 } else {
     # Start ML API in background
     Add-Content -Path "$logPath\startup.log" -Value "$(Get-Date): Starting ML API..."
-    Start-Process -FilePath "python" -ArgumentList "api/main.py" -WorkingDirectory $mlServicePath -WindowStyle Hidden -RedirectStandardOutput $mlLog -RedirectStandardError $mlLog
+    Start-Process -FilePath "python" -ArgumentList "api/main.py" -WorkingDirectory $mlServicePath -WindowStyle Hidden -RedirectStandardOutput $mlLog -RedirectStandardError $mlErrLog
 }
 
 # Wait for ML API to start
@@ -34,7 +36,7 @@ if ($ngrokRunning) {
 } else {
     # Start ngrok tunnel
     Add-Content -Path "$logPath\startup.log" -Value "$(Get-Date): Starting ngrok tunnel..."
-    Start-Process -FilePath $ngrokPath -ArgumentList "http 8000" -WindowStyle Hidden -RedirectStandardOutput $ngrokLog -RedirectStandardError $ngrokLog
+    Start-Process -FilePath $ngrokPath -ArgumentList "http 8000" -WindowStyle Hidden -RedirectStandardOutput $ngrokLog -RedirectStandardError $ngrokErrLog
 }
 
 Add-Content -Path "$logPath\startup.log" -Value "$(Get-Date): Startup complete. Check logs folder for URLs."
