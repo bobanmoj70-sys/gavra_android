@@ -15,7 +15,7 @@ def extract_all_tables() -> dict:
 
     # Auth / Users
     try:
-        r = supabase.table("v3_auth").select("id, ime, prezime, role, created_at").limit(100).execute()
+        r = supabase.table("v3_auth").select("id, ime, created_at").limit(100).execute()
         data['users'] = pd.DataFrame(r.data)
         print(f"[Znanje] Users: {len(data['users'])}")
     except Exception as e:

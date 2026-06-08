@@ -6,6 +6,8 @@ import re
 import pandas as pd
 from typing import Dict, List, Any
 import json
+from models.knowledge_graph import KnowledgeGraph
+from services.embeddings_service import EmbeddingsService
 
 
 class ZnanjeAIModel:
@@ -14,15 +16,63 @@ class ZnanjeAIModel:
     def __init__(self):
         self.data_cache = {}
         self.schema = {}
+        self.knowledge_graph = KnowledgeGraph()
+        self.embeddings_service = EmbeddingsService()
         self.is_ready = False
 
     def load_data(self, data: Dict[str, pd.DataFrame], schema: Dict):
-        """Ucitava podatke iz ETL-a"""
+        """Ucitava podatke iz ETL-a i gradi knowledge graph"""
         self.data_cache = {k: v.copy() for k, v in data.items() if not v.empty}
         self.schema = schema
+        
+        # Izgradi knowledge graph za logičko povezivanje
+        self.knowledge_graph.build_from_supabase(self.data_cache)
+        print(f"[ZnanjeAI] Knowledge graph: {len(self.knowledge_graph.nodes)} cvorova, {sum(len(v) for v in self.knowledge_graph.edges.values())} grana")
+        
+        # Pripremi dokumente za embeddings
+        documents = self._prepare_documents_for_embeddings()
+        if documents and self.embeddings_service.is_available():
+            self.embeddings_service.encode_documents(documents)
+            print(f"[ZnanjeAI] Embeddings: {len(documents)} dokumenata indeksirano")
+        
         self.is_ready = True
         print(f"[ZnanjeAI] Ucitano {len(self.data_cache)} tabela")
 
+    def _prepare_documents_for_embeddings(self) -> List[str]:
+        """Priprema dokumente iz baze za embeddings indeksiranje"""
+        documents = []
+        
+        # Dodaj podatke iz svake tabele kao dokumente
+        for table_name, df in self.data_cache.items():
+            if df.empty:
+                continue
+            
+            for _, row in df.iterrows():
+                # Kreiraj tekstualni reprezentaciju reda
+                text_parts = []
+                for col in df.columns:
+                    val = row[col]
+                    if pd.notna(val):
+                        text_parts.append(f"{col}: {val}")
+                
+                doc_text = f"[{table_name}] " + ", ".join(text_parts)
+                documents.append(doc_text)
+        
+        return documents
+    
+    def _format_embeddings_response(self, similar_docs: List[tuple]) -> Dict:
+        """Formatira odgovor iz embeddings pretrage"""
+        response_parts = ["Pronasao sam relevantne informacije:"]
+        
+        for doc, score in similar_docs:
+            response_parts.append(f"\n- {doc} (sličnost: {score:.2f})")
+        
+        return {
+            'odgovor': "\n".join(response_parts),
+            'tip': 'embeddings',
+            'sličnost': [score for _, score in similar_docs]
+        }
+    
     def _extract_keywords(self, question: str) -> List[str]:
         """Izvlaci kljucne reci iz pitanja"""
         q = question.lower().strip()
@@ -84,6 +134,13 @@ class ZnanjeAIModel:
         """
         if not self.is_ready:
             return {'odgovor': 'AI asistent nije spreman. Nema podataka.', 'tip': 'greska'}
+
+        # Prvo probaj semantičku pretragu sa embeddings
+        if self.embeddings_service.is_available():
+            similar_docs = self.embeddings_service.find_similar(question, top_k=3)
+            if similar_docs and similar_docs[0][1] > 0.3:  # Threshold za sličnost
+                print(f"[ZnanjeAI] Embeddings pronasao relevantne dokumente")
+                return self._format_embeddings_response(similar_docs)
 
         keywords = self._extract_keywords(question)
         intent = self._detect_intent(question)
@@ -292,8 +349,12 @@ class ZnanjeAIModel:
             if not df.empty:
                 info.append(f'{tbl_name}: {len(df)} redova')
 
+        # Dodaj info o knowledge graph
+        graph_info = f'\n\nKnowledge Graph: {len(self.knowledge_graph.nodes)} entiteta, {sum(len(v) for v in self.knowledge_graph.edges.values())} relacija'
+
         return {
             'odgovor': 'Trenutno u bazi imam podatke iz sledecih tabela:\n' + '\n'.join(info) +
+                      graph_info +
                       '\n\nPitaj me npr: "Koliko zahteva ima Bojan?", "Prikazi finansije", "Status vozila", "Sta je danas?"',
             'tip': 'help',
             'podaci': {tbl: len(self.data_cache.get(tbl, pd.DataFrame())) for tbl in self.data_cache}

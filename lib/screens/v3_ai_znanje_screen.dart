@@ -14,6 +14,12 @@ class V3AiZnanjeScreen extends StatefulWidget {
 }
 
 class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerProviderStateMixin {
+  // ML server base URL — promeni prema setup-u:
+  // Android emulator: http://10.0.2.2:8000
+  // iOS simulator / desktop: http://localhost:8000
+  // Fizički uređaj: http://<LAPTOP_WIFI_IP>:8000
+  static const _mlBaseUrl = 'http://192.168.5.14:8000';
+
   // Znanje (General) AI state
   bool _znanLoading = true;
   String? _znanError;
@@ -54,6 +60,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   Map<String, dynamic>? _zahHealth;
   Map<String, dynamic>? _zahPredictions;
 
+  // Training-in-progress flags
+  bool _finTraining = false;
+  bool _vozTraining = false;
+  bool _gorTraining = false;
+  bool _putTraining = false;
+  bool _zahTraining = false;
+
   @override
   void initState() {
     super.initState();
@@ -62,19 +75,15 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       setState(() {
         _currentTab = _tabController.index;
       });
-      if (_currentTab == 0 && _znanHealth == null && !_znanLoading) _loadZnanjeAI();
-      if (_currentTab == 1 && _finHealth == null && !_finLoading) _loadFinancialAI();
-      if (_currentTab == 2 && _vozHealth == null && !_vozLoading) _loadVehicleAI();
-      if (_currentTab == 3 && _gorHealth == null && !_gorLoading) _loadGorivoAI();
-      if (_currentTab == 4 && _putHealth == null && !_putLoading) _loadPutnikAI();
-      if (_currentTab == 5 && _zahHealth == null && !_zahLoading) _loadZahteviAI();
+      if (_currentTab == 0 && _znanHealth == null) _loadZnanjeAI();
+      if (_currentTab == 1 && _finHealth == null) _loadFinancialAI();
+      if (_currentTab == 2 && _vozHealth == null) _loadVehicleAI();
+      if (_currentTab == 3 && _gorHealth == null) _loadGorivoAI();
+      if (_currentTab == 4 && _putHealth == null) _loadPutnikAI();
+      if (_currentTab == 5 && _zahHealth == null) _loadZahteviAI();
     });
+    // Učitaj samo aktivni tab odmah — ostali se učitavaju lezerno pri prelasku
     _loadZnanjeAI();
-    _loadFinancialAI();
-    _loadVehicleAI();
-    _loadGorivoAI();
-    _loadPutnikAI();
-    _loadZahteviAI();
   }
 
   Future<void> _loadFinancialAI() async {
@@ -83,10 +92,10 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _finError = null;
     });
 
-    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    const mlUrl = _mlBaseUrl;
 
+    // Health check
     try {
-      // Health check
       final healthResp = await http
           .get(
             Uri.parse('$mlUrl/health'),
@@ -102,8 +111,16 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
 
       _finHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
+    } catch (e) {
+      setState(() {
+        _finError = 'Greska (health): $e';
+        _finLoading = false;
+      });
+      return;
+    }
 
-      // Trends analysis
+    // Trends analysis — ne-fatalno
+    try {
       final trendsResp = await http
           .post(
             Uri.parse('$mlUrl/analyze/trends'),
@@ -115,8 +132,12 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       if (trendsResp.statusCode == 200) {
         _finTrends = jsonDecode(trendsResp.body) as Map<String, dynamic>?;
       }
+    } catch (_) {
+      _finTrends = null;
+    }
 
-      // Amount prediction for current month
+    // Amount prediction for current month — ne-fatalno
+    try {
       final now = DateTime.now();
       final predictResp = await http
           .post(
@@ -132,16 +153,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       if (predictResp.statusCode == 200) {
         _finPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
       }
-
-      setState(() {
-        _finLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _finError = 'Greska: $e';
-        _finLoading = false;
-      });
+    } catch (_) {
+      _finPredictions = null;
     }
+
+    setState(() {
+      _finLoading = false;
+    });
   }
 
   Future<void> _loadVehicleAI() async {
@@ -150,7 +168,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _vozError = null;
     });
 
-    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    const mlUrl = _mlBaseUrl;
 
     try {
       final healthResp = await http
@@ -168,7 +186,15 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
 
       _vozHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
+    } catch (e) {
+      setState(() {
+        _vozError = 'Greska (health): $e';
+        _vozLoading = false;
+      });
+      return;
+    }
 
+    try {
       final predictResp = await http
           .get(
             Uri.parse('$mlUrl/vozilo/predict/all'),
@@ -178,16 +204,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       if (predictResp.statusCode == 200) {
         _vozPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
       }
-
-      setState(() {
-        _vozLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _vozError = 'Greska: $e';
-        _vozLoading = false;
-      });
+    } catch (_) {
+      _vozPredictions = null;
     }
+
+    setState(() {
+      _vozLoading = false;
+    });
   }
 
   Future<void> _loadGorivoAI() async {
@@ -195,28 +218,35 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _gorLoading = true;
       _gorError = null;
     });
-    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    const mlUrl = _mlBaseUrl;
     try {
       final healthResp = await http.get(Uri.parse('$mlUrl/gorivo/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         setState(() {
-          _gorError = 'Server nije dostupan';
+          _gorError = 'Server nije dostupan (${healthResp.statusCode})';
           _gorLoading = false;
         });
         return;
       }
       _gorHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
-      final predictResp = await http.get(Uri.parse('$mlUrl/gorivo/predict')).timeout(const Duration(seconds: 20));
-      if (predictResp.statusCode == 200) _gorPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
-      setState(() {
-        _gorLoading = false;
-      });
     } catch (e) {
       setState(() {
-        _gorError = 'Greska: $e';
+        _gorError = 'Greska (health): $e';
         _gorLoading = false;
       });
+      return;
     }
+
+    try {
+      final predictResp = await http.get(Uri.parse('$mlUrl/gorivo/predict')).timeout(const Duration(seconds: 20));
+      if (predictResp.statusCode == 200) _gorPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
+    } catch (_) {
+      _gorPredictions = null;
+    }
+
+    setState(() {
+      _gorLoading = false;
+    });
   }
 
   Future<void> _loadPutnikAI() async {
@@ -224,28 +254,35 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _putLoading = true;
       _putError = null;
     });
-    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    const mlUrl = _mlBaseUrl;
     try {
       final healthResp = await http.get(Uri.parse('$mlUrl/putnik/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         setState(() {
-          _putError = 'Server nije dostupan';
+          _putError = 'Server nije dostupan (${healthResp.statusCode})';
           _putLoading = false;
         });
         return;
       }
       _putHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
-      final predictResp = await http.get(Uri.parse('$mlUrl/putnik/predict/all')).timeout(const Duration(seconds: 20));
-      if (predictResp.statusCode == 200) _putPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
-      setState(() {
-        _putLoading = false;
-      });
     } catch (e) {
       setState(() {
-        _putError = 'Greska: $e';
+        _putError = 'Greska (health): $e';
         _putLoading = false;
       });
+      return;
     }
+
+    try {
+      final predictResp = await http.get(Uri.parse('$mlUrl/putnik/predict/all')).timeout(const Duration(seconds: 20));
+      if (predictResp.statusCode == 200) _putPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
+    } catch (_) {
+      _putPredictions = null;
+    }
+
+    setState(() {
+      _putLoading = false;
+    });
   }
 
   Future<void> _loadZahteviAI() async {
@@ -253,29 +290,36 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _zahLoading = true;
       _zahError = null;
     });
-    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    const mlUrl = _mlBaseUrl;
     try {
       final healthResp = await http.get(Uri.parse('$mlUrl/zahtevi/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         setState(() {
-          _zahError = 'Server nije dostupan';
+          _zahError = 'Server nije dostupan (${healthResp.statusCode})';
           _zahLoading = false;
         });
         return;
       }
       _zahHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
+    } catch (e) {
+      setState(() {
+        _zahError = 'Greska (health): $e';
+        _zahLoading = false;
+      });
+      return;
+    }
+
+    try {
       final predictResp =
           await http.get(Uri.parse('$mlUrl/zahtevi/predict/next-week')).timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _zahPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
-      setState(() {
-        _zahLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _zahError = 'Greska: $e';
-        _zahLoading = false;
-      });
+    } catch (_) {
+      _zahPredictions = null;
     }
+
+    setState(() {
+      _zahLoading = false;
+    });
   }
 
   @override
@@ -290,7 +334,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _znanError = null;
     });
 
-    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    const mlUrl = _mlBaseUrl;
 
     try {
       final healthResp = await http
@@ -314,9 +358,30 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       });
     } catch (e) {
       setState(() {
-        _znanError = 'Greska: $e';
+        _znanError = 'Greska (health): $e';
         _znanLoading = false;
       });
+    }
+  }
+
+  Future<void> _trainModel(String endpoint, Future<void> Function() reload, String label) async {
+    final scaffold = ScaffoldMessenger.of(context);
+    try {
+      final resp = await http.post(Uri.parse('$_mlBaseUrl$endpoint')).timeout(const Duration(seconds: 30));
+      if (resp.statusCode == 200) {
+        scaffold.showSnackBar(
+          SnackBar(content: Text('$label je treniran! Osvezavam podatke...'), duration: const Duration(seconds: 2)),
+        );
+        await reload();
+      } else {
+        scaffold.showSnackBar(
+          SnackBar(content: Text('Greska pri treningu $label: ${resp.statusCode}'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(content: Text('Greska pri treningu $label: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -605,6 +670,17 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
         // Trends
         if (trends != null) _buildTrendsCard(trends),
+
+        if (!modelTrained && predictions == null && trends == null)
+          _buildUntrainedMessage(
+            'Finansijski model',
+            onTrain: () async {
+              setState(() => _finTraining = true);
+              await _trainModel('/train', _loadFinancialAI, 'Finansijski model');
+              setState(() => _finTraining = false);
+            },
+            isTraining: _finTraining,
+          ),
       ],
     );
   }
@@ -851,6 +927,16 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         const SizedBox(height: 16),
 
         // Vehicle list
+        if (!modelTrained && vehicles.isEmpty)
+          _buildUntrainedMessage(
+            'Vozilo model',
+            onTrain: () async {
+              setState(() => _vozTraining = true);
+              await _trainModel('/vozilo/train', _loadVehicleAI, 'Vozilo model');
+              setState(() => _vozTraining = false);
+            },
+            isTraining: _vozTraining,
+          ),
         ...vehicles.map((v) {
           final map = v as Map<String, dynamic>;
           final status = map['status'] as String? ?? 'ok';
@@ -943,6 +1029,16 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           _StatRow(icon: Icons.check, label: 'OK', value: '$ok', color: Colors.green),
         ]),
         const SizedBox(height: 16),
+        if (!modelTrained && rezervoari.isEmpty)
+          _buildUntrainedMessage(
+            'Gorivo model',
+            onTrain: () async {
+              setState(() => _gorTraining = true);
+              await _trainModel('/gorivo/train', _loadGorivoAI, 'Gorivo model');
+              setState(() => _gorTraining = false);
+            },
+            isTraining: _gorTraining,
+          ),
         ...rezervoari.map((r) {
           final map = r as Map<String, dynamic>;
           final status = map['status'] as String? ?? 'ok';
@@ -985,6 +1081,16 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           _StatRow(icon: Icons.person, label: 'Prosecni', value: '$prosecan', color: Colors.orange),
         ]),
         const SizedBox(height: 16),
+        if (!modelTrained && passengers.isEmpty)
+          _buildUntrainedMessage(
+            'Putnik model',
+            onTrain: () async {
+              setState(() => _putTraining = true);
+              await _trainModel('/putnik/train', _loadPutnikAI, 'Putnik model');
+              setState(() => _putTraining = false);
+            },
+            isTraining: _putTraining,
+          ),
         ...passengers.take(10).map((p) {
           final map = p as Map<String, dynamic>;
           final kat = map['kategorija'] as String? ?? 'prosecan';
@@ -1023,6 +1129,16 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           _StatRow(icon: Icons.calendar_today, label: 'Ukupno nedelja', value: ukupno, color: Colors.blue),
         ]),
         const SizedBox(height: 16),
+        if (!modelTrained && nextWeek.isEmpty)
+          _buildUntrainedMessage(
+            'Zahtevi model',
+            onTrain: () async {
+              setState(() => _zahTraining = true);
+              await _trainModel('/zahtevi/train', _loadZahteviAI, 'Zahtevi model');
+              setState(() => _zahTraining = false);
+            },
+            isTraining: _zahTraining,
+          ),
         ...nextWeek.map((d) {
           final map = d as Map<String, dynamic>;
           return Card(
@@ -1122,6 +1238,47 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               ),
               const SizedBox(height: 8),
               Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildUntrainedMessage(String label, {VoidCallback? onTrain, bool isTraining = false}) => Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            children: [
+              const Icon(Icons.model_training, size: 40, color: Colors.white38),
+              const SizedBox(height: 12),
+              Text(
+                '$label nije treniran',
+                style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Pokrenite /train na ML backend-u da biste videli predikcije.',
+                style: TextStyle(color: Colors.white38, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              if (onTrain != null) ...[
+                const SizedBox(height: 12),
+                isTraining
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: onTrain,
+                        icon: const Icon(Icons.play_arrow, size: 18),
+                        label: const Text('Treniraj'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+              ],
             ],
           ),
         ),

@@ -37,12 +37,22 @@ init_znanje_model()
 # Initialize model
 financial_model = FinancialMLModel()
 
-# Load model if available
+# Load model if available, otherwise auto-train
 try:
     financial_model.load()
     print("[OK] Financial ML Model loaded successfully")
 except:
-    print("[MISSING] No saved model found. Train model first.")
+    print("[MISSING] No saved model found. Auto-training...")
+    try:
+        df = extract_finances()
+        if len(df) > 0:
+            financial_model.train(df)
+            financial_model.save()
+            print("[OK] Financial ML Model trained and saved successfully")
+        else:
+            print("[WARN] No data available for training")
+    except Exception as e:
+        print(f"[WARN] Could not auto-train financial model: {e}")
 
 # Pydantic models
 class PredictionRequest(BaseModel):
