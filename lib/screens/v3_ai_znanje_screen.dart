@@ -380,19 +380,30 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               actions: const [],
-              bottom: TabBar(
-                controller: _tabController,
-                indicatorColor: Colors.white,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                tabs: const [
-                  Tab(text: 'Baza Znanja'),
-                  Tab(text: 'Finansije'),
-                  Tab(text: 'Vozila'),
-                  Tab(text: 'Gorivo'),
-                  Tab(text: 'Putnici'),
-                  Tab(text: 'Zahtevi'),
-                ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(88),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          _buildTabButton(0, 'Baza Znanja', Icons.psychology),
+                          _buildTabButton(1, 'Finansije', Icons.account_balance_wallet),
+                          _buildTabButton(2, 'Vozila', Icons.directions_car),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          _buildTabButton(3, 'Gorivo', Icons.local_gas_station),
+                          _buildTabButton(4, 'Putnici', Icons.people),
+                          _buildTabButton(5, 'Zahtevi', Icons.request_page),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             body: TabBarView(
@@ -1126,6 +1137,42 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           ),
         ),
       );
+
+  Widget _buildTabButton(int index, String label, IconData icon) {
+    final isActive = _currentTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _tabController.animateTo(index),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white.withOpacity(0.25) : Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(8),
+            border:
+                isActive ? Border.all(color: Colors.white, width: 1) : Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: isActive ? Colors.white : Colors.white70, size: 20),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.white70,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _StatRow extends StatelessWidget {

@@ -96,37 +96,72 @@ def create_time_series_features(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def add_cross_table_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Dodaje features iz povezanih tabela
+    """
+    features = df.copy()
+
+    # Putnik behavior features (ako postoje iz enriched ETL)
+    if 'broj_zahteva' in features.columns:
+        features['zahtevi_po_transakciji'] = features['broj_zahteva'] / (features.get('broj_voznji', 1) + 1)
+    if 'broj_putovanja' in features.columns:
+        features['putovanja_po_transakciji'] = features['broj_putovanja'] / (features.get('broj_voznji', 1) + 1)
+        features['loyalty_score'] = features['broj_putovanja'].clip(0, 50) / 50
+
+    # Vehicle features (ako postoje)
+    if 'broj_voznji_30dana' in features.columns:
+        features['intenzitet_koriscenja'] = features['broj_voznji_30dana'].clip(0, 100) / 100
+
+    # Fuel features (ako postoje)
+    if 'trenutno_litara' in features.columns and 'kapacitet' in features.columns:
+        features['nivo_goriva_posto'] = (features['trenutno_litara'] / features['kapacitet'].clip(lower=1) * 100).clip(0, 100)
+
+    return features
+
+
 def prepare_ml_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Priprema sve features za ML model
-    Sve se generiše isključivo iz Supabase podataka
+    Sve se generiše iz Supabase podataka + povezanih tabela
     """
     # Osnovni features
     features = extract_financial_features(df)
-    
+
     # User agregati
     user_aggregates = create_user_aggregates(df)
-    
+
     # Time series features
     time_features = create_time_series_features(df)
-    
+
+    # Cross-table features
+    cross_features = add_cross_table_features(df)
+
     # Spajamo sve features
     if 'putnik_v3_auth_id' in features.columns:
-        features = features.merge(user_aggregates, left_on='putnik_v3_auth_id', 
+        features = features.merge(user_aggregates, left_on='putnik_v3_auth_id',
                                    right_on='user_id', how='left')
-    
+
     # Dodajemo time series features
     for col in time_features.columns:
         if col not in features.columns:
             features[col] = time_features[col]
-    
+
+    # Dodajemo cross-table features
+    for col in cross_features.columns:
+        if col not in features.columns and col in ['zahtevi_po_transakciji', 'putovanja_po_transakciji',
+                                                     'loyalty_score', 'intenzitet_koriscenja',
+                                                     'nivo_goriva_posto', 'broj_zahteva', 'broj_putovanja',
+                                                     'broj_voznji_30dana']:
+            features[col] = cross_features[col]
+
     # Uklanjamo non-numeric kolone za ML
     numeric_cols = features.select_dtypes(include=[np.number]).columns.tolist()
     features = features[numeric_cols]
-    
+
     # Popunjavamo missing values
     features = features.fillna(0)
-    
+
     return features
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from data.etl_vozilo import extract_gorivo
+from data.etl_gorivo import extract_enriched_gorivo as extract_gorivo
 from models.gorivo_model import GorivoMLModel
 
 router = APIRouter(prefix="/gorivo", tags=["Gorivo AI"])

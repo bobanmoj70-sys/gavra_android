@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from data.etl_vozilo import extract_vozila
+from data.etl_vozilo import extract_enriched_vozila as extract_vozila
 from models.vozilo_model import VoziloMLModel
 
 router = APIRouter(prefix="/vozilo", tags=["Vehicle AI"])

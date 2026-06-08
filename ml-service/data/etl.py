@@ -1,6 +1,6 @@
 """
 ETL Pipeline - Extract financial data from Supabase
-Model uči isključivo iz ovih podataka
+Model uči iz v3_finansije + povezanih tabela (v3_auth, v3_zahtevi, v3_operativna_nedelja)
 """
 import pandas as pd
 from supabase import create_client
@@ -29,11 +29,40 @@ def extract_requests() -> pd.DataFrame:
     print(f"Extracted {len(df)} request records from Supabase")
     return df
 
-if __name__ == "__main__":
-    # Test extraction
-    finances = extract_finances()
+def extract_operativna() -> pd.DataFrame:
+    """Extract operational data from v3_operativna_nedelja"""
+    response = supabase.table("v3_operativna_nedelja").select("*").execute()
+    df = pd.DataFrame(response.data)
+    print(f"Extracted {len(df)} operational records from Supabase")
+    return df
+
+def extract_enriched_finances() -> pd.DataFrame:
+    """Extract finances joined with user profiles and request history"""
+    fin = extract_finances()
     users = extract_users()
-    requests = extract_requests()
-    
-    print("\nFinancial data sample:")
-    print(finances.head())
+    reqs = extract_requests()
+    oper = extract_operativna()
+
+    if 'putnik_v3_auth_id' in fin.columns and not users.empty:
+        fin = fin.merge(users[['id', 'ime', 'prezime', 'role']].rename(columns={'id': 'putnik_v3_auth_id'}),
+                        on='putnik_v3_auth_id', how='left')
+
+    if 'putnik_v3_auth_id' in fin.columns and not reqs.empty and 'created_by' in reqs.columns:
+        req_stats = reqs.groupby('created_by').size().reset_index(name='broj_zahteva')
+        fin = fin.merge(req_stats.rename(columns={'created_by': 'putnik_v3_auth_id'}),
+                        on='putnik_v3_auth_id', how='left')
+        fin['broj_zahteva'] = fin['broj_zahteva'].fillna(0)
+
+    if 'putnik_v3_auth_id' in fin.columns and not oper.empty and 'created_by' in oper.columns:
+        op_stats = oper.groupby('created_by').size().reset_index(name='broj_putovanja')
+        fin = fin.merge(op_stats.rename(columns={'created_by': 'putnik_v3_auth_id'}),
+                        on='putnik_v3_auth_id', how='left')
+        fin['broj_putovanja'] = fin['broj_putovanja'].fillna(0)
+
+    print(f"[ENRICHED] Financial data: {len(fin)} rows with cross-table features")
+    return fin
+
+if __name__ == "__main__":
+    df = extract_enriched_finances()
+    print("\nEnriched financial data sample:")
+    print(df.head())

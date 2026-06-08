@@ -11,7 +11,7 @@ from typing import Optional
 import pandas as pd
 from datetime import datetime
 
-from data.etl import extract_finances
+from data.etl import extract_enriched_finances as extract_finances
 from models.financial_model import FinancialMLModel
 from api.vozilo_routes import router as vozilo_router, init_vozilo_model
 from api.gorivo_routes import router as gorivo_router, init_gorivo_model
@@ -165,10 +165,10 @@ async def train_model():
     """
     try:
         df = extract_finances()
-        
+
         if len(df) == 0:
             raise HTTPException(status_code=400, detail="No data available in Supabase")
-        
+
         metrics = financial_model.train(df)
         financial_model.save()
         

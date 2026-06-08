@@ -5,7 +5,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import APIRouter, HTTPException
-from data.etl_zahtevi import extract_zahtevi
+from data.etl_zahtevi import extract_enriched_zahtevi as extract_zahtevi
 from models.zahtevi_model import ZahteviMLModel
 
 router = APIRouter(prefix="/zahtevi", tags=["Zahtevi AI"])
