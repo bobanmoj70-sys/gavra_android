@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_time_utils.dart';
-import 'v3_blocking_screen_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 
 enum V3LocationPrereqStatus {
@@ -27,7 +26,6 @@ class V3VozacLocationTrackingService {
   String _activeGrad = '';
   String _activeVreme = '';
   Position? _lastSentPosition;
-  bool _blockingScreenInitialized = false;
   final bool _inFlight = false;
   bool _isRunning = false;
 
@@ -179,20 +177,6 @@ class V3VozacLocationTrackingService {
       'grad': _activeGrad,
       'vreme': _activeVreme,
     });
-
-    // Deblokiraj ekran ako je bio blokiran
-    V3BlockingScreenService.instance.onBlockingScreenDismissed();
-  }
-
-  /// Inicijalizuje blocking screen servis
-  Future<void> initializeBlockingScreen() async {
-    if (_blockingScreenInitialized) return;
-
-    final blockingService = V3BlockingScreenService.instance;
-    await blockingService.initialize();
-
-    _blockingScreenInitialized = true;
-    debugPrint('[V3VozacLocationTrackingService] Blocking screen service initialized');
   }
 
   Future<void> stop() async {

@@ -11,7 +11,6 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_app_update_service.dart';
-import '../services/v3/v3_blocking_screen_service.dart';
 import '../services/v3/v3_dodela_resolver_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
@@ -19,7 +18,6 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
-import '../services/v3/v3_vozac_location_tracking_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
@@ -27,7 +25,6 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -37,7 +34,6 @@ import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
-import '../widgets/v3_blocking_screen_widget.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
@@ -67,11 +63,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
-
-  // Blocking screen state
-  String? _blockingGrad;
-  String? _blockingVreme;
-  bool _showBlockingScreen = false;
 
   void _handleActiveWeekChanged() {
     if (!mounted) return;
@@ -209,7 +200,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     appSettingsActiveWeekEndNotifier.addListener(_handleActiveWeekChanged);
     _startTrenutnaDodelaRealtime();
     _initData();
-    _initBlockingScreen();
   }
 
   @override
@@ -218,7 +208,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     appSettingsActiveWeekEndNotifier.removeListener(_handleActiveWeekChanged);
     unawaited(_trenutnaDodelaRevisionSub?.cancel());
     _trenutnaDodelaRevisionSub = null;
-    V3BlockingScreenService.instance.dispose();
     super.dispose();
   }
 
@@ -237,102 +226,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       _syncSelectedSlotForDatum(_selectedDatumIso);
       setState(() => _isLoading = false);
     }
-  }
-
-  Future<void> _initBlockingScreen() async {
-    final vozac = V3VozacService.currentVozac;
-    if (vozac == null) return;
-
-    final vozacId = vozac.id.toString();
-    if (vozacId.isEmpty) return;
-
-    // Set callback FIRST — initializeBlockingScreen may fire it immediately
-    // if blocking time is already past but still within active window
-    V3BlockingScreenService.instance.onShowBlockingScreen = (String grad, String vreme) async {
-      if (!mounted) return;
-
-      // Ako je tracking već aktivan, nema potrebe da blokiramo ekran
-      if (V3VozacLocationTrackingService.instance.isRunning) return;
-
-      // Osiguraj da su mape učitane (race condition sa _initData)
-      if (_activeVozacBySlotKey.isEmpty && _activeVozacByTerminId.isEmpty) {
-        await _reloadTrenutnaDodelaMap();
-      }
-      if (!mounted) return;
-
-      // Check if driver has slot assignment for this termin
-      final today = V3DanHelper.toIsoDate(DateTime.now());
-      final gradUp = grad.trim().toUpperCase();
-      final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
-      final slotKey = V3TrenutnaDodelaSlotService.slotKey(
-        datumIso: today,
-        grad: grad,
-        vreme: vreme,
-      );
-      final hasSlotRaw = _activeVozacBySlotKey[slotKey] == vozacId;
-      // Slot je relevantan samo ako postoji bar jedan aktivni putnik za taj termin
-      final hasSlot = hasSlotRaw &&
-          V3MasterRealtimeManager.instance.operativnaNedeljaCache.values.any((row) {
-            final rDatum = V3DateUtils.parseIsoDatePart(row['datum']?.toString() ?? '');
-            final rGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
-            final rVreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString() ?? '');
-            final isActive = row['otkazano_at'] == null && row['pokupljen_at'] == null;
-            return rDatum == today && rGrad == gradUp && rVreme == vremeNorm && isActive;
-          });
-
-      // Check if driver has individual passenger assignments for this SPECIFIC termin
-      final hasIndividualAssignments = _activeVozacByTerminId.entries.any((entry) {
-        if (entry.value != vozacId) return false;
-        final terminData = V3MasterRealtimeManager.instance.operativnaNedeljaCache[entry.key];
-        if (terminData == null) return false;
-        // Preskoči otkazane ili već pokupljene termine — nema smisla tražiti tracking
-        if (terminData['otkazano_at'] != null || terminData['pokupljen_at'] != null) {
-          return false;
-        }
-        final terminGrad = (terminData['grad'] as String? ?? '').trim().toUpperCase();
-        final terminVreme = V3TimeUtils.normalizeToHHmm(terminData['polazak_at'] as String?);
-        return terminGrad == gradUp && terminVreme == vremeNorm;
-      });
-
-      // Show blocking screen if driver has either slot or individual assignments
-      if (!hasSlot && !hasIndividualAssignments) return;
-
-      setState(() {
-        _blockingGrad = grad;
-        _blockingVreme = vreme;
-        _showBlockingScreen = true;
-      });
-    };
-
-    // Initialize blocking screen service (may trigger immediate callback)
-    await V3VozacLocationTrackingService.instance.initializeBlockingScreen();
-  }
-
-  Future<void> _handleBlockingScreenStart() async {
-    final vozac = V3VozacService.currentVozac;
-    if (vozac == null) return;
-
-    final vozacId = vozac.id.toString();
-    if (vozacId.isEmpty) return;
-
-    // Postavi aktivni termin pre pokretanja tracking-a
-    if (_blockingGrad != null && _blockingVreme != null) {
-      V3VozacLocationTrackingService.instance.setActiveTermin(
-        datumIso: _selectedDatumIso,
-        grad: _blockingGrad!,
-        vreme: _blockingVreme!,
-      );
-    }
-
-    // Start tracking
-    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
-
-    // Dismiss blocking screen
-    setState(() {
-      _showBlockingScreen = false;
-      _blockingGrad = null;
-      _blockingVreme = null;
-    });
   }
 
   bool get _isAdmin {
@@ -1388,12 +1281,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               );
             },
           ),
-          if (_showBlockingScreen && _blockingGrad != null && _blockingVreme != null)
-            V3BlockingScreenWidget(
-              grad: _blockingGrad!,
-              vreme: _blockingVreme!,
-              onStartTracking: _handleBlockingScreenStart,
-            ),
         ],
       ),
     );
