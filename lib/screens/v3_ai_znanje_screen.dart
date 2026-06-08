@@ -1,9 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
@@ -16,12 +14,10 @@ class V3AiZnanjeScreen extends StatefulWidget {
 }
 
 class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerProviderStateMixin {
-  final supabase = Supabase.instance.client;
-  List<dynamic> _znanje = [];
-  bool _loading = true;
-  String? _error;
-  bool _isLoadingZnanje = false;
-  DateTime? _lastZnanjeLoad;
+  // Znanje (General) AI state
+  bool _znanLoading = true;
+  String? _znanError;
+  Map<String, dynamic>? _znanHealth;
 
   // Tab controller
   late TabController _tabController;
@@ -66,13 +62,14 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       setState(() {
         _currentTab = _tabController.index;
       });
+      if (_currentTab == 0 && _znanHealth == null && !_znanLoading) _loadZnanjeAI();
       if (_currentTab == 1 && _finHealth == null && !_finLoading) _loadFinancialAI();
       if (_currentTab == 2 && _vozHealth == null && !_vozLoading) _loadVehicleAI();
       if (_currentTab == 3 && _gorHealth == null && !_gorLoading) _loadGorivoAI();
       if (_currentTab == 4 && _putHealth == null && !_putLoading) _loadPutnikAI();
       if (_currentTab == 5 && _zahHealth == null && !_zahLoading) _loadZahteviAI();
     });
-    _loadZnanje();
+    _loadZnanjeAI();
     _loadFinancialAI();
     _loadVehicleAI();
     _loadGorivoAI();
@@ -287,157 +284,131 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     super.dispose();
   }
 
-  Future<void> _loadZnanje() async {
-    if (_isLoadingZnanje) return;
-    _isLoadingZnanje = true;
-    _lastZnanjeLoad = DateTime.now();
+  Future<void> _loadZnanjeAI() async {
     setState(() {
-      _loading = true;
-      _error = null;
+      _znanLoading = true;
+      _znanError = null;
     });
 
-    try {
-      final response = await supabase.functions.invoke(
-        'v3-ai-uci',
-        body: {'action': 'znanje'},
-      );
+    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
 
-      final data = response.data as Map<String, dynamic>?;
-      final znanje = data?['znanje'] as List<dynamic>? ?? [];
+    try {
+      final healthResp = await http
+          .get(
+            Uri.parse('$mlUrl/znanje/health'),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (healthResp.statusCode != 200) {
+        setState(() {
+          _znanError = 'Server nije dostupan (${healthResp.statusCode})';
+          _znanLoading = false;
+        });
+        return;
+      }
+
+      _znanHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
 
       setState(() {
-        _znanje = znanje;
-        _loading = false;
+        _znanLoading = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
-        _loading = false;
+        _znanError = 'Greska: $e';
+        _znanLoading = false;
       });
-    } finally {
-      _isLoadingZnanje = false;
-    }
-  }
-
-  String _tipLabel(String tip) {
-    switch (tip) {
-      case 'tabela':
-        return 'TABELA';
-      case 'kolona':
-        return 'KOLONA';
-      case 'veza':
-        return 'VEZA';
-      case 'pravilo':
-        return 'PRAVILO';
-      case 'hipoteza':
-        return 'HIPOTEZA';
-      default:
-        return tip.toUpperCase();
-    }
-  }
-
-  Color _tipColor(String tip) {
-    switch (tip) {
-      case 'tabela':
-        return Colors.blue;
-      case 'kolona':
-        return Colors.green;
-      case 'veza':
-        return Colors.purple;
-      case 'pravilo':
-        return Colors.orange;
-      case 'hipoteza':
-        return Colors.teal;
-      default:
-        return Colors.grey;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.v3StreamFromRevisions<int>(
-        tables: const ['ai_znanje'],
-        build: () => _znanje.length,
-      ),
-      builder: (context, snapshot) {
-        return V3ContainerUtils.gradientContainer(
-          gradient: V3ThemeManager().currentGradient,
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              centerTitle: true,
-              automaticallyImplyLeading: false,
-              title: const Text(
-                '🧠 AI Znanje',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              actions: const [],
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(88),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Column(
+    return V3ContainerUtils.gradientContainer(
+      gradient: V3ThemeManager().currentGradient,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          title: const Text(
+            '🧠 AI Znanje',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          actions: const [],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(88),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          _buildTabButton(0, 'Baza Znanja', Icons.psychology),
-                          _buildTabButton(1, 'Finansije', Icons.account_balance_wallet),
-                          _buildTabButton(2, 'Vozila', Icons.directions_car),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          _buildTabButton(3, 'Gorivo', Icons.local_gas_station),
-                          _buildTabButton(4, 'Putnici', Icons.people),
-                          _buildTabButton(5, 'Zahtevi', Icons.request_page),
-                        ],
-                      ),
+                      _buildTabButton(0, 'Baza Znanja', Icons.psychology),
+                      _buildTabButton(1, 'Finansije', Icons.account_balance_wallet),
+                      _buildTabButton(2, 'Vozila', Icons.directions_car),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      _buildTabButton(3, 'Gorivo', Icons.local_gas_station),
+                      _buildTabButton(4, 'Putnici', Icons.people),
+                      _buildTabButton(5, 'Zahtevi', Icons.request_page),
+                    ],
+                  ),
+                ],
               ),
             ),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildZnanjeTab(),
-                _buildFinancialAITab(),
-                _buildVehicleAITab(),
-                _buildGorivoAITab(),
-                _buildPutnikAITab(),
-                _buildZahteviAITab(),
-              ],
-            ),
           ),
-        );
-      },
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildZnanjeTab(),
+            _buildFinancialAITab(),
+            _buildVehicleAITab(),
+            _buildGorivoAITab(),
+            _buildPutnikAITab(),
+            _buildZahteviAITab(),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildZnanjeTab() {
-    if (_loading) {
+    if (_znanLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'Povezivanje sa AI serverom...',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
       );
     }
 
-    if (_error != null) {
+    if (_znanError != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Icon(Icons.cloud_off, size: 48, color: Colors.white54),
+            const SizedBox(height: 16),
             Text(
-              'Greska: $_error',
+              _znanError!,
               style: const TextStyle(color: Colors.white70),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadZnanje,
+              onPressed: _loadZnanjeAI,
               child: const Text('Pokusaj ponovo'),
             ),
           ],
@@ -445,89 +416,112 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       );
     }
 
-    if (_znanje.isEmpty) {
-      return const Center(
-        child: Text(
-          'AI jos nema nikakvo znanje.\nIdi u AI Chat i postavi pitanje -\nAI ce sam nauciti iz baze.',
-          style: TextStyle(color: Colors.white70, fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
+    final ready = _znanHealth?['ready'] ?? false;
+    final tablesLoaded = _znanHealth?['tables_loaded'] ?? 0;
+    final totalRecords = _znanHealth?['total_records'] ?? 0;
+    final tableStats = _znanHealth?['table_stats'] as Map<String, dynamic>? ?? {};
 
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
-      itemCount: _znanje.length,
-      itemBuilder: (context, index) {
-        final z = _znanje[index] as Map<String, dynamic>;
-        final tip = z['tip'] as String? ?? '';
-        final entitet = z['entitet'] as String? ?? '';
-        final atribut = z['atribut'] as String?;
-        final zakljucak = z['zakljucak'] as String? ?? '';
-        final confidence = (z['confidence'] as num?)?.toDouble() ?? 0.0;
-
-        return Card(
-          color: Colors.white.withOpacity(0.12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      children: [
+        const Center(
+          child: Column(
+            children: [
+              Icon(Icons.psychology, size: 48, color: Colors.white70),
+              SizedBox(height: 8),
+              Text(
+                'AI Znanje - Generalni Asistent',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Uci iz svih tabela kao i ostali AI modeli',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ],
           ),
-          margin: const EdgeInsets.only(bottom: 10),
+        ),
+        const SizedBox(height: 16),
+
+        // Status kartica
+        Card(
+          color: Colors.white.withOpacity(0.12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _tipColor(tip).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: _tipColor(tip)),
-                      ),
-                      child: Text(
-                        _tipLabel(tip),
-                        style: TextStyle(
-                          color: _tipColor(tip),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      entitet,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (atribut != null && atribut.isNotEmpty) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '· $atribut',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
+                _StatRow(
+                  icon: ready ? Icons.check_circle : Icons.error,
+                  label: 'AI Status',
+                  value: ready ? 'Spreman' : 'Nije spreman',
+                  color: ready ? Colors.green : Colors.red,
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  zakljucak,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                const Divider(height: 20, color: Colors.white24),
+                _StatRow(
+                  icon: Icons.storage,
+                  label: 'Ucitane tabele',
+                  value: '$tablesLoaded',
+                  color: Colors.blue,
                 ),
-                const SizedBox(height: 10),
-                _ConfidenceBar(confidence: confidence),
+                const Divider(height: 20, color: Colors.white24),
+                _StatRow(
+                  icon: Icons.data_usage,
+                  label: 'Ukupno zapisa',
+                  value: '$totalRecords',
+                  color: Colors.purple,
+                ),
               ],
             ),
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+
+        // Statistika po tabelama
+        if (tableStats.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Podaci po tabelama:',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ...tableStats.entries.map((e) {
+            return Card(
+              color: Colors.white.withOpacity(0.08),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              margin: const EdgeInsets.only(bottom: 6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.table_chart, color: Colors.white54, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        e.key,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                    Text(
+                      '${e.value} zapisa',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
     );
   }
 
@@ -1205,47 +1199,6 @@ class _StatRow extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ConfidenceBar extends StatelessWidget {
-  final double confidence;
-
-  const _ConfidenceBar({required this.confidence});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    if (confidence >= 0.8) {
-      color = Colors.green;
-    } else if (confidence >= 0.5) {
-      color = Colors.orange;
-    } else {
-      color = Colors.red;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 60,
-          height: 4,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: confidence,
-              backgroundColor: Colors.white24,
-              valueColor: AlwaysStoppedAnimation(color),
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          '${(confidence * 100).toInt()}%',
-          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
         ),
       ],
     );

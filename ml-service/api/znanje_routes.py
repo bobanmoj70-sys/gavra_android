@@ -36,10 +36,18 @@ class ReloadRequest(BaseModel):
 
 @router.get("/health")
 def health():
+    stats = {}
+    if _znanje_model.is_ready and _znanje_model.data_cache:
+        for table, df in _znanje_model.data_cache.items():
+            stats[table] = len(df)
+    total_records = sum(stats.values()) if stats else 0
     return {
         "status": "healthy",
         "ready": _znanje_model.is_ready,
-        "tables_loaded": len(_znanje_model.data_cache) if _znanje_model.is_ready else 0
+        "tables_loaded": len(_znanje_model.data_cache) if _znanje_model.is_ready else 0,
+        "total_records": total_records,
+        "table_stats": stats,
+        "server": "AI Znanje - Generalni Asistent"
     }
 
 
