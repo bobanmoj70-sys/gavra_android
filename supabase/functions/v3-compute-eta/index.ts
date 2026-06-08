@@ -16,6 +16,7 @@ type ComputeEtaPayload = {
   vozac_id?: string;
   lat?: number;
   lng?: number;
+  speed?: number;
   grad?: string;
   vreme?: string;
 };
@@ -89,6 +90,7 @@ Deno.serve(async (req) => {
     const vozacId = String(payload.vozac_id ?? "").trim();
     const driverLat = Number(payload.lat);
     const driverLng = Number(payload.lng);
+    const driverSpeed = Number(payload.speed ?? 0);
     const activeGrad = String(payload.grad ?? "").trim().toUpperCase();
     const activeVreme = normalizeTime(payload.vreme);
 
@@ -250,6 +252,10 @@ Deno.serve(async (req) => {
     }> = [];
 
     let cumulative = 0;
+    const speedKmh = driverSpeed * 3.6; // m/s → km/h
+    const expectedSpeedKmh = 50; // prosečna očekivana brzina u gradu
+    const useSpeedCorrection = speedKmh > 0 && speedKmh < expectedSpeedKmh;
+
     for (let tripRank = 0; tripRank < passengerWaypoints.length; tripRank++) {
       const leg = legs[tripRank];
       const duration = Number(leg?.duration ?? -1);
@@ -257,7 +263,11 @@ Deno.serve(async (req) => {
         console.warn(`[v3-compute-eta] leg[${tripRank}] duration invalid: ${duration}`);
         continue;
       }
-      cumulative += Math.round(duration);
+      let adjustedDuration = duration;
+      if (useSpeedCorrection) {
+        adjustedDuration = duration * (expectedSpeedKmh / speedKmh);
+      }
+      cumulative += Math.round(adjustedDuration);
 
       const originalIdx = Number(passengerWaypoints[tripRank].inputIndex);
       const putnikId = originalIndexToPutnikId[originalIdx];
