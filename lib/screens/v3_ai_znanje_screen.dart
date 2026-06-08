@@ -17,11 +17,11 @@ class V3AiZnanjeScreen extends StatefulWidget {
 
 class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerProviderStateMixin {
   final supabase = Supabase.instance.client;
-  List<dynamic> _znanje = [];
-  bool _loading = true;
-  String? _error;
-  bool _isLoadingZnanje = false;
-  DateTime? _lastZnanjeLoad;
+  // Chat AI Znanje state
+  final List<Map<String, dynamic>> _chatMessages = [];
+  final TextEditingController _chatController = TextEditingController();
+  bool _chatLoading = false;
+  bool _znanjeReady = false;
 
   // Tab controller
   late TabController _tabController;
@@ -72,7 +72,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       if (_currentTab == 4 && _putHealth == null && !_putLoading) _loadPutnikAI();
       if (_currentTab == 5 && _zahHealth == null && !_zahLoading) _loadZahteviAI();
     });
-    _loadZnanje();
+    _loadZnanjeAI();
     _loadFinancialAI();
     _loadVehicleAI();
     _loadGorivoAI();
@@ -287,69 +287,67 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     super.dispose();
   }
 
-  Future<void> _loadZnanje() async {
-    if (_isLoadingZnanje) return;
-    _isLoadingZnanje = true;
-    _lastZnanjeLoad = DateTime.now();
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
+  Future<void> _loadZnanjeAI() async {
+    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
     try {
-      final response = await supabase.functions.invoke(
-        'v3-ai-uci',
-        body: {'action': 'znanje'},
-      );
+      final resp = await http.get(Uri.parse('$mlUrl/znanje/health')).timeout(const Duration(seconds: 10));
+      if (resp.statusCode == 200) {
+        final body = jsonDecode(resp.body) as Map<String, dynamic>;
+        setState(() {
+          _znanjeReady = body['ready'] == true;
+        });
+      }
+    } catch (_) {}
+  }
 
-      final data = response.data as Map<String, dynamic>?;
-      final znanje = data?['znanje'] as List<dynamic>? ?? [];
+  Future<void> _sendChatMessage(String pitanje) async {
+    if (pitanje.trim().isEmpty) return;
 
-      setState(() {
-        _znanje = znanje;
-        _loading = false;
-      });
+    setState(() {
+      _chatMessages.add({'tip': 'user', 'tekst': pitanje.trim()});
+      _chatLoading = true;
+    });
+    _chatController.clear();
+
+    const mlUrl = 'https://powered-postcard-breed-donor.trycloudflare.com';
+    try {
+      final resp = await http
+          .post(
+            Uri.parse('$mlUrl/znanje/ask'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'pitanje': pitanje.trim()}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (resp.statusCode == 200) {
+        final body = jsonDecode(resp.body) as Map<String, dynamic>;
+        setState(() {
+          _chatMessages.add({
+            'tip': 'ai',
+            'tekst': body['odgovor'] ?? 'Nema odgovora',
+            'tip_odgovora': body['tip'] ?? 'general',
+            'podaci': body['podaci'],
+          });
+        });
+      } else {
+        setState(() {
+          _chatMessages.add({
+            'tip': 'ai',
+            'tekst': 'Greska sa serverom (${resp.statusCode}). Pokusaj ponovo.',
+            'tip_odgovora': 'greska',
+          });
+        });
+      }
     } catch (e) {
       setState(() {
-        _error = e.toString();
-        _loading = false;
+        _chatMessages.add({
+          'tip': 'ai',
+          'tekst': 'Nema konekcije sa AI serverom. Proveri internet.',
+          'tip_odgovora': 'greska',
+        });
       });
     } finally {
-      _isLoadingZnanje = false;
-    }
-  }
-
-  String _tipLabel(String tip) {
-    switch (tip) {
-      case 'tabela':
-        return 'TABELA';
-      case 'kolona':
-        return 'KOLONA';
-      case 'veza':
-        return 'VEZA';
-      case 'pravilo':
-        return 'PRAVILO';
-      case 'hipoteza':
-        return 'HIPOTEZA';
-      default:
-        return tip.toUpperCase();
-    }
-  }
-
-  Color _tipColor(String tip) {
-    switch (tip) {
-      case 'tabela':
-        return Colors.blue;
-      case 'kolona':
-        return Colors.green;
-      case 'veza':
-        return Colors.purple;
-      case 'pravilo':
-        return Colors.orange;
-      case 'hipoteza':
-        return Colors.teal;
-      default:
-        return Colors.grey;
+      setState(() => _chatLoading = false);
     }
   }
 
@@ -358,14 +356,9 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     return StreamBuilder<int>(
       stream: V3MasterRealtimeManager.instance.v3StreamFromRevisions<int>(
         tables: const ['ai_znanje'],
-        build: () => _znanje.length,
+        build: () => _chatMessages.length,
       ),
       builder: (context, snapshot) {
-        // Kad realtime signalizira promenu, osvezi podatke (ali sa cooldown)
-        final cooldownOk = _lastZnanjeLoad == null || DateTime.now().difference(_lastZnanjeLoad!).inSeconds > 3;
-        if (snapshot.hasData && !_loading && !_isLoadingZnanje && cooldownOk) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _loadZnanje());
-        }
         return V3ContainerUtils.gradientContainer(
           gradient: V3ThemeManager().currentGradient,
           child: Scaffold(
@@ -424,115 +417,154 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   }
 
   Widget _buildZnanjeTab() {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Greska: $_error',
-              style: const TextStyle(color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadZnanje,
-              child: const Text('Pokusaj ponovo'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_znanje.isEmpty) {
-      return const Center(
-        child: Text(
-          'AI jos nema nikakvo znanje.\nIdi u AI Chat i postavi pitanje -\nAI ce sam nauciti iz baze.',
-          style: TextStyle(color: Colors.white70, fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
-      itemCount: _znanje.length,
-      itemBuilder: (context, index) {
-        final z = _znanje[index] as Map<String, dynamic>;
-        final tip = z['tip'] as String? ?? '';
-        final entitet = z['entitet'] as String? ?? '';
-        final atribut = z['atribut'] as String?;
-        final zakljucak = z['zakljucak'] as String? ?? '';
-        final confidence = (z['confidence'] as num?)?.toDouble() ?? 0.0;
-
-        return Card(
-          color: Colors.white.withOpacity(0.12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.only(bottom: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _tipColor(tip).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: _tipColor(tip)),
+    return Column(
+      children: [
+        // Chat messages
+        Expanded(
+          child: _chatMessages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.psychology, size: 64, color: Colors.white.withOpacity(0.3)),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'AI Znanje Asistent',
+                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                       ),
-                      child: Text(
-                        _tipLabel(tip),
-                        style: TextStyle(
-                          color: _tipColor(tip),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      entitet,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (atribut != null && atribut.isNotEmpty) ...[
-                      const SizedBox(width: 4),
+                      const SizedBox(height: 8),
                       Text(
-                        '· $atribut',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
-                        ),
+                        'Pitaj me bilo sta o podacima u bazi\n'
+                        'npr: "Koliko zahteva ima Bojan?"\n'
+                        '"Prikazi finansije"\n'
+                        '"Status vozila"\n'
+                        '"Sta je danas?"',
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                        textAlign: TextAlign.center,
                       ),
                     ],
-                  ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                  reverse: true,
+                  itemCount: _chatMessages.length,
+                  itemBuilder: (context, index) {
+                    final msg = _chatMessages[_chatMessages.length - 1 - index];
+                    final isUser = msg['tip'] == 'user';
+                    return Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+                        decoration: BoxDecoration(
+                          color: isUser ? Colors.blue.withOpacity(0.3) : Colors.white.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: isUser
+                              ? Border.all(color: Colors.blue.withOpacity(0.5))
+                              : Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isUser ? Icons.person : Icons.psychology,
+                                  size: 14,
+                                  color: isUser ? Colors.blue : Colors.purple,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isUser ? 'TI' : 'AI ZNANJE',
+                                  style: TextStyle(
+                                    color: isUser ? Colors.blue : Colors.purple,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              msg['tekst'] ?? '',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  zakljucak,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                const SizedBox(height: 10),
-                _ConfidenceBar(confidence: confidence),
+        ),
+
+        // Loading indicator
+        if (_chatLoading)
+          const Padding(
+            padding: EdgeInsets.all(8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                SizedBox(width: 8),
+                Text('AI razmislja...', style: TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ),
-        );
-      },
+
+        // Input field
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _chatController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Pitaj AI asistenta...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.blue.withOpacity(0.5)),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  onSubmitted: (value) => _sendChatMessage(value),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _sendChatMessage(_chatController.text),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withOpacity(0.5)),
+                  ),
+                  child: const Icon(Icons.send, color: Colors.white, size: 20),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

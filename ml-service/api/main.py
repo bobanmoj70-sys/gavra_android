@@ -17,6 +17,7 @@ from api.vozilo_routes import router as vozilo_router, init_vozilo_model
 from api.gorivo_routes import router as gorivo_router, init_gorivo_model
 from api.putnik_routes import router as putnik_router, init_putnik_model
 from api.zahtevi_routes import router as zahtevi_router, init_zahtevi_model
+from api.znanje_routes import router as znanje_router, init_znanje_model
 
 app = FastAPI(title="Gavra ML API", version="3.0.0")
 
@@ -25,11 +26,13 @@ app.include_router(vozilo_router)
 app.include_router(gorivo_router)
 app.include_router(putnik_router)
 app.include_router(zahtevi_router)
+app.include_router(znanje_router)
 
 init_vozilo_model()
 init_gorivo_model()
 init_putnik_model()
 init_zahtevi_model()
+init_znanje_model()
 
 # Initialize model
 financial_model = FinancialMLModel()
