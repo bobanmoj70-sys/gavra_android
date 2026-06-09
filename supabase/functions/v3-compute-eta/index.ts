@@ -5,7 +5,7 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
 /// ETA STALE THRESHOLD - nakon koliko sekundi se ETA smatra zastarelom
 /// Mora biti sinhronizovano sa etaStaleThreshold u lib/globals.dart
-const ETA_STALE_THRESHOLD_SECONDS = 90;
+const ETA_STALE_THRESHOLD_SECONDS = 130;
 
 /// OSRM retry konfiguracija
 const OSRM_MAX_RETRIES = 3;
@@ -16,7 +16,6 @@ type ComputeEtaPayload = {
   vozac_id?: string;
   lat?: number;
   lng?: number;
-  speed?: number;
   grad?: string;
   vreme?: string;
 };
@@ -90,7 +89,6 @@ Deno.serve(async (req) => {
     const vozacId = String(payload.vozac_id ?? "").trim();
     const driverLat = Number(payload.lat);
     const driverLng = Number(payload.lng);
-    const driverSpeed = Number(payload.speed ?? 0);
     const activeGrad = String(payload.grad ?? "").trim().toUpperCase();
     const activeVreme = normalizeTime(payload.vreme);
 
@@ -252,9 +250,6 @@ Deno.serve(async (req) => {
     }> = [];
 
     let cumulative = 0;
-    const speedKmh = driverSpeed * 3.6; // m/s → km/h
-    const expectedSpeedKmh = 50; // prosečna očekivana brzina u gradu
-    const useSpeedCorrection = speedKmh > 0 && speedKmh < expectedSpeedKmh;
 
     for (let tripRank = 0; tripRank < passengerWaypoints.length; tripRank++) {
       const leg = legs[tripRank];
@@ -263,11 +258,7 @@ Deno.serve(async (req) => {
         console.warn(`[v3-compute-eta] leg[${tripRank}] duration invalid: ${duration}`);
         continue;
       }
-      let adjustedDuration = duration;
-      if (useSpeedCorrection) {
-        adjustedDuration = duration * (expectedSpeedKmh / speedKmh);
-      }
-      cumulative += Math.round(adjustedDuration);
+      cumulative += Math.round(duration);
 
       const originalIdx = Number(passengerWaypoints[tripRank].inputIndex);
       const putnikId = originalIndexToPutnikId[originalIdx];

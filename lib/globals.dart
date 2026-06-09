@@ -237,4 +237,4 @@ ValueNotifier<DateTime?> get appSettingsActiveWeekEndNotifier => V3AppSettingsSt
 /// Koristi se u:
 /// - V3VremeDolaskaWidget - za prikaz "sledeća vožnja" umesto zastarelog ETA
 /// - v3-compute-eta edge funkciji - za brisanje zastarelih redova
-const Duration etaStaleThreshold = Duration(seconds: 90);
+const Duration etaStaleThreshold = Duration(seconds: 130);
