@@ -230,47 +230,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return rows;
   }
 
-  List<String> _getOptimizedOrderFromSlotCache() {
-    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (vozacId.isEmpty) return const [];
-
-    final datumIso = _selectedDatumIso;
-    final grad = _selectedGrad;
-    final vreme = V3TimeUtils.normalizeToHHmm(_selectedVreme);
-
-    final slotCache = V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache;
-    for (final row in slotCache.values) {
-      final rowVozac = (row['vozac_v3_auth_id']?.toString() ?? '').trim();
-      final rowDatum = (row['datum']?.toString() ?? '').trim();
-      final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
-      final rowStatus = (row['status']?.toString() ?? '').trim();
-
-      if (rowVozac == vozacId &&
-          rowDatum == datumIso &&
-          rowGrad == grad &&
-          rowVreme == vreme &&
-          rowStatus == 'aktivan') {
-        final waypointsJson = row['waypoints_json'];
-        if (waypointsJson is Map) {
-          final order = waypointsJson['optimized_order'];
-          if (order is List) {
-            return order.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
-          }
-        }
-        break;
-      }
-    }
-    return const [];
-  }
-
   List<_PutnikEntry> _sortPutniciForDisplay(
     List<_PutnikEntry> putnici,
   ) {
     final sorted = List<_PutnikEntry>.from(putnici);
     final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    final sharedEtaCache = V3VozacLocationTrackingService.instance.etaSecondsCache;
-    final slotOptimizedOrder = _getOptimizedOrderFromSlotCache();
 
     sorted.sort((a, b) {
       // Završeni (pokupljeni/otkazani) idu na kraj
@@ -289,27 +253,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         return indexA.compareTo(indexB);
       }
 
-      // Fallback: optimized_order iz slot cache-a (background ažuriranja)
-      if (slotOptimizedOrder.isNotEmpty) {
-        int indexA = slotOptimizedOrder.indexOf(a.putnik.id);
-        int indexB = slotOptimizedOrder.indexOf(b.putnik.id);
-        if (indexA == -1) indexA = 999;
-        if (indexB == -1) indexB = 999;
-        return indexA.compareTo(indexB);
-      }
-
-      // Poslednji fallback: sortira po ETA sekundama
-      final etaA = sharedEtaCache[a.putnik.id] ?? 999999;
-      final etaB = sharedEtaCache[b.putnik.id] ?? 999999;
-      return etaA.compareTo(etaB);
+      // Bez fallback - ostaje default redosled ako OSRM nije dostupan
+      return 0;
     });
 
     // Log sortirani redosled
     final buf = StringBuffer('[SORT] order:');
     for (final p in sorted) {
-      final eta = sharedEtaCache[p.putnik.id] ?? -1;
       final optIdx = sharedOptimizedIds.isNotEmpty ? sharedOptimizedIds.indexOf(p.putnik.id) : -1;
-      buf.write(' ${p.putnik.imePrezime}(ETA=${eta}s,OptIdx=${optIdx})');
+      buf.write(' ${p.putnik.imePrezime}(OptIdx=${optIdx})');
     }
     debugPrint(buf.toString());
 
@@ -317,10 +269,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   void _refreshPutniciOrderFromEtaCache() {
-    final sharedEtaCache = V3VozacLocationTrackingService.instance.etaSecondsCache;
     final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    final slotOrder = _getOptimizedOrderFromSlotCache();
-    if (sharedEtaCache.isEmpty && sharedOptimizedIds.isEmpty && slotOrder.isEmpty) return;
+    if (sharedOptimizedIds.isEmpty) return;
     if (_mojiPutnici.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
     if (mounted) {
