@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:gavra_android/config/ml_config.dart';
 import 'package:http/http.dart' as http;
 
 import '../services/v3_theme_manager.dart';
@@ -14,11 +15,7 @@ class V3AiZnanjeScreen extends StatefulWidget {
 }
 
 class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerProviderStateMixin {
-  // ML server base URL — promeni prema setup-u:
-  // Android emulator: http://10.0.2.2:8000
-  // iOS simulator / desktop: http://localhost:8000
-  // Fizički uređaj: http://<LAPTOP_WIFI_IP>:8000
-  static const _mlBaseUrl = 'http://192.168.5.14:8000';
+  static const _mlBaseUrl = MlConfig.baseUrl;
 
   // Znanje (General) AI state
   bool _znanLoading = true;
