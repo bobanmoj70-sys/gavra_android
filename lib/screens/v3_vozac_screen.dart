@@ -79,6 +79,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _hasSentRouteToMap = false;
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
+  bool _osrmUnavailableShown = false;
 
   void _resetMapSyncState() {
     _hasSentRouteToMap = false;
@@ -253,15 +254,25 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         return indexA.compareTo(indexB);
       }
 
-      // Bez fallback - ostaje default redosled ako OSRM nije dostupan
+      // Koristi optimized_order iz waypoints_json slota (background tracking — direktan OSRM izlaz)
+      final osrmOrder = _getOsrmOrderFromSlot();
+      if (osrmOrder.isNotEmpty) {
+        int indexA = osrmOrder.indexOf(a.putnik.id);
+        int indexB = osrmOrder.indexOf(b.putnik.id);
+        if (indexA == -1) indexA = 999;
+        if (indexB == -1) indexB = 999;
+        return indexA.compareTo(indexB);
+      }
+
       return 0;
     });
 
     // Log sortirani redosled
     final buf = StringBuffer('[SORT] order:');
+    final osrmOrderLog = sharedOptimizedIds.isNotEmpty ? sharedOptimizedIds : _getOsrmOrderFromSlot();
     for (final p in sorted) {
-      final optIdx = sharedOptimizedIds.isNotEmpty ? sharedOptimizedIds.indexOf(p.putnik.id) : -1;
-      buf.write(' ${p.putnik.imePrezime}(OptIdx=${optIdx})');
+      final osrmIdx = osrmOrderLog.indexOf(p.putnik.id);
+      buf.write(' ${p.putnik.imePrezime}(OsrmIdx=$osrmIdx)');
     }
     debugPrint(buf.toString());
 
@@ -270,7 +281,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   void _refreshPutniciOrderFromEtaCache() {
     final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    if (sharedOptimizedIds.isEmpty) return;
+    final osrmOrder = _getOsrmOrderFromSlot();
+    if (sharedOptimizedIds.isEmpty && osrmOrder.isEmpty) {
+      if (_isNavigating && !_osrmUnavailableShown) {
+        _osrmUnavailableShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            V3AppSnackBar.warning(
+              context,
+              'OSRM trenutno nije dostupan — redosled kartica neće biti promenjen.',
+            );
+          }
+        });
+      }
+      return;
+    }
+    _osrmUnavailableShown = false;
     if (_mojiPutnici.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
     if (mounted) {
@@ -278,6 +304,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         _mojiPutnici = sorted;
       });
     }
+  }
+
+  List<String> _getOsrmOrderFromSlot() {
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isEmpty) return const [];
+    for (final row in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
+      if (row['vozac_v3_auth_id']?.toString() != vozacId) continue;
+      if (row['status']?.toString() != 'aktivan') continue;
+      final wj = row['waypoints_json'];
+      if (wj is Map) {
+        final order = wj['optimized_order'];
+        if (order is List && order.isNotEmpty) {
+          return order.whereType<String>().toList();
+        }
+      }
+    }
+    return const [];
   }
 
   /// Ponovo izračunaj ETA-e kada se app vrati sa aktivnom navigacijom
@@ -1089,6 +1132,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (mounted) {
       setState(() {
         _isNavigating = true;
+        _osrmUnavailableShown = false;
       });
     }
     _resetMapSyncState();
