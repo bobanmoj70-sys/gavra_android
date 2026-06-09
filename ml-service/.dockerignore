@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.py[cod]
+*.exe
+*.bat
+*.ps1
+*.sh
+logs/
+models/saved/
+*.pkl
+*.joblib
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
