@@ -182,8 +182,8 @@ Deno.serve(async (req) => {
     }
 
     // 4. OSRM /trip: vozač → preostali putnici → suprotni grad
-    const destLat = activeGrad === "BC" ? 45.1196 : 44.8994;
-    const destLng = activeGrad === "BC" ? 21.3050 : 21.4165;
+    const destLat = activeGrad === "BC" ? 45.118736452002345 : 44.90281796231954;
+    const destLng = activeGrad === "BC" ? 21.301195520159723 : 21.424364904529384;
 
     const tripCoords = [
       coordStr(driverLat, driverLng),
