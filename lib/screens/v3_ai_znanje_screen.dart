@@ -371,8 +371,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         );
         await reload();
       } else {
+        String detail = resp.body.length > 200 ? resp.body.substring(0, 200) : resp.body;
         scaffold.showSnackBar(
-          SnackBar(content: Text('Greska pri treningu $label: ${resp.statusCode}'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Greska ${resp.statusCode}: $detail'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
         );
       }
     } catch (e) {

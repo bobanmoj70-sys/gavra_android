@@ -44,7 +44,8 @@ def extract_enriched_finances() -> pd.DataFrame:
     oper = extract_operativna()
 
     if 'putnik_v3_auth_id' in fin.columns and not users.empty:
-        fin = fin.merge(users[['id', 'ime', 'prezime', 'role']].rename(columns={'id': 'putnik_v3_auth_id'}),
+        user_cols = [c for c in ['id', 'ime', 'prezime', 'role', 'tip'] if c in users.columns]
+        fin = fin.merge(users[user_cols].rename(columns={'id': 'putnik_v3_auth_id'}),
                         on='putnik_v3_auth_id', how='left')
 
     if 'putnik_v3_auth_id' in fin.columns and not reqs.empty and 'created_by' in reqs.columns:

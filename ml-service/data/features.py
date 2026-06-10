@@ -53,20 +53,28 @@ def create_user_aggregates(df: pd.DataFrame) -> pd.DataFrame:
     if 'putnik_v3_auth_id' not in df.columns:
         return df
     
-    # Agregati po korisniku
-    user_stats = df.groupby('putnik_v3_auth_id').agg({
-        'iznos': ['sum', 'mean', 'std', 'count'],
-        'broj_voznji': 'sum',
-        'broj_otkazivanja': 'sum'
-    }).reset_index()
-    
-    user_stats.columns = ['user_id', 'total_amount', 'avg_amount', 
-                         'std_amount', 'transaction_count', 
-                         'total_rides', 'total_cancellations']
-    
+    # Agregati po korisniku — samo kolone koje postoje
+    agg_dict = {'iznos': ['sum', 'mean', 'std', 'count']}
+    if 'broj_voznji' in df.columns:
+        agg_dict['broj_voznji'] = 'sum'
+    if 'broj_otkazivanja' in df.columns:
+        agg_dict['broj_otkazivanja'] = 'sum'
+
+    user_stats = df.groupby('putnik_v3_auth_id').agg(agg_dict).reset_index()
+
+    base_cols = ['user_id', 'total_amount', 'avg_amount', 'std_amount', 'transaction_count']
+    if 'broj_voznji' in df.columns:
+        base_cols.append('total_rides')
+    if 'broj_otkazivanja' in df.columns:
+        base_cols.append('total_cancellations')
+    user_stats.columns = base_cols
+
     # Dodatni features
-    user_stats['cancellation_rate'] = user_stats['total_cancellations'] / (user_stats['transaction_count'] + 1)
-    user_stats['rides_per_transaction'] = user_stats['total_rides'] / (user_stats['transaction_count'] + 1)
+    if 'total_cancellations' in user_stats.columns and 'total_rides' in user_stats.columns:
+        user_stats['cancellation_rate'] = user_stats['total_cancellations'] / (user_stats['transaction_count'] + 1)
+        user_stats['rides_per_transaction'] = user_stats['total_rides'] / (user_stats['transaction_count'] + 1)
+    elif 'total_rides' in user_stats.columns:
+        user_stats['rides_per_transaction'] = user_stats['total_rides'] / (user_stats['transaction_count'] + 1)
     
     return user_stats
 
