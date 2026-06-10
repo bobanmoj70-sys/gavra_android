@@ -65,15 +65,16 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     _bgTryInitSupabaseClient();
   });
 
-  service.on(_kActionStop).listen((event) {
+  service.on(_kActionStop).listen((event) async {
     final vozacIdToClean = _bgVozacId;
     _bgTimer?.cancel();
     _bgTimer = null;
-    if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
-      unawaited(_bgClearEtaForVozac(vozacIdToClean));
-    }
     _bgVozacId = null;
     _bgDatumIso = '';
+    // ETA cleanup mora biti pre brisanja Supabase kredencijala
+    if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
+      await _bgClearEtaForVozac(vozacIdToClean);
+    }
     _bgSupabaseUrl = '';
     _bgSupabaseAnonKey = '';
     _bgSupabaseClient = null;

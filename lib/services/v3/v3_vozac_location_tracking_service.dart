@@ -26,7 +26,6 @@ class V3VozacLocationTrackingService {
   String _activeGrad = '';
   String _activeVreme = '';
   Position? _lastSentPosition;
-  final bool _inFlight = false;
   bool _isRunning = false;
 
   /// Optimizovani redosled putnika (deljen između ekrana)
@@ -198,22 +197,32 @@ class V3VozacLocationTrackingService {
     }
   }
 
-  /// Odmah poziva ETA edge funkciju sa poslednjom poznatom pozicijom.
-  Future<void> forceComputeEta() async {
-    final pos = _lastSentPosition;
-    if (pos == null || _activeVozacId.isEmpty) return;
-    unawaited(
-      computeEta(
+  /// Dobavi trenutnu GPS poziciju i odmah izračunaj ETA.
+  /// Ispravka: _lastSentPosition nije mogao biti setovan iz background isolate-a,
+  /// pa se GPS pozicija sada dobavlja direktno.
+  Future<({Map<String, int> etaMap, List<String> order})> fetchPositionAndComputeEta() async {
+    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
+      return (etaMap: <String, int>{}, order: <String>[]);
+    }
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      _lastSentPosition = position;
+      return await computeEta(
         vozacId: _activeVozacId,
-        lat: pos.latitude,
-        lng: pos.longitude,
+        lat: position.latitude,
+        lng: position.longitude,
         grad: _activeGrad,
         vreme: _activeVreme,
-      ).catchError((Object e) {
-        debugPrint('[V3VozacLocationTrackingService] forceComputeEta error: $e');
-        return (etaMap: <String, int>{}, order: <String>[]);
-      }),
-    );
+      );
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] fetchPositionAndComputeEta error: $e');
+      return (etaMap: <String, int>{}, order: <String>[]);
+    }
   }
 
   Future<V3LocationPrereqStatus> checkLocationPrerequisites() async {

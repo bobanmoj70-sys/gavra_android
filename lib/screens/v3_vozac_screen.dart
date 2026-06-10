@@ -330,17 +330,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vid = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vid.isEmpty) return;
 
-    final pos = V3VozacLocationTrackingService.instance.lastKnownPosition;
-    if (pos == null) return;
-
     try {
-      final etaResult = await V3VozacLocationTrackingService.instance.computeEta(
-        vozacId: vid,
-        lat: pos.latitude,
-        lng: pos.longitude,
-        grad: _selectedGrad,
-        vreme: _selectedVreme,
-      );
+      final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
       debugPrint('[RESTORE] ETA map: ${etaResult.etaMap}');
       debugPrint('[RESTORE] optimized order: ${etaResult.order}');
 
