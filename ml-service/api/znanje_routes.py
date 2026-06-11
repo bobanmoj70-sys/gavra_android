@@ -9,10 +9,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from data.etl_znanje import extract_all_tables, get_database_schema
 from models.znanje_model import ZnanjeAIModel
+from services.gemini_service import GeminiService
 
 router = APIRouter(prefix="/znanje", tags=["AI Znanje"])
 
 _znanje_model = ZnanjeAIModel()
+_gemini_service = GeminiService()
 
 
 def init_znanje_model():
@@ -47,22 +49,38 @@ def health():
         "tables_loaded": len(_znanje_model.data_cache) if _znanje_model.is_ready else 0,
         "total_records": total_records,
         "table_stats": stats,
+        "gemini_available": _gemini_service.is_available(),
         "server": "AI Znanje - Generalni Asistent"
     }
 
 
 @router.post("/ask")
 def ask_question(req: AskRequest):
-    """Postavi pitanje AI asistentu"""
+    """Postavi pitanje AI asistentu — prvo proba Gemini, fallback na lokalni sistem"""
     if not _znanje_model.is_ready:
         raise HTTPException(status_code=503, detail="AI Znanje nije ucitao podatke")
 
     try:
+        # PRVO: probaj Google Gemini (pametniji, prirodniji odgovori)
+        if _gemini_service.is_available():
+            context = _znanje_model.build_context_for_llm(req.pitanje)
+            gemini_result = _gemini_service.ask(req.pitanje, context)
+            if gemini_result['tip'] == 'gemini':
+                return {
+                    "success": True,
+                    "pitanje": req.pitanje,
+                    "odgovor": gemini_result['odgovor'],
+                    "tip": "gemini",
+                    "source": "google_gemini_flash"
+                }
+
+        # FALLBACK: stari sistem (embeddings + regex + rule-based)
         result = _znanje_model.ask(req.pitanje)
         return {
             "success": True,
             "pitanje": req.pitanje,
-            **result
+            **result,
+            "source": "local_znanje_ai"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

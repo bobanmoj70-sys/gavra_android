@@ -222,6 +222,24 @@ class ZnanjeAIModel:
         # DEFAULT
         return self._handle_general(table)
 
+    def build_context_for_llm(self, question: str, max_rows: int = 10) -> str:
+        """Izgrađuje tekstualni kontekst iz baze za slanje LLM-u"""
+        if not self.is_ready:
+            return "Nema podataka."
+        keywords = self._extract_keywords(question)
+        table = self._get_table_for_question(keywords)
+        df = self.data_cache.get(table, pd.DataFrame())
+        if df.empty:
+            # Ako primarna tabela nema podataka, probaj sve
+            parts = []
+            for tbl_name, tbl_df in self.data_cache.items():
+                if not tbl_df.empty:
+                    sample = tbl_df.head(min(max_rows, len(tbl_df))).fillna('-').to_string(index=False)
+                    parts.append(f"[{tbl_name}]\n{sample}\n")
+            return "\n".join(parts) if parts else "Nema podataka u bazi."
+        sample = df.head(min(max_rows, len(df))).fillna('-').to_string(index=False)
+        return f"[tabela: {table}]\n{sample}\n\nUkupno redova: {len(df)}"
+
     # === HANDLERI ===
 
     def _handle_count(self, intent: str, keywords: List[str], question: str = '') -> Dict:

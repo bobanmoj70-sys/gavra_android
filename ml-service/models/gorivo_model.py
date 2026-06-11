@@ -32,11 +32,11 @@ class GorivoMLModel:
         features['alarm_nivo'] = pd.to_numeric(df['alarm_nivo_litri'], errors='coerce').fillna(500)
         features['ispod_alarm'] = (features['trenutno_litara'] < features['alarm_nivo']).astype(int)
         # Operational intensity — broj voznji iz operativne (ako postoji)
-        features['broj_voznji'] = pd.to_numeric(df.get('broj_voznji'), errors='coerce').fillna(0)
+        features['broj_voznji'] = pd.to_numeric(df['broj_voznji'], errors='coerce').fillna(0) if 'broj_voznji' in df.columns else pd.Series([0] * len(df), index=df.index)
         # Vehicle specs (ako su join-ovani)
-        features['godina_proizvodnje'] = pd.to_numeric(df.get('godina_proizvodnje'), errors='coerce').fillna(2015)
+        features['godina_proizvodnje'] = pd.to_numeric(df['godina_proizvodnje'], errors='coerce').fillna(2015) if 'godina_proizvodnje' in df.columns else pd.Series([2015] * len(df), index=df.index)
         features['starost_godina'] = 2026 - features['godina_proizvodnje']
-        features['trenutna_km'] = pd.to_numeric(df.get('trenutna_km'), errors='coerce').fillna(0)
+        features['trenutna_km'] = pd.to_numeric(df['trenutna_km'], errors='coerce').fillna(0) if 'trenutna_km' in df.columns else pd.Series([0] * len(df), index=df.index)
         # Data-driven features
         used_liters = features['kapacitet'] - features['trenutno_litara']
         features['procenjena_potrosnja_po_voznji'] = (used_liters / features['broj_voznji'].clip(lower=1)).fillna(0)

@@ -23,8 +23,15 @@ class ZahteviMLModel:
 
     def _extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generiše temporal + rolling + lag features iz zahteva"""
+        if df.empty or ('grad' not in df.columns):
+            return pd.DataFrame()
         df = df.copy()
-        df['created_at'] = pd.to_datetime(df.get('created_at', df.get('datum', pd.Timestamp.now())))
+        if 'created_at' in df.columns:
+            df['created_at'] = pd.to_datetime(df['created_at'], errors='coerce')
+        elif 'datum' in df.columns:
+            df['created_at'] = pd.to_datetime(df['datum'], errors='coerce')
+        else:
+            df['created_at'] = pd.Timestamp.now()
         df = df.sort_values('created_at')
         # Agregacija po danu i gradu
         daily = df.groupby([df['created_at'].dt.date, 'grad']).size().reset_index(name='broj_zahteva')

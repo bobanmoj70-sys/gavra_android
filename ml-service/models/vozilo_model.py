@@ -26,25 +26,29 @@ class VoziloMLModel:
 
     def _extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generiše features iz vozilo podataka — sve iz baze, ništa hardkodovano"""
-        features = pd.DataFrame()
-        features['trenutna_km'] = pd.to_numeric(df['trenutna_km'], errors='coerce').fillna(0)
-        features['godina_proizvodnje'] = pd.to_numeric(df['godina_proizvodnje'], errors='coerce').fillna(2015)
+        features = pd.DataFrame(index=df.index)
+        features['trenutna_km'] = pd.to_numeric(df['trenutna_km'], errors='coerce').fillna(0) if 'trenutna_km' in df.columns else pd.Series([0] * len(df), index=df.index)
+        features['godina_proizvodnje'] = pd.to_numeric(df['godina_proizvodnje'], errors='coerce').fillna(2015) if 'godina_proizvodnje' in df.columns else pd.Series([2015] * len(df), index=df.index)
         features['starost_godina'] = 2026 - features['godina_proizvodnje']
 
+        marka_vals = df['marka'].fillna('nepoznato').astype(str) if 'marka' in df.columns else pd.Series(['nepoznato'] * len(df), index=df.index)
         if self.le_marka is None:
             self.le_marka = LabelEncoder()
-            features['marka_encoded'] = self.le_marka.fit_transform(df['marka'].fillna('nepoznato').astype(str))
+            all_vals = pd.concat([marka_vals, pd.Series(['nepoznato'])])
+            self.le_marka.fit(all_vals)
+            features['marka_encoded'] = self.le_marka.transform(marka_vals)
         else:
-            marka_vals = df['marka'].fillna('nepoznato').astype(str)
             known = set(self.le_marka.classes_)
             marka_vals = marka_vals.apply(lambda x: x if x in known else 'nepoznato')
             features['marka_encoded'] = self.le_marka.transform(marka_vals)
 
+        model_vals = df['model'].fillna('nepoznato').astype(str) if 'model' in df.columns else pd.Series(['nepoznato'] * len(df), index=df.index)
         if self.le_model is None:
             self.le_model = LabelEncoder()
-            features['model_encoded'] = self.le_model.fit_transform(df['model'].fillna('nepoznato').astype(str))
+            all_vals = pd.concat([model_vals, pd.Series(['nepoznato'])])
+            self.le_model.fit(all_vals)
+            features['model_encoded'] = self.le_model.transform(model_vals)
         else:
-            model_vals = df['model'].fillna('nepoznato').astype(str)
             known = set(self.le_model.classes_)
             model_vals = model_vals.apply(lambda x: x if x in known else 'nepoznato')
             features['model_encoded'] = self.le_model.transform(model_vals)
@@ -60,7 +64,10 @@ class VoziloMLModel:
                 features[f'km_od_{servis}'] = features['trenutna_km']
 
         servis_km_cols = [c for c in df.columns if c.endswith('_km') and c != 'trenutna_km']
-        features['broj_zapisanih_servisa'] = df[servis_km_cols].notna().sum(axis=1)
+        if servis_km_cols:
+            features['broj_zapisanih_servisa'] = df[servis_km_cols].notna().sum(axis=1)
+        else:
+            features['broj_zapisanih_servisa'] = 0
 
         if 'registracija_vazi_do' in df.columns:
             features['dana_do_registracije'] = pd.to_datetime(

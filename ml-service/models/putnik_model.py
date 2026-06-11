@@ -29,19 +29,30 @@ class PutnikMLModel:
         fin_df['created_at'] = pd.to_datetime(fin_df.get('created_at', pd.Timestamp.now()), errors='coerce')
         fin_df['iznos'] = pd.to_numeric(fin_df['iznos'], errors='coerce').fillna(0)
         now = pd.Timestamp.now()
-        # RFM iz finansija
-        rfm = fin_df.groupby('putnik_v3_auth_id').agg({
+        # RFM iz finansija — dinamicki agg_dict
+        agg_dict = {
             'created_at': ['max', 'min', 'count'],
             'iznos': ['sum', 'mean', 'std'],
             'tip': lambda x: (x == 'prihod').sum(),
-            'broj_voznji': 'sum',
-            'broj_otkazivanja': 'sum'
-        }).reset_index()
-        rfm.columns = ['putnik_id', 'poslednja_transakcija', 'prva_transakcija', 'frekvenca',
-                       'ukupno_platio', 'prosecan_iznos', 'std_iznos', 'broj_prihoda',
-                       'ukupno_voznji', 'ukupno_otkazivanja']
+        }
+        if 'broj_voznji' in fin_df.columns:
+            agg_dict['broj_voznji'] = 'sum'
+        if 'broj_otkazivanja' in fin_df.columns:
+            agg_dict['broj_otkazivanja'] = 'sum'
+        rfm = fin_df.groupby('putnik_v3_auth_id').agg(agg_dict).reset_index()
+        base_cols = ['putnik_id', 'poslednja_transakcija', 'prva_transakcija', 'frekvenca',
+                     'ukupno_platio', 'prosecan_iznos', 'std_iznos', 'broj_prihoda']
+        if 'broj_voznji' in fin_df.columns:
+            base_cols.append('ukupno_voznji')
+        if 'broj_otkazivanja' in fin_df.columns:
+            base_cols.append('ukupno_otkazivanja')
+        rfm.columns = base_cols
         rfm['recency_dana'] = (now - pd.to_datetime(rfm['poslednja_transakcija'], errors='coerce')).dt.days.fillna(999)
         rfm['tenure_dana'] = (now - pd.to_datetime(rfm['prva_transakcija'], errors='coerce')).dt.days.fillna(0)
+        if 'ukupno_otkazivanja' not in rfm.columns:
+            rfm['ukupno_otkazivanja'] = 0
+        if 'ukupno_voznji' not in rfm.columns:
+            rfm['ukupno_voznji'] = 0
         rfm['cancellation_rate'] = (rfm['ukupno_otkazivanja'] / rfm['frekvenca'].clip(lower=1)).fillna(0)
         rfm['vrednost_po_voznji'] = (rfm['ukupno_platio'] / rfm['ukupno_voznji'].clip(lower=1)).fillna(0)
         rfm['std_iznos'] = rfm['std_iznos'].fillna(0)
@@ -84,9 +95,10 @@ class PutnikMLModel:
             print("[WARN] Nema dovoljno podataka za treniranje")
             self.is_trained = True
             return {'r2_score': 0.0, 'feature_count': 0, 'samples': 0, 'warning': 'Nema podataka'}
-        feature_cols = ['recency_dana', 'frekvenca', 'ukupno_platio', 'prosecan_iznos', 'std_iznos',
-                        'broj_prihoda', 'ukupno_voznji', 'cancellation_rate', 'vrednost_po_voznji',
-                        'broj_zahteva', 'zahtevi_otkazano', 'tenure_dana']
+        all_feature_cols = ['recency_dana', 'frekvenca', 'ukupno_platio', 'prosecan_iznos', 'std_iznos',
+                              'broj_prihoda', 'ukupno_voznji', 'cancellation_rate', 'vrednost_po_voznji',
+                              'broj_zahteva', 'zahtevi_otkazano', 'tenure_dana']
+        feature_cols = [c for c in all_feature_cols if c in rfm.columns]
         X = rfm[feature_cols].fillna(0)
         self.scaler = StandardScaler()
         X_scaled = self.scaler.fit_transform(X)
@@ -104,7 +116,10 @@ class PutnikMLModel:
         self.churn_model = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
         self.churn_model.fit(Xc_train, yc_train)
         yc_pred_train = self.churn_model.predict(Xc_train)
-        churn_auc_train = roc_auc_score(yc_train, self.churn_model.predict_proba(Xc_train)[:, 1])
+        try:
+            churn_auc_train = roc_auc_score(yc_train, self.churn_model.predict_proba(Xc_train)[:, 1])
+        except (ValueError, IndexError):
+            churn_auc_train = 0.5  # jedna klasa, nema smisla racunati AUC
         # LTV regressor
         self.value_model = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
         self.value_model.fit(Xl_train, yl_train)
@@ -116,7 +131,10 @@ class PutnikMLModel:
                    'samples': n_samples, 'eval_on_train': not eval_split}
         if eval_split:
             yc_pred_test = self.churn_model.predict(Xc_test)
-            churn_auc_test = roc_auc_score(yc_test, self.churn_model.predict_proba(Xc_test)[:, 1])
+            try:
+                churn_auc_test = roc_auc_score(yc_test, self.churn_model.predict_proba(Xc_test)[:, 1])
+            except (ValueError, IndexError):
+                churn_auc_test = 0.5
             yl_pred_test = self.value_model.predict(Xl_test)
             ltv_r2_test = r2_score(yl_test, yl_pred_test)
             ltv_mae_test = mean_absolute_error(yl_test, yl_pred_test)
@@ -141,13 +159,15 @@ class PutnikMLModel:
         rfm = self._extract_rfm_features(fin_df, zahtevi_df)
         if rfm.empty:
             return {'passengers': [], 'total': 0, 'lojalan': 0, 'rizican': 0, 'prosecan': 0, 'ukupan_prihod': 0}
-        feature_cols = ['recency_dana', 'frekvenca', 'ukupno_platio', 'prosecan_iznos', 'std_iznos',
-                        'broj_prihoda', 'ukupno_voznji', 'cancellation_rate', 'vrednost_po_voznji',
-                        'broj_zahteva', 'zahtevi_otkazano', 'tenure_dana']
+        all_feature_cols = ['recency_dana', 'frekvenca', 'ukupno_platio', 'prosecan_iznos', 'std_iznos',
+                              'broj_prihoda', 'ukupno_voznji', 'cancellation_rate', 'vrednost_po_voznji',
+                              'broj_zahteva', 'zahtevi_otkazano', 'tenure_dana']
+        feature_cols = [c for c in all_feature_cols if c in rfm.columns]
         X = rfm[feature_cols].fillna(0)
         X_scaled = self.scaler.transform(X)
         # Churn predikcija
-        churn_proba = self.churn_model.predict_proba(X_scaled)[:, 1]
+        proba = self.churn_model.predict_proba(X_scaled)
+        churn_proba = proba[:, 1] if proba.shape[1] > 1 else np.zeros(len(proba))
         rfm['churn_risk'] = churn_proba
         # LTV predikcija
         ltv_pred = self.value_model.predict(X_scaled)

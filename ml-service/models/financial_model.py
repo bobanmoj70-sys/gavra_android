@@ -239,7 +239,9 @@ class FinancialMLModel:
         anom_df = self.detect_anomalies(df)
         anomaly_count = int(anom_df['is_anomaly'].sum()) if 'is_anomaly' in anom_df.columns else 0
         anomaly_pct = round(anomaly_count / max(len(df), 1) * 100, 1)
-        top_anomalies = anom_df[anom_df['is_anomaly'] == 1].nlargest(5, 'iznos')[['naziv', 'iznos', 'tip', 'anomaly_score']].to_dict('records') if 'is_anomaly' in anom_df.columns else []
+        # Samo kolone koje postoje u DataFrame-u
+        available_cols = [c for c in ['naziv', 'iznos', 'tip', 'anomaly_score'] if c in anom_df.columns]
+        top_anomalies = anom_df[anom_df['is_anomaly'] == 1].nlargest(5, 'iznos')[available_cols].to_dict('records') if 'is_anomaly' in anom_df.columns and available_cols else []
         return {
             'total_revenue': float(revenue),
             'total_expenses': float(expenses),
