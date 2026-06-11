@@ -704,16 +704,29 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             const Divider(height: 20, color: Colors.white24),
             _StatRow(
               icon: Icons.trending_up,
-              label: 'Model Accuracy',
-              value: '99.7%',
+              label: 'Model R²',
+              value: (_finTrends?['trends']?['model_r2']?.toString() != null)
+                  ? 'R² = ${(_finTrends!['trends']['model_r2'] as num).toStringAsFixed(3)}'
+                  : 'N/A',
               color: Colors.green,
             ),
             const Divider(height: 20, color: Colors.white24),
             _StatRow(
               icon: Icons.storage,
               label: 'Training Data',
-              value: '319 zapisa',
+              value: (_finTrends != null &&
+                      _finTrends!['trends'] != null &&
+                      _finTrends!['trends']['monthly_breakdown'] is List)
+                  ? (_finTrends!['trends']['monthly_breakdown'] as List).length.toString()
+                  : 'N/A',
               color: Colors.blue,
+            ),
+            const Divider(height: 20, color: Colors.white24),
+            _StatRow(
+              icon: Icons.warning_amber,
+              label: 'Anomalije',
+              value: '${(_finTrends?['trends']?['anomaly_count'] ?? 0)}',
+              color: Colors.orange,
             ),
           ],
         ),
@@ -993,8 +1006,12 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   Text(
-                    'Km do servisa: ${map['km_do_servisa']?.toString() ?? '-'}',
+                    'Health Risk: ${(map['health_risk'] as num?)?.toStringAsFixed(3) ?? '-'}',
                     style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Km do servisa: ${map['km_do_servisa']?.toString() ?? '-'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ],
               ),
@@ -1029,6 +1046,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           _StatRow(icon: Icons.warning, label: 'Hitno dopuna', value: '$hitno', color: Colors.red),
           _StatRow(icon: Icons.schedule, label: 'Uskoro', value: '$uskoro', color: Colors.orange),
           _StatRow(icon: Icons.check, label: 'OK', value: '$ok', color: Colors.green),
+          _StatRow(
+              icon: Icons.trending_up,
+              label: 'Model R²',
+              value: (_gorPredictions?['model_r2']?.toString() != null)
+                  ? 'R² = ${(_gorPredictions!['model_r2'] as num).toStringAsFixed(3)}'
+                  : 'N/A',
+              color: Colors.blue),
         ]),
         const SizedBox(height: 16),
         if (!modelTrained && rezervoari.isEmpty)
@@ -1048,7 +1072,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           return _buildItemCard(
             icon: Icons.local_gas_station,
             title: '${map['nivo_posto']?.toString() ?? '-'}%',
-            subtitle: 'Dana do praznog: ${map['dana_do_praznog']?.toString() ?? '-'}',
+            subtitle:
+                'Urgency: ${(map['urgency_score'] as num?)?.toStringAsFixed(2) ?? '-'} | Dana do praznog: ${map['dana_do_praznog']?.toString() ?? '-'}',
             status: status.toUpperCase(),
             color: color,
           );
@@ -1081,6 +1106,20 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           _StatRow(icon: Icons.star, label: 'Lojalni', value: '$lojalan', color: Colors.green),
           _StatRow(icon: Icons.warning, label: 'Rizicni', value: '$rizican', color: Colors.red),
           _StatRow(icon: Icons.person, label: 'Prosecni', value: '$prosecan', color: Colors.orange),
+          _StatRow(
+              icon: Icons.trending_up,
+              label: 'Churn AUC',
+              value: (_putPredictions?['churn_auc']?.toString() != null)
+                  ? 'AUC = ${(_putPredictions!['churn_auc'] as num).toStringAsFixed(3)}'
+                  : 'N/A',
+              color: Colors.blue),
+          _StatRow(
+              icon: Icons.trending_up,
+              label: 'Model R²',
+              value: (_putPredictions?['model_r2']?.toString() != null)
+                  ? 'R² = ${(_putPredictions!['model_r2'] as num).toStringAsFixed(3)}'
+                  : 'N/A',
+              color: Colors.purple),
         ]),
         const SizedBox(height: 16),
         if (!modelTrained && passengers.isEmpty)
@@ -1100,7 +1139,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           return _buildItemCard(
             icon: Icons.person,
             title: map['putnik_id']?.toString() ?? 'Nepoznato',
-            subtitle: 'Verovatnoca placanja: ${map['verovatnoca_placanja']?.toString() ?? '-'}%',
+            subtitle:
+                'Churn: ${(map['churn_risk'] as num?)?.toStringAsFixed(1) ?? '-'}% | LTV: ${(map['predicted_ltv'] as num?)?.toStringAsFixed(0) ?? '-'} RSD | Recency: ${map['recency_dana']?.toString() ?? '-'} dana',
             status: kat.toUpperCase(),
             color: color,
           );
@@ -1129,6 +1169,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               value: modelTrained ? 'Treniran' : 'Nije',
               color: modelTrained ? Colors.green : Colors.red),
           _StatRow(icon: Icons.calendar_today, label: 'Ukupno nedelja', value: ukupno, color: Colors.blue),
+          _StatRow(
+              icon: Icons.trending_up,
+              label: 'Model R²',
+              value: (_zahPredictions?['model_r2']?.toString() != null)
+                  ? 'R² = ${(_zahPredictions!['model_r2'] as num).toStringAsFixed(3)}'
+                  : 'N/A',
+              color: Colors.purple),
         ]),
         const SizedBox(height: 16),
         if (!modelTrained && nextWeek.isEmpty)

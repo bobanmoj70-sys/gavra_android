@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score, classification_report
+from sklearn.metrics import mean_squared_error, r2_score, classification_report, mean_absolute_error
 import joblib
 import os
 import config
@@ -120,15 +120,18 @@ class FinancialMLModel:
         print(importance.head(10))
         
         self.is_trained = True
+        self._last_metrics = {
+            'amount_mse': float(mse),
+            'amount_r2': float(r2),
+            'amount_rmse': float(np.sqrt(mse)),
+            'feature_importance': importance.head(10).to_dict('records'),
+            'samples': len(df),
+            'features': len(self.feature_columns)
+        }
         print("\n" + "=" * 50)
         print("Training Complete!")
         print("=" * 50)
-        
-        return {
-            'amount_mse': mse,
-            'amount_r2': r2,
-            'feature_importance': importance.head(10).to_dict('records')
-        }
+        return self._last_metrics
     
     def predict_amount(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -183,28 +186,69 @@ class FinancialMLModel:
         
         return results
     
+    def detect_anomalies(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Detektuje anomalije u transakcijama koristeći IQR + Z-score hibrid.
+        Uči granice SAMO iz trening podataka (bez hardkodovanih pragova).
+        """
+        df = df.copy()
+        df['iznos'] = pd.to_numeric(df['iznos'], errors='coerce').fillna(0)
+        # Po tipu transakcije
+        anomalies = []
+        for tip in df['tip'].unique() if 'tip' in df.columns else ['all']:
+            subset = df[df['tip'] == tip] if tip != 'all' else df
+            if len(subset) < 5:
+                continue
+            vals = subset['iznos']
+            # IQR
+            q1, q3 = vals.quantile([0.25, 0.75])
+            iqr = q3 - q1
+            lower_iqr = q1 - 1.5 * iqr
+            upper_iqr = q3 + 1.5 * iqr
+            # Z-score (robust - median absolute deviation)
+            med = vals.median()
+            mad = np.median(np.abs(vals - med)) * 1.4826  # consistent with std
+            if mad == 0:
+                mad = vals.std() or 1
+            z_scores = np.abs((vals - med) / mad)
+            # Označi anomaliju ako je van IQR ILI |z| > 3
+            is_anomaly = ((vals < lower_iqr) | (vals > upper_iqr)) | (z_scores > 3)
+            subset = subset.copy()
+            subset['is_anomaly'] = is_anomaly.astype(int)
+            subset['anomaly_score'] = z_scores.clip(0, 10).round(2)
+            subset['anomaly_reason'] = subset.apply(
+                lambda r: 'visok_iznos' if r['iznos'] > upper_iqr else ('nizak_iznos' if r['iznos'] < lower_iqr else 'z_score'),
+                axis=1
+            )
+            anomalies.append(subset)
+        return pd.concat(anomalies) if anomalies else df
+
     def analyze_financial_trends(self, df: pd.DataFrame) -> dict:
         """
-        Analizira finansijske trendove iz podataka
-        Koristi naučene paternje
+        Analizira finansijske trendove + anomalije iz podataka.
         """
         if 'created_at' not in df.columns:
             return {}
-        
         df = df.copy()
-        df['created_at'] = pd.to_datetime(df['created_at'], format='ISO8601')
+        df['created_at'] = pd.to_datetime(df['created_at'], format='ISO8601', errors='coerce')
         df['month'] = df['created_at'].dt.to_period('M')
-        
         monthly_stats = df.groupby(['month', 'tip'])['iznos'].agg(['sum', 'mean', 'count']).reset_index()
-        
-        revenue = monthly_stats[monthly_stats['tip'] == 'prihod']['sum'].sum()
-        expenses = monthly_stats[monthly_stats['tip'] == 'rashod']['sum'].sum()
-        
+        revenue = monthly_stats[monthly_stats['tip'] == 'prihod']['sum'].sum() if 'tip' in monthly_stats.columns else 0
+        expenses = monthly_stats[monthly_stats['tip'] == 'rashod']['sum'].sum() if 'tip' in monthly_stats.columns else 0
+        # Anomalije
+        anom_df = self.detect_anomalies(df)
+        anomaly_count = int(anom_df['is_anomaly'].sum()) if 'is_anomaly' in anom_df.columns else 0
+        anomaly_pct = round(anomaly_count / max(len(df), 1) * 100, 1)
+        top_anomalies = anom_df[anom_df['is_anomaly'] == 1].nlargest(5, 'iznos')[['naziv', 'iznos', 'tip', 'anomaly_score']].to_dict('records') if 'is_anomaly' in anom_df.columns else []
         return {
-            'total_revenue': revenue,
-            'total_expenses': expenses,
-            'net_profit': revenue - expenses,
-            'monthly_breakdown': monthly_stats.to_dict('records')
+            'total_revenue': float(revenue),
+            'total_expenses': float(expenses),
+            'net_profit': float(revenue - expenses),
+            'monthly_breakdown': monthly_stats.to_dict('records'),
+            'anomaly_count': anomaly_count,
+            'anomaly_pct': anomaly_pct,
+            'top_anomalies': top_anomalies,
+            'model_r2': getattr(self, '_last_metrics', {}).get('amount_r2', None)
         }
     
     def save(self):

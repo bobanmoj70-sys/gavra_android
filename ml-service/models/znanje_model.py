@@ -74,175 +74,206 @@ class ZnanjeAIModel:
         }
     
     def _extract_keywords(self, question: str) -> List[str]:
-        """Izvlaci kljucne reci iz pitanja"""
+        """Izvlaci kljucne reci iz pitanja sa stemming-like redukcijom"""
         q = question.lower().strip()
-        # Ukloni znake interpunkcije
         q = re.sub(r'[^\w\s]', ' ', q)
         words = q.split()
-        # Ukloni ceste stop reci
-        stop = {'da', 'li', 'je', 'u', 'za', 'na', 'se', 'koji', 'koliko', 'sta', 'kako', 'mi',
-                'the', 'is', 'are', 'what', 'how', 'many', 'show', 'me', 'a', 'an', 'in', 'of'}
-        return [w for w in words if w not in stop and len(w) > 2]
+        stop = {'da', 'li', 'je', 'u', 'za', 'na', 'se', 'koji', 'koliko', 'sta', 'kako', 'mi', 'nam',
+                'the', 'is', 'are', 'what', 'how', 'many', 'show', 'me', 'a', 'an', 'in', 'of', 'i', 'ili',
+                'ko', 'ga', 'mu', 'joj', 'ima', 'nema', 'svi', 'sve', 'ti', 'vi'}
+        keywords = []
+        for w in words:
+            if w not in stop and len(w) > 2:
+                # Remove common serbian suffixes for matching
+                for suffix in ['ova', 'ove', 'ovi', 'a', 'e', 'i', 'u', 'om', 'ima', 'ima', 'ovanje', 'anje', 'eni']:
+                    if w.endswith(suffix) and len(w) - len(suffix) > 2:
+                        w = w[:-len(suffix)]
+                        break
+                keywords.append(w)
+        return keywords
 
     def _detect_intent(self, question: str) -> str:
-        """Prepoznaje nameru pitanja"""
+        """Prepoznaje nameru pitanja sa fuzzy matchingom"""
         q = question.lower()
-
-        patterns = {
-            'count_zahtevi': r'(koliko|broj|count).*(zahtev|request)',
-            'count_users': r'(koliko|broj).*(korisnik|user|putnik|vozac|vozac)',
-            'count_finansije': r'(koliko|broj|iznos|sum).*(transakci|finans|novac|prihod|rashod)',
-            'list_zahtevi': r'(lista|prikazi|show).*(zahtev|request)',
-            'list_users': r'(lista|prikazi|show).*(korisnik|user|putnik|vozac)',
-            'list_finansije': r'(lista|prikazi|show).*(transakci|finans)',
-            'status_zahtevi': r'(status|stanje).*(zahtev|request)',
-            'vehicle_status': r'(vozil|auto|servis|registrac|gorivo)',
-            'recent_activity': r'(skoro|nedavno|recent|poslednj|zadnj)',
-            'top_users': r'(top|najbolj|najcesc|najvise)',
-            'today': r'(danas|today)',
-        }
-
-        for intent, pattern in patterns.items():
-            if re.search(pattern, q):
-                return intent
-
+        # Brojanje
+        if re.search(r'(koliko|broj|count|ukupno)', q):
+            if re.search(r'(zahtev|termin|request)', q): return 'count_zahtevi'
+            if re.search(r'(korisnik|putnik|vozac|user)', q): return 'count_users'
+            if re.search(r'(vozil|auto|registrac)', q): return 'count_vozila'
+            if re.search(r'(transakci|finans|novac|prihod|rashod|dug|iznos)', q): return 'count_finansije'
+            if re.search(r'(gorivo|rezervoar|benzin|lit)', q): return 'count_gorivo'
+            return 'count_general'
+        # Status / stanje
+        if re.search(r'(status|stanje|kako je|sta je sa)', q):
+            if re.search(r'(zahtev|request)', q): return 'status_zahtevi'
+            if re.search(r'(vozil|auto|registrac|servis)', q): return 'vehicle_status'
+            if re.search(r'(gorivo|rezervoar|benzin)', q): return 'status_gorivo'
+            return 'status_general'
+        # Lista / prikaz
+        if re.search(r'(lista|prikazi|pokazi|show|koje|koja|koji)', q):
+            if re.search(r'(zahtev|request|termin)', q): return 'list_zahtevi'
+            if re.search(r'(korisnik|putnik|vozac)', q): return 'list_users'
+            if re.search(r'(transakci|finans|dug)', q): return 'list_finansije'
+            if re.search(r'(vozil|auto)', q): return 'list_vozila'
+            return 'list_general'
+        # Top / naj
+        if re.search(r'(top|najbolj|najcesc|najvise|najmanje|naj|sortiraj)', q):
+            if re.search(r'(vozac|putnik|korisnik)', q): return 'top_users'
+            if re.search(r'(vozil)', q): return 'top_vozila'
+            return 'top_general'
+        # Aktivnost
+        if re.search(r'(danas|today|sada)', q): return 'today'
+        if re.search(r'(skoro|nedavno|recent|poslednj|zadnj|u zadnj|ove nedelj)', q): return 'recent_activity'
+        # Pojedinačne entitete
+        if re.search(r'(vozil|auto|servis|registrac|gorivo)', q): return 'vehicle_status'
+        if re.search(r'(putnik|vozac|korisnik|ime)', q): return 'user_info'
         return 'general'
 
     def _get_table_for_question(self, keywords: List[str]) -> str:
-        """Odredjuje koja tabela je relevantna"""
+        """Određuje koja tabela je relevantna sa fuzzy skorovima"""
         mapping = {
-            'zahtevi': ['zahtev', 'request', 'termin', 'putnik', 'grad', 'vreme', 'polazak'],
-            'users': ['korisnik', 'user', 'putnik', 'vozac', 'ime', 'prezime', 'email'],
-            'operativna': ['operativna', 'nedelja', 'putovanje', 'voznja', 'dodela'],
-            'finansije': ['finans', 'transakc', 'novac', 'iznos', 'prihod', 'rashod', 'plata'],
-            'vozila': ['vozil', 'auto', 'registrac', 'marka', 'model', 'servis', 'km'],
-            'gorivo': ['gorivo', 'rezervoar', 'benzin', 'dizel', 'litra', 'dopuna'],
+            'zahtevi': ['zahtev', 'request', 'termin', 'putnik', 'grad', 'vreme', 'polazak', 'termin'],
+            'users': ['korisnik', 'user', 'putnik', 'vozac', 'ime', 'email', 'telefon', 'osob'],
+            'operativna': ['operativna', 'nedelja', 'putovanje', 'voznja', 'dodela', 'vozn'],
+            'finansije': ['finans', 'transakc', 'novac', 'iznos', 'prihod', 'rashod', 'plata', 'dug', 'plat'],
+            'vozila': ['vozil', 'auto', 'registrac', 'marka', 'model', 'servis', 'km', 'tablic'],
+            'gorivo': ['gorivo', 'rezervoar', 'benzin', 'dizel', 'litra', 'dopuna', 'tankanje', 'pumpa'],
+            'adrese': ['adresa', 'lokacija', 'grad', 'naselje', 'ulica', 'gps'],
         }
-
-        scores = {k: 0 for k in mapping}
+        scores = {k: 0.0 for k in mapping}
         for kw in keywords:
             for table, terms in mapping.items():
-                if any(term in kw for term in terms):
-                    scores[table] += 1
-
+                for term in terms:
+                    # Exact match = 2, prefix match = 1
+                    if kw == term:
+                        scores[table] += 2.0
+                    elif kw.startswith(term) or term.startswith(kw):
+                        scores[table] += 1.0
+                    elif len(kw) > 3 and len(term) > 3:
+                        # Substring match
+                        if term in kw or kw in term:
+                            scores[table] += 0.5
         best = max(scores, key=scores.get)
         return best if scores[best] > 0 else 'general'
 
+    def _find_entity_by_name(self, question: str, table: str, name_col: str = 'ime', id_col: str = 'id') -> Any:
+        """Fuzzy traženje entiteta po imenu u pitanju"""
+        df = self.data_cache.get(table, pd.DataFrame())
+        if df.empty or name_col not in df.columns:
+            return None
+        q_lower = question.lower()
+        # Izdvuci potencijalna imena iz pitanja (reči duže od 3 karaktera koje nisu stop reči)
+        candidates = re.findall(r'[a-zA-ZčćđšžČĆĐŠŽ]{3,}', q_lower)
+        stop = {'koliko', 'broj', 'koji', 'sta', 'kako', 'danas', 'ima', 'nema', 'putnik', 'vozac', 'korisnik', 'user'}
+        candidates = [c for c in candidates if c not in stop]
+        if not candidates:
+            return None
+        best_match = None
+        best_score = 0.0
+        for _, row in df.iterrows():
+            name = str(row.get(name_col, '')).lower()
+            if not name or name in ('nepoznato', 'nan', 'none', ''):
+                continue
+            for cand in candidates:
+                if cand in name or name in cand:
+                    score = len(cand) / max(len(name), 1)
+                    if score > best_score:
+                        best_score = score
+                        best_match = row
+        return best_match
+
     def ask(self, question: str) -> Dict[str, Any]:
-        """
-        Glavna metoda: prihvata pitanje, vraca odgovor
-        """
+        """Glavna metoda: prihvata pitanje, vraca odgovor sa embeddings + fuzzy matching"""
         if not self.is_ready:
             return {'odgovor': 'AI asistent nije spreman. Nema podataka.', 'tip': 'greska'}
-
         # Prvo probaj semantičku pretragu sa embeddings
         if self.embeddings_service.is_available():
             similar_docs = self.embeddings_service.find_similar(question, top_k=3)
-            if similar_docs and similar_docs[0][1] > 0.3:  # Threshold za sličnost
-                print(f"[ZnanjeAI] Embeddings pronasao relevantne dokumente")
+            if similar_docs and similar_docs[0][1] > 0.25:
+                print(f"[ZnanjeAI] Embeddings pronašao relevantne dokumente")
                 return self._format_embeddings_response(similar_docs)
-
         keywords = self._extract_keywords(question)
         intent = self._detect_intent(question)
         table = self._get_table_for_question(keywords)
-
-        # RUTA 1: Brojanje (koliko...)
+        # RUTA 1: Brojanje
         if intent.startswith('count_'):
-            return self._handle_count(intent, keywords)
-
-        # RUTA 2: Liste (prikazi...)
+            return self._handle_count(intent, keywords, question)
+        # RUTA 2: Liste
         if intent.startswith('list_'):
-            return self._handle_list(intent, keywords, limit=10)
-
+            return self._handle_list(intent, keywords, limit=10, question=question)
         # RUTA 3: Status
-        if intent == 'status_zahtevi':
-            return self._handle_status_zahtevi()
-
+        if intent in ('status_zahtevi', 'status_gorivo', 'status_general'):
+            return self._handle_status(intent)
         # RUTA 4: Vozila
         if intent == 'vehicle_status':
             return self._handle_vehicle_status()
-
         # RUTA 5: Danasnja aktivnost
         if intent == 'today':
             return self._handle_today()
-
         # RUTA 6: Top/Najbolji
-        if intent == 'top_users':
-            return self._handle_top(keywords)
-
+        if intent.startswith('top_'):
+            return self._handle_top(intent, keywords, question)
         # RUTA 7: Skora aktivnost
         if intent == 'recent_activity':
             return self._handle_recent()
-
-        # DEFAULT: General info
+        # RUTA 8: User info (specifican putnik/vozac)
+        if intent == 'user_info':
+            return self._handle_user_info(question)
+        # DEFAULT
         return self._handle_general(table)
 
     # === HANDLERI ===
 
-    def _handle_count(self, intent: str, keywords: List[str]) -> Dict:
+    def _handle_count(self, intent: str, keywords: List[str], question: str = '') -> Dict:
         if 'zahtev' in intent:
             df = self.data_cache.get('zahtevi', pd.DataFrame())
             total = len(df)
             active = len(df[df.get('status', '') != 'otkazano']) if 'status' in df.columns else total
-            return {
-                'odgovor': f'Ukupno zahteva: {total}. Aktivnih: {active}.',
-                'tip': 'count',
-                'podaci': {'ukupno': total, 'aktivni': active}
-            }
-
+            return {'odgovor': f'Ukupno zahteva: {total}. Aktivnih: {active}.', 'tip': 'count', 'podaci': {'ukupno': total, 'aktivni': active}}
         if 'user' in intent or 'putnik' in intent or 'vozac' in intent:
             df = self.data_cache.get('users', pd.DataFrame())
             total = len(df)
-            vozaci = len(df[df.get('role', '') == 'vozac']) if 'role' in df.columns else 0
-            putnici = len(df[df.get('role', '') == 'putnik']) if 'role' in df.columns else 0
-            return {
-                'odgovor': f'Ukupno korisnika: {total} ({vozaci} vozaca, {putnici} putnika).',
-                'tip': 'count',
-                'podaci': {'ukupno': total, 'vozaci': vozaci, 'putnici': putnici}
-            }
-
-        if 'finans' in intent:
+            active = len(df[df.get('last_seen_at', pd.NaT).notna()]) if 'last_seen_at' in df.columns else total
+            return {'odgovor': f'Ukupno korisnika: {total}. Aktivnih nedavno: {active}.', 'tip': 'count', 'podaci': {'ukupno': total, 'aktivni': active}}
+        if 'vozil' in intent:
+            df = self.data_cache.get('vozila', pd.DataFrame())
+            total = len(df)
+            return {'odgovor': f'Ukupno vozila: {total}.', 'tip': 'count', 'podaci': {'ukupno': total}}
+        if 'finans' in intent or 'count' in intent:
             df = self.data_cache.get('finansije', pd.DataFrame())
             total = len(df)
             prihod = df[df.get('tip', '') == 'prihod']['iznos'].sum() if 'tip' in df.columns and 'iznos' in df.columns else 0
             rashod = df[df.get('tip', '') == 'rashod']['iznos'].sum() if 'tip' in df.columns and 'iznos' in df.columns else 0
-            return {
-                'odgovor': f'Ukupno transakcija: {total}. Prihod: {prihod:.2f}, Rashod: {rashod:.2f}.',
-                'tip': 'count',
-                'podaci': {'ukupno': total, 'prihod': prihod, 'rashod': rashod}
-            }
+            return {'odgovor': f'Ukupno transakcija: {total}. Prihod: {prihod:.2f}, Rashod: {rashod:.2f}.', 'tip': 'count', 'podaci': {'ukupno': total, 'prihod': prihod, 'rashod': rashod}}
+        if 'gorivo' in intent:
+            df = self.data_cache.get('gorivo', pd.DataFrame())
+            total = len(df)
+            return {'odgovor': f'Ukupno rezervoara za gorivo: {total}.', 'tip': 'count', 'podaci': {'ukupno': total}}
+        return {'odgovor': 'Nisam razumeo šta želiš da prebrojim.', 'tip': 'unknown'}
 
-        return {'odgovor': 'Nisam razumeo sta zelis da prebrojim.', 'tip': 'unknown'}
-
-    def _handle_list(self, intent: str, keywords: List[str], limit: int = 10) -> Dict:
-        table_map = {
-            'list_zahtevi': 'zahtevi',
-            'list_users': 'users',
-            'list_finansije': 'finansije'
-        }
+    def _handle_list(self, intent: str, keywords: List[str], limit: int = 10, question: str = '') -> Dict:
+        table_map = {'list_zahtevi': 'zahtevi', 'list_users': 'users', 'list_finansije': 'finansije', 'list_vozila': 'vozila', 'list_general': 'zahtevi'}
         tbl = table_map.get(intent, 'zahtevi')
         df = self.data_cache.get(tbl, pd.DataFrame())
-
         if df.empty:
             return {'odgovor': f'Nema podataka u tabeli {tbl}.', 'tip': 'prazno'}
-
         # Filtriraj po statusu ako je pomenut
-        if 'status' in str(keywords).lower():
-            for status in ['aktivan', 'otkazano', 'zavrseno', 'obrada', 'odbijen']:
-                if 'status' in df.columns:
-                    mask = df['status'].str.contains(status, case=False, na=False)
-                    if mask.any():
-                        df = df[mask]
-                        break
-
-        recent = df.head(limit)
-        records = recent.fillna('-').to_dict('records')
-
-        return {
-            'odgovor': f'Prikazujem {len(records)} najskorijih zapisa iz {tbl}:',
-            'tip': 'lista',
-            'podaci': records
-        }
+        for status in ['aktivan', 'otkazano', 'zavrseno', 'obrada', 'odbijeno', 'odobreno']:
+            if status in question.lower() and 'status' in df.columns:
+                mask = df['status'].str.contains(status, case=False, na=False)
+                if mask.any():
+                    df = df[mask]
+                    break
+        # Sortiraj po datumu ako postoji
+        date_col = None
+        for col in ['created_at', 'datum', 'updated_at']:
+            if col in df.columns:
+                date_col = col
+                break
+        if date_col:
+            df = df.sort_values(date_col, ascending=False)
+        records = df.head(limit).fillna('-').to_dict('records')
+        return {'odgovor': f'Prikazujem {len(records)} najskorijih zapisa iz {tbl}:', 'tip': 'lista', 'podaci': records}
 
     def _handle_status_zahtevi(self) -> Dict:
         df = self.data_cache.get('zahtevi', pd.DataFrame())
@@ -257,25 +288,45 @@ class ZnanjeAIModel:
             'podaci': statusi
         }
 
+    def _handle_status(self, intent: str) -> Dict:
+        if intent == 'status_gorivo':
+            gorivo = self.data_cache.get('gorivo', pd.DataFrame())
+            if gorivo.empty:
+                return {'odgovor': 'Nema podataka o gorivu.', 'tip': 'prazno'}
+            if 'trenutno_stanje_litri' in gorivo.columns and 'kapacitet_litri' in gorivo.columns:
+                gorivo['nivo'] = gorivo['trenutno_stanje_litri'] / gorivo['kapacitet_litri'] * 100
+                nisko = len(gorivo[gorivo['nivo'] < 20])
+                alarm = len(gorivo[gorivo['alarm_nivo_litri'] > gorivo['trenutno_stanje_litri']]) if 'alarm_nivo_litri' in gorivo.columns else 0
+                return {'odgovor': f'Rezervoara: {len(gorivo)}. Niski nivo (<20%): {nisko}. Alarm: {alarm}.', 'tip': 'status', 'podaci': {'nisko': nisko, 'alarm': alarm}}
+        if intent == 'status_zahtevi':
+            return self._handle_status_zahtevi()
+        return self._handle_vehicle_status()
+
+    def _handle_user_info(self, question: str) -> Dict:
+        """Odgovara na pitanja o specifičnim korisnicima"""
+        entity = self._find_entity_by_name(question, 'users', name_col='ime')
+        if entity is not None:
+            info_parts = []
+            for k, v in entity.items():
+                if pd.notna(v) and str(v) not in ('None', 'nan', ''):
+                    info_parts.append(f'{k}: {v}')
+            return {'odgovor': 'Pronađen korisnik:\n' + '\n'.join(info_parts[:10]), 'tip': 'user_info', 'podaci': dict(entity)}
+        return {'odgovor': 'Nisam pronašao korisnika sa tim imenom.', 'tip': 'not_found'}
+
     def _handle_vehicle_status(self) -> Dict:
         vozila = self.data_cache.get('vozila', pd.DataFrame())
         gorivo = self.data_cache.get('gorivo', pd.DataFrame())
-
         if vozila.empty:
             return {'odgovor': 'Nema podataka o vozilima.', 'tip': 'prazno'}
-
         total = len(vozila)
         info = f'Ukupno vozila: {total}. '
-
         if 'trenutna_km' in vozila.columns:
             prosek_km = vozila['trenutna_km'].mean()
             info += f'Prosek KM: {prosek_km:.0f}. '
-
         if not gorivo.empty and 'trenutno_stanje_litri' in gorivo.columns and 'kapacitet_litri' in gorivo.columns:
             gorivo['nivo'] = gorivo['trenutno_stanje_litri'] / gorivo['kapacitet_litri'] * 100
             nisko = len(gorivo[gorivo['nivo'] < 20])
             info += f'Vozila sa niskim gorivom (<20%): {nisko}.'
-
         return {'odgovor': info, 'tip': 'vozila', 'podaci': {'ukupno': total}}
 
     def _handle_today(self) -> Dict:
@@ -304,25 +355,20 @@ class ZnanjeAIModel:
 
         return {'odgovor': f'Danas ({today}) nema aktivnosti u sistemu.', 'tip': 'danas'}
 
-    def _handle_top(self, keywords: List[str]) -> Dict:
+    def _handle_top(self, intent: str, keywords: List[str], question: str = '') -> Dict:
+        if 'vozil' in intent:
+            vozila = self.data_cache.get('vozila', pd.DataFrame())
+            if not vozila.empty and 'trenutna_km' in vozila.columns:
+                top = vozila.nlargest(5, 'trenutna_km')[['registracija', 'trenutna_km', 'marka', 'model']]
+                return {'odgovor': 'Top 5 vozila po kilometraži:', 'tip': 'top', 'podaci': top.to_dict('records')}
         fin = self.data_cache.get('finansije', pd.DataFrame())
         if not fin.empty and 'putnik_v3_auth_id' in fin.columns and 'iznos' in fin.columns:
             top = fin.groupby('putnik_v3_auth_id')['iznos'].sum().nlargest(5)
-            return {
-                'odgovor': f'Top {len(top)} putnika po prihodu:',
-                'tip': 'top',
-                'podaci': top.to_dict()
-            }
-
+            return {'odgovor': f'Top {len(top)} putnika po prihodu:', 'tip': 'top', 'podaci': top.to_dict()}
         zah = self.data_cache.get('zahtevi', pd.DataFrame())
         if not zah.empty and 'created_by' in zah.columns:
             top = zah['created_by'].value_counts().head(5)
-            return {
-                'odgovor': f'Top {len(top)} najaktivnijih putnika po zahtevima:',
-                'tip': 'top',
-                'podaci': top.to_dict()
-            }
-
+            return {'odgovor': f'Top {len(top)} najaktivnijih po zahtevima:', 'tip': 'top', 'podaci': top.to_dict()}
         return {'odgovor': 'Nema dovoljno podataka za top listu.', 'tip': 'prazno'}
 
     def _handle_recent(self) -> Dict:

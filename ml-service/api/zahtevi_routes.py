@@ -34,7 +34,10 @@ def health():
 def predict_next_week():
     if not _zahtevi_model.is_trained:
         raise HTTPException(status_code=503, detail="Model not trained")
-    return _zahtevi_model.predict_next_week()
+    df = extract_zahtevi()
+    if len(df) == 0:
+        raise HTTPException(status_code=404, detail="No request data")
+    return _zahtevi_model.predict_next_week(df)
 
 
 @router.get("/analyze/trends")

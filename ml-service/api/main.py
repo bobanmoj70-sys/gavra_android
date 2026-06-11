@@ -155,16 +155,34 @@ async def predict_type(request: PredictionRequest):
 @app.post("/analyze/trends")
 async def analyze_trends(request: AnalysisRequest):
     """
-    Analizira finansijske trendove
+    Analizira finansijske trendove + anomalije
     """
     try:
         df = extract_finances()
-        
         trends = financial_model.analyze_financial_trends(df)
-        
         return {
             "success": True,
             "trends": trends,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze/anomalies")
+async def analyze_anomalies():
+    """
+    Detektuje anomalije u finansijskim transakcijama
+    """
+    try:
+        df = extract_finances()
+        if len(df) == 0:
+            return {"success": True, "anomalies": [], "message": "No data"}
+        anom_df = financial_model.detect_anomalies(df)
+        anomalies = anom_df[anom_df.get('is_anomaly', 0) == 1][['naziv', 'iznos', 'tip', 'anomaly_score', 'anomaly_reason']].to_dict('records')
+        return {
+            "success": True,
+            "anomaly_count": len(anomalies),
+            "anomalies": anomalies[:20],
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
