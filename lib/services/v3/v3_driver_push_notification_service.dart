@@ -4,12 +4,18 @@ import '../../utils/v3_time_utils.dart';
 class V3DriverPushNotificationService {
   V3DriverPushNotificationService._();
 
+  static bool enabled = true;
+
   static Future<Map<String, dynamic>> notifyPassengersDriverStarted({
     required String vozacId,
     required String datumIso,
     required String grad,
     required String vreme,
   }) async {
+    if (!enabled) {
+      return {'ok': true, 'skipped': true};
+    }
+
     final safeVozacId = vozacId.trim();
     final safeDatumIso = datumIso.trim();
     final safeGrad = grad.trim().toUpperCase();
