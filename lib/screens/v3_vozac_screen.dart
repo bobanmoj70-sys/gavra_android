@@ -54,8 +54,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
 
   DateTime _selectedDate = V3DanHelper.dateOnly(DateTime.now());
-  String _selectedGrad = 'BC';
-  String _selectedVreme = '';
+  final String _selectedGrad = 'BC';
+  final String _selectedVreme = '';
   bool _isLoading = true;
   bool _loadingDodela = false;
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
@@ -75,7 +75,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Map<String, String> _allTerminToVozac = <String, String>{};
   bool _autoStopInProgress = false;
   bool _isNavigating = false;
-  String _lastSyncedPassengersSignature = '';
+  final String _lastSyncedPassengersSignature = '';
   bool _hasSentRouteToMap = false;
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
@@ -571,36 +571,28 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       allSelectedRowsById.putIfAbsent(entryId, () => row);
     }
 
-    // Ako ovaj vozač ima slot dodelu za ovaj termin, uključi i ostale
-    // putnike iz tog termina koji nemaju individualnu dodelu drugom vozaču
-    final hasSlotForThisTermin = _assignedSlotRows.any((slot) =>
-        (slot[V3TrenutnaDodelaSlotService.colDatum] ?? '').trim() == _selectedDatumIso &&
-        (slot[V3TrenutnaDodelaSlotService.colGrad] ?? '').trim().toUpperCase() == _selectedGrad &&
-        V3TimeUtils.normalizeToHHmm(slot[V3TrenutnaDodelaSlotService.colVreme]) == selectedVNorm);
+    // Uključi i ostale putnike iz tog termina koji nemaju individualnu dodelu drugom vozaču
+    for (final raw in rm.operativnaNedeljaCache.values) {
+      final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
+      final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
+      final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
+      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != selectedVNorm) continue;
+      if (raw['created_by'] == null) continue;
 
-    if (hasSlotForThisTermin) {
-      for (final raw in rm.operativnaNedeljaCache.values) {
-        final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
-        final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-        final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
-        if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != selectedVNorm) continue;
-        if (raw['created_by'] == null) continue;
+      final entryId = raw['id']?.toString() ?? '';
+      if (entryId.isEmpty) continue;
 
-        final entryId = raw['id']?.toString() ?? '';
-        if (entryId.isEmpty) continue;
+      // Ako je već individualno dodeljen ovom vozaču, preskoči (već dodat)
+      if (_assignedOperativnaIds.contains(entryId)) continue;
 
-        // Ako je već individualno dodeljen ovom vozaču, preskoči (već dodat)
-        if (_assignedOperativnaIds.contains(entryId)) continue;
+      // Ako je individualno dodeljen drugom vozaču, preskoči
+      final assignedVozac = _allTerminToVozac[entryId];
+      if (assignedVozac != null && assignedVozac != vozacAuthId) continue;
 
-        // Ako je individualno dodeljen drugom vozaču, preskoči
-        final assignedVozac = _allTerminToVozac[entryId];
-        if (assignedVozac != null && assignedVozac != vozacAuthId) continue;
-
-        // Inače dodaj iz slota
-        final row = Map<String, dynamic>.from(raw);
-        row['vreme'] = row['vreme'] ?? row['polazak_at'];
-        allSelectedRowsById.putIfAbsent(entryId, () => row);
-      }
+      // Inače dodaj iz slota
+      final row = Map<String, dynamic>.from(raw);
+      row['vreme'] = row['vreme'] ?? row['polazak_at'];
+      allSelectedRowsById.putIfAbsent(entryId, () => row);
     }
 
     // 3. Za svaki red izgradimo _PutnikEntry iz operativna_nedelja
@@ -747,8 +739,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
       if (dayTerms.isNotEmpty && _selectedVreme.isEmpty) {
         final firstTerm = dayTerms.first;
-        _selectedGrad = firstTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
-        _selectedVreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme']?.toString());
+        _selectedGrad = firstTerm['grad'].toString().toUpperCase() ?? _selectedGrad;
+        _selectedVreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme'].toString());
       }
       _resetMapSyncState();
     });
@@ -1068,13 +1060,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final gpsReady = await _ensureGpsPermissionForStart();
     if (!gpsReady) return;
 
-    final preparedRoute = await _buildHereRouteWaypoints();
-    debugPrint('[START] prepared route result: $preparedRoute');
-    if (preparedRoute == null || !mounted) {
-      debugPrint('[START] => prepared route null or not mounted, returning');
-      return;
-    }
-
     // Prvo postavi termin (grad+vreme) pa onda pokreni tracking —
     // _sendCurrentLocation() unutar start() koristi ove vrednosti.
     V3VozacLocationTrackingService.instance.setActiveTermin(
@@ -1083,10 +1068,37 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       vreme: _selectedVreme,
     );
 
+    await _startDriverLocationTracking();
+
+    // Optimizuj redosled putnika OSRM-om pre pravljenja rute za mapu
+    try {
+      final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
+      debugPrint('[START] ETA order: ${etaResult.order}');
+      if (etaResult.order.isNotEmpty) {
+        _refreshPutniciOrderFromEtaCache();
+      }
+    } catch (e) {
+      debugPrint('[START] ETA optimization error: $e');
+    }
+
+    final preparedRoute = await _buildHereRouteWaypoints();
+    debugPrint('[START] prepared route result: $preparedRoute');
+    if (preparedRoute == null || !mounted) {
+      debugPrint('[START] => prepared route null or not mounted, returning');
+      await V3VozacLocationTrackingService.instance.stop();
+      return;
+    }
+
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
-        await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
+        // Deaktiviraj sve prethodne aktivne slotove za ovog vozača
+        await V3TrenutnaDodelaSlotService.deactivateAllSlotsForVozac(
+          vozacId: vozacId,
+          updatedBy: vozacId,
+        );
+        // Aktiviraj selektovani slot
+        await V3TrenutnaDodelaSlotService.activateSlot(
           datumIso: _selectedDatumIso,
           grad: _selectedGrad,
           vreme: _selectedVreme,
@@ -1094,11 +1106,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           updatedBy: vozacId,
         );
       } catch (e) {
-        debugPrint('[START] upsert slot before tracking error: $e');
+        debugPrint('[START] activate slot error: $e');
       }
     }
-
-    await _startDriverLocationTracking();
 
     unawaited(_syncPassengersToSlot());
 

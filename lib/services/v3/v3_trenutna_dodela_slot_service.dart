@@ -140,7 +140,7 @@ class V3TrenutnaDodelaSlotService {
       colGrad: gradNorm,
       colVreme: vremeNorm,
       colVozacId: vozac,
-      colStatus: statusAktivan,
+      colStatus: statusNeaktivan,
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
@@ -282,5 +282,47 @@ class V3TrenutnaDodelaSlotService {
     };
 
     await supabase.from(tableName).update(payload).eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
+  }
+
+  static Future<void> activateSlot({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+    required String vozacId,
+    String? updatedBy,
+  }) async {
+    final datum = _normalizeDatumIso(datumIso);
+    final gradNorm = _normalizeGrad(grad);
+    final vremeNorm = _normalizeVreme(vreme);
+    final vozac = vozacId.trim();
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return;
+
+    final payload = <String, dynamic>{
+      colStatus: statusAktivan,
+      if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
+    };
+
+    await supabase
+        .from(tableName)
+        .update(payload)
+        .eq(colDatum, datum)
+        .eq(colGrad, gradNorm)
+        .eq(colVreme, vremeNorm)
+        .eq(colVozacId, vozac);
+  }
+
+  static Future<void> deactivateAllSlotsForVozac({
+    required String vozacId,
+    String? updatedBy,
+  }) async {
+    final vozac = vozacId.trim();
+    if (vozac.isEmpty) return;
+
+    final payload = <String, dynamic>{
+      colStatus: statusNeaktivan,
+      if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
+    };
+
+    await supabase.from(tableName).update(payload).eq(colVozacId, vozac).eq(colStatus, statusAktivan);
   }
 }
