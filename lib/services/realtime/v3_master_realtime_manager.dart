@@ -686,14 +686,6 @@ class V3MasterRealtimeManager {
       }
     }
 
-    if (table == 'v3_eta_results') {
-      final fallbackId = normalized['putnik_id']?.toString();
-      final currentId = normalized['id']?.toString();
-      if ((currentId == null || currentId.isEmpty) && fallbackId != null && fallbackId.isNotEmpty) {
-        normalized['id'] = fallbackId;
-      }
-    }
-
     return normalized;
   }
 

@@ -235,14 +235,18 @@ Deno.serve(async (req) => {
       .slice(1, -1)
       .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
 
-    // Mapa: originalni indeks u tripCoords → putnik_id
-    const originalIndexToPutnikId: Record<number, string> = {};
+    // Mapa: originalni indeks u tripCoords → {putnik_id, termin_id}
+    const originalIndexToEntry: Record<number, { putnik_id: string; termin_id: string }> = {};
     for (let i = 0; i < remaining.length; i++) {
-      originalIndexToPutnikId[i + 1] = remaining[i].putnik_id;
+      originalIndexToEntry[i + 1] = {
+        putnik_id: remaining[i].putnik_id,
+        termin_id: remaining[i].termin_id,
+      };
     }
 
     const now = new Date().toISOString();
     const upsertRows: Array<{
+      termin_id: string;
       putnik_id: string;
       vozac_id: string;
       eta_seconds: number;
@@ -261,14 +265,15 @@ Deno.serve(async (req) => {
       cumulative += Math.round(duration);
 
       const originalIdx = Number(passengerWaypoints[tripRank].inputIndex);
-      const putnikId = originalIndexToPutnikId[originalIdx];
-      if (!putnikId) {
+      const entry = originalIndexToEntry[originalIdx];
+      if (!entry) {
         console.warn(`[v3-compute-eta] input index ${originalIdx} not found in map`);
         continue;
       }
 
       upsertRows.push({
-        putnik_id: putnikId,
+        termin_id: entry.termin_id,
+        putnik_id: entry.putnik_id,
         vozac_id: vozacId,
         eta_seconds: cumulative,
         computed_at: now,
@@ -282,7 +287,7 @@ Deno.serve(async (req) => {
     // 6. Upsert v3_eta_results
     const { error: upsertError } = await client
       .from("v3_eta_results")
-      .upsert(upsertRows, { onConflict: "putnik_id,vozac_id" });
+      .upsert(upsertRows, { onConflict: "termin_id,putnik_id" });
 
     if (upsertError) {
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
@@ -310,7 +315,7 @@ Deno.serve(async (req) => {
     return json(200, {
       ok: true,
       updated: upsertRows.length,
-      eta_results: upsertRows.map((r) => ({ putnik_id: r.putnik_id, eta_seconds: r.eta_seconds })),
+      eta_results: upsertRows.map((r) => ({ termin_id: r.termin_id, putnik_id: r.putnik_id, eta_seconds: r.eta_seconds })),
       optimized_order: optimizedOrder,
     });
   } catch (error) {

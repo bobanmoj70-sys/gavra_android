@@ -16,9 +16,9 @@ class V3VremeDolaskaWidget extends StatelessWidget {
   static const String _colEtaSeconds = 'eta_seconds';
   static const String _colComputedAt = 'computed_at';
 
-  ({int? etaSeconds, bool isStale, String? vozacId}) _readEtaState(Map<String, dynamic>? row) {
+  ({int? etaSeconds, bool isStale, String? vozacId, String? terminId}) _readEtaState(Map<String, dynamic>? row) {
     if (row == null) {
-      return (etaSeconds: null, isStale: false, vozacId: null);
+      return (etaSeconds: null, isStale: false, vozacId: null, terminId: null);
     }
 
     final eta = (row[_colEtaSeconds] as num?)?.toInt();
@@ -31,8 +31,9 @@ class V3VremeDolaskaWidget extends StatelessWidget {
     }
     final stale = computedAt == null || DateTime.now().difference(computedAt) > etaStaleThreshold;
     final vozacId = row[_colVozacId]?.toString();
+    final terminId = row['termin_id']?.toString();
 
-    return (etaSeconds: eta, isStale: stale, vozacId: vozacId);
+    return (etaSeconds: eta, isStale: stale, vozacId: vozacId, terminId: terminId);
   }
 
   int _buildEtaMinutes(int etaSeconds) {
@@ -163,10 +164,14 @@ class V3VremeDolaskaWidget extends StatelessWidget {
         final eta = etaState.etaSeconds;
         final isStale = etaState.isStale;
         final vozacId = etaState.vozacId;
+        final etaTerminId = etaState.terminId;
 
-        final hasFreshEta = eta != null && !isStale;
+        final nextRide = _findNextPutnikRide();
+        final nextTerminId = nextRide?.row['id']?.toString();
+
+        final hasFreshEta =
+            eta != null && !isStale && etaTerminId != null && nextTerminId != null && etaTerminId == nextTerminId;
         final minutes = hasFreshEta ? _buildEtaMinutes(eta) : null;
-        final nextRide = hasFreshEta ? null : _findNextPutnikRide();
         final nextRideLabel =
             nextRide == null ? 'Nema zakazane vožnje' : _formatNextRide(nextRide.departure, nextRide.grad);
         final waitingAddress = nextRide == null ? null : _resolveWaitingAddressForRide(nextRide.row);
