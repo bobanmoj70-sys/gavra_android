@@ -168,7 +168,6 @@ Future<void> _bgSendLocation() async {
         'vozac_id': vozacId,
         'lat': position.latitude,
         'lng': position.longitude,
-        'speed': position.speed,
         'grad': _bgGrad,
         'vreme': _bgVreme,
       },
