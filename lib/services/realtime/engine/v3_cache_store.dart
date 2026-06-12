@@ -19,6 +19,19 @@ class V3CacheStore {
 
   Map<String, int> revisionsSnapshot() => Map<String, int>.from(_revisions);
 
+  String? _resolveCacheKey(String table, Map<String, dynamic> row) {
+    if (table == 'v3_eta_results') {
+      final terminId = row['termin_id']?.toString();
+      final putnikId = row['putnik_id']?.toString();
+      if (terminId != null && terminId.isNotEmpty && putnikId != null && putnikId.isNotEmpty) {
+        return '$terminId:$putnikId';
+      }
+      return null;
+    }
+    final id = row['id']?.toString();
+    return (id != null && id.isNotEmpty) ? id : null;
+  }
+
   void replaceAll(String table, List<dynamic> rows) {
     final cache = _tables[table];
     if (cache == null) return;
@@ -28,9 +41,9 @@ class V3CacheStore {
 
     for (final raw in rows) {
       if (raw is! Map<String, dynamic>) continue;
-      final id = raw['id']?.toString();
-      if (id == null || id.isEmpty) continue;
-      cache[id] = Map<String, dynamic>.from(raw);
+      final key = _resolveCacheKey(table, raw);
+      if (key == null) continue;
+      cache[key] = Map<String, dynamic>.from(raw);
       maxTs = _maxTime(maxTs, _extractTimestamp(raw));
     }
 
@@ -50,19 +63,19 @@ class V3CacheStore {
     final cache = _tables[table];
     if (cache == null) return false;
 
-    final id = (newRecord['id'] ?? oldRecord['id'])?.toString();
-    if (id == null || id.isEmpty) return false;
+    final key = _resolveCacheKey(table, isDelete ? oldRecord : newRecord);
+    if (key == null || key.isEmpty) return false;
 
-    final hadBefore = cache.containsKey(id);
-    final before = cache[id];
+    final hadBefore = cache.containsKey(key);
+    final before = cache[key];
 
     bool changed = false;
     if (isDelete) {
-      changed = cache.remove(id) != null;
+      changed = cache.remove(key) != null;
     } else {
       final normalized = Map<String, dynamic>.from(newRecord);
       if (!hadBefore || !_mapsEqual(before, normalized)) {
-        cache[id] = normalized;
+        cache[key] = normalized;
         changed = true;
       }
     }
@@ -82,16 +95,16 @@ class V3CacheStore {
     final cache = _tables[table];
     if (cache == null) return false;
 
-    final id = row['id']?.toString();
-    if (id == null || id.isEmpty) return false;
+    final key = _resolveCacheKey(table, row);
+    if (key == null || key.isEmpty) return false;
 
-    final hadBefore = cache.containsKey(id);
-    final before = cache[id];
+    final hadBefore = cache.containsKey(key);
+    final before = cache[key];
 
     bool changed = false;
     final normalized = Map<String, dynamic>.from(row);
     if (!hadBefore || !_mapsEqual(before, normalized)) {
-      cache[id] = normalized;
+      cache[key] = normalized;
       changed = true;
     }
 
@@ -107,12 +120,12 @@ class V3CacheStore {
     final cache = _tables[table];
     if (cache == null) return;
 
-    final id = row['id']?.toString();
-    if (id == null || id.isEmpty) return;
+    final key = _resolveCacheKey(table, row);
+    if (key == null || key.isEmpty) return;
 
     final normalized = Map<String, dynamic>.from(row);
-    if (!_mapsEqual(cache[id], normalized)) {
-      cache[id] = normalized;
+    if (!_mapsEqual(cache[key], normalized)) {
+      cache[key] = normalized;
       _watermarks[table] = _maxTime(_watermarks[table], _extractTimestamp(row));
       _touch(table);
     }

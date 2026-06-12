@@ -159,15 +159,16 @@ class V3VremeDolaskaWidget extends StatelessWidget {
       stream: V3MasterRealtimeManager.instance
           .tablesRevisionStream(const ['v3_eta_results', 'v3_auth', 'v3_operativna_nedelja']),
       builder: (context, _) {
-        final row = V3MasterRealtimeManager.instance.etaResultsCache[putnikId];
+        final nextRide = _findNextPutnikRide();
+        final nextTerminId = nextRide?.row['id']?.toString();
+
+        final cacheKey = nextTerminId != null ? '$nextTerminId:$putnikId' : null;
+        final row = cacheKey != null ? V3MasterRealtimeManager.instance.etaResultsCache[cacheKey] : null;
         final etaState = _readEtaState(row);
         final eta = etaState.etaSeconds;
         final isStale = etaState.isStale;
         final vozacId = etaState.vozacId;
         final etaTerminId = etaState.terminId;
-
-        final nextRide = _findNextPutnikRide();
-        final nextTerminId = nextRide?.row['id']?.toString();
 
         final hasFreshEta =
             eta != null && !isStale && etaTerminId != null && nextTerminId != null && etaTerminId == nextTerminId;
