@@ -54,8 +54,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
 
   DateTime _selectedDate = V3DanHelper.dateOnly(DateTime.now());
-  final String _selectedGrad = 'BC';
-  final String _selectedVreme = '';
+  String _selectedGrad = 'BC';
+  String _selectedVreme = '';
   bool _isLoading = true;
   bool _loadingDodela = false;
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
@@ -75,7 +75,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Map<String, String> _allTerminToVozac = <String, String>{};
   bool _autoStopInProgress = false;
   bool _isNavigating = false;
-  final String _lastSyncedPassengersSignature = '';
+  String _lastSyncedPassengersSignature = '';
   bool _hasSentRouteToMap = false;
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
@@ -739,7 +739,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
       if (dayTerms.isNotEmpty && _selectedVreme.isEmpty) {
         final firstTerm = dayTerms.first;
-        _selectedGrad = firstTerm['grad'].toString().toUpperCase() ?? _selectedGrad;
+        _selectedGrad = firstTerm['grad'].toString().toUpperCase();
         _selectedVreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme'].toString());
       }
       _resetMapSyncState();
