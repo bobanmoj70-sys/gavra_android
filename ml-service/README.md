@@ -1,3 +1,12 @@
+---
+title: Gavra ML API
+emoji: 🧠
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # Gavra Financial ML Service
 
 Python ML service za finansijsku analizu. Model uči isključivo iz Supabase podataka (v3_finansije) bez pre-trained znanja.

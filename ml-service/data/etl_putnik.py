@@ -6,12 +6,18 @@ import pandas as pd
 from supabase import create_client
 import config
 
-supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+_supabase = None
+
+def _get_supabase():
+    global _supabase
+    if _supabase is None:
+        _supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+    return _supabase
 
 
 def extract_finansije() -> pd.DataFrame:
     """Extract financial data for passenger analysis"""
-    response = supabase.table("v3_finansije").select("*").execute()
+    response = _get_supabase().table("v3_finansije").select("*").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} financial records")
     return df
@@ -19,7 +25,7 @@ def extract_finansije() -> pd.DataFrame:
 
 def extract_zahtevi() -> pd.DataFrame:
     """Extract request data for passenger analysis"""
-    response = supabase.table("v3_zahtevi").select("*").execute()
+    response = _get_supabase().table("v3_zahtevi").select("*").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} request records")
     return df
@@ -27,7 +33,7 @@ def extract_zahtevi() -> pd.DataFrame:
 
 def extract_users() -> pd.DataFrame:
     """Extract user profiles"""
-    response = supabase.table("v3_auth").select("id, ime, prezime, role, created_at").execute()
+    response = _get_supabase().table("v3_auth").select("id, ime, prezime, role, created_at").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} user profiles")
     return df
@@ -35,7 +41,7 @@ def extract_users() -> pd.DataFrame:
 
 def extract_operativna() -> pd.DataFrame:
     """Extract travel history"""
-    response = supabase.table("v3_operativna_nedelja").select("*").execute()
+    response = _get_supabase().table("v3_operativna_nedelja").select("*").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} travel records")
     return df

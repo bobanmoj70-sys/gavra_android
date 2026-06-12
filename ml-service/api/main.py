@@ -28,31 +28,48 @@ app.include_router(putnik_router)
 app.include_router(zahtevi_router)
 app.include_router(znanje_router)
 
-init_vozilo_model()
-init_gorivo_model()
-init_putnik_model()
-init_zahtevi_model()
-init_znanje_model()
-
 # Initialize model
 financial_model = FinancialMLModel()
 
-# Load model if available, otherwise auto-train
-try:
-    financial_model.load()
-    print("[OK] Financial ML Model loaded successfully")
-except:
-    print("[MISSING] No saved model found. Auto-training...")
+@app.on_event("startup")
+async def startup_event():
     try:
-        df = extract_finances()
-        if len(df) > 0:
-            financial_model.train(df)
-            financial_model.save()
-            print("[OK] Financial ML Model trained and saved successfully")
-        else:
-            print("[WARN] No data available for training")
+        init_vozilo_model()
     except Exception as e:
-        print(f"[WARN] Could not auto-train financial model: {e}")
+        print(f"[WARN] init_vozilo_model failed: {e}")
+    try:
+        init_gorivo_model()
+    except Exception as e:
+        print(f"[WARN] init_gorivo_model failed: {e}")
+    try:
+        init_putnik_model()
+    except Exception as e:
+        print(f"[WARN] init_putnik_model failed: {e}")
+    try:
+        init_zahtevi_model()
+    except Exception as e:
+        print(f"[WARN] init_zahtevi_model failed: {e}")
+    try:
+        init_znanje_model()
+    except Exception as e:
+        print(f"[WARN] init_znanje_model failed: {e}")
+
+    # Load model if available, otherwise auto-train
+    try:
+        financial_model.load()
+        print("[OK] Financial ML Model loaded successfully")
+    except:
+        print("[MISSING] No saved model found. Auto-training...")
+        try:
+            df = extract_finances()
+            if len(df) > 0:
+                financial_model.train(df)
+                financial_model.save()
+                print("[OK] Financial ML Model trained and saved successfully")
+            else:
+                print("[WARN] No data available for training")
+        except Exception as e:
+            print(f"[WARN] Could not auto-train financial model: {e}")
 
 # Pydantic models
 class PredictionRequest(BaseModel):

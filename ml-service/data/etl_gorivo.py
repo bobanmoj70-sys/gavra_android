@@ -6,12 +6,18 @@ import pandas as pd
 from supabase import create_client
 import config
 
-supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+_supabase = None
+
+def _get_supabase():
+    global _supabase
+    if _supabase is None:
+        _supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+    return _supabase
 
 
 def extract_gorivo() -> pd.DataFrame:
     """Extract fuel data from v3_gorivo"""
-    response = supabase.table("v3_gorivo").select("*").execute()
+    response = _get_supabase().table("v3_gorivo").select("*").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} fuel records from Supabase")
     return df
@@ -19,7 +25,7 @@ def extract_gorivo() -> pd.DataFrame:
 
 def extract_vozila() -> pd.DataFrame:
     """Extract vehicle specs"""
-    response = supabase.table("v3_vozila").select("id, marka, model, godina_proizvodnje, trenutna_km").execute()
+    response = _get_supabase().table("v3_vozila").select("id, marka, model, godina_proizvodnje, trenutna_km").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} vehicle specs")
     return df
@@ -27,7 +33,7 @@ def extract_vozila() -> pd.DataFrame:
 
 def extract_operativna() -> pd.DataFrame:
     """Extract trips for real consumption"""
-    response = supabase.table("v3_operativna_nedelja").select("*").execute()
+    response = _get_supabase().table("v3_operativna_nedelja").select("*").execute()
     df = pd.DataFrame(response.data)
     print(f"Extracted {len(df)} trips for fuel analysis")
     return df
