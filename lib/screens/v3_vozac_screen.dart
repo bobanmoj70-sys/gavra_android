@@ -680,14 +680,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       _selectedVreme = normalizedVreme;
       _resetMapSyncState();
     });
-    // Ako je tracking aktivan, ažuriraj aktivni termin
-    if (V3VozacLocationTrackingService.instance.isRunning) {
-      V3VozacLocationTrackingService.instance.setActiveTermin(
-        datumIso: _selectedDatumIso,
-        grad: normalizedGrad,
-        vreme: normalizedVreme,
-      );
-    }
     _rebuild();
   }
 
