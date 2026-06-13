@@ -77,6 +77,10 @@ temp_secrets.env
 key.properties
 android/app/google-services.json
 
+# ML trained models (binary, large, regenerated on every train)
+models/saved/
+ml-service/models/saved/
+
 # Debug files
 debug_*.sql
 *_test.dart
