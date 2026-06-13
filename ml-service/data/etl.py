@@ -42,8 +42,23 @@ def extract_operativna() -> pd.DataFrame:
     print(f"Extracted {len(df)} operational records from Supabase")
     return df
 
+def extract_all_supabase_tables() -> dict:
+    """Dinamicki ucitaj SVE dostupne tabele iz Supabase"""
+    from data.etl_znanje import discover_all_tables
+    tables = {}
+    for table_name in discover_all_tables():
+        try:
+            r = _get_supabase().table(table_name).select('*').limit(200).execute()
+            df = pd.DataFrame(r.data)
+            if not df.empty:
+                tables[table_name] = df
+        except Exception as e:
+            print(f"[ETL] Skip {table_name}: {e}")
+    return tables
+
+
 def extract_enriched_finances() -> pd.DataFrame:
-    """Extract finances joined with user profiles and request history"""
+    """Extract finances joined with ALL available Supabase tables"""
     fin = extract_finances()
     users = extract_users()
     reqs = extract_requests()
@@ -66,7 +81,29 @@ def extract_enriched_finances() -> pd.DataFrame:
                         on='putnik_v3_auth_id', how='left')
         fin['broj_putovanja'] = fin['broj_putovanja'].fillna(0)
 
-    print(f"[ENRICHED] Financial data: {len(fin)} rows with cross-table features")
+    # Dinamicki: merge sa SVIM tabelama koje imaju putnik_v3_auth_id ili slicne kolone
+    all_tables = extract_all_supabase_tables()
+    for table_name, df in all_tables.items():
+        if table_name == 'v3_finansije' or df.empty:
+            continue
+        # Ako tabela ima putnik_v3_auth_id
+        if 'putnik_v3_auth_id' in df.columns and 'putnik_v3_auth_id' in fin.columns:
+            # Izracunaj agregate po putniku
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            if numeric_cols:
+                agg = {c: 'mean' for c in numeric_cols[:3]}
+                stats = df.groupby('putnik_v3_auth_id').agg(agg).reset_index()
+                # Dodaj prefiks da izbegnes konflikte
+                stats.columns = ['putnik_v3_auth_id'] + [f'{table_name}_{c}' for c in stats.columns[1:]]
+                fin = fin.merge(stats, on='putnik_v3_auth_id', how='left')
+        # Ako tabela ima created_by
+        if 'created_by' in df.columns and 'putnik_v3_auth_id' in fin.columns:
+            stats = df.groupby('created_by').size().reset_index(name=f'{table_name}_count')
+            fin = fin.merge(stats.rename(columns={'created_by': 'putnik_v3_auth_id'}),
+                            on='putnik_v3_auth_id', how='left')
+            fin[f'{table_name}_count'] = fin[f'{table_name}_count'].fillna(0)
+
+    print(f"[ENRICHED] Financial data: {len(fin)} rows with cross-table features from {len(all_tables)} tables")
     return fin
 
 if __name__ == "__main__":

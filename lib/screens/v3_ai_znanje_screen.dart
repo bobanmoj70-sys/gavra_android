@@ -63,6 +63,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   bool _gorTraining = false;
   bool _putTraining = false;
   bool _zahTraining = false;
+  bool _allTraining = false;
 
   @override
   void initState() {
@@ -387,6 +388,25 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
   }
 
+  Future<void> _trainAllModels() async {
+    setState(() => _allTraining = true);
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      const SnackBar(content: Text('Pokrecem trening svih modela...'), duration: Duration(seconds: 2)),
+    );
+
+    await _trainModel('/train', _loadFinancialAI, 'Finansijski');
+    await _trainModel('/vozilo/train', _loadVehicleAI, 'Vozilo');
+    await _trainModel('/gorivo/train', _loadGorivoAI, 'Gorivo');
+    await _trainModel('/putnik/train', _loadPutnikAI, 'Putnik');
+    await _trainModel('/zahtevi/train', _loadZahteviAI, 'Zahtevi');
+
+    scaffold.showSnackBar(
+      const SnackBar(content: Text('Svi modeli su trenirani!'), duration: Duration(seconds: 3)),
+    );
+    setState(() => _allTraining = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return V3ContainerUtils.gradientContainer(
@@ -402,7 +422,22 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             '🧠 AI Znanje',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          actions: const [],
+          actions: [
+            _allTraining
+                ? const Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.model_training, color: Colors.white),
+                    tooltip: 'Treniraj sve modele',
+                    onPressed: _trainAllModels,
+                  ),
+          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(88),
             child: Padding(

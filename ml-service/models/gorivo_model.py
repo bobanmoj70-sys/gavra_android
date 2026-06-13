@@ -11,6 +11,8 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import joblib
 import os
 import config
+from models.learning_memory import LearningMemory
+from models.auto_features import AutoFeatureDiscovery
 
 
 class GorivoMLModel:
@@ -20,23 +22,58 @@ class GorivoMLModel:
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
+        self.memory = LearningMemory("gorivo")
+        self.discoverer = AutoFeatureDiscovery()
+
+    def _safe_float(self, val):
+        return None if val != val else float(val)
+
+    def _find_col(self, df: pd.DataFrame, *patterns: str) -> str:
+        """Dinamicki pronalazi kolonu po sablonu - kao beba koja uci.
+        Proverava da li su svi delovi sablona prisutni u imenu kolone, u istom redosledu."""
+        for col in df.columns:
+            col_parts = col.lower().split('_')
+            for p in patterns:
+                pat_parts = p.lower().split('_')
+                # Proveri da li su svi delovi sablona podskup delova kolone, u istom redosledu
+                idx = 0
+                matched = 0
+                for cp in col_parts:
+                    if idx < len(pat_parts) and cp == pat_parts[idx]:
+                        idx += 1
+                        matched += 1
+                if matched == len(pat_parts):
+                    return col
+        return None
 
     def _extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generiše features iz gorivo + operativnih podataka"""
+        """Generiše features iz gorivo + operativnih podataka - dinamicki otkriva kolone"""
         features = pd.DataFrame()
-        features['trenutno_litara'] = pd.to_numeric(df['trenutno_stanje_litri'], errors='coerce').fillna(0)
-        features['kapacitet'] = pd.to_numeric(df['kapacitet_litri'], errors='coerce').fillna(3000)
+
+        # DINAMICKI otkrij kljucne kolone (ne hardkodiraj)
+        trenutno_col = self._find_col(df, 'trenutno', 'stanje', 'litri', 'gorivo')
+        kapacitet_col = self._find_col(df, 'kapacitet', 'rezervoar')
+        cena_col = self._find_col(df, 'cena', 'po_litru', 'cena_po')
+        dug_col = self._find_col(df, 'dug', 'iznos')
+        alarm_col = self._find_col(df, 'alarm', 'nivo')
+        voznje_col = self._find_col(df, 'broj_voznji', 'voznji', 'putovanja')
+        godina_col = self._find_col(df, 'godina', 'proizvodnje')
+        km_col = self._find_col(df, 'trenutna_km', 'kilometraza', 'km')
+
+        print(f"  [AutoDiscover] Gorivo kolone: trenutno={trenutno_col}, kapacitet={kapacitet_col}, cena={cena_col}, alarm={alarm_col}")
+
+        features['trenutno_litara'] = pd.to_numeric(df[trenutno_col], errors='coerce').fillna(0) if trenutno_col else pd.Series([0] * len(df), index=df.index)
+        features['kapacitet'] = pd.to_numeric(df[kapacitet_col], errors='coerce').fillna(3000) if kapacitet_col else pd.Series([3000] * len(df), index=df.index)
         features['nivo_posto'] = (features['trenutno_litara'] / features['kapacitet'].clip(lower=1) * 100).clip(0, 100)
-        features['cena_po_litru'] = pd.to_numeric(df['cena_po_litru'], errors='coerce').fillna(0)
-        features['dug_iznos'] = pd.to_numeric(df['dug_iznos'], errors='coerce').fillna(0)
-        features['alarm_nivo'] = pd.to_numeric(df['alarm_nivo_litri'], errors='coerce').fillna(500)
+        features['cena_po_litru'] = pd.to_numeric(df[cena_col], errors='coerce').fillna(0) if cena_col else pd.Series([0] * len(df), index=df.index)
+        features['dug_iznos'] = pd.to_numeric(df[dug_col], errors='coerce').fillna(0) if dug_col else pd.Series([0] * len(df), index=df.index)
+        features['alarm_nivo'] = pd.to_numeric(df[alarm_col], errors='coerce').fillna(500) if alarm_col else pd.Series([500] * len(df), index=df.index)
         features['ispod_alarm'] = (features['trenutno_litara'] < features['alarm_nivo']).astype(int)
-        # Operational intensity — broj voznji iz operativne (ako postoji)
-        features['broj_voznji'] = pd.to_numeric(df['broj_voznji'], errors='coerce').fillna(0) if 'broj_voznji' in df.columns else pd.Series([0] * len(df), index=df.index)
-        # Vehicle specs (ako su join-ovani)
-        features['godina_proizvodnje'] = pd.to_numeric(df['godina_proizvodnje'], errors='coerce').fillna(2015) if 'godina_proizvodnje' in df.columns else pd.Series([2015] * len(df), index=df.index)
+        features['broj_voznji'] = pd.to_numeric(df[voznje_col], errors='coerce').fillna(0) if voznje_col else pd.Series([0] * len(df), index=df.index)
+        features['godina_proizvodnje'] = pd.to_numeric(df[godina_col], errors='coerce').fillna(2015) if godina_col else pd.Series([2015] * len(df), index=df.index)
         features['starost_godina'] = 2026 - features['godina_proizvodnje']
-        features['trenutna_km'] = pd.to_numeric(df['trenutna_km'], errors='coerce').fillna(0) if 'trenutna_km' in df.columns else pd.Series([0] * len(df), index=df.index)
+        features['trenutna_km'] = pd.to_numeric(df[km_col], errors='coerce').fillna(0) if km_col else pd.Series([0] * len(df), index=df.index)
+
         # Data-driven features
         used_liters = features['kapacitet'] - features['trenutno_litara']
         features['procenjena_potrosnja_po_voznji'] = (used_liters / features['broj_voznji'].clip(lower=1)).fillna(0)
@@ -78,21 +115,31 @@ class GorivoMLModel:
         y_pred_train = self.model.predict(X_train)
         train_r2 = r2_score(y_train, y_pred_train)
         train_mae = mean_absolute_error(y_train, y_pred_train)
-        metrics = {'train_r2': float(train_r2), 'train_mae': float(train_mae),
+        metrics = {'train_r2': self._safe_float(train_r2), 'train_mae': self._safe_float(train_mae),
                    'feature_count': len(X.columns), 'samples': n_samples, 'eval_on_train': not eval_split}
         if eval_split:
             y_pred_test = self.model.predict(X_test)
-            metrics['test_r2'] = float(r2_score(y_test, y_pred_test))
-            metrics['test_mae'] = float(mean_absolute_error(y_test, y_pred_test))
+            metrics['test_r2'] = self._safe_float(r2_score(y_test, y_pred_test))
+            metrics['test_mae'] = self._safe_float(mean_absolute_error(y_test, y_pred_test))
             metrics['r2_score'] = metrics['test_r2']
             print(f"Test R²: {metrics['test_r2']:.3f} | Test MAE: {metrics['test_mae']:.4f}")
         else:
-            metrics['r2_score'] = float(train_r2)
+            metrics['r2_score'] = self._safe_float(train_r2)
         print(f"Train R²: {train_r2:.3f} | Train MAE: {train_mae:.4f}")
         print(f"Samples: {n_samples} | Features: {len(X.columns)}")
         print("=" * 50)
         self.is_trained = True
         self._last_metrics = metrics
+
+        # ZABORAVI stare tabele koje vise ne postoje
+        self.memory.forget_old(["gorivo"])
+
+        # PAMTI sta je naucio
+        sources = {"gorivo": {"columns": list(X.columns), "rows": n_samples}}
+        feature_imp = dict(zip(X.columns, self.model.feature_importances_)) if self.model else {}
+        self.memory.record_training(sources, feature_imp, metrics)
+        print("  [Memory] Gorivo model zapamtio ucenje")
+
         return metrics
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:

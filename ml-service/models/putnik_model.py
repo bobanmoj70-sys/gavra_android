@@ -11,6 +11,8 @@ from sklearn.metrics import roc_auc_score, classification_report, mean_squared_e
 import joblib
 import os
 import config
+from models.learning_memory import LearningMemory
+from models.auto_features import AutoFeatureDiscovery
 
 
 class PutnikMLModel:
@@ -20,35 +22,80 @@ class PutnikMLModel:
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
+        self.memory = LearningMemory("putnik")
+        self.discoverer = AutoFeatureDiscovery()
+
+    def _safe_float(self, val):
+        return None if val != val else float(val)
+
+    def _find_col(self, df: pd.DataFrame, *patterns: str) -> str:
+        """Dinamicki pronalazi kolonu po sablonu - kao beba koja uci.
+        Proverava da li su svi delovi sablona prisutni u imenu kolone, u istom redosledu."""
+        for col in df.columns:
+            col_parts = col.lower().split('_')
+            for p in patterns:
+                pat_parts = p.lower().split('_')
+                idx = 0
+                matched = 0
+                for cp in col_parts:
+                    if idx < len(pat_parts) and cp == pat_parts[idx]:
+                        idx += 1
+                        matched += 1
+                if matched == len(pat_parts):
+                    return col
+        return None
 
     def _extract_rfm_features(self, fin_df: pd.DataFrame, zahtevi_df: pd.DataFrame) -> pd.DataFrame:
-        """Generiše RFM (Recency, Frequency, Monetary) + dodatne feature po putniku"""
-        if fin_df.empty or 'putnik_v3_auth_id' not in fin_df.columns:
+        """Generiše RFM (Recency, Frequency, Monetary) + dodatne feature po putniku - DINAMICKI"""
+        # DINAMICKI otkriji kljucne kolone
+        putnik_id_col = self._find_col(fin_df, 'putnik_v3_auth_id', 'putnik_id', 'user_id', 'auth_id')
+        iznos_col = self._find_col(fin_df, 'iznos', 'amount', 'vrednost')
+        tip_col = self._find_col(fin_df, 'tip', 'type', 'vrsta')
+        created_col = self._find_col(fin_df, 'created_at', 'datum', 'vreme')
+        voznje_col = self._find_col(fin_df, 'broj_voznji', 'voznji')
+        otkaz_col = self._find_col(fin_df, 'broj_otkazivanja', 'otkazivanja', 'cancelled')
+
+        print(f"  [AutoDiscover] Putnik kolone: putnik_id={putnik_id_col}, iznos={iznos_col}, tip={tip_col}, created={created_col}")
+
+        if fin_df.empty or not putnik_id_col:
             return pd.DataFrame()
         fin_df = fin_df.copy()
-        fin_df['created_at'] = pd.to_datetime(fin_df.get('created_at', pd.Timestamp.now()), errors='coerce')
-        fin_df['iznos'] = pd.to_numeric(fin_df['iznos'], errors='coerce').fillna(0)
+        fin_df['created_at'] = pd.to_datetime(fin_df.get(created_col, pd.Timestamp.now()) if created_col else pd.Timestamp.now(), errors='coerce')
+        # Ukloni timezone ako postoji da izbegnemo tz-naive vs tz-aware grešku
+        if fin_df['created_at'].dt.tz is not None:
+            fin_df['created_at'] = fin_df['created_at'].dt.tz_localize(None)
+        fin_df['iznos'] = pd.to_numeric(fin_df[iznos_col], errors='coerce').fillna(0) if iznos_col else pd.Series([0] * len(fin_df), index=fin_df.index)
         now = pd.Timestamp.now()
         # RFM iz finansija — dinamicki agg_dict
         agg_dict = {
             'created_at': ['max', 'min', 'count'],
             'iznos': ['sum', 'mean', 'std'],
-            'tip': lambda x: (x == 'prihod').sum(),
         }
-        if 'broj_voznji' in fin_df.columns:
-            agg_dict['broj_voznji'] = 'sum'
-        if 'broj_otkazivanja' in fin_df.columns:
-            agg_dict['broj_otkazivanja'] = 'sum'
-        rfm = fin_df.groupby('putnik_v3_auth_id').agg(agg_dict).reset_index()
+        if tip_col:
+            agg_dict[tip_col] = lambda x: (x == 'prihod').sum()
+        if voznje_col:
+            agg_dict[voznje_col] = 'sum'
+        if otkaz_col:
+            agg_dict[otkaz_col] = 'sum'
+        rfm = fin_df.groupby(putnik_id_col).agg(agg_dict).reset_index()
         base_cols = ['putnik_id', 'poslednja_transakcija', 'prva_transakcija', 'frekvenca',
-                     'ukupno_platio', 'prosecan_iznos', 'std_iznos', 'broj_prihoda']
-        if 'broj_voznji' in fin_df.columns:
+                     'ukupno_platio', 'prosecan_iznos', 'std_iznos']
+        if tip_col:
+            base_cols.append('broj_prihoda')
+        if voznje_col:
             base_cols.append('ukupno_voznji')
-        if 'broj_otkazivanja' in fin_df.columns:
+        if otkaz_col:
             base_cols.append('ukupno_otkazivanja')
         rfm.columns = base_cols
-        rfm['recency_dana'] = (now - pd.to_datetime(rfm['poslednja_transakcija'], errors='coerce')).dt.days.fillna(999)
-        rfm['tenure_dana'] = (now - pd.to_datetime(rfm['prva_transakcija'], errors='coerce')).dt.days.fillna(0)
+        # Ukloni timezone pre oduzimanja
+        poslednja = pd.to_datetime(rfm['poslednja_transakcija'], errors='coerce')
+        prva = pd.to_datetime(rfm['prva_transakcija'], errors='coerce')
+        if poslednja.dt.tz is not None:
+            poslednja = poslednja.dt.tz_localize(None)
+        if prva.dt.tz is not None:
+            prva = prva.dt.tz_localize(None)
+        rfm['recency_dana'] = (now - poslednja).dt.days.fillna(999)
+        rfm['tenure_dana'] = (now - prva).dt.days.fillna(0)
         if 'ukupno_otkazivanja' not in rfm.columns:
             rfm['ukupno_otkazivanja'] = 0
         if 'ukupno_voznji' not in rfm.columns:
@@ -56,16 +103,24 @@ class PutnikMLModel:
         rfm['cancellation_rate'] = (rfm['ukupno_otkazivanja'] / rfm['frekvenca'].clip(lower=1)).fillna(0)
         rfm['vrednost_po_voznji'] = (rfm['ukupno_platio'] / rfm['ukupno_voznji'].clip(lower=1)).fillna(0)
         rfm['std_iznos'] = rfm['std_iznos'].fillna(0)
-        # Zahtevi feature
-        if not zahtevi_df.empty and 'created_by' in zahtevi_df.columns:
-            zah = zahtevi_df.groupby('created_by').agg({
-                'id': 'count',
-                'status': lambda x: (x == 'otkazano').sum()
-            }).reset_index()
-            zah.columns = ['putnik_id', 'broj_zahteva', 'zahtevi_otkazano']
+        # Zahtevi feature - DINAMICKI otkrij kolone
+        zah_user_col = self._find_col(zahtevi_df, 'created_by', 'putnik_id', 'user_id', 'auth_id') if not zahtevi_df.empty else None
+        zah_id_col = self._find_col(zahtevi_df, 'id') if not zahtevi_df.empty else None
+        zah_status_col = self._find_col(zahtevi_df, 'status', 'stanje') if not zahtevi_df.empty else None
+
+        if zah_user_col and zah_id_col:
+            agg = {zah_id_col: 'count'}
+            if zah_status_col:
+                agg[zah_status_col] = lambda x: (x == 'otkazano').sum()
+            zah = zahtevi_df.groupby(zah_user_col).agg(agg).reset_index()
+            cols = ['putnik_id', 'broj_zahteva']
+            if zah_status_col:
+                cols.append('zahtevi_otkazano')
+            zah.columns = cols
             rfm = rfm.merge(zah, on='putnik_id', how='left')
             rfm['broj_zahteva'] = rfm['broj_zahteva'].fillna(0)
-            rfm['zahtevi_otkazano'] = rfm['zahtevi_otkazano'].fillna(0)
+            if zah_status_col:
+                rfm['zahtevi_otkazano'] = rfm['zahtevi_otkazano'].fillna(0)
         else:
             rfm['broj_zahteva'] = 0
             rfm['zahtevi_otkazano'] = 0
@@ -126,8 +181,8 @@ class PutnikMLModel:
         yl_pred_train = self.value_model.predict(Xl_train)
         ltv_r2_train = r2_score(yl_train, yl_pred_train)
         ltv_mae_train = mean_absolute_error(yl_train, yl_pred_train)
-        metrics = {'churn_auc_train': float(churn_auc_train), 'ltv_r2_train': float(ltv_r2_train),
-                   'ltv_mae_train': float(ltv_mae_train), 'feature_count': len(feature_cols),
+        metrics = {'churn_auc_train': self._safe_float(churn_auc_train), 'ltv_r2_train': self._safe_float(ltv_r2_train),
+                   'ltv_mae_train': self._safe_float(ltv_mae_train), 'feature_count': len(feature_cols),
                    'samples': n_samples, 'eval_on_train': not eval_split}
         if eval_split:
             yc_pred_test = self.churn_model.predict(Xc_test)
@@ -138,18 +193,28 @@ class PutnikMLModel:
             yl_pred_test = self.value_model.predict(Xl_test)
             ltv_r2_test = r2_score(yl_test, yl_pred_test)
             ltv_mae_test = mean_absolute_error(yl_test, yl_pred_test)
-            metrics['churn_auc_test'] = float(churn_auc_test)
-            metrics['ltv_r2_test'] = float(ltv_r2_test)
-            metrics['ltv_mae_test'] = float(ltv_mae_test)
-            metrics['r2_score'] = float(ltv_r2_test)
+            metrics['churn_auc_test'] = self._safe_float(churn_auc_test)
+            metrics['ltv_r2_test'] = self._safe_float(ltv_r2_test)
+            metrics['ltv_mae_test'] = self._safe_float(ltv_mae_test)
+            metrics['r2_score'] = self._safe_float(ltv_r2_test)
             print(f"Churn AUC: {churn_auc_test:.3f} | LTV R²: {ltv_r2_test:.3f} | LTV MAE: {ltv_mae_test:.2f}")
         else:
-            metrics['r2_score'] = float(ltv_r2_train)
+            metrics['r2_score'] = self._safe_float(ltv_r2_train)
         print(f"Churn AUC (train): {churn_auc_train:.3f} | LTV R² (train): {ltv_r2_train:.3f}")
         print(f"Samples: {n_samples} | Features: {len(feature_cols)}")
         print("=" * 50)
         self.is_trained = True
         self._last_metrics = metrics
+
+        # ZABORAVI stare tabele koje vise ne postoje
+        self.memory.forget_old(["putnik"])
+
+        # PAMTI sta je naucio
+        sources = {"putnik": {"columns": list(feature_cols), "rows": n_samples}}
+        feature_imp = dict(zip(feature_cols, self.value_model.feature_importances_)) if self.value_model else {}
+        self.memory.record_training(sources, feature_imp, metrics)
+        print("  [Memory] Putnik model zapamtio ucenje")
+
         return metrics
 
     def analyze_passengers(self, fin_df: pd.DataFrame, zahtevi_df: pd.DataFrame) -> dict:

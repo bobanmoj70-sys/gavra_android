@@ -39,6 +39,21 @@ def extract_finansije() -> pd.DataFrame:
     return df
 
 
+def extract_all_supabase_tables() -> dict:
+    """Dinamicki ucitaj SVE dostupne tabele"""
+    from data.etl_znanje import discover_all_tables
+    tables = {}
+    for table_name in discover_all_tables():
+        try:
+            r = _get_supabase().table(table_name).select('*').limit(200).execute()
+            df = pd.DataFrame(r.data)
+            if not df.empty:
+                tables[table_name] = df
+        except Exception:
+            pass
+    return tables
+
+
 def extract_enriched_zahtevi() -> pd.DataFrame:
     """Extract requests joined with completed trips and revenue"""
     zahtevi = extract_zahtevi()

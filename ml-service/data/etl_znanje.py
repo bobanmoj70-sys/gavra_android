@@ -15,86 +15,117 @@ def _get_supabase():
     return _supabase
 
 
+_discovered_tables_cache = None
+
+
+def _check_table_exists(table_name: str) -> bool:
+    """Proverava da li tabela postoji u Supabase"""
+    try:
+        r = _get_supabase().table(table_name).select('*').limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+
+def discover_all_tables() -> list:
+    """Dinamicki otkriva SVE tabele u Supabase — proverava sve poznate sablone"""
+    global _discovered_tables_cache
+    if _discovered_tables_cache is not None:
+        return _discovered_tables_cache
+
+    # Svi poznati sabloni tabela (postojeci, sadasnji, buduci)
+    candidates = [
+        # V3 tabele
+        'v3_auth', 'v3_zahtevi', 'v3_operativna_nedelja', 'v3_finansije',
+        'v3_vozila', 'v3_gorivo', 'v3_trenutna_dodela', 'v3_trenutna_dodela_slot',
+        'v3_eta_results', 'v3_vozac_lokacija', 'v3_eta_log', 'v3_vozac_status',
+        # V2 tabele (istorijske)
+        'v2_auth', 'v2_zahtevi', 'v2_operativna', 'v2_finansije',
+        'v2_vozila', 'v2_gorivo',
+        # AI tabele
+        'ai_znanje', 'ai_embeddings', 'ai_conversations', 'ai_logs',
+        # Dodatne tabele
+        'adrese', 'lokacije', 'cenovnik', 'notifikacije', 'logs',
+    ]
+
+    existing = []
+    for table_name in candidates:
+        if _check_table_exists(table_name):
+            existing.append(table_name)
+
+    _discovered_tables_cache = existing
+    print(f"[Discovery] Pronadjeno {len(existing)} tabela: {existing}")
+    return existing
+
+
+def get_table_columns(table_name: str) -> list:
+    """Dynamically get columns for a table"""
+    try:
+        response = _get_supabase().table(table_name).select('*').limit(1).execute()
+        if response.data:
+            return list(response.data[0].keys())
+    except Exception as e:
+        print(f"[Znanje] Could not get columns for {table_name}: {e}")
+    return []
+
+
+# Mapiranje praviih imena tabela na alias-e koje modeli ocekuju
+_TABLE_NAME_MAP = {
+    'v3_auth': 'users',
+    'v3_zahtevi': 'zahtevi',
+    'v3_operativna_nedelja': 'operativna',
+    'v3_finansije': 'finansije',
+    'v3_vozila': 'vozila',
+    'v3_gorivo': 'gorivo',
+}
+
+
 def extract_all_tables() -> dict:
-    """Extract key data from all tables for AI context"""
+    """Extract data from ALL discovered tables for AI context"""
     data = {}
+    all_tables = discover_all_tables()
 
-    # Auth / Users
-    try:
-        r = _get_supabase().table("v3_auth").select("id, ime, created_at").limit(100).execute()
-        data['users'] = pd.DataFrame(r.data)
-        print(f"[Znanje] Users: {len(data['users'])}")
-    except Exception as e:
-        print(f"[Znanje] Users error: {e}")
-        data['users'] = pd.DataFrame()
+    for table_name in all_tables:
+        try:
+            # Get columns first to know what to select
+            columns = get_table_columns(table_name)
+            if not columns:
+                continue
 
-    # Zahtevi
-    try:
-        r = _get_supabase().table("v3_zahtevi").select("*").order("created_at", desc=True).limit(200).execute()
-        data['zahtevi'] = pd.DataFrame(r.data)
-        print(f"[Znanje] Zahtevi: {len(data['zahtevi'])}")
-    except Exception as e:
-        print(f"[Znanje] Zahtevi error: {e}")
-        data['zahtevi'] = pd.DataFrame()
+            # Build select string, limit to avoid overload
+            select_cols = ', '.join(columns[:50])  # max 50 columns
 
-    # Operativna nedelja
-    try:
-        r = _get_supabase().table("v3_operativna_nedelja").select("*").order("datum", desc=True).limit(200).execute()
-        data['operativna'] = pd.DataFrame(r.data)
-        print(f"[Znanje] Operativna: {len(data['operativna'])}")
-    except Exception as e:
-        print(f"[Znanje] Operativna error: {e}")
-        data['operativna'] = pd.DataFrame()
+            # Query with limit
+            r = _get_supabase().table(table_name).select(select_cols).limit(200).execute()
+            df = pd.DataFrame(r.data)
 
-    # Finansije
-    try:
-        r = _get_supabase().table("v3_finansije").select("*").order("created_at", desc=True).limit(200).execute()
-        data['finansije'] = pd.DataFrame(r.data)
-        print(f"[Znanje] Finansije: {len(data['finansije'])}")
-    except Exception as e:
-        print(f"[Znanje] Finansije error: {e}")
-        data['finansije'] = pd.DataFrame()
+            # Map to alias for known tables, keep original for new ones
+            alias = _TABLE_NAME_MAP.get(table_name, table_name)
 
-    # Vozila
-    try:
-        r = _get_supabase().table("v3_vozila").select("*").execute()
-        data['vozila'] = pd.DataFrame(r.data)
-        print(f"[Znanje] Vozila: {len(data['vozila'])}")
-    except Exception as e:
-        print(f"[Znanje] Vozila error: {e}")
-        data['vozila'] = pd.DataFrame()
+            if not df.empty:
+                data[alias] = df
+                print(f"[Znanje] {table_name} -> {alias}: {len(df)} rows, {len(columns)} cols")
+            else:
+                print(f"[Znanje] {table_name} -> {alias}: empty")
 
-    # Gorivo
-    try:
-        r = _get_supabase().table("v3_gorivo").select("*").execute()
-        data['gorivo'] = pd.DataFrame(r.data)
-        print(f"[Znanje] Gorivo: {len(data['gorivo'])}")
-    except Exception as e:
-        print(f"[Znanje] Gorivo error: {e}")
-        data['gorivo'] = pd.DataFrame()
-
-    # AI Znanje (FAQ articles)
-    try:
-        r = _get_supabase().table("ai_znanje").select("*").execute()
-        data['ai_znanje'] = pd.DataFrame(r.data)
-        print(f"[Znanje] AI Znanje: {len(data['ai_znanje'])}")
-    except Exception as e:
-        print(f"[Znanje] AI Znanje error: {e}")
-        data['ai_znanje'] = pd.DataFrame()
+        except Exception as e:
+            print(f"[Znanje] {table_name} error: {e}")
 
     return data
 
 
 def get_database_schema() -> dict:
-    """Get table schema for AI understanding"""
-    schema = {
-        'v3_auth': ['id', 'ime', 'prezime', 'email', 'role', 'created_at'],
-        'v3_zahtevi': ['id', 'status', 'grad', 'datum', 'polazak_at', 'trazeni_polazak_at', 'created_by', 'created_at'],
-        'v3_operativna_nedelja': ['id', 'datum', 'grad', 'polazak_at', 'status', 'created_by', 'otkazano_at', 'pokupljen_at'],
-        'v3_finansije': ['id', 'putnik_v3_auth_id', 'iznos', 'tip', 'kategorija', 'created_at'],
-        'v3_vozila': ['id', 'marka', 'model', 'registracija', 'trenutna_km', 'godina_proizvodnje'],
-        'v3_gorivo': ['id', 'vozilo_id', 'trenutno_stanje_litri', 'kapacitet_litri', 'cena_po_litru'],
-        'v3_trenutna_dodela': ['id', 'termin_id', 'putnik_v3_auth_id', 'vozac_v3_auth_id', 'status'],
-        'v3_trenutna_dodela_slot': ['id', 'datum', 'grad', 'vreme', 'vozac_v3_auth_id', 'status']
-    }
+    """Dynamically discover schema for ALL tables — sa alias mapiranjem"""
+    schema = {}
+    all_tables = discover_all_tables()
+
+    for table_name in all_tables:
+        try:
+            columns = get_table_columns(table_name)
+            if columns:
+                alias = _TABLE_NAME_MAP.get(table_name, table_name)
+                schema[alias] = columns
+        except Exception as e:
+            print(f"[Znanje] Schema error for {table_name}: {e}")
+
     return schema

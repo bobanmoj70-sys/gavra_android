@@ -20,16 +20,16 @@ _vozilo_model = VoziloMLModel()
 
 
 def init_vozilo_model():
-    """Inicijalizuje model pri startup-u"""
-    _vozilo_model.load()
-    if not _vozilo_model.is_trained:
-        try:
-            df = extract_vozila()
-            if len(df) > 0:
-                _vozilo_model.train(df)
-                _vozilo_model.save()
-        except Exception as e:
-            print(f"[WARN] Could not auto-train vehicle model: {e}")
+    """Inicijalizuje model pri startup-u — uvek trenira od nule"""
+    try:
+        df = extract_vozila()
+        if len(df) > 0:
+            _vozilo_model.train(df)
+            _vozilo_model.save()
+        else:
+            print("[WARN] No data for vehicle model training")
+    except Exception as e:
+        print(f"[WARN] Could not auto-train vehicle model: {e}")
 
 
 class ServisPredictionRequest(BaseModel):
@@ -43,6 +43,12 @@ def health():
         "status": "healthy",
         "model_trained": _vozilo_model.is_trained
     }
+
+
+@router.get("/memory")
+def memory():
+    """Sta je vozilo model naucio - kao beba koja pamti"""
+    return _vozilo_model.memory.get_learning_summary()
 
 
 @router.get("/predict/all")

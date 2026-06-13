@@ -15,20 +15,26 @@ _gorivo_model = GorivoMLModel()
 
 
 def init_gorivo_model():
-    _gorivo_model.load()
-    if not _gorivo_model.is_trained:
-        try:
-            df = extract_gorivo()
-            if len(df) > 0:
-                _gorivo_model.train(df)
-                _gorivo_model.save()
-        except Exception as e:
-            print(f"[WARN] Could not auto-train gorivo model: {e}")
+    try:
+        df = extract_gorivo()
+        if len(df) > 0:
+            _gorivo_model.train(df)
+            _gorivo_model.save()
+        else:
+            print("[WARN] No data for gorivo model training")
+    except Exception as e:
+        print(f"[WARN] Could not auto-train gorivo model: {e}")
 
 
 @router.get("/health")
 def health():
     return {"status": "healthy", "model_trained": _gorivo_model.is_trained}
+
+
+@router.get("/memory")
+def memory():
+    """Sta je gorivo model naucio - kao beba koja pamti"""
+    return _gorivo_model.memory.get_learning_summary()
 
 
 @router.get("/predict")

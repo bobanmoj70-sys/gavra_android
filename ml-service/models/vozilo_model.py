@@ -11,6 +11,8 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import joblib
 import os
 import config
+from models.learning_memory import LearningMemory
+from models.auto_features import AutoFeatureDiscovery
 
 
 class VoziloMLModel:
@@ -23,15 +25,47 @@ class VoziloMLModel:
         self.model_dir = config.MODEL_DIR
         self.feature_columns = None
         os.makedirs(self.model_dir, exist_ok=True)
+        self.memory = LearningMemory("vozilo")
+        self.discoverer = AutoFeatureDiscovery()
+
+    def _safe_float(self, val):
+        return None if val != val else float(val)
+
+    def _find_col(self, df: pd.DataFrame, *patterns: str) -> str:
+        """Dinamicki pronalazi kolonu po sablonu - kao beba koja uci.
+        Proverava da li su svi delovi sablona prisutni u imenu kolone, u istom redosledu."""
+        for col in df.columns:
+            col_parts = col.lower().split('_')
+            for p in patterns:
+                pat_parts = p.lower().split('_')
+                idx = 0
+                matched = 0
+                for cp in col_parts:
+                    if idx < len(pat_parts) and cp == pat_parts[idx]:
+                        idx += 1
+                        matched += 1
+                if matched == len(pat_parts):
+                    return col
+        return None
 
     def _extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generiše features iz vozilo podataka — sve iz baze, ništa hardkodovano"""
         features = pd.DataFrame(index=df.index)
-        features['trenutna_km'] = pd.to_numeric(df['trenutna_km'], errors='coerce').fillna(0) if 'trenutna_km' in df.columns else pd.Series([0] * len(df), index=df.index)
-        features['godina_proizvodnje'] = pd.to_numeric(df['godina_proizvodnje'], errors='coerce').fillna(2015) if 'godina_proizvodnje' in df.columns else pd.Series([2015] * len(df), index=df.index)
+
+        # DINAMICKI otkriji kljucne kolone
+        km_col = self._find_col(df, 'trenutna_km', 'kilometraza', 'km')
+        godina_col = self._find_col(df, 'godina_proizvodnje', 'godina', 'proizvodnje')
+        marka_col = self._find_col(df, 'marka')
+        model_col = self._find_col(df, 'model')
+        reg_col = self._find_col(df, 'registracija_vazi_do', 'registracija')
+
+        print(f"  [AutoDiscover] Vozilo kolone: km={km_col}, godina={godina_col}, marka={marka_col}, model={model_col}, reg={reg_col}")
+
+        features['trenutna_km'] = pd.to_numeric(df[km_col], errors='coerce').fillna(0) if km_col else pd.Series([0] * len(df), index=df.index)
+        features['godina_proizvodnje'] = pd.to_numeric(df[godina_col], errors='coerce').fillna(2015) if godina_col else pd.Series([2015] * len(df), index=df.index)
         features['starost_godina'] = 2026 - features['godina_proizvodnje']
 
-        marka_vals = df['marka'].fillna('nepoznato').astype(str) if 'marka' in df.columns else pd.Series(['nepoznato'] * len(df), index=df.index)
+        marka_vals = df[marka_col].fillna('nepoznato').astype(str) if marka_col else pd.Series(['nepoznato'] * len(df), index=df.index)
         if self.le_marka is None:
             self.le_marka = LabelEncoder()
             all_vals = pd.concat([marka_vals, pd.Series(['nepoznato'])])
@@ -42,7 +76,7 @@ class VoziloMLModel:
             marka_vals = marka_vals.apply(lambda x: x if x in known else 'nepoznato')
             features['marka_encoded'] = self.le_marka.transform(marka_vals)
 
-        model_vals = df['model'].fillna('nepoznato').astype(str) if 'model' in df.columns else pd.Series(['nepoznato'] * len(df), index=df.index)
+        model_vals = df[model_col].fillna('nepoznato').astype(str) if model_col else pd.Series(['nepoznato'] * len(df), index=df.index)
         if self.le_model is None:
             self.le_model = LabelEncoder()
             all_vals = pd.concat([model_vals, pd.Series(['nepoznato'])])
@@ -53,25 +87,21 @@ class VoziloMLModel:
             model_vals = model_vals.apply(lambda x: x if x in known else 'nepoznato')
             features['model_encoded'] = self.le_model.transform(model_vals)
 
-        servis_types = ['mali_servis', 'veliki_servis', 'alternator', 'akumulator',
-                        'plocice_prednje', 'plocice_zadnje', 'trap',
-                        'gume_prednje', 'gume_zadnje']
-        for servis in servis_types:
-            km_col = f'{servis}_km'
-            if km_col in df.columns:
-                features[f'km_od_{servis}'] = features['trenutna_km'] - pd.to_numeric(df[km_col], errors='coerce').fillna(0)
-            else:
-                features[f'km_od_{servis}'] = features['trenutna_km']
+        # DINAMICKI otkriji SVE servis tipove iz podataka (sve kolone koje se zavrsavaju na _km osim trenutna_km)
+        servis_km_cols = [c for c in df.columns if c.endswith('_km') and c != km_col]
+        print(f"  [AutoDiscover] Servis kolone otkrivene: {servis_km_cols}")
+        for km_col_name in servis_km_cols:
+            servis_name = km_col_name[:-3]  # ukloni '_km'
+            features[f'km_od_{servis_name}'] = features['trenutna_km'] - pd.to_numeric(df[km_col_name], errors='coerce').fillna(0)
 
-        servis_km_cols = [c for c in df.columns if c.endswith('_km') and c != 'trenutna_km']
         if servis_km_cols:
             features['broj_zapisanih_servisa'] = df[servis_km_cols].notna().sum(axis=1)
         else:
             features['broj_zapisanih_servisa'] = 0
 
-        if 'registracija_vazi_do' in df.columns:
+        if reg_col:
             features['dana_do_registracije'] = pd.to_datetime(
-                df['registracija_vazi_do'], errors='coerce'
+                df[reg_col], errors='coerce'
             ).apply(lambda x: (x - pd.Timestamp.now()).days if pd.notna(x) else -1)
         else:
             features['dana_do_registracije'] = -1
@@ -82,20 +112,17 @@ class VoziloMLModel:
     def _compute_health_target(self, features: pd.DataFrame) -> np.ndarray:
         """
         Računa health risk score SAMO iz podataka — bez hardkodovanih intervala.
-        Za svaki servis tip: km_od_servisa / max_fleet_km_od_tog_servisa
+        DINAMICKI otkriva servis tipove iz kolona koje pocinju sa 'km_od_'.
         Daje 0-1 score gde 1 = najkritičnije vozilo u floti.
         """
-        servis_types = ['mali_servis', 'veliki_servis', 'alternator', 'akumulator',
-                        'plocice_prednje', 'plocice_zadnje', 'trap',
-                        'gume_prednje', 'gume_zadnje']
+        servis_cols = [c for c in features.columns if c.startswith('km_od_')]
+        print(f"  [AutoDiscover] Servis tipovi za health: {[c[6:] for c in servis_cols]}")
         scores = []
-        for servis in servis_types:
-            col = f'km_od_{servis}'
-            if col in features.columns:
-                vals = features[col].clip(lower=0)
-                max_val = vals.max() if vals.max() > 0 else 1
-                norm = (vals / max_val).values
-                scores.append(norm)
+        for col in servis_cols:
+            vals = features[col].clip(lower=0)
+            max_val = vals.max() if vals.max() > 0 else 1
+            norm = (vals / max_val).values
+            scores.append(norm)
         if len(scores) == 0:
             return np.zeros(len(features))
         avg_score = np.mean(scores, axis=0)
@@ -125,22 +152,32 @@ class VoziloMLModel:
         y_pred_train = self.health_model.predict(X_train)
         train_r2 = r2_score(y_train, y_pred_train)
         train_mae = mean_absolute_error(y_train, y_pred_train)
-        metrics = {'train_r2': float(train_r2), 'train_mae': float(train_mae),
+        metrics = {'train_r2': self._safe_float(train_r2), 'train_mae': self._safe_float(train_mae),
                    'feature_count': len(self.feature_columns), 'samples': n_samples,
                    'eval_on_train': not eval_split}
         if eval_split:
             y_pred_test = self.health_model.predict(X_test)
-            metrics['test_r2'] = float(r2_score(y_test, y_pred_test))
-            metrics['test_mae'] = float(mean_absolute_error(y_test, y_pred_test))
+            metrics['test_r2'] = self._safe_float(r2_score(y_test, y_pred_test))
+            metrics['test_mae'] = self._safe_float(mean_absolute_error(y_test, y_pred_test))
             metrics['r2_score'] = metrics['test_r2']
             print(f"Test R²: {metrics['test_r2']:.3f} | Test MAE: {metrics['test_mae']:.4f}")
         else:
-            metrics['r2_score'] = float(train_r2)
+            metrics['r2_score'] = self._safe_float(train_r2)
         print(f"Train R²: {train_r2:.3f} | Train MAE: {train_mae:.4f}")
         print(f"Samples: {n_samples} | Features: {len(self.feature_columns)}")
         print("=" * 50)
         self.is_trained = True
         self._last_metrics = metrics
+
+        # ZABORAVI stare tabele koje vise ne postoje
+        self.memory.forget_old(["vozilo"])
+
+        # PAMTI sta je naucio
+        sources = {"vozilo": {"columns": list(self.feature_columns), "rows": n_samples}}
+        feature_imp = dict(zip(self.feature_columns, self.health_model.feature_importances_)) if self.health_model else {}
+        self.memory.record_training(sources, feature_imp, metrics)
+        print("  [Memory] Vozilo model zapamtio ucenje")
+
         return metrics
 
     def predict_health(self, df: pd.DataFrame) -> pd.DataFrame:

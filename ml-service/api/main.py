@@ -13,10 +13,10 @@ from datetime import datetime
 
 from data.etl import extract_enriched_finances as extract_finances
 from models.financial_model import FinancialMLModel
-from api.vozilo_routes import router as vozilo_router, init_vozilo_model
-from api.gorivo_routes import router as gorivo_router, init_gorivo_model
-from api.putnik_routes import router as putnik_router, init_putnik_model
-from api.zahtevi_routes import router as zahtevi_router, init_zahtevi_model
+from api.vozilo_routes import router as vozilo_router, init_vozilo_model, _vozilo_model
+from api.gorivo_routes import router as gorivo_router, init_gorivo_model, _gorivo_model
+from api.putnik_routes import router as putnik_router, init_putnik_model, _putnik_model
+from api.zahtevi_routes import router as zahtevi_router, init_zahtevi_model, _zahtevi_model
 from api.znanje_routes import router as znanje_router, init_znanje_model
 
 app = FastAPI(title="Gavra ML API", version="3.0.0")
@@ -54,22 +54,22 @@ async def startup_event():
     except Exception as e:
         print(f"[WARN] init_znanje_model failed: {e}")
 
-    # Load model if available, otherwise auto-train
+    # Always train from scratch on startup
     try:
-        financial_model.load()
-        print("[OK] Financial ML Model loaded successfully")
-    except:
-        print("[MISSING] No saved model found. Auto-training...")
+        df = extract_finances()
+        if len(df) > 0:
+            financial_model.train(df)
+            financial_model.save()
+            print("[OK] Financial ML Model trained and saved from scratch")
+        else:
+            print("[WARN] No data available for training")
+    except Exception as e:
+        print(f"[WARN] Could not train financial model from scratch: {e}")
         try:
-            df = extract_finances()
-            if len(df) > 0:
-                financial_model.train(df)
-                financial_model.save()
-                print("[OK] Financial ML Model trained and saved successfully")
-            else:
-                print("[WARN] No data available for training")
-        except Exception as e:
-            print(f"[WARN] Could not auto-train financial model: {e}")
+            financial_model.load()
+            print("[OK] Financial ML Model loaded from saved file as fallback")
+        except Exception as e2:
+            print(f"[WARN] Could not load saved model either: {e2}")
 
 # Pydantic models
 class PredictionRequest(BaseModel):
@@ -85,15 +85,51 @@ async def root():
     return {
         "message": "Gavra ML API (Finansije, Vozila, Gorivo, Putnici, Zahtevi)",
         "status": "running",
-        "model_trained": financial_model.is_trained
+        "amount_model_trained": financial_model.is_amount_trained,
+        "type_model_trained": financial_model.is_type_trained
     }
 
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
-        "model_trained": financial_model.is_trained,
+        "amount_model_trained": financial_model.is_amount_trained,
+        "type_model_trained": financial_model.is_type_trained,
         "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/memory")
+async def memory_check():
+    """Sta je financial model naucio - kao beba koja pamti"""
+    return financial_model.memory.get_learning_summary()
+
+@app.get("/models/status")
+async def models_status():
+    """Status svih ML modela - sta su naucili, koliko su iskusni"""
+    return {
+        "timestamp": datetime.now().isoformat(),
+        "models": {
+            "financial": {
+                "trained": financial_model.is_amount_trained and financial_model.is_type_trained,
+                "memory": financial_model.memory.get_learning_summary()
+            },
+            "vozilo": {
+                "trained": _vozilo_model.is_trained,
+                "memory": _vozilo_model.memory.get_learning_summary()
+            },
+            "gorivo": {
+                "trained": _gorivo_model.is_trained,
+                "memory": _gorivo_model.memory.get_learning_summary()
+            },
+            "putnik": {
+                "trained": _putnik_model.is_trained,
+                "memory": _putnik_model.memory.get_learning_summary()
+            },
+            "zahtevi": {
+                "trained": _zahtevi_model.is_trained,
+                "memory": _zahtevi_model.memory.get_learning_summary()
+            }
+        }
     }
 
 @app.post("/predict/amount")
@@ -102,13 +138,13 @@ async def predict_amount(request: PredictionRequest):
     Predikcija iznosa za buduće transakcije
     Model koristi naučeno znanje isključivo iz Supabase podataka
     """
-    if not financial_model.is_trained:
-        raise HTTPException(status_code=400, detail="Model not trained. Call /train first.")
-    
+    if not financial_model.is_amount_trained:
+        raise HTTPException(status_code=400, detail="Amount model not trained. Call /train first.")
+
     try:
         # Extract current data for context
         df = extract_finances()
-        
+
         # Filter by request parameters
         if request.month:
             df = df[df['mesec'] == request.month]
@@ -116,17 +152,17 @@ async def predict_amount(request: PredictionRequest):
             df = df[df['godina'] == request.year]
         if request.user_id:
             df = df[df['putnik_v3_auth_id'] == request.user_id]
-        
+
         if len(df) == 0:
             return {
                 "success": True,
                 "prediction": 0,
                 "message": "No matching data found"
             }
-        
+
         # Predict
         predictions = financial_model.predict_amount(df)
-        
+
         return {
             "success": True,
             "predictions": predictions[['iznos', 'predicted_amount']].to_dict('records'),
@@ -141,8 +177,8 @@ async def predict_type(request: PredictionRequest):
     """
     Predikcija tipa transakcije (prihod/rashod)
     """
-    if not financial_model.is_trained:
-        raise HTTPException(status_code=400, detail="Model not trained. Call /train first.")
+    if not financial_model.is_type_trained:
+        raise HTTPException(status_code=400, detail="Type model not trained — need both 'prihod' and 'rashod' data in Supabase")
     
     try:
         df = extract_finances()
@@ -228,6 +264,90 @@ async def train_model():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/retrain-all")
+async def retrain_all():
+    """
+    Trenira SVE modele od nule - kao da su se rodili ispocetka.
+    Uklanja staro pamcenje, ucimo sve iznova.
+    """
+    import time
+    start = time.time()
+    results = {}
+
+    # Financial
+    try:
+        df = extract_finances()
+        if len(df) > 0:
+            financial_model.train(df)
+            financial_model.save()
+            results["financial"] = {"status": "trained", "samples": len(df), "memory": financial_model.memory.get_learning_summary()}
+        else:
+            results["financial"] = {"status": "no_data"}
+    except Exception as e:
+        results["financial"] = {"status": "error", "message": str(e)}
+
+    # Vozilo
+    try:
+        from data.etl_vozilo import extract_enriched_vozila as extract_vozila
+        df = extract_vozila()
+        if len(df) > 0:
+            _vozilo_model.train(df)
+            _vozilo_model.save()
+            results["vozilo"] = {"status": "trained", "samples": len(df), "memory": _vozilo_model.memory.get_learning_summary()}
+        else:
+            results["vozilo"] = {"status": "no_data"}
+    except Exception as e:
+        results["vozilo"] = {"status": "error", "message": str(e)}
+
+    # Gorivo
+    try:
+        from data.etl_gorivo import extract_enriched_gorivo as extract_gorivo
+        df = extract_gorivo()
+        if len(df) > 0:
+            _gorivo_model.train(df)
+            _gorivo_model.save()
+            results["gorivo"] = {"status": "trained", "samples": len(df), "memory": _gorivo_model.memory.get_learning_summary()}
+        else:
+            results["gorivo"] = {"status": "no_data"}
+    except Exception as e:
+        results["gorivo"] = {"status": "error", "message": str(e)}
+
+    # Putnik
+    try:
+        from data.etl_putnik import extract_finansije, extract_zahtevi
+        fin = extract_finansije()
+        zah = extract_zahtevi()
+        if len(fin) > 0:
+            _putnik_model.train(fin, zah)
+            _putnik_model.save()
+            results["putnik"] = {"status": "trained", "samples": len(fin), "memory": _putnik_model.memory.get_learning_summary()}
+        else:
+            results["putnik"] = {"status": "no_data"}
+    except Exception as e:
+        results["putnik"] = {"status": "error", "message": str(e)}
+
+    # Zahtevi
+    try:
+        from data.etl_zahtevi import extract_enriched_zahtevi as extract_zahtevi
+        df = extract_zahtevi()
+        if len(df) > 0:
+            _zahtevi_model.train(df)
+            _zahtevi_model.save()
+            results["zahtevi"] = {"status": "trained", "samples": len(df), "memory": _zahtevi_model.memory.get_learning_summary()}
+        else:
+            results["zahtevi"] = {"status": "no_data"}
+    except Exception as e:
+        results["zahtevi"] = {"status": "error", "message": str(e)}
+
+    elapsed = round(time.time() - start, 2)
+    return {
+        "success": True,
+        "message": f"Svi modeli su ponovo istrenirani od nule za {elapsed}s",
+        "elapsed_seconds": elapsed,
+        "results": results,
+        "timestamp": datetime.now().isoformat()
+    }
 
 if __name__ == "__main__":
     import uvicorn

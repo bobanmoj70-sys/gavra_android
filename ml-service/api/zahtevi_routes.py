@@ -14,20 +14,26 @@ _zahtevi_model = ZahteviMLModel()
 
 
 def init_zahtevi_model():
-    _zahtevi_model.load()
-    if not _zahtevi_model.is_trained:
-        try:
-            df = extract_zahtevi()
-            if len(df) > 0:
-                _zahtevi_model.train(df)
-                _zahtevi_model.save()
-        except Exception as e:
-            print(f"[WARN] Could not auto-train zahtevi model: {e}")
+    try:
+        df = extract_zahtevi()
+        if len(df) > 0:
+            _zahtevi_model.train(df)
+            _zahtevi_model.save()
+        else:
+            print("[WARN] No data for zahtevi model training")
+    except Exception as e:
+        print(f"[WARN] Could not auto-train zahtevi model: {e}")
 
 
 @router.get("/health")
 def health():
     return {"status": "healthy", "model_trained": _zahtevi_model.is_trained}
+
+
+@router.get("/memory")
+def memory():
+    """Sta je zahtevi model naucio - kao beba koja pamti"""
+    return _zahtevi_model.memory.get_learning_summary()
 
 
 @router.get("/predict/next-week")

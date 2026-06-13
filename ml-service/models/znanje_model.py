@@ -6,6 +6,9 @@ import re
 import pandas as pd
 from typing import Dict, List, Any
 import json
+import os
+import joblib
+import config
 from models.knowledge_graph import KnowledgeGraph
 from services.embeddings_service import EmbeddingsService
 
@@ -19,6 +22,9 @@ class ZnanjeAIModel:
         self.knowledge_graph = KnowledgeGraph()
         self.embeddings_service = EmbeddingsService()
         self.is_ready = False
+        self.model_dir = config.MODEL_DIR
+        self.state_path = f"{self.model_dir}/znanje_state.pkl"
+        os.makedirs(self.model_dir, exist_ok=True)
 
     def load_data(self, data: Dict[str, pd.DataFrame], schema: Dict):
         """Ucitava podatke iz ETL-a i gradi knowledge graph"""
@@ -130,31 +136,46 @@ class ZnanjeAIModel:
         return 'general'
 
     def _get_table_for_question(self, keywords: List[str]) -> str:
-        """Određuje koja tabela je relevantna sa fuzzy skorovima"""
-        mapping = {
-            'zahtevi': ['zahtev', 'request', 'termin', 'putnik', 'grad', 'vreme', 'polazak', 'termin'],
-            'users': ['korisnik', 'user', 'putnik', 'vozac', 'ime', 'email', 'telefon', 'osob'],
-            'operativna': ['operativna', 'nedelja', 'putovanje', 'voznja', 'dodela', 'vozn'],
-            'finansije': ['finans', 'transakc', 'novac', 'iznos', 'prihod', 'rashod', 'plata', 'dug', 'plat'],
-            'vozila': ['vozil', 'auto', 'registrac', 'marka', 'model', 'servis', 'km', 'tablic'],
-            'gorivo': ['gorivo', 'rezervoar', 'benzin', 'dizel', 'litra', 'dopuna', 'tankanje', 'pumpa'],
-            'adrese': ['adresa', 'lokacija', 'grad', 'naselje', 'ulica', 'gps'],
-        }
+        """Određuje koja tabela je relevantna sa fuzzy skorovima — dinamicki iz svih ucitanih tabela"""
+        # Build mapping from actual loaded tables + common aliases
+        mapping = {}
+        for tbl in self.data_cache.keys():
+            mapping[tbl] = [tbl.lower().replace('v3_', '')]
+            # Add common aliases
+            if 'zahtev' in tbl.lower():
+                mapping[tbl].extend(['zahtev', 'request', 'termin', 'putnik', 'grad', 'vreme', 'polazak'])
+            if 'auth' in tbl.lower() or 'user' in tbl.lower():
+                mapping[tbl].extend(['korisnik', 'user', 'putnik', 'vozac', 'ime', 'email', 'osob'])
+            if 'operativ' in tbl.lower():
+                mapping[tbl].extend(['operativna', 'nedelja', 'putovanje', 'voznja', 'dodela'])
+            if 'finans' in tbl.lower():
+                mapping[tbl].extend(['finans', 'transakc', 'novac', 'iznos', 'prihod', 'rashod', 'plata', 'dug'])
+            if 'vozil' in tbl.lower():
+                mapping[tbl].extend(['vozil', 'auto', 'registrac', 'marka', 'model', 'servis', 'km'])
+            if 'gorivo' in tbl.lower():
+                mapping[tbl].extend(['gorivo', 'rezervoar', 'benzin', 'dizel', 'litra', 'dopuna', 'tankanje'])
+            if 'dodela' in tbl.lower() and 'slot' in tbl.lower():
+                mapping[tbl].extend(['slot', 'raspored', 'smena', 'voznja', 'termin'])
+            if 'dodela' in tbl.lower() and 'slot' not in tbl.lower():
+                mapping[tbl].extend(['dodela', 'dodeljen', 'vozac', 'putnik', 'termin'])
+            if 'eta' in tbl.lower():
+                mapping[tbl].extend(['eta', 'vreme', 'dolazak', 'stizanje', 'predikcija'])
+
         scores = {k: 0.0 for k in mapping}
         for kw in keywords:
             for table, terms in mapping.items():
                 for term in terms:
-                    # Exact match = 2, prefix match = 1
                     if kw == term:
                         scores[table] += 2.0
                     elif kw.startswith(term) or term.startswith(kw):
                         scores[table] += 1.0
                     elif len(kw) > 3 and len(term) > 3:
-                        # Substring match
                         if term in kw or kw in term:
                             scores[table] += 0.5
-        best = max(scores, key=scores.get)
-        return best if scores[best] > 0 else 'general'
+        if scores and max(scores.values()) > 0:
+            best = max(scores, key=scores.get)
+            return best
+        return list(self.data_cache.keys())[0] if self.data_cache else 'general'
 
     def _find_entity_by_name(self, question: str, table: str, name_col: str = 'ime', id_col: str = 'id') -> Any:
         """Fuzzy traženje entiteta po imenu u pitanju"""
@@ -243,35 +264,36 @@ class ZnanjeAIModel:
     # === HANDLERI ===
 
     def _handle_count(self, intent: str, keywords: List[str], question: str = '') -> Dict:
-        if 'zahtev' in intent:
-            df = self.data_cache.get('zahtevi', pd.DataFrame())
+        # Try to find matching table from all loaded tables
+        tbl = self._get_table_for_question(keywords)
+        df = self.data_cache.get(tbl, pd.DataFrame())
+        if not df.empty:
             total = len(df)
-            active = len(df[df.get('status', '') != 'otkazano']) if 'status' in df.columns else total
-            return {'odgovor': f'Ukupno zahteva: {total}. Aktivnih: {active}.', 'tip': 'count', 'podaci': {'ukupno': total, 'aktivni': active}}
-        if 'user' in intent or 'putnik' in intent or 'vozac' in intent:
-            df = self.data_cache.get('users', pd.DataFrame())
-            total = len(df)
-            active = len(df[df.get('last_seen_at', pd.NaT).notna()]) if 'last_seen_at' in df.columns else total
-            return {'odgovor': f'Ukupno korisnika: {total}. Aktivnih nedavno: {active}.', 'tip': 'count', 'podaci': {'ukupno': total, 'aktivni': active}}
-        if 'vozil' in intent:
-            df = self.data_cache.get('vozila', pd.DataFrame())
-            total = len(df)
-            return {'odgovor': f'Ukupno vozila: {total}.', 'tip': 'count', 'podaci': {'ukupno': total}}
-        if 'finans' in intent or 'count' in intent:
-            df = self.data_cache.get('finansije', pd.DataFrame())
-            total = len(df)
-            prihod = df[df.get('tip', '') == 'prihod']['iznos'].sum() if 'tip' in df.columns and 'iznos' in df.columns else 0
-            rashod = df[df.get('tip', '') == 'rashod']['iznos'].sum() if 'tip' in df.columns and 'iznos' in df.columns else 0
-            return {'odgovor': f'Ukupno transakcija: {total}. Prihod: {prihod:.2f}, Rashod: {rashod:.2f}.', 'tip': 'count', 'podaci': {'ukupno': total, 'prihod': prihod, 'rashod': rashod}}
-        if 'gorivo' in intent:
-            df = self.data_cache.get('gorivo', pd.DataFrame())
-            total = len(df)
-            return {'odgovor': f'Ukupno rezervoara za gorivo: {total}.', 'tip': 'count', 'podaci': {'ukupno': total}}
+            # Try to extract smart stats if columns exist
+            extras = []
+            if 'status' in df.columns:
+                active = len(df[df['status'] != 'otkazano'])
+                extras.append(f"aktivnih: {active}")
+            if 'tip' in df.columns and 'iznos' in df.columns:
+                prihod = df[df['tip'] == 'prihod']['iznos'].sum()
+                rashod = df[df['tip'] == 'rashod']['iznos'].sum()
+                extras.append(f"prihod: {prihod:.2f}, rashod: {rashod:.2f}")
+            if 'tip' in df.columns:
+                counts = df['tip'].value_counts().to_dict()
+                for t, c in list(counts.items())[:3]:
+                    extras.append(f"{t}: {c}")
+            extra_str = f" ({', '.join(extras)})" if extras else ""
+            return {'odgovor': f'Ukupno u {tbl}: {total}{extra_str}.', 'tip': 'count', 'podaci': {'ukupno': total, 'tabela': tbl}}
+
+        # Fallback for general count
+        all_counts = {tbl: len(df) for tbl, df in self.data_cache.items() if not df.empty}
+        if all_counts:
+            lines = [f"{k}: {v}" for k, v in all_counts.items()]
+            return {'odgovor': f'Ukupno zapisa po tabelama:\n' + '\n'.join(lines), 'tip': 'count', 'podaci': all_counts}
         return {'odgovor': 'Nisam razumeo šta želiš da prebrojim.', 'tip': 'unknown'}
 
     def _handle_list(self, intent: str, keywords: List[str], limit: int = 10, question: str = '') -> Dict:
-        table_map = {'list_zahtevi': 'zahtevi', 'list_users': 'users', 'list_finansije': 'finansije', 'list_vozila': 'vozila', 'list_general': 'zahtevi'}
-        tbl = table_map.get(intent, 'zahtevi')
+        tbl = self._get_table_for_question(keywords)
         df = self.data_cache.get(tbl, pd.DataFrame())
         if df.empty:
             return {'odgovor': f'Nema podataka u tabeli {tbl}.', 'tip': 'prazno'}
@@ -374,28 +396,31 @@ class ZnanjeAIModel:
         return {'odgovor': f'Danas ({today}) nema aktivnosti u sistemu.', 'tip': 'danas'}
 
     def _handle_top(self, intent: str, keywords: List[str], question: str = '') -> Dict:
-        if 'vozil' in intent:
-            vozila = self.data_cache.get('vozila', pd.DataFrame())
-            if not vozila.empty and 'trenutna_km' in vozila.columns:
-                top = vozila.nlargest(5, 'trenutna_km')[['registracija', 'trenutna_km', 'marka', 'model']]
-                return {'odgovor': 'Top 5 vozila po kilometraži:', 'tip': 'top', 'podaci': top.to_dict('records')}
-        fin = self.data_cache.get('finansije', pd.DataFrame())
-        if not fin.empty and 'putnik_v3_auth_id' in fin.columns and 'iznos' in fin.columns:
-            top = fin.groupby('putnik_v3_auth_id')['iznos'].sum().nlargest(5)
-            return {'odgovor': f'Top {len(top)} putnika po prihodu:', 'tip': 'top', 'podaci': top.to_dict()}
-        zah = self.data_cache.get('zahtevi', pd.DataFrame())
-        if not zah.empty and 'created_by' in zah.columns:
-            top = zah['created_by'].value_counts().head(5)
-            return {'odgovor': f'Top {len(top)} najaktivnijih po zahtevima:', 'tip': 'top', 'podaci': top.to_dict()}
+        tbl = self._get_table_for_question(keywords)
+        df = self.data_cache.get(tbl, pd.DataFrame())
+        if not df.empty:
+            # Try numeric columns for top
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            if numeric_cols:
+                top = df.nlargest(5, numeric_cols[0])
+                return {'odgovor': f'Top 5 iz {tbl} po {numeric_cols[0]}:', 'tip': 'top', 'podaci': top.head(5).fillna('-').to_dict('records')}
+            # Try value counts
+            if 'created_by' in df.columns:
+                top = df['created_by'].value_counts().head(5)
+                return {'odgovor': f'Top {len(top)} najaktivnijih u {tbl}:', 'tip': 'top', 'podaci': top.to_dict()}
+            # Just return first 5
+            return {'odgovor': f'Prvih 5 zapisa iz {tbl}:', 'tip': 'top', 'podaci': df.head(5).fillna('-').to_dict('records')}
         return {'odgovor': 'Nema dovoljno podataka za top listu.', 'tip': 'prazno'}
 
     def _handle_recent(self) -> Dict:
         combined = []
+        podaci = {}
 
-        for tbl in ['zahtevi', 'operativna', 'finansije']:
-            df = self.data_cache.get(tbl, pd.DataFrame())
+        for tbl_name in self.data_cache.keys():
+            df = self.data_cache.get(tbl_name, pd.DataFrame())
             if not df.empty:
-                combined.append(f'{tbl}: {len(df)} zapisa')
+                combined.append(f'{tbl_name}: {len(df)} zapisa')
+                podaci[tbl_name] = len(df)
 
         if not combined:
             return {'odgovor': 'Nema skorijih podataka.', 'tip': 'prazno'}
@@ -403,12 +428,12 @@ class ZnanjeAIModel:
         return {
             'odgovor': 'Skoriji podaci u sistemu:\n' + '\n'.join(combined),
             'tip': 'recent',
-            'podaci': {tbl: len(self.data_cache.get(tbl, pd.DataFrame())) for tbl in ['zahtevi', 'operativna', 'finansije']}
+            'podaci': podaci
         }
 
     def _handle_general(self, table: str) -> Dict:
         info = []
-        for tbl_name in ['zahtevi', 'users', 'operativna', 'finansije', 'vozila', 'gorivo']:
+        for tbl_name in self.data_cache.keys():
             df = self.data_cache.get(tbl_name, pd.DataFrame())
             if not df.empty:
                 info.append(f'{tbl_name}: {len(df)} redova')
@@ -434,7 +459,30 @@ class ZnanjeAIModel:
         }
 
     def save(self):
-        pass
+        if not self.is_ready or not self.data_cache:
+            return
+
+        state = {
+            'schema': self.schema,
+            'data_cache': self.data_cache,
+        }
+        joblib.dump(state, self.state_path)
+        print("[OK] Znanje model state saved")
 
     def load(self):
-        pass
+        try:
+            state = joblib.load(self.state_path)
+            cached_data = state.get('data_cache', {}) if isinstance(state, dict) else {}
+            schema = state.get('schema', {}) if isinstance(state, dict) else {}
+
+            normalized_data = {}
+            for table_name, table_data in cached_data.items():
+                if isinstance(table_data, pd.DataFrame):
+                    normalized_data[table_name] = table_data
+                else:
+                    normalized_data[table_name] = pd.DataFrame(table_data)
+
+            self.load_data(normalized_data, schema)
+            print("[OK] Znanje model state loaded")
+        except FileNotFoundError:
+            print("[MISSING] No saved znanje model state")

@@ -11,6 +11,8 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import joblib
 import os
 import config
+from models.learning_memory import LearningMemory
+from models.auto_features import AutoFeatureDiscovery
 
 
 class ZahteviMLModel:
@@ -20,21 +22,48 @@ class ZahteviMLModel:
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
+        self.memory = LearningMemory("zahtevi")
+        self.discoverer = AutoFeatureDiscovery()
+
+    def _safe_float(self, val):
+        return None if val != val else float(val)
+
+    def _find_col(self, df: pd.DataFrame, *patterns: str) -> str:
+        """Dinamicki pronalazi kolonu po sablonu - kao beba koja uci.
+        Proverava da li su svi delovi sablona prisutni u imenu kolone, u istom redosledu."""
+        for col in df.columns:
+            col_parts = col.lower().split('_')
+            for p in patterns:
+                pat_parts = p.lower().split('_')
+                idx = 0
+                matched = 0
+                for cp in col_parts:
+                    if idx < len(pat_parts) and cp == pat_parts[idx]:
+                        idx += 1
+                        matched += 1
+                if matched == len(pat_parts):
+                    return col
+        return None
 
     def _extract_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Generiše temporal + rolling + lag features iz zahteva"""
-        if df.empty or ('grad' not in df.columns):
+        """Generiše temporal + rolling + lag features iz zahteva - DINAMICKI"""
+        # DINAMICKI otkriji kljucne kolone
+        grad_col = self._find_col(df, 'grad', 'lokacija', 'mesto', 'city')
+        date_col = self._find_col(df, 'created_at', 'datum', 'vreme', 'date')
+        status_col = self._find_col(df, 'status', 'stanje')
+
+        print(f"  [AutoDiscover] Zahtevi kolone: grad={grad_col}, date={date_col}, status={status_col}")
+
+        if df.empty or not grad_col:
             return pd.DataFrame()
         df = df.copy()
-        if 'created_at' in df.columns:
-            df['created_at'] = pd.to_datetime(df['created_at'], errors='coerce')
-        elif 'datum' in df.columns:
-            df['created_at'] = pd.to_datetime(df['datum'], errors='coerce')
+        if date_col:
+            df['created_at'] = pd.to_datetime(df[date_col], errors='coerce')
         else:
             df['created_at'] = pd.Timestamp.now()
         df = df.sort_values('created_at')
         # Agregacija po danu i gradu
-        daily = df.groupby([df['created_at'].dt.date, 'grad']).size().reset_index(name='broj_zahteva')
+        daily = df.groupby([df['created_at'].dt.date, grad_col]).size().reset_index(name='broj_zahteva')
         daily.columns = ['datum', 'grad', 'broj_zahteva']
         daily['datum'] = pd.to_datetime(daily['datum'])
         daily['dan_u_nedelji'] = daily['datum'].dt.dayofweek
@@ -79,21 +108,31 @@ class ZahteviMLModel:
         y_pred_train = self.model.predict(X_train)
         train_r2 = r2_score(y_train, y_pred_train)
         train_mae = mean_absolute_error(y_train, y_pred_train)
-        metrics = {'train_r2': float(train_r2), 'train_mae': float(train_mae),
+        metrics = {'train_r2': self._safe_float(train_r2), 'train_mae': self._safe_float(train_mae),
                    'feature_count': len(feature_cols), 'samples': n_samples, 'eval_on_train': not eval_split}
         if eval_split:
             y_pred_test = self.model.predict(X_test)
-            metrics['test_r2'] = float(r2_score(y_test, y_pred_test))
-            metrics['test_mae'] = float(mean_absolute_error(y_test, y_pred_test))
+            metrics['test_r2'] = self._safe_float(r2_score(y_test, y_pred_test))
+            metrics['test_mae'] = self._safe_float(mean_absolute_error(y_test, y_pred_test))
             metrics['r2_score'] = metrics['test_r2']
             print(f"Test R²: {metrics['test_r2']:.3f} | Test MAE: {metrics['test_mae']:.4f}")
         else:
-            metrics['r2_score'] = float(train_r2)
+            metrics['r2_score'] = self._safe_float(train_r2)
         print(f"Train R²: {train_r2:.3f} | Train MAE: {train_mae:.4f}")
         print(f"Samples: {n_samples} | Features: {len(feature_cols)}")
         print("=" * 50)
         self.is_trained = True
         self._last_metrics = metrics
+
+        # ZABORAVI stare tabele koje vise ne postoje
+        self.memory.forget_old(["zahtevi"])
+
+        # PAMTI sta je naucio
+        sources = {"zahtevi": {"columns": list(feature_cols), "rows": n_samples}}
+        feature_imp = dict(zip(feature_cols, self.model.feature_importances_)) if self.model else {}
+        self.memory.record_training(sources, feature_imp, metrics)
+        print("  [Memory] Zahtevi model zapamtio ucenje")
+
         return metrics
 
     def predict_next_week(self, df: pd.DataFrame) -> dict:

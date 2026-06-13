@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/ml_config.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 
@@ -15,7 +16,7 @@ class V3AiChatScreen extends StatefulWidget {
 
 class _V3AiChatScreenState extends State<V3AiChatScreen> {
   // ML server base URL — isti kao u v3_ai_znanje_screen.dart
-  static const _mlBaseUrl = 'http://192.168.5.14:8001';
+  static const _mlBaseUrl = MlConfig.baseUrl;
 
   final TextEditingController _questionCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();

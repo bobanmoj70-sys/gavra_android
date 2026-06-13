@@ -25,67 +25,66 @@ class KnowledgeGraph:
         self.reverse_edges[to_id].add((from_id, relation))
     
     def build_from_supabase(self, data: Dict[str, pd.DataFrame]):
-        """Izgrađuje graf iz Supabase podataka"""
-        
-        # Korisnici
-        if 'users' in data:
-            for _, row in data['users'].iterrows():
-                user_id = str(row['id'])
-                self.add_node(user_id, 'user', row.to_dict())
-        
-        # Vozila
-        if 'vozila' in data:
-            for _, row in data['vozila'].iterrows():
-                vozilo_id = str(row['id'])
-                self.add_node(vozilo_id, 'vozilo', row.to_dict())
-        
-        # Zahtevi → povezuju korisnike i vozila
-        if 'zahtevi' in data:
+        """Izgrađuje graf iz Supabase podataka — dinamicki za sve tabele"""
+
+        # Prvo: dodaj sve cvorove iz svih tabela
+        for table_name, df in data.items():
+            if df.empty or 'id' not in df.columns:
+                continue
+            for _, row in df.iterrows():
+                node_id = str(row['id'])
+                self.add_node(node_id, table_name, row.to_dict())
+
+        # Zatim: povezi entitete na osnovu zajednickih kolona
+        # Korisnici → Zahtevi (created_by)
+        if 'zahtevi' in data and 'users' in data:
             for _, row in data['zahtevi'].iterrows():
-                zahtev_id = str(row['id'])
-                self.add_node(zahtev_id, 'zahtev', row.to_dict())
-                
-                # Putnik → Zahtev
                 if 'created_by' in row and pd.notna(row['created_by']):
                     user_id = str(row['created_by'])
+                    zahtev_id = str(row['id'])
                     self.add_edge(user_id, zahtev_id, 'napravio_zahtev')
                     self.add_edge(zahtev_id, user_id, 'napravio_od')
-        
-        # Operativna → povezuje zahtevi i vozila
+
+        # Vozac → Operativna (created_by)
         if 'operativna' in data:
             for _, row in data['operativna'].iterrows():
-                oper_id = str(row['id'])
-                self.add_node(oper_id, 'operativna', row.to_dict())
-                
-                # Vozac → Operativna
                 if 'created_by' in row and pd.notna(row['created_by']):
                     vozac_id = str(row['created_by'])
+                    oper_id = str(row['id'])
                     self.add_edge(vozac_id, oper_id, 'vozio')
                     self.add_edge(oper_id, vozac_id, 'vozeno_od')
-        
-        # Finansije → povezuju korisnike
+
+        # Putnik → Finansije (putnik_v3_auth_id)
         if 'finansije' in data:
             for _, row in data['finansije'].iterrows():
-                fin_id = str(row['id'])
-                self.add_node(fin_id, 'finansije', row.to_dict())
-                
-                # Putnik → Finansije
                 if 'putnik_v3_auth_id' in row and pd.notna(row['putnik_v3_auth_id']):
                     user_id = str(row['putnik_v3_auth_id'])
+                    fin_id = str(row['id'])
                     self.add_edge(user_id, fin_id, 'ima_transakciju')
                     self.add_edge(fin_id, user_id, 'pripada')
-        
-        # Gorivo → povezuje vozila
+
+        # Vozilo → Gorivo (vozilo_id)
         if 'gorivo' in data:
             for _, row in data['gorivo'].iterrows():
-                gorivo_id = str(row['id'])
-                self.add_node(gorivo_id, 'gorivo', row.to_dict())
-                
-                # Vozilo → Gorivo
                 if 'vozilo_id' in row and pd.notna(row['vozilo_id']):
                     vozilo_id = str(row['vozilo_id'])
+                    gorivo_id = str(row['id'])
                     self.add_edge(vozilo_id, gorivo_id, 'ima_gorivo')
                     self.add_edge(gorivo_id, vozilo_id, 'za_vozilo')
+
+        # Dinamicki: povezi sve tabele koje imaju _id kolone
+        for table_name, df in data.items():
+            if df.empty:
+                continue
+            for col in df.columns:
+                if col.endswith('_id') and col != 'id':
+                    # Npr. 'vozilo_id', 'putnik_v3_auth_id', 'termin_id'
+                    for _, row in df.iterrows():
+                        if pd.notna(row[col]):
+                            from_id = str(row[col])
+                            to_id = str(row['id'])
+                            relation = f'povezan_preko_{col}'
+                            self.add_edge(from_id, to_id, relation)
     
     def get_related_entities(self, entity_id: str, max_depth: int = 2) -> Dict[str, List]:
         """Nalazi sve povezane entitete do određene dubine"""

@@ -1,3 +1,3 @@
 class MlConfig {
-  static const baseUrl = 'https://gavriconi-gavra-ml-api.hf.space';
+  static const baseUrl = 'https://win-vfeglqf71ss.tail61b7a2.ts.net';
 }

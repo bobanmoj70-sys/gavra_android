@@ -14,21 +14,27 @@ _putnik_model = PutnikMLModel()
 
 
 def init_putnik_model():
-    _putnik_model.load()
-    if not _putnik_model.is_trained:
-        try:
-            fin = extract_finansije()
-            zah = extract_zahtevi()
-            if len(fin) > 0:
-                _putnik_model.train(fin, zah)
-                _putnik_model.save()
-        except Exception as e:
-            print(f"[WARN] Could not auto-train putnik model: {e}")
+    try:
+        fin = extract_finansije()
+        zah = extract_zahtevi()
+        if len(fin) > 0:
+            _putnik_model.train(fin, zah)
+            _putnik_model.save()
+        else:
+            print("[WARN] No data for putnik model training")
+    except Exception as e:
+        print(f"[WARN] Could not auto-train putnik model: {e}")
 
 
 @router.get("/health")
 def health():
     return {"status": "healthy", "model_trained": _putnik_model.is_trained}
+
+
+@router.get("/memory")
+def memory():
+    """Sta je putnik model naucio - kao beba koja pamti"""
+    return _putnik_model.memory.get_learning_summary()
 
 
 @router.get("/predict/all")

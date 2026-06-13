@@ -1,7 +1,9 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Ucitaj .env iz istog direktorijuma kao i ovaj fajl
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+load_dotenv(dotenv_path=_env_path)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://gjtabtwudbrmfeyjiicu.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASEKEY", os.getenv("SUPABASE_KEY", ""))
