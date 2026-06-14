@@ -114,9 +114,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      final maps = await V3DodelaResolverService.loadActiveAssignments();
-      _activeVozacByTerminId = maps.byTerminId;
-      _activeVozacBySlotKey = maps.bySlotKey;
+      final byTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId();
+      final bySlotKey = await V3TrenutnaDodelaSlotService.loadAllVozacBySlotKey(
+        datumIso: _selectedDatumIso,
+      );
+      _activeVozacByTerminId = byTerminId;
+      _activeVozacBySlotKey = bySlotKey;
     } catch (e) {
       debugPrint('[V3HomeScreen] _reloadTrenutnaDodelaMap error: $e');
       _activeVozacByTerminId = const {};
