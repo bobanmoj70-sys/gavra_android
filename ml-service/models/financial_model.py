@@ -29,6 +29,13 @@ except ImportError:
     PROPHET_AVAILABLE = False
     print("[WARN] Prophet not available, time series predictions disabled")
 
+try:
+    from river import linear_model, preprocessing, metrics, optim, loss
+    RIVER_AVAILABLE = True
+except ImportError:
+    RIVER_AVAILABLE = False
+    print("[WARN] River not available, online learning disabled")
+
 
 class FinancialMLModel:
     def __init__(self):
@@ -52,6 +59,11 @@ class FinancialMLModel:
         # Time series model (Prophet)
         self.prophet_model = None
         self.is_prophet_trained = False
+
+        # Online learning model (River)
+        self.online_model = None
+        self.online_scaler = None
+        self.is_online_trained = False
 
         # Samootkrivene mete (target columns)
         self.amount_target_col = None
@@ -616,6 +628,63 @@ class FinancialMLModel:
         except Exception as e:
             return {'error': f'Prediction failed: {str(e)}'}
 
+    def init_online_learning(self):
+        """Inicijalizuje online learning model za real-time ažuriranje"""
+        if not RIVER_AVAILABLE:
+            print("[WARN] River not available, online learning disabled")
+            return False
+        
+        try:
+            # Koristimo Linear Regression za online learning
+            self.online_model = linear_model.LinearRegression(
+                optimizer=optim.SGD(lr=0.01),
+                loss=losses.Squared()
+            )
+            self.online_scaler = preprocessing.StandardScaler()
+            self.is_online_trained = True
+            print("[Online] Online learning model initialized")
+            return True
+        except Exception as e:
+            print(f"[ERROR] Online learning initialization failed: {e}")
+            return False
+
+    def update_online(self, features: dict, target: float) -> dict:
+        """Ažurira model u real-time sa novim podacima"""
+        if not self.is_online_trained or self.online_model is None:
+            return {'error': 'Online learning not initialized'}
+        
+        try:
+            # Konvertuj features u River format
+            x = {k: float(v) for k, v in features.items()}
+            y = float(target)
+            
+            # Ažuriraj model
+            self.online_model.learn_one(x, y)
+            
+            return {
+                'status': 'updated',
+                'model_updated': True,
+                'samples_seen': self.online_model.n_samples_seen if hasattr(self.online_model, 'n_samples_seen') else 0
+            }
+        except Exception as e:
+            return {'error': f'Online update failed: {str(e)}'}
+
+    def predict_online(self, features: dict) -> dict:
+        """Predikcija koristeći online learning model"""
+        if not self.is_online_trained or self.online_model is None:
+            return {'error': 'Online learning not initialized'}
+        
+        try:
+            x = {k: float(v) for k, v in features.items()}
+            prediction = self.online_model.predict_one(x)
+            
+            return {
+                'prediction': float(prediction) if prediction is not None else 0.0,
+                'model_type': 'online_learning'
+            }
+        except Exception as e:
+            return {'error': f'Online prediction failed: {str(e)}'}
+
     def save(self):
         """Čuva ensemble modele u fajl sistem"""
         os.makedirs(config.MODEL_DIR, exist_ok=True)
@@ -627,9 +696,11 @@ class FinancialMLModel:
             joblib.dump(self.type_xgb, f"{config.MODEL_DIR}/financial_type_xgb.pkl")
         if PROPHET_AVAILABLE and self.prophet_model is not None:
             joblib.dump(self.prophet_model, f"{config.MODEL_DIR}/financial_prophet.pkl")
+        if RIVER_AVAILABLE and self.online_model is not None:
+            joblib.dump(self.online_model, f"{config.MODEL_DIR}/financial_online.pkl")
         joblib.dump(self.scaler, f"{config.MODEL_DIR}/financial_scaler.pkl")
         joblib.dump(self.feature_columns, f"{config.MODEL_DIR}/financial_features.pkl")
-        joblib.dump({'is_amount_trained': self.is_amount_trained, 'is_type_trained': self.is_type_trained, 'is_prophet_trained': self.is_prophet_trained},
+        joblib.dump({'is_amount_trained': self.is_amount_trained, 'is_type_trained': self.is_type_trained, 'is_prophet_trained': self.is_prophet_trained, 'is_online_trained': self.is_online_trained},
                     f"{config.MODEL_DIR}/financial_flags.pkl")
         print(f"\nEnsemble models saved to {config.MODEL_DIR}")
 
@@ -651,6 +722,12 @@ class FinancialMLModel:
         except FileNotFoundError:
             print("[WARN] Prophet model not found, time series predictions disabled")
             self.prophet_model = None
+        try:
+            if RIVER_AVAILABLE:
+                self.online_model = joblib.load(f"{config.MODEL_DIR}/financial_online.pkl")
+        except FileNotFoundError:
+            print("[WARN] Online learning model not found")
+            self.online_model = None
         self.scaler = joblib.load(f"{config.MODEL_DIR}/financial_scaler.pkl")
         self.feature_columns = joblib.load(f"{config.MODEL_DIR}/financial_features.pkl")
         try:
@@ -658,10 +735,12 @@ class FinancialMLModel:
             self.is_amount_trained = flags.get('is_amount_trained', True)
             self.is_type_trained = flags.get('is_type_trained', True)
             self.is_prophet_trained = flags.get('is_prophet_trained', False)
+            self.is_online_trained = flags.get('is_online_trained', False)
         except FileNotFoundError:
             self.is_amount_trained = True
             self.is_type_trained = True
             self.is_prophet_trained = False
+            self.is_online_trained = False
         print(f"\nEnsemble models loaded from {config.MODEL_DIR}")
 
 if __name__ == "__main__":

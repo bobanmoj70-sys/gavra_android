@@ -104,3 +104,33 @@ def predict_trends(days_ahead: int = 30):
     if not _financial_model.is_prophet_trained:
         raise HTTPException(status_code=503, detail="Prophet model not trained")
     return _financial_model.predict_trends(days_ahead)
+
+
+@router.post("/online/init")
+def init_online_learning():
+    """Inicijalizuje online learning model za real-time ažuriranje"""
+    success = _financial_model.init_online_learning()
+    if success:
+        _financial_model.save()
+        return {"status": "online_learning_initialized"}
+    else:
+        raise HTTPException(status_code=503, detail="Online learning initialization failed")
+
+
+@router.post("/online/update")
+def update_online(features: dict, target: float):
+    """Ažurira model u real-time sa novim podacima"""
+    result = _financial_model.update_online(features, target)
+    if 'error' in result:
+        raise HTTPException(status_code=400, detail=result['error'])
+    _financial_model.save()
+    return result
+
+
+@router.post("/online/predict")
+def predict_online(features: dict):
+    """Predikcija koristeći online learning model"""
+    result = _financial_model.predict_online(features)
+    if 'error' in result:
+        raise HTTPException(status_code=400, detail=result['error'])
+    return result
