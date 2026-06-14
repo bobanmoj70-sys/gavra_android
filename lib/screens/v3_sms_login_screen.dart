@@ -273,30 +273,55 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final putnik = await V3PutnikService.getActiveById(authId);
     if (!mounted) return;
 
-    if (putnik != null) {
-      final missingBc = (putnik['adresa_bc_id']?.toString().trim() ?? '').isEmpty;
-      final missingVs = (putnik['adresa_vs_id']?.toString().trim() ?? '').isEmpty;
-
-      if (missingBc || missingVs) {
-        final bcId = putnik['adresa_bc_id']?.toString().trim() ?? '';
-        final vsId = putnik['adresa_vs_id']?.toString().trim() ?? '';
-
-        setState(() {
-          _isLoading = false;
-          _addressOnlyOnboarding = true;
-          _requireBcAddress = missingBc;
-          _requireVsAddress = missingVs;
-          _selectedBcAdresa = bcId.isEmpty ? null : V3AdresaService.getAdresaById(bcId);
-          _selectedVsAdresa = vsId.isEmpty ? null : V3AdresaService.getAdresaById(vsId);
-          _missingProfileMessage = missingBc && missingVs
-              ? 'Dopunite adrese za BC i VS da nastavite.'
-              : missingBc
-                  ? 'Dopunite adresu za BC da nastavite.'
-                  : 'Dopunite adresu za VS da nastavite.';
-          _step = _SmsStep.unosProfila;
-        });
-        return;
+    if (putnik == null) {
+      // Putnik ne postoji u bazi - nije autorizovan
+      if (!mounted) {
+        V3AppSnackBar.error(context,
+            '❌ Niste dobili odobrenje za korišćenje aplikacije. Molimo pošaljite poruku adminu sa sledećim podacima: ime, prezime, broj telefona.');
+        _resetToStep1();
       }
+      return;
+    }
+
+    final missingIme = (putnik['ime_prezime']?.toString().trim() ?? '').isEmpty;
+    final missingTip = (putnik['tip_putnika']?.toString().trim() ?? '').isEmpty;
+    final missingBc = (putnik['adresa_bc_id']?.toString().trim() ?? '').isEmpty;
+    final missingVs = (putnik['adresa_vs_id']?.toString().trim() ?? '').isEmpty;
+
+    if (missingIme || missingTip || missingBc || missingVs) {
+      final bcId = putnik['adresa_bc_id']?.toString().trim() ?? '';
+      final vsId = putnik['adresa_vs_id']?.toString().trim() ?? '';
+      final existingIme = putnik['ime_prezime']?.toString().trim() ?? '';
+      final existingTip = putnik['tip_putnika']?.toString().trim() ?? '';
+
+      // Razdvoji ime i prezime ako postoje
+      final imeParts = existingIme.split(' ');
+      if (imeParts.isNotEmpty) {
+        _imeController.text = imeParts.first;
+        if (imeParts.length > 1) {
+          _prezimeController.text = imeParts.sublist(1).join(' ');
+        }
+      }
+      _selectedTip = existingTip;
+
+      setState(() {
+        _isLoading = false;
+        _addressOnlyOnboarding = !missingIme && !missingTip;
+        _requireBcAddress = missingBc;
+        _requireVsAddress = missingVs;
+        _selectedBcAdresa = bcId.isEmpty ? null : V3AdresaService.getAdresaById(bcId);
+        _selectedVsAdresa = vsId.isEmpty ? null : V3AdresaService.getAdresaById(vsId);
+
+        // Poruka na osnovu šta nedostaje
+        final missingFields = <String>[];
+        if (missingIme) missingFields.add('ime');
+        if (missingTip) missingFields.add('kategoriju');
+        if (missingBc) missingFields.add('adresu BC');
+        if (missingVs) missingFields.add('adresu VS');
+        _missingProfileMessage = 'Dopunite: ${missingFields.join(', ')} da nastavite.';
+        _step = _SmsStep.unosProfila;
+      });
+      return;
     }
 
     if (!mounted) return;
@@ -392,7 +417,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       final existing = await V3PutnikService.getActiveById(authId);
       if (existing == null) {
         if (!mounted) return;
-        V3AppSnackBar.error(context, '❌ Broj nije autorizovan za unos profila.');
+        V3AppSnackBar.error(context,
+            '❌ Niste dobili odobrenje za korišćenje aplikacije. Molimo pošaljite poruku adminu sa sledećim podacima: ime, prezime, broj telefona.');
         _resetToStep1();
         return;
       }
