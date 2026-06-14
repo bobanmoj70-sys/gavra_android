@@ -1,4 +1,4 @@
 class MlConfig {
-  // Tailscale network IP - direct connection within Tailscale network
-  static const baseUrl = 'http://100.79.160.71:8000';
+  // Tailscale Funnel - HTTPS (public URL, works from any device)
+  static const baseUrl = 'https://win-vfeglqf71ss.tail61b7a2.ts.net';
 }

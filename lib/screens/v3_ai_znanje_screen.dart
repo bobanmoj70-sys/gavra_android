@@ -21,6 +21,11 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   bool _znanLoading = true;
   String? _znanError;
   Map<String, dynamic>? _znanHealth;
+  final TextEditingController _questionController = TextEditingController();
+  final List<Map<String, dynamic>> _chatHistory = [];
+  bool _askingQuestion = false;
+  Map<String, dynamic>? _knowledgeGraph;
+  List<dynamic>? _trainingHistory;
 
   // Tab controller
   late TabController _tabController;
@@ -33,6 +38,10 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   Map<String, dynamic>? _finTrends;
   Map<String, dynamic>? _finPredictions;
   Map<String, dynamic>? _finAdvancedFeatures;
+  List<dynamic>? _finAnomalies;
+  Map<String, dynamic>? _finTrendPredictions;
+  Map<String, dynamic>? _finMemory;
+  Map<String, dynamic>? _modelComparison;
 
   // Vehicle AI state
   bool _vozLoading = true;
@@ -65,7 +74,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   bool _gorTraining = false;
   bool _putTraining = false;
   bool _zahTraining = false;
-  bool _allTraining = false;
 
   @override
   void initState() {
@@ -184,6 +192,67 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
     } catch (_) {
       _finPredictions = null;
+    }
+
+    // Anomalies detection — ne-fatalno
+    try {
+      final anomaliesResp = await http
+          .get(
+            Uri.parse('$mlUrl/detect/anomalies'),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (anomaliesResp.statusCode == 200) {
+        final data = jsonDecode(anomaliesResp.body) as Map<String, dynamic>;
+        _finAnomalies = data['top_anomalies'] as List<dynamic>?;
+      }
+    } catch (_) {
+      _finAnomalies = null;
+    }
+
+    // Time series trend predictions — ne-fatalno
+    try {
+      final trendResp = await http
+          .get(
+            Uri.parse('$mlUrl/predict/trends?days_ahead=7'),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (trendResp.statusCode == 200) {
+        _finTrendPredictions = jsonDecode(trendResp.body) as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      _finTrendPredictions = null;
+    }
+
+    // Memory summary — ne-fatalno
+    try {
+      final memoryResp = await http
+          .get(
+            Uri.parse('$mlUrl/memory'),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (memoryResp.statusCode == 200) {
+        _finMemory = jsonDecode(memoryResp.body) as Map<String, dynamic>?;
+      }
+    } catch (_) {
+      _finMemory = null;
+    }
+
+    // Model comparison — ne-fatalno
+    try {
+      final compResp = await http
+          .get(
+            Uri.parse('$mlUrl/compare'),
+          )
+          .timeout(const Duration(seconds: 20));
+
+      if (compResp.statusCode == 200) {
+        _modelComparison = jsonDecode(compResp.body) as Map<String, dynamic>;
+      }
+    } catch (_) {
+      _modelComparison = null;
     }
 
     if (!mounted) return;
@@ -374,6 +443,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   @override
   void dispose() {
     _tabController.dispose();
+    _questionController.dispose();
     super.dispose();
   }
 
@@ -402,6 +472,37 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
 
       _znanHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
+
+      // Knowledge graph — ne-fatalno
+      try {
+        final kgResp = await http
+            .get(
+              Uri.parse('$mlUrl/znanje/graph'),
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (kgResp.statusCode == 200) {
+          _knowledgeGraph = jsonDecode(kgResp.body) as Map<String, dynamic>;
+        }
+      } catch (_) {
+        _knowledgeGraph = null;
+      }
+
+      // Training history — ne-fatalno
+      try {
+        final historyResp = await http
+            .get(
+              Uri.parse('$mlUrl/training/history'),
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (historyResp.statusCode == 200) {
+          final data = jsonDecode(historyResp.body) as Map<String, dynamic>;
+          _trainingHistory = data['sessions'] as List<dynamic>?;
+        }
+      } catch (_) {
+        _trainingHistory = null;
+      }
 
       if (!mounted) return;
       setState(() {
@@ -442,26 +543,58 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
   }
 
-  Future<void> _trainAllModels() async {
-    if (!mounted) return;
-    setState(() => _allTraining = true);
-    final scaffold = ScaffoldMessenger.of(context);
-    scaffold.showSnackBar(
-      const SnackBar(content: Text('Pokrecem trening svih modela...'), duration: Duration(seconds: 2)),
-    );
+  Future<void> _askQuestion() async {
+    final question = _questionController.text.trim();
+    if (question.isEmpty) return;
 
-    await _trainModel('/train', _loadFinancialAI, 'Finansijski');
-    await _trainModel('/vozilo/train', _loadVehicleAI, 'Vozilo');
-    await _trainModel('/gorivo/train', _loadGorivoAI, 'Gorivo');
-    await _trainModel('/putnik/train', _loadPutnikAI, 'Putnik');
-    await _trainModel('/zahtevi/train', _loadZahteviAI, 'Zahtevi');
+    setState(() {
+      _askingQuestion = true;
+      _chatHistory.add({'role': 'user', 'content': question});
+      _questionController.clear();
+    });
 
-    if (!mounted) return;
-    scaffold.showSnackBar(
-      const SnackBar(content: Text('Svi modeli su trenirani!'), duration: Duration(seconds: 3)),
-    );
-    if (!mounted) return;
-    setState(() => _allTraining = false);
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_mlBaseUrl/znanje/ask'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'pitanje': question}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        setState(() {
+          _chatHistory.add({
+            'role': 'assistant',
+            'content': data['odgovor'] ?? 'Nema odgovora',
+            'source': data['source'] ?? 'unknown',
+          });
+        });
+      } else {
+        setState(() {
+          _chatHistory.add({
+            'role': 'assistant',
+            'content': 'Greška: ${response.statusCode}',
+            'source': 'error',
+          });
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _chatHistory.add({
+          'role': 'assistant',
+          'content': 'Greška: $e',
+          'source': 'error',
+        });
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _askingQuestion = false;
+        });
+      }
+    }
   }
 
   @override
@@ -479,22 +612,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             '🧠 AI Znanje',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          actions: [
-            _allTraining
-                ? const Padding(
-                    padding: EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.model_training, color: Colors.white),
-                    tooltip: 'Treniraj sve modele',
-                    onPressed: _trainAllModels,
-                  ),
-          ],
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(88),
             child: Padding(
@@ -579,107 +696,268 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     final tablesLoaded = _znanHealth?['tables_loaded'] ?? 0;
     final totalRecords = _znanHealth?['total_records'] ?? 0;
     final tableStats = _znanHealth?['table_stats'] as Map<String, dynamic>? ?? {};
+    final geminiAvailable = _znanHealth?['gemini_available'] ?? false;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
+    return Column(
       children: [
-        const Center(
-          child: Column(
+        // Chat history
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             children: [
-              Icon(Icons.psychology, size: 48, color: Colors.white70),
-              SizedBox(height: 8),
-              Text(
-                'AI Znanje - Generalni Asistent',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Uci iz svih tabela kao i ostali AI modeli',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Status kartica
-        Card(
-          color: Colors.white.withOpacity(0.12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _StatRow(
-                  icon: ready ? Icons.check_circle : Icons.error,
-                  label: 'AI Status',
-                  value: ready ? 'Spreman' : 'Nije spreman',
-                  color: ready ? Colors.green : Colors.red,
-                ),
-                const Divider(height: 20, color: Colors.white24),
-                _StatRow(
-                  icon: Icons.storage,
-                  label: 'Ucitane tabele',
-                  value: '$tablesLoaded',
-                  color: Colors.blue,
-                ),
-                const Divider(height: 20, color: Colors.white24),
-                _StatRow(
-                  icon: Icons.data_usage,
-                  label: 'Ukupno zapisa',
-                  value: '$totalRecords',
-                  color: Colors.purple,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Statistika po tabelama
-        if (tableStats.isNotEmpty) ...[
-          const Padding(
-            padding: EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
-              'Podaci po tabelama:',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          ...tableStats.entries.map((e) {
-            return Card(
-              color: Colors.white.withOpacity(0.08),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              margin: const EdgeInsets.only(bottom: 6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
+              // Header
+              const Center(
+                child: Column(
                   children: [
-                    const Icon(Icons.table_chart, color: Colors.white54, size: 18),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        e.key,
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                    Icon(Icons.psychology, size: 48, color: Colors.white70),
+                    SizedBox(height: 8),
+                    Text(
+                      'AI Znanje - Generalni Asistent',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    SizedBox(height: 4),
                     Text(
-                      '${e.value} zapisa',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      'Postavi pitanje o bazi podataka',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-            );
-          }),
-        ],
+              const SizedBox(height: 16),
+
+              // Status kartica
+              Card(
+                color: Colors.white.withOpacity(0.12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _StatRow(
+                        icon: ready ? Icons.check_circle : Icons.error,
+                        label: 'AI Status',
+                        value: ready ? 'Spreman' : 'Nije spreman',
+                        color: ready ? Colors.green : Colors.red,
+                      ),
+                      const Divider(height: 20, color: Colors.white24),
+                      _StatRow(
+                        icon: Icons.storage,
+                        label: 'Ucitane tabele',
+                        value: '$tablesLoaded',
+                        color: Colors.blue,
+                      ),
+                      const Divider(height: 20, color: Colors.white24),
+                      _StatRow(
+                        icon: Icons.data_usage,
+                        label: 'Ukupno zapisa',
+                        value: '$totalRecords',
+                        color: Colors.purple,
+                      ),
+                      const Divider(height: 20, color: Colors.white24),
+                      _StatRow(
+                        icon: geminiAvailable ? Icons.auto_awesome : Icons.psychology,
+                        label: 'AI Engine',
+                        value: geminiAvailable ? 'Gemini Flash' : 'Local',
+                        color: geminiAvailable ? Colors.cyan : Colors.orange,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Chat messages
+              if (_chatHistory.isEmpty) ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Column(
+                      children: [
+                        Icon(Icons.chat_bubble_outline, size: 48, color: Colors.white38),
+                        SizedBox(height: 12),
+                        Text(
+                          'Nema poruka',
+                          style: TextStyle(color: Colors.white38, fontSize: 14),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Postavi pitanje da zapocnes razgovor',
+                          style: TextStyle(color: Colors.white24, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else ...[
+                ..._chatHistory.map((msg) {
+                  final isUser = msg['role'] == 'user';
+                  final source = msg['source'] as String?;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isUser) ...[
+                          const SizedBox(width: 40),
+                          Expanded(
+                            child: Card(
+                              color: Colors.blue.withOpacity(0.2),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      msg['content'] as String,
+                                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ] else ...[
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.white24,
+                            child: Icon(Icons.psychology, size: 16, color: Colors.white70),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Card(
+                              color: Colors.white.withOpacity(0.12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      msg['content'] as String,
+                                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    ),
+                                    if (source != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Izvor: $source',
+                                        style: TextStyle(color: Colors.white38, fontSize: 10),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+              ],
+
+              // Statistika po tabelama
+              if (tableStats.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Padding(
+                  padding: EdgeInsets.only(left: 4, bottom: 8),
+                  child: Text(
+                    'Podaci po tabelama:',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                ...tableStats.entries.map((e) {
+                  return Card(
+                    color: Colors.white.withOpacity(0.08),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.table_chart, color: Colors.white54, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              e.key,
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                          ),
+                          Text(
+                            '${e.value} zapisa',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+
+              // Knowledge graph
+              if (_knowledgeGraph != null) ...[
+                const SizedBox(height: 16),
+                _buildKnowledgeGraphCard(_knowledgeGraph!),
+              ],
+
+              // Training history
+              if (_trainingHistory != null && _trainingHistory!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _buildTrainingHistoryCard(_trainingHistory!),
+              ],
+            ],
+          ),
+        ),
+
+        // Chat input
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.2),
+            border: Border(top: BorderSide(color: Colors.white12)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _questionController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Postavi pitanje...',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  onSubmitted: (_) => _askQuestion(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _askingQuestion
+                  ? const SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: _askQuestion,
+                    ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -779,6 +1057,22 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
         // Trends
         if (trends != null) _buildTrendsCard(trends),
+        const SizedBox(height: 16),
+
+        // Anomalies
+        if (_finAnomalies != null && _finAnomalies!.isNotEmpty) _buildAnomaliesCard(_finAnomalies!),
+        const SizedBox(height: 16),
+
+        // Time series predictions
+        if (_finTrendPredictions != null) _buildTrendPredictionsCard(_finTrendPredictions!),
+        const SizedBox(height: 16),
+
+        // Memory summary
+        if (_finMemory != null) _buildMemoryCard(_finMemory!),
+        const SizedBox(height: 16),
+
+        // Model comparison
+        if (_modelComparison != null) _buildModelComparisonCard(_modelComparison!),
 
         if (!modelTrained && predictions == null && trends == null)
           _buildUntrainedMessage(
@@ -930,6 +1224,375 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                 ),
               );
             }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnomaliesCard(List<dynamic> anomalies) {
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.warning_amber, color: Colors.orange.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Detektovane anomalije',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...anomalies.take(5).map((a) {
+              final anomaly = a as Map<String, dynamic>;
+              final naziv = anomaly['naziv']?.toString() ?? 'Nepoznato';
+              final iznos = anomaly['iznos']?.toString() ?? '-';
+              final score = anomaly['anomaly_score']?.toString() ?? '-';
+              final reason = anomaly['anomaly_reason']?.toString() ?? '-';
+              return Card(
+                color: Colors.orange.withOpacity(0.1),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                margin: const EdgeInsets.only(bottom: 6),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              naziv,
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Text(
+                            '$iznos RSD',
+                            style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'Score: $score',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Razlog: $reason',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrendPredictionsCard(Map<String, dynamic> predictions) {
+    final trendList = predictions['trend_predikcije'] as List<dynamic>?;
+    final ukupno = predictions['ukupno_predvidjeno']?.toString() ?? '-';
+    final prosek = predictions['prosek_dnevno']?.toString() ?? '-';
+    final dana = predictions['dana_predvidjeno']?.toString() ?? '-';
+
+    if (trendList == null || trendList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.show_chart, color: Colors.cyan.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Predikcija trendova (Prophet)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _StatRow(
+              icon: Icons.calendar_today,
+              label: 'Period',
+              value: '$dana dana',
+              color: Colors.blue,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _StatRow(
+              icon: Icons.attach_money,
+              label: 'Ukupno predviđeno',
+              value: '$ukupno RSD',
+              color: Colors.green,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _StatRow(
+              icon: Icons.trending_up,
+              label: 'Prosečno dnevno',
+              value: '$prosek RSD',
+              color: Colors.purple,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Dnevne predikcije:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ...trendList.take(7).map((t) {
+              final trend = t as Map<String, dynamic>;
+              final datum = trend['datum']?.toString() ?? '-';
+              final iznos = trend['predvidjeni_iznos']?.toString() ?? '-';
+              final donja = trend['donja_granica']?.toString() ?? '-';
+              final gornja = trend['gornja_granica']?.toString() ?? '-';
+              return Card(
+                color: Colors.cyan.withOpacity(0.05),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                margin: const EdgeInsets.only(bottom: 4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        datum,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                      Text(
+                        '$iznos RSD',
+                        style: const TextStyle(color: Colors.cyan, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '[$donja - $gornja]',
+                        style: const TextStyle(color: Colors.white38, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMemoryCard(Map<String, dynamic> memory) {
+    final status = memory['status']?.toString() ?? 'nepoznato';
+    final trainingSessions = memory['training_sessions']?.toString() ?? '0';
+    final totalSamples = memory['total_samples_seen']?.toString() ?? '0';
+    final tablesKnown = memory['tables_known'] as List<dynamic>? ?? [];
+    final columnsKnown = memory['columns_known'] as List<dynamic>? ?? [];
+    final topFeatures = memory['top_features'] as Map<String, dynamic>? ?? {};
+    final firstTrained = memory['first_trained']?.toString() ?? '-';
+    final lastTrained = memory['last_trained']?.toString() ?? '-';
+
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.psychology, color: Colors.indigo.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Šta je model naučio (Memory)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _StatRow(
+              icon: Icons.school,
+              label: 'Status',
+              value: status,
+              color: status == 'iskusan' ? Colors.green : Colors.orange,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _StatRow(
+              icon: Icons.fitness_center,
+              label: 'Trening sesija',
+              value: trainingSessions,
+              color: Colors.blue,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _StatRow(
+              icon: Icons.data_usage,
+              label: 'Ukupno uzoraka',
+              value: totalSamples,
+              color: Colors.purple,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Poznate tabele:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: tablesKnown.take(5).map((t) {
+                return Chip(
+                  label: Text(t.toString(), style: const TextStyle(fontSize: 10)),
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                  labelStyle: const TextStyle(color: Colors.white70),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Najbitniji feature-i:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            ...topFeatures.entries.take(5).map((e) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    Text(
+                      e.key,
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      (e.value as num).toStringAsFixed(3),
+                      style: const TextStyle(color: Colors.cyan, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 12),
+            _StatRow(
+              icon: Icons.access_time,
+              label: 'Prvo treniranje',
+              value: firstTrained.substring(0, 10),
+              color: Colors.white38,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _StatRow(
+              icon: Icons.update,
+              label: 'Poslednje treniranje',
+              value: lastTrained.substring(0, 10),
+              color: Colors.white38,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModelComparisonCard(Map<String, dynamic> comparison) {
+    final rf = comparison['random_forest'] as Map<String, dynamic>? ?? {};
+    final xgb = comparison['xgboost'] as Map<String, dynamic>? ?? {};
+    final winner = comparison['winner']?.toString() ?? 'nepoznato';
+
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.compare_arrows, color: Colors.pink.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Poređenje modela (RF vs XGBoost)',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _StatRow(
+              icon: Icons.emoji_events,
+              label: 'Pobednik',
+              value: winner.toUpperCase(),
+              color: winner == 'xgboost' ? Colors.blue : Colors.green,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Random Forest:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            _StatRow(
+              icon: Icons.speed,
+              label: 'R²',
+              value: (rf['r2']?.toString() ?? 'N/A'),
+              color: Colors.green,
+            ),
+            const Divider(height: 12, color: Colors.white24),
+            _StatRow(
+              icon: Icons.timer,
+              label: 'Trening vreme',
+              value: '${rf['training_time']?.toString() ?? 'N/A'}s',
+              color: Colors.white70,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'XGBoost:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            _StatRow(
+              icon: Icons.speed,
+              label: 'R²',
+              value: (xgb['r2']?.toString() ?? 'N/A'),
+              color: Colors.blue,
+            ),
+            const Divider(height: 12, color: Colors.white24),
+            _StatRow(
+              icon: Icons.timer,
+              label: 'Trening vreme',
+              value: '${xgb['training_time']?.toString() ?? 'N/A'}s',
+              color: Colors.white70,
+            ),
           ],
         ),
       ),
@@ -1606,6 +2269,187 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           ),
         ),
       );
+
+  Widget _buildKnowledgeGraphCard(Map<String, dynamic> graph) {
+    final nodes = graph['nodes'] as List<dynamic>? ?? [];
+    final edges = graph['edges'] as List<dynamic>? ?? [];
+    final entityTypes = graph['entity_types'] as Map<String, dynamic>? ?? {};
+
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_tree, color: Colors.teal.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Knowledge Graph',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _StatRow(
+              icon: Icons.hub,
+              label: 'Čvorovi (entiteti)',
+              value: '${nodes.length}',
+              color: Colors.blue,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _StatRow(
+              icon: Icons.link,
+              label: 'Veze (relacije)',
+              value: '${edges.length}',
+              color: Colors.green,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Tipovi entiteta:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: entityTypes.entries.map((e) {
+                return Chip(
+                  label: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 10)),
+                  backgroundColor: Colors.teal.withOpacity(0.1),
+                  labelStyle: const TextStyle(color: Colors.white70),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Top čvorovi:',
+              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            ...nodes.take(5).map((n) {
+              final node = n as Map<String, dynamic>;
+              final name = node['name']?.toString() ?? 'Nepoznato';
+              final type = node['type']?.toString() ?? '?';
+              final connections = node['connections']?.toString() ?? '0';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    Text(
+                      name,
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '($type)',
+                      style: const TextStyle(color: Colors.teal, fontSize: 10),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '[$connections veza]',
+                      style: const TextStyle(color: Colors.white38, fontSize: 10),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrainingHistoryCard(List<dynamic> history) {
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.history, color: Colors.amber.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Istorija treninga',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...history.take(5).map((h) {
+              final session = h as Map<String, dynamic>;
+              final timestamp = session['timestamp']?.toString() ?? '-';
+              final model = session['model']?.toString() ?? 'Nepoznato';
+              final samples = session['samples']?.toString() ?? '0';
+              final accuracy = session['accuracy']?.toString() ?? '-';
+              final duration = session['duration_seconds']?.toString() ?? '0';
+              return Card(
+                color: Colors.amber.withOpacity(0.05),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                margin: const EdgeInsets.only(bottom: 6),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            model,
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            timestamp.substring(0, 10),
+                            style: const TextStyle(color: Colors.white70, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'Uzoraka: $samples',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Tačnost: $accuracy',
+                            style: const TextStyle(color: Colors.green, fontSize: 11),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Trajanje: ${duration}s',
+                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildTabButton(int index, String label, IconData icon) {
     final isActive = _currentTab == index;
