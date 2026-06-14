@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_string_utils.dart';
 
 class V3VremeDolaskaWidget extends StatelessWidget {
   const V3VremeDolaskaWidget({
@@ -81,11 +82,12 @@ class V3VremeDolaskaWidget extends StatelessWidget {
     return null;
   }
 
-  ({DateTime departure, String? grad, Map<String, dynamic> row})? _findNextPutnikRide() {
+  ({DateTime departure, String? grad, Map<String, dynamic> row, String? vozacId})? _findNextPutnikRide() {
     final now = DateTime.now();
     DateTime? best;
     String? bestGrad;
     Map<String, dynamic>? bestRow;
+    String? bestVozacId;
 
     for (final row in V3MasterRealtimeManager.instance.operativnaNedeljaCache.values) {
       final createdBy = row['created_by']?.toString();
@@ -97,15 +99,49 @@ class V3VremeDolaskaWidget extends StatelessWidget {
       if (departure == null) continue;
       if (departure.isBefore(now)) continue;
 
+      final terminId = row['id']?.toString();
+      String? vozacId;
+
+      // Prvo proveri individualnu dodelu u v3_trenutna_dodela
+      if (terminId != null) {
+        for (final dodela in V3MasterRealtimeManager.instance.trenutnaDodelaCache.values) {
+          if (dodela['termin_id']?.toString() == terminId && dodela['putnik_v3_auth_id']?.toString() == putnikId) {
+            vozacId = dodela['vozac_v3_auth_id']?.toString();
+            break;
+          }
+        }
+      }
+
+      // Ako nema individualne dodele, proveri slot dodelu u v3_trenutna_dodela_slot
+      if (vozacId == null) {
+        final datumIso = row['datum']?.toString();
+        final grad = row['grad']?.toString();
+        final polazakAt = row['polazak_at']?.toString();
+        if (datumIso != null && grad != null && polazakAt != null) {
+          final normVreme = V3StringUtils.trimTimeToHhMm(polazakAt);
+          for (final slot in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
+            final slotVreme = slot['vreme']?.toString();
+            if (slotVreme != null &&
+                slot['datum']?.toString() == datumIso &&
+                slot['grad']?.toString() == grad &&
+                V3StringUtils.trimTimeToHhMm(slotVreme) == normVreme) {
+              vozacId = slot['vozac_v3_auth_id']?.toString();
+              break;
+            }
+          }
+        }
+      }
+
       if (best == null || departure.isBefore(best)) {
         best = departure;
         bestGrad = row['grad']?.toString();
         bestRow = row;
+        bestVozacId = vozacId;
       }
     }
 
     if (best == null || bestRow == null) return null;
-    return (departure: best, grad: bestGrad, row: bestRow);
+    return (departure: best, grad: bestGrad, row: bestRow, vozacId: bestVozacId);
   }
 
   String? _getAdresaNazivById(String? adresaId) {
@@ -156,18 +192,24 @@ class V3VremeDolaskaWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_eta_results', 'v3_auth', 'v3_operativna_nedelja']),
+      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+        'v3_eta_results',
+        'v3_auth',
+        'v3_operativna_nedelja',
+        'v3_trenutna_dodela_slot',
+        'v3_trenutna_dodela'
+      ]),
       builder: (context, _) {
         final nextRide = _findNextPutnikRide();
         final nextTerminId = nextRide?.row['id']?.toString();
+        final assignedVozacId = nextRide?.vozacId;
 
         final cacheKey = nextTerminId != null ? '$nextTerminId:$putnikId' : null;
         final row = cacheKey != null ? V3MasterRealtimeManager.instance.etaResultsCache[cacheKey] : null;
         final etaState = _readEtaState(row);
         final eta = etaState.etaSeconds;
         final isStale = etaState.isStale;
-        final vozacId = etaState.vozacId;
+        final etaVozacId = etaState.vozacId;
         final etaTerminId = etaState.terminId;
 
         final hasFreshEta =
@@ -266,10 +308,10 @@ class V3VremeDolaskaWidget extends StatelessWidget {
                     ],
                   ],
                 ),
-              if (hasFreshEta && vozacId != null) ...[
+              if (hasFreshEta && etaVozacId != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  'Vozač: ${V3MasterRealtimeManager.instance.vozaciCache[vozacId]?['ime_prezime'] ?? vozacId}',
+                  'Vozač: ${V3MasterRealtimeManager.instance.vozaciCache[etaVozacId]?['ime_prezime'] ?? etaVozacId}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white60,
@@ -277,12 +319,10 @@ class V3VremeDolaskaWidget extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-              ] else if (nextRide != null) ...[
+              ] else if (nextRide != null && assignedVozacId != null) ...[
                 const SizedBox(height: 4),
                 Builder(
                   builder: (context) {
-                    final assignedVozacId = nextRide.row['vozac_id']?.toString();
-                    if (assignedVozacId == null || assignedVozacId.isEmpty) return const SizedBox.shrink();
                     final vozacIme = V3MasterRealtimeManager.instance.vozaciCache[assignedVozacId]?['ime_prezime'];
                     if (vozacIme == null || vozacIme.isEmpty) return const SizedBox.shrink();
                     return Text(
