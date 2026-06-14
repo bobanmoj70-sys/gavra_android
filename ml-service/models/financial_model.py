@@ -36,6 +36,13 @@ except ImportError:
     RIVER_AVAILABLE = False
     print("[WARN] River not available, online learning disabled")
 
+try:
+    from sklearn.feature_selection import RFE
+    RFE_AVAILABLE = True
+except ImportError:
+    RFE_AVAILABLE = False
+    print("[WARN] RFE not available, advanced feature selection disabled")
+
 
 class FinancialMLModel:
     def __init__(self):
@@ -64,6 +71,10 @@ class FinancialMLModel:
         self.online_model = None
         self.online_scaler = None
         self.is_online_trained = False
+
+        # RFE selected features
+        self.rfe_selected_features = None
+        self.is_rfe_applied = False
 
         # Samootkrivene mete (target columns)
         self.amount_target_col = None
@@ -685,6 +696,46 @@ class FinancialMLModel:
         except Exception as e:
             return {'error': f'Online prediction failed: {str(e)}'}
 
+    def apply_rfe(self, X, y, n_features_to_select: int = 10) -> dict:
+        """Primenjuje Recursive Feature Elimination za selekciju najbitnijih feature-a"""
+        if not RFE_AVAILABLE:
+            print("[WARN] RFE not available, skipping feature selection")
+            return {'rfe_applied': False, 'error': 'RFE not available'}
+        
+        print("=" * 50)
+        print("Applying Recursive Feature Elimination (RFE)")
+        print("=" * 50)
+        
+        try:
+            # Koristimo Random Forest kao estimator za RFE
+            estimator = RandomForestRegressor(n_estimators=100, random_state=42)
+            
+            # RFE
+            rfe = RFE(estimator=estimator, n_features_to_select=n_features_to_select, step=1)
+            rfe.fit(X, y)
+            
+            # Dobij selektovane feature-e
+            selected_mask = rfe.support_
+            selected_features = [X.columns[i] for i in range(len(X.columns)) if selected_mask[i]]
+            
+            self.rfe_selected_features = selected_features
+            self.is_rfe_applied = True
+            
+            print(f"RFE selected {len(selected_features)} features out of {len(X.columns)}")
+            print(f"Selected features: {selected_features}")
+            print("=" * 50)
+            
+            return {
+                'rfe_applied': True,
+                'n_features_selected': len(selected_features),
+                'n_features_original': len(X.columns),
+                'selected_features': selected_features,
+                'feature_ranking': dict(zip(X.columns, rfe.ranking_))
+            }
+        except Exception as e:
+            print(f"[ERROR] RFE failed: {e}")
+            return {'rfe_applied': False, 'error': str(e)}
+
     def save(self):
         """Čuva ensemble modele u fajl sistem"""
         os.makedirs(config.MODEL_DIR, exist_ok=True)
@@ -698,9 +749,11 @@ class FinancialMLModel:
             joblib.dump(self.prophet_model, f"{config.MODEL_DIR}/financial_prophet.pkl")
         if RIVER_AVAILABLE and self.online_model is not None:
             joblib.dump(self.online_model, f"{config.MODEL_DIR}/financial_online.pkl")
+        if self.rfe_selected_features is not None:
+            joblib.dump(self.rfe_selected_features, f"{config.MODEL_DIR}/financial_rfe_features.pkl")
         joblib.dump(self.scaler, f"{config.MODEL_DIR}/financial_scaler.pkl")
         joblib.dump(self.feature_columns, f"{config.MODEL_DIR}/financial_features.pkl")
-        joblib.dump({'is_amount_trained': self.is_amount_trained, 'is_type_trained': self.is_type_trained, 'is_prophet_trained': self.is_prophet_trained, 'is_online_trained': self.is_online_trained},
+        joblib.dump({'is_amount_trained': self.is_amount_trained, 'is_type_trained': self.is_type_trained, 'is_prophet_trained': self.is_prophet_trained, 'is_online_trained': self.is_online_trained, 'is_rfe_applied': self.is_rfe_applied},
                     f"{config.MODEL_DIR}/financial_flags.pkl")
         print(f"\nEnsemble models saved to {config.MODEL_DIR}")
 
@@ -728,6 +781,11 @@ class FinancialMLModel:
         except FileNotFoundError:
             print("[WARN] Online learning model not found")
             self.online_model = None
+        try:
+            self.rfe_selected_features = joblib.load(f"{config.MODEL_DIR}/financial_rfe_features.pkl")
+        except FileNotFoundError:
+            print("[WARN] RFE features not found")
+            self.rfe_selected_features = None
         self.scaler = joblib.load(f"{config.MODEL_DIR}/financial_scaler.pkl")
         self.feature_columns = joblib.load(f"{config.MODEL_DIR}/financial_features.pkl")
         try:
@@ -736,11 +794,13 @@ class FinancialMLModel:
             self.is_type_trained = flags.get('is_type_trained', True)
             self.is_prophet_trained = flags.get('is_prophet_trained', False)
             self.is_online_trained = flags.get('is_online_trained', False)
+            self.is_rfe_applied = flags.get('is_rfe_applied', False)
         except FileNotFoundError:
             self.is_amount_trained = True
             self.is_type_trained = True
             self.is_prophet_trained = False
             self.is_online_trained = False
+            self.is_rfe_applied = False
         print(f"\nEnsemble models loaded from {config.MODEL_DIR}")
 
 if __name__ == "__main__":

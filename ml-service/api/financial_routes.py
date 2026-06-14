@@ -134,3 +134,27 @@ def predict_online(features: dict):
     if 'error' in result:
         raise HTTPException(status_code=400, detail=result['error'])
     return result
+
+
+@router.post("/feature-selection/rfe")
+def apply_rfe(n_features_to_select: int = 10):
+    """Primenjuje Recursive Feature Elimination za selekciju najbitnijih feature-a"""
+    data = extract_finances()
+    if not data or len(data) == 0:
+        raise HTTPException(status_code=404, detail="No training data")
+    
+    df = data.get('finansije', pd.DataFrame())
+    if 'iznos' not in df.columns:
+        raise HTTPException(status_code=400, detail="Missing target column 'iznos'")
+    
+    # Pripremi X i y za RFE
+    feature_cols = [c for c in df.columns if c not in ['iznos', 'created_at', 'id']]
+    X = df[feature_cols].fillna(0)
+    y = df['iznos'].values
+    
+    result = _financial_model.apply_rfe(X, y, n_features_to_select)
+    if 'error' in result:
+        raise HTTPException(status_code=400, detail=result['error'])
+    
+    _financial_model.save()
+    return result
