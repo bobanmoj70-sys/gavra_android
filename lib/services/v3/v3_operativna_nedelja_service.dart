@@ -208,16 +208,29 @@ class V3OperativnaNedeljaService {
       return;
     }
 
-    final slotAssignments = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(
-      datumIso: datumIso,
-    );
+    // Učitaj sve slotove za datum (bez status filtera) da pokupimo i neaktivne zauzete termine
+    final allSlotsForDatum = await supabase
+        .from('v3_trenutna_dodela_slot')
+        .select('datum, grad, vreme, vozac_v3_auth_id, status')
+        .eq('datum', datumIso);
+    final allSlotAssignments = <String, String>{};
+    for (final row in (allSlotsForDatum as List<dynamic>)) {
+      final mapped = row as Map<String, dynamic>;
+      final slotDatum = V3DateUtils.parseIsoDatePart(mapped['datum']?.toString());
+      final slotGrad = (mapped['grad']?.toString() ?? '').trim().toUpperCase();
+      final slotVreme = V3StringUtils.trimTimeToHhMm(mapped['vreme']?.toString() ?? '');
+      final slotVozacId = (mapped['vozac_v3_auth_id']?.toString() ?? '').trim();
+      if (slotDatum.isNotEmpty && slotGrad.isNotEmpty && slotVreme.isNotEmpty && slotVozacId.isNotEmpty) {
+        allSlotAssignments['$slotDatum|$slotGrad|$slotVreme'] = slotVozacId;
+      }
+    }
 
     final slotKey = V3TrenutnaDodelaSlotService.slotKey(
       datumIso: datumIso,
       grad: grad,
       vreme: vreme,
     );
-    final vozacId = (slotAssignments[slotKey] ?? '').trim();
+    final vozacId = (allSlotAssignments[slotKey] ?? '').trim();
 
     if (vozacId.isEmpty) {
       await V3TrenutnaDodelaService.deleteByTerminId(terminId);
