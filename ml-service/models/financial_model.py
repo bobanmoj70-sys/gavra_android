@@ -22,6 +22,13 @@ except ImportError:
     XGBOOST_AVAILABLE = False
     print("[WARN] XGBoost not available, using only Random Forest")
 
+try:
+    from prophet import Prophet
+    PROPHET_AVAILABLE = True
+except ImportError:
+    PROPHET_AVAILABLE = False
+    print("[WARN] Prophet not available, time series predictions disabled")
+
 
 class FinancialMLModel:
     def __init__(self):
@@ -41,6 +48,10 @@ class FinancialMLModel:
         self.feature_columns = None
         self.is_amount_trained = False
         self.is_type_trained = False
+
+        # Time series model (Prophet)
+        self.prophet_model = None
+        self.is_prophet_trained = False
 
         # Samootkrivene mete (target columns)
         self.amount_target_col = None
@@ -512,6 +523,145 @@ class FinancialMLModel:
         except FileNotFoundError:
             self.is_amount_trained = True
             self.is_type_trained = True
+        print(f"\nEnsemble models loaded from {config.MODEL_DIR}")
+
+    def train_prophet(self, df: pd.DataFrame) -> dict:
+        """Trenira Prophet time series model za finansijske trendove"""
+        if not PROPHET_AVAILABLE:
+            print("[WARN] Prophet not available, skipping time series training")
+            return {'prophet_trained': False, 'error': 'Prophet not available'}
+        
+        print("=" * 50)
+        print("Training Prophet Time Series Model")
+        print("=" * 50)
+        
+        # Pripremi podatke za Prophet (ds, y format)
+        if 'created_at' not in df.columns or 'iznos' not in df.columns:
+            print("[WARN] Missing required columns for Prophet training")
+            return {'prophet_trained': False, 'error': 'Missing required columns'}
+        
+        # Konvertuj datum
+        df_ts = df.copy()
+        df_ts['created_at'] = pd.to_datetime(df_ts['created_at'], errors='coerce')
+        df_ts = df_ts.dropna(subset=['created_at', 'iznos'])
+        
+        if len(df_ts) < 10:
+            print("[WARN] Not enough data for Prophet (need at least 10 records)")
+            return {'prophet_trained': False, 'error': 'Not enough data'}
+        
+        # Agregiraj po danu
+        df_ts['date'] = df_ts['created_at'].dt.date
+        daily_data = df_ts.groupby('date')['iznos'].sum().reset_index()
+        daily_data.columns = ['ds', 'y']
+        daily_data['ds'] = pd.to_datetime(daily_data['ds'])
+        
+        print(f"Daily data points: {len(daily_data)}")
+        
+        # Treniraj Prophet model
+        try:
+            self.prophet_model = Prophet(
+                yearly_seasonality=True,
+                weekly_seasonality=True,
+                daily_seasonality=False,
+                seasonality_mode='multiplicative'
+            )
+            self.prophet_model.fit(daily_data)
+            self.is_prophet_trained = True
+            
+            # Evaluiraj na trening setu
+            forecast = self.prophet_model.predict(daily_data)
+            mae = mean_absolute_error(daily_data['y'], forecast['yhat'])
+            
+            print(f"Prophet trained successfully. MAE: {mae:.2f}")
+            print("=" * 50)
+            
+            return {
+                'prophet_trained': True,
+                'mae': float(mae),
+                'data_points': len(daily_data)
+            }
+        except Exception as e:
+            print(f"[ERROR] Prophet training failed: {e}")
+            return {'prophet_trained': False, 'error': str(e)}
+
+    def predict_trends(self, days_ahead: int = 30) -> dict:
+        """Predviđa finansijske trendove za narednih N dana koristeći Prophet"""
+        if not self.is_prophet_trained or self.prophet_model is None:
+            return {'error': 'Prophet model not trained'}
+        
+        try:
+            # Napravi future dataframe
+            future = self.prophet_model.make_future_dataframe(periods=days_ahead)
+            forecast = self.prophet_model.predict(future)
+            
+            # Uzmi samo predikcije za budućnost
+            future_forecast = forecast.tail(days_ahead)
+            
+            results = []
+            for _, row in future_forecast.iterrows():
+                results.append({
+                    'datum': row['ds'].strftime('%Y-%m-%d'),
+                    'predvidjeni_iznos': round(float(row['yhat']), 2),
+                    'donja_granica': round(float(row['yhat_lower']), 2),
+                    'gornja_granica': round(float(row['yhat_upper']), 2),
+                    'trend': round(float(row['trend']), 2)
+                })
+            
+            return {
+                'trend_predikcije': results,
+                'ukupno_predvidjeno': round(float(future_forecast['yhat'].sum()), 2),
+                'prosek_dnevno': round(float(future_forecast['yhat'].mean()), 2),
+                'dana_predvidjeno': days_ahead
+            }
+        except Exception as e:
+            return {'error': f'Prediction failed: {str(e)}'}
+
+    def save(self):
+        """Čuva ensemble modele u fajl sistem"""
+        os.makedirs(config.MODEL_DIR, exist_ok=True)
+        joblib.dump(self.amount_rf, f"{config.MODEL_DIR}/financial_amount_rf.pkl")
+        joblib.dump(self.type_rf, f"{config.MODEL_DIR}/financial_type_rf.pkl")
+        if XGBOOST_AVAILABLE and self.amount_xgb is not None:
+            joblib.dump(self.amount_xgb, f"{config.MODEL_DIR}/financial_amount_xgb.pkl")
+        if XGBOOST_AVAILABLE and self.type_xgb is not None:
+            joblib.dump(self.type_xgb, f"{config.MODEL_DIR}/financial_type_xgb.pkl")
+        if PROPHET_AVAILABLE and self.prophet_model is not None:
+            joblib.dump(self.prophet_model, f"{config.MODEL_DIR}/financial_prophet.pkl")
+        joblib.dump(self.scaler, f"{config.MODEL_DIR}/financial_scaler.pkl")
+        joblib.dump(self.feature_columns, f"{config.MODEL_DIR}/financial_features.pkl")
+        joblib.dump({'is_amount_trained': self.is_amount_trained, 'is_type_trained': self.is_type_trained, 'is_prophet_trained': self.is_prophet_trained},
+                    f"{config.MODEL_DIR}/financial_flags.pkl")
+        print(f"\nEnsemble models saved to {config.MODEL_DIR}")
+
+    def load(self):
+        """Učitava ensemble modele iz fajl sistema"""
+        self.amount_rf = joblib.load(f"{config.MODEL_DIR}/financial_amount_rf.pkl")
+        self.type_rf = joblib.load(f"{config.MODEL_DIR}/financial_type_rf.pkl")
+        try:
+            if XGBOOST_AVAILABLE:
+                self.amount_xgb = joblib.load(f"{config.MODEL_DIR}/financial_amount_xgb.pkl")
+                self.type_xgb = joblib.load(f"{config.MODEL_DIR}/financial_type_xgb.pkl")
+        except FileNotFoundError:
+            print("[WARN] XGBoost models not found, using only Random Forest")
+            self.amount_xgb = None
+            self.type_xgb = None
+        try:
+            if PROPHET_AVAILABLE:
+                self.prophet_model = joblib.load(f"{config.MODEL_DIR}/financial_prophet.pkl")
+        except FileNotFoundError:
+            print("[WARN] Prophet model not found, time series predictions disabled")
+            self.prophet_model = None
+        self.scaler = joblib.load(f"{config.MODEL_DIR}/financial_scaler.pkl")
+        self.feature_columns = joblib.load(f"{config.MODEL_DIR}/financial_features.pkl")
+        try:
+            flags = joblib.load(f"{config.MODEL_DIR}/financial_flags.pkl")
+            self.is_amount_trained = flags.get('is_amount_trained', True)
+            self.is_type_trained = flags.get('is_type_trained', True)
+            self.is_prophet_trained = flags.get('is_prophet_trained', False)
+        except FileNotFoundError:
+            self.is_amount_trained = True
+            self.is_type_trained = True
+            self.is_prophet_trained = False
         print(f"\nEnsemble models loaded from {config.MODEL_DIR}")
 
 if __name__ == "__main__":

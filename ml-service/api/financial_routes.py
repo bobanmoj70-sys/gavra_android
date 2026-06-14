@@ -85,3 +85,22 @@ def train_model():
     metrics = _financial_model.train(data)
     _financial_model.save()
     return {"status": "trained", **metrics}
+
+
+@router.post("/train/prophet")
+def train_prophet():
+    """Trenira Prophet time series model za finansijske trendove"""
+    data = extract_finances()
+    if not data or len(data) == 0:
+        raise HTTPException(status_code=404, detail="No training data")
+    metrics = _financial_model.train_prophet(data.get('finansije', pd.DataFrame()))
+    _financial_model.save()
+    return {"status": "prophet_trained", **metrics}
+
+
+@router.get("/predict/trends")
+def predict_trends(days_ahead: int = 30):
+    """Predviđa finansijske trendove za narednih N dana"""
+    if not _financial_model.is_prophet_trained:
+        raise HTTPException(status_code=503, detail="Prophet model not trained")
+    return _financial_model.predict_trends(days_ahead)
