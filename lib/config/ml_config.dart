@@ -1,4 +1,4 @@
 class MlConfig {
-  // Tailscale Funnel - HTTP je dovoljan jer je Tailscale već bezbedan tunnel
-  static const baseUrl = 'http://win-vfeglqf71ss.tail61b7a2.ts.net:8000';
+  // Tailscale network IP - direct connection within Tailscale network
+  static const baseUrl = 'http://100.79.160.71:8000';
 }
