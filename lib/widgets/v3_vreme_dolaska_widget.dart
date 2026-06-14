@@ -277,6 +277,25 @@ class V3VremeDolaskaWidget extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+              ] else if (nextRide != null) ...[
+                const SizedBox(height: 4),
+                Builder(
+                  builder: (context) {
+                    final assignedVozacId = nextRide.row['vozac_id']?.toString();
+                    if (assignedVozacId == null || assignedVozacId.isEmpty) return const SizedBox.shrink();
+                    final vozacIme = V3MasterRealtimeManager.instance.vozaciCache[assignedVozacId]?['ime_prezime'];
+                    if (vozacIme == null || vozacIme.isEmpty) return const SizedBox.shrink();
+                    return Text(
+                      'Vozač: $vozacIme',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  },
+                ),
               ],
             ],
           ),
