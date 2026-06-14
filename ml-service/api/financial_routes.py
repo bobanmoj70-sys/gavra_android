@@ -82,7 +82,13 @@ def detect_anomalies():
     data = extract_finances()
     if not data or len(data) == 0:
         raise HTTPException(status_code=404, detail="No financial data")
-    return _financial_model.detect_anomalies(data.get('finansije', pd.DataFrame()))
+    anomalies_df = _financial_model.detect_anomalies(data.get('finansije', pd.DataFrame()))
+    # Filter to only anomalous records and return as expected format
+    anomalous = anomalies_df[anomalies_df['is_anomaly'] == 1] if 'is_anomaly' in anomalies_df.columns else anomalies_df
+    return {
+        "top_anomalies": anomalous.head(20).to_dict(orient='records'),
+        "total_anomalies": len(anomalous)
+    }
 
 
 @router.post("/train")

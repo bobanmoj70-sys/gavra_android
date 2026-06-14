@@ -24,8 +24,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   final TextEditingController _questionController = TextEditingController();
   final List<Map<String, dynamic>> _chatHistory = [];
   bool _askingQuestion = false;
-  Map<String, dynamic>? _knowledgeGraph;
-  List<dynamic>? _trainingHistory;
 
   // Tab controller
   late TabController _tabController;
@@ -457,37 +455,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
       _znanHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
 
-      // Knowledge graph — ne-fatalno
-      try {
-        final kgResp = await http
-            .get(
-              Uri.parse('$mlUrl/znanje/graph'),
-            )
-            .timeout(const Duration(seconds: 20));
-
-        if (kgResp.statusCode == 200) {
-          _knowledgeGraph = jsonDecode(kgResp.body) as Map<String, dynamic>;
-        }
-      } catch (_) {
-        _knowledgeGraph = null;
-      }
-
-      // Training history — ne-fatalno
-      try {
-        final historyResp = await http
-            .get(
-              Uri.parse('$mlUrl/training/history'),
-            )
-            .timeout(const Duration(seconds: 20));
-
-        if (historyResp.statusCode == 200) {
-          final data = jsonDecode(historyResp.body) as Map<String, dynamic>;
-          _trainingHistory = data['sessions'] as List<dynamic>?;
-        }
-      } catch (_) {
-        _trainingHistory = null;
-      }
-
       if (!mounted) return;
       setState(() {
         _znanLoading = false;
@@ -884,18 +851,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                     ),
                   );
                 }),
-              ],
-
-              // Knowledge graph
-              if (_knowledgeGraph != null) ...[
-                const SizedBox(height: 16),
-                _buildKnowledgeGraphCard(_knowledgeGraph!),
-              ],
-
-              // Training history
-              if (_trainingHistory != null && _trainingHistory!.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _buildTrainingHistoryCard(_trainingHistory!),
               ],
             ],
           ),
@@ -2172,187 +2127,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           ),
         ),
       );
-
-  Widget _buildKnowledgeGraphCard(Map<String, dynamic> graph) {
-    final nodes = graph['nodes'] as List<dynamic>? ?? [];
-    final edges = graph['edges'] as List<dynamic>? ?? [];
-    final entityTypes = graph['entity_types'] as Map<String, dynamic>? ?? {};
-
-    return Card(
-      color: Colors.white.withOpacity(0.12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.account_tree, color: Colors.teal.withOpacity(0.8)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Knowledge Graph',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _StatRow(
-              icon: Icons.hub,
-              label: 'Čvorovi (entiteti)',
-              value: '${nodes.length}',
-              color: Colors.blue,
-            ),
-            const Divider(height: 16, color: Colors.white24),
-            _StatRow(
-              icon: Icons.link,
-              label: 'Veze (relacije)',
-              value: '${edges.length}',
-              color: Colors.green,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Tipovi entiteta:',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: entityTypes.entries.map((e) {
-                return Chip(
-                  label: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 10)),
-                  backgroundColor: Colors.teal.withOpacity(0.1),
-                  labelStyle: const TextStyle(color: Colors.white70),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Top čvorovi:',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            ...nodes.take(5).map((n) {
-              final node = n as Map<String, dynamic>;
-              final name = node['name']?.toString() ?? 'Nepoznato';
-              final type = node['type']?.toString() ?? '?';
-              final connections = node['connections']?.toString() ?? '0';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 8),
-                    Text(
-                      name,
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '($type)',
-                      style: const TextStyle(color: Colors.teal, fontSize: 10),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '[$connections veza]',
-                      style: const TextStyle(color: Colors.white38, fontSize: 10),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrainingHistoryCard(List<dynamic> history) {
-    return Card(
-      color: Colors.white.withOpacity(0.12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.history, color: Colors.amber.withOpacity(0.8)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Istorija treninga',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...history.take(5).map((h) {
-              final session = h as Map<String, dynamic>;
-              final timestamp = session['timestamp']?.toString() ?? '-';
-              final model = session['model']?.toString() ?? 'Nepoznato';
-              final samples = session['samples']?.toString() ?? '0';
-              final accuracy = session['accuracy']?.toString() ?? '-';
-              final duration = session['duration_seconds']?.toString() ?? '0';
-              return Card(
-                color: Colors.amber.withOpacity(0.05),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                margin: const EdgeInsets.only(bottom: 6),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            model,
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            timestamp.substring(0, 10),
-                            style: const TextStyle(color: Colors.white70, fontSize: 10),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'Uzoraka: $samples',
-                            style: const TextStyle(color: Colors.white70, fontSize: 11),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Tačnost: $accuracy',
-                            style: const TextStyle(color: Colors.green, fontSize: 11),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Trajanje: ${duration}s',
-                            style: const TextStyle(color: Colors.white38, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildTabButton(int index, String label, IconData icon) {
     final isActive = _currentTab == index;
