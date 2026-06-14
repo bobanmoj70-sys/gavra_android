@@ -5,6 +5,7 @@ import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_status_policy.dart';
+import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -173,7 +174,25 @@ class V3ZahtevService {
     );
     final assignedVozacId = (slotAssignments[slotKey] ?? '').trim();
 
-    if (assignedVozacId.isNotEmpty) {
+    // Učitaj sve slotove za datum (bez status filtera) da pokupimo i neaktivne zauzete termine
+    final allSlotsForDatum = await supabase
+        .from('v3_trenutna_dodela_slot')
+        .select('datum, grad, vreme, vozac_v3_auth_id, status')
+        .eq('datum', datumIso);
+    final allSlotAssignments = <String, String>{};
+    for (final row in (allSlotsForDatum as List<dynamic>)) {
+      final mapped = row as Map<String, dynamic>;
+      final slotDatum = V3DateUtils.parseIsoDatePart(mapped['datum']?.toString());
+      final slotGrad = (mapped['grad']?.toString() ?? '').trim().toUpperCase();
+      final slotVreme = V3StringUtils.trimTimeToHhMm(mapped['vreme']?.toString() ?? '');
+      final slotVozacId = (mapped['vozac_v3_auth_id']?.toString() ?? '').trim();
+      if (slotDatum.isNotEmpty && slotGrad.isNotEmpty && slotVreme.isNotEmpty && slotVozacId.isNotEmpty) {
+        allSlotAssignments['$slotDatum|$slotGrad|$slotVreme'] = slotVozacId;
+      }
+    }
+    final assignedVozacIdFromAll = (allSlotAssignments[slotKey] ?? '').trim();
+
+    if (assignedVozacIdFromAll.isNotEmpty) {
       // Postoji slot dodela - kreiraj operativna red automatski
       await V3OperativnaNedeljaService.createOrUpdateByVozac(
         putnikId: putnikId,
