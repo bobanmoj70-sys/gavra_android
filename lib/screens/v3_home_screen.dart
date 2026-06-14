@@ -25,6 +25,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -911,6 +912,53 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 return null;
               }
 
+              List<Color> getVozacColors(String grad, String vreme) {
+                final rm = V3MasterRealtimeManager.instance;
+                final boje = <Color>[];
+
+                // Proveri slot dodelu
+                final slotVozacId = V3DodelaResolverService.resolveVozacIdForSlot(
+                  datumIso: _selectedDatumIso,
+                  grad: grad,
+                  vreme: vreme,
+                  activeVozacBySlotKey: _activeVozacBySlotKey,
+                );
+                if (slotVozacId.isNotEmpty) {
+                  final slotVozac = V3VozacService.getVozacById(slotVozacId);
+                  if (slotVozac != null) {
+                    boje.add(V3CardColorPolicy.vozacColorOr(slotVozac.boja));
+                  }
+                }
+
+                // Proveri individualne dodele za slot
+                for (final dodela in rm.trenutnaDodelaCache.values) {
+                  final terminId = dodela['termin_id']?.toString();
+                  if (terminId == null || terminId.isEmpty) continue;
+
+                  final operativnaRow = rm.operativnaNedeljaCache[terminId];
+                  if (operativnaRow == null) continue;
+
+                  final rowDatum = V3DateUtils.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
+                  final rowGrad = (operativnaRow['grad']?.toString() ?? '').trim().toUpperCase();
+                  final rowVreme = V3StringUtils.trimTimeToHhMm(operativnaRow['polazak_at']?.toString() ?? '');
+
+                  if (rowDatum == _selectedDatumIso && rowGrad == grad && rowVreme == vreme) {
+                    final vozacId = dodela['vozac_v3_auth_id']?.toString();
+                    if (vozacId != null && vozacId.isNotEmpty) {
+                      final vozac = V3VozacService.getVozacById(vozacId);
+                      if (vozac != null) {
+                        final boja = V3CardColorPolicy.vozacColorOr(vozac.boja);
+                        if (!boje.contains(boja)) {
+                          boje.add(boja);
+                        }
+                      }
+                    }
+                  }
+                }
+
+                return boje;
+              }
+
               final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
               final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.6).toDouble();
               final appBarHeight = 106 + (headerScaleExtra * 20);
@@ -1331,6 +1379,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           getKapacitet: getKapacitet,
           showVozacBoja: true,
           getVozacColor: getVozacColor,
+          getVozacColors: getVozacColors,
           bcVremena: _bcVremena,
           vsVremena: _vsVremena,
         );
