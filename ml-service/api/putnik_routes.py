@@ -27,7 +27,13 @@ def init_putnik_model():
 
 @router.get("/health")
 def health():
-    return {"status": "healthy", "model_trained": _putnik_model.is_trained}
+    return {
+        "status": "healthy",
+        "model_trained": _putnik_model.is_trained,
+        "ensemble_enabled": True,
+        "xgboost_available": True,
+        "multi_task_enabled": True
+    }
 
 
 @router.get("/memory")

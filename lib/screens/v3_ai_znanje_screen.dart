@@ -32,6 +32,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   Map<String, dynamic>? _finHealth;
   Map<String, dynamic>? _finTrends;
   Map<String, dynamic>? _finPredictions;
+  Map<String, dynamic>? _finAdvancedFeatures;
 
   // Vehicle AI state
   bool _vozLoading = true;
@@ -50,6 +51,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   String? _putError;
   Map<String, dynamic>? _putHealth;
   Map<String, dynamic>? _putPredictions;
+  Map<String, dynamic>? _putAdvancedFeatures;
 
   // Zahtevi AI state
   bool _zahLoading = true;
@@ -126,6 +128,15 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
 
       _finHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
+
+      // Učitaj napredne funkcionalnosti iz health
+      _finAdvancedFeatures = {
+        'ensemble_enabled': _finHealth?['ensemble_enabled'] ?? false,
+        'xgboost_available': _finHealth?['xgboost_available'] ?? false,
+        'prophet_trained': _finHealth?['prophet_trained'] ?? false,
+        'online_learning_enabled': _finHealth?['online_learning_enabled'] ?? false,
+        'rfe_applied': _finHealth?['rfe_applied'] ?? false,
+      };
     } catch (e) {
       setState(() {
         _finError = 'Greska (health): $e';
@@ -280,6 +291,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         return;
       }
       _putHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
+
+      // Učitaj napredne funkcionalnosti iz health
+      _putAdvancedFeatures = {
+        'ensemble_enabled': _putHealth?['ensemble_enabled'] ?? false,
+        'xgboost_available': _putHealth?['xgboost_available'] ?? false,
+        'multi_task_enabled': _putHealth?['multi_task_enabled'] ?? false,
+      };
     } catch (e) {
       setState(() {
         _putError = 'Greska (health): $e';
@@ -686,6 +704,11 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     final modelTrained = _finHealth?['model_trained'] ?? false;
     final predictions = _finPredictions?['avg_predicted_amount'];
     final trends = _finTrends?['trends'] as Map<String, dynamic>?;
+    final ensembleEnabled = _finAdvancedFeatures?['ensemble_enabled'] ?? false;
+    final xgboostAvailable = _finAdvancedFeatures?['xgboost_available'] ?? false;
+    final prophetTrained = _finAdvancedFeatures?['prophet_trained'] ?? false;
+    final onlineLearningEnabled = _finAdvancedFeatures?['online_learning_enabled'] ?? false;
+    final rfeApplied = _finAdvancedFeatures?['rfe_applied'] ?? false;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
@@ -716,6 +739,16 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
         // Status
         _buildFinancialStats(modelTrained: modelTrained),
+        const SizedBox(height: 16),
+
+        // Napredne funkcionalnosti
+        _buildAdvancedFeaturesCard(
+          ensembleEnabled: ensembleEnabled,
+          xgboostAvailable: xgboostAvailable,
+          prophetTrained: prophetTrained,
+          onlineLearningEnabled: onlineLearningEnabled,
+          rfeApplied: rfeApplied,
+        ),
         const SizedBox(height: 16),
 
         // Prediction
@@ -875,6 +908,162 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                 ),
               );
             }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdvancedFeaturesCard({
+    required bool ensembleEnabled,
+    required bool xgboostAvailable,
+    required bool prophetTrained,
+    required bool onlineLearningEnabled,
+    required bool rfeApplied,
+  }) {
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.cyan.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Napredne ML funkcionalnosti',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _FeatureRow(
+              icon: Icons.merge_type,
+              label: 'Ensemble (RF + XGBoost)',
+              enabled: ensembleEnabled,
+              color: Colors.green,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _FeatureRow(
+              icon: Icons.speed,
+              label: 'XGBoost',
+              enabled: xgboostAvailable,
+              color: Colors.blue,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _FeatureRow(
+              icon: Icons.show_chart,
+              label: 'Prophet Time Series',
+              enabled: prophetTrained,
+              color: Colors.purple,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _FeatureRow(
+              icon: Icons.update,
+              label: 'Online Learning',
+              enabled: onlineLearningEnabled,
+              color: Colors.orange,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _FeatureRow(
+              icon: Icons.filter_list,
+              label: 'RFE Feature Selection',
+              enabled: rfeApplied,
+              color: Colors.pink,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _FeatureRow({
+    required IconData icon,
+    required String label,
+    required bool enabled,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: enabled ? color : Colors.white24,
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: enabled ? Colors.white70 : Colors.white38,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Icon(
+          enabled ? Icons.check_circle : Icons.cancel,
+          color: enabled ? color : Colors.white24,
+          size: 18,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPutnikAdvancedFeaturesCard({
+    required bool ensembleEnabled,
+    required bool xgboostAvailable,
+    required bool multiTaskEnabled,
+  }) {
+    return Card(
+      color: Colors.white.withOpacity(0.12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.psychology, color: Colors.indigo.withOpacity(0.8)),
+                const SizedBox(width: 8),
+                const Text(
+                  'Multi-Task Learning',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _FeatureRow(
+              icon: Icons.merge_type,
+              label: 'Ensemble (RF + XGBoost)',
+              enabled: ensembleEnabled,
+              color: Colors.green,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _FeatureRow(
+              icon: Icons.speed,
+              label: 'XGBoost',
+              enabled: xgboostAvailable,
+              color: Colors.blue,
+            ),
+            const Divider(height: 16, color: Colors.white24),
+            _FeatureRow(
+              icon: Icons.layers,
+              label: 'Multi-Task (Churn + LTV + Segment)',
+              enabled: multiTaskEnabled,
+              color: Colors.purple,
+            ),
           ],
         ),
       ),
@@ -1143,6 +1332,9 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     final lojalan = _putPredictions?['lojalan'] ?? 0;
     final rizican = _putPredictions?['rizican'] ?? 0;
     final prosecan = _putPredictions?['prosecan'] ?? 0;
+    final ensembleEnabled = _putAdvancedFeatures?['ensemble_enabled'] ?? false;
+    final xgboostAvailable = _putAdvancedFeatures?['xgboost_available'] ?? false;
+    final multiTaskEnabled = _putAdvancedFeatures?['multi_task_enabled'] ?? false;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 32),
@@ -1173,6 +1365,14 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                   : 'N/A',
               color: Colors.purple),
         ]),
+        const SizedBox(height: 16),
+
+        // Multi-task learning kartica
+        _buildPutnikAdvancedFeaturesCard(
+          ensembleEnabled: ensembleEnabled,
+          xgboostAvailable: xgboostAvailable,
+          multiTaskEnabled: multiTaskEnabled,
+        ),
         const SizedBox(height: 16),
         if (!modelTrained && passengers.isEmpty)
           _buildUntrainedMessage(

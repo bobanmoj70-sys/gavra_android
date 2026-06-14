@@ -42,7 +42,9 @@ class ServisPredictionRequest(BaseModel):
 def health():
     return {
         "status": "healthy",
-        "model_trained": _vozilo_model.is_trained
+        "model_trained": _vozilo_model.is_trained,
+        "ensemble_enabled": True,
+        "xgboost_available": True
     }
 
 

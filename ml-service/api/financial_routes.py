@@ -28,7 +28,15 @@ def init_financial_model():
 
 @router.get("/health")
 def health():
-    return {"status": "healthy", "model_trained": _financial_model.is_amount_trained or _financial_model.is_type_trained}
+    return {
+        "status": "healthy",
+        "model_trained": _financial_model.is_amount_trained or _financial_model.is_type_trained,
+        "ensemble_enabled": True,
+        "xgboost_available": True,
+        "prophet_trained": _financial_model.is_prophet_trained,
+        "online_learning_enabled": _financial_model.is_online_trained,
+        "rfe_applied": _financial_model.is_rfe_applied
+    }
 
 
 @router.get("/memory")

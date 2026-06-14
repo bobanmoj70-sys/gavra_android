@@ -29,7 +29,12 @@ def init_gorivo_model():
 
 @router.get("/health")
 def health():
-    return {"status": "healthy", "model_trained": _gorivo_model.is_trained}
+    return {
+        "status": "healthy",
+        "model_trained": _gorivo_model.is_trained,
+        "ensemble_enabled": True,
+        "xgboost_available": True
+    }
 
 
 @router.get("/memory")
