@@ -112,7 +112,6 @@ Deno.serve(async (req) => {
       .from("v3_trenutna_dodela_slot")
       .select("id, vreme, waypoints_json")
       .eq("vozac_v3_auth_id", vozacId)
-      .eq("status", "aktivan")
       .eq("grad", activeGrad);
 
     if (slotError) {
