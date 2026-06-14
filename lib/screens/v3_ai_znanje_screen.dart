@@ -72,6 +72,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
+      if (!mounted) return;
       setState(() {
         _currentTab = _tabController.index;
       });
@@ -120,6 +121,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           .timeout(const Duration(seconds: 15));
 
       if (healthResp.statusCode != 200) {
+        if (!mounted) return;
         setState(() {
           _finError = 'Server nije dostupan (${healthResp.statusCode})';
           _finLoading = false;
@@ -138,6 +140,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         'rfe_applied': _finHealth?['rfe_applied'] ?? false,
       };
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _finError = 'Greska (health): $e';
         _finLoading = false;
@@ -183,6 +186,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _finPredictions = null;
     }
 
+    if (!mounted) return;
     setState(() {
       _finLoading = false;
     });
@@ -204,6 +208,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           .timeout(const Duration(seconds: 15));
 
       if (healthResp.statusCode != 200) {
+        if (!mounted) return;
         setState(() {
           _vozError = 'Server nije dostupan (${healthResp.statusCode})';
           _vozLoading = false;
@@ -213,6 +218,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
       _vozHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _vozError = 'Greska (health): $e';
         _vozLoading = false;
@@ -234,6 +240,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _vozPredictions = null;
     }
 
+    if (!mounted) return;
     setState(() {
       _vozLoading = false;
     });
@@ -248,6 +255,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     try {
       final healthResp = await http.get(Uri.parse('$mlUrl/gorivo/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
+        if (!mounted) return;
         setState(() {
           _gorError = 'Server nije dostupan (${healthResp.statusCode})';
           _gorLoading = false;
@@ -256,6 +264,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
       _gorHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _gorError = 'Greska (health): $e';
         _gorLoading = false;
@@ -270,6 +279,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _gorPredictions = null;
     }
 
+    if (!mounted) return;
     setState(() {
       _gorLoading = false;
     });
@@ -284,6 +294,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     try {
       final healthResp = await http.get(Uri.parse('$mlUrl/putnik/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
+        if (!mounted) return;
         setState(() {
           _putError = 'Server nije dostupan (${healthResp.statusCode})';
           _putLoading = false;
@@ -299,6 +310,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         'multi_task_enabled': _putHealth?['multi_task_enabled'] ?? false,
       };
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _putError = 'Greska (health): $e';
         _putLoading = false;
@@ -313,6 +325,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _putPredictions = null;
     }
 
+    if (!mounted) return;
     setState(() {
       _putLoading = false;
     });
@@ -327,6 +340,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     try {
       final healthResp = await http.get(Uri.parse('$mlUrl/zahtevi/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
+        if (!mounted) return;
         setState(() {
           _zahError = 'Server nije dostupan (${healthResp.statusCode})';
           _zahLoading = false;
@@ -335,6 +349,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
       _zahHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _zahError = 'Greska (health): $e';
         _zahLoading = false;
@@ -350,6 +365,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       _zahPredictions = null;
     }
 
+    if (!mounted) return;
     setState(() {
       _zahLoading = false;
     });
@@ -377,6 +393,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           .timeout(const Duration(seconds: 15));
 
       if (healthResp.statusCode != 200) {
+        if (!mounted) return;
         setState(() {
           _znanError = 'Server nije dostupan (${healthResp.statusCode})';
           _znanLoading = false;
@@ -386,10 +403,12 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
       _znanHealth = jsonDecode(healthResp.body) as Map<String, dynamic>;
 
+      if (!mounted) return;
       setState(() {
         _znanLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _znanError = 'Greska (health): $e';
         _znanLoading = false;
@@ -424,6 +443,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   }
 
   Future<void> _trainAllModels() async {
+    if (!mounted) return;
     setState(() => _allTraining = true);
     final scaffold = ScaffoldMessenger.of(context);
     scaffold.showSnackBar(
@@ -436,9 +456,11 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     await _trainModel('/putnik/train', _loadPutnikAI, 'Putnik');
     await _trainModel('/zahtevi/train', _loadZahteviAI, 'Zahtevi');
 
+    if (!mounted) return;
     scaffold.showSnackBar(
       const SnackBar(content: Text('Svi modeli su trenirani!'), duration: Duration(seconds: 3)),
     );
+    if (!mounted) return;
     setState(() => _allTraining = false);
   }
 
