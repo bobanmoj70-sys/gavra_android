@@ -4,6 +4,7 @@ Gorivo ML API Endpoints
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from data.etl_gorivo import extract_enriched_gorivo as extract_gorivo
@@ -16,9 +17,9 @@ _gorivo_model = GorivoMLModel()
 
 def init_gorivo_model():
     try:
-        df = extract_gorivo()
-        if len(df) > 0:
-            _gorivo_model.train(df)
+        data = extract_gorivo()
+        if data and len(data) > 0:
+            _gorivo_model.train(data)
             _gorivo_model.save()
         else:
             print("[WARN] No data for gorivo model training")
@@ -41,17 +42,17 @@ def memory():
 def predict_all():
     if not _gorivo_model.is_trained:
         raise HTTPException(status_code=503, detail="Model not trained")
-    df = extract_gorivo()
-    if len(df) == 0:
+    data = extract_gorivo()
+    if not data or len(data) == 0:
         raise HTTPException(status_code=404, detail="No fuel data")
-    return _gorivo_model.analyze_fuel(df)
+    return _gorivo_model.analyze_fuel(data.get('gorivo', pd.DataFrame()))
 
 
 @router.post("/train")
 def train_model():
-    df = extract_gorivo()
-    if len(df) == 0:
+    data = extract_gorivo()
+    if not data or len(data) == 0:
         raise HTTPException(status_code=404, detail="No training data")
-    metrics = _gorivo_model.train(df)
+    metrics = _gorivo_model.train(data)
     _gorivo_model.save()
     return {"status": "trained", **metrics}

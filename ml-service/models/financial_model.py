@@ -22,6 +22,9 @@ class FinancialMLModel:
         # Pamcenje - model pamti sta je video i naucio
         self.memory = LearningMemory("financial")
         self.discoverer = AutoFeatureDiscovery()
+        self._last_data = {}
+        from models.knowledge_graph import KnowledgeGraph
+        self.knowledge_graph = KnowledgeGraph()
 
         # Modeli - prazne glave, sve se uci iz podataka
         self.amount_model = None
@@ -106,19 +109,78 @@ class FinancialMLModel:
         self.feature_columns = features.columns.tolist()
         return features, y_amount, y_type
 
-    def train(self, df: pd.DataFrame):
-        """
-        Trenira model iskljucivo na podacima - kao beba koja uci od nule.
-        Sam otkriva sta je bitno i pamti to.
-        """
-        print("=" * 50)
-        print("Training Financial ML Model from scratch")
-        print("  (Kao beba - ne znam nista, ucim iz podataka)")
-        print("=" * 50)
-        print(f"Training data: {len(df)} records")
+    def _add_cross_table_features(self, primary_df: pd.DataFrame, other_df: pd.DataFrame, table_name: str) -> pd.DataFrame:
+        """Dodaje feature-e iz drugih tabela - automatski otkriva relevantne kolone"""
+        if primary_df.empty or other_df.empty:
+            return primary_df
+        
+        # Pronađi zajedničke ključeve
+        join_keys = []
+        for col in primary_df.columns:
+            if any(k in col.lower() for k in ['id', 'created_by', 'vozac', 'putnik', 'user', 'auth']):
+                for other_col in other_df.columns:
+                    if col.lower() == other_col.lower() or col.lower() in other_col.lower():
+                        join_keys.append((col, other_col))
+        
+        if not join_keys:
+            return primary_df
+        
+        # Merge sa drugom tabelom
+        result = primary_df.copy()
+        for daily_key, other_key in join_keys[:1]:
+            try:
+                numeric_cols = other_df.select_dtypes(include=['number']).columns.tolist()
+                
+                if numeric_cols:
+                    agg_dict = {col: 'sum' for col in numeric_cols}
+                    stats = other_df.groupby(other_key).agg(agg_dict).reset_index()
+                    
+                    result = result.merge(
+                        stats,
+                        left_on=daily_key,
+                        right_on=other_key,
+                        how='left',
+                        suffixes=('', f'_{table_name}')
+                    )
+                    
+                    for col in result.columns:
+                        if f'_{table_name}' in col:
+                            result[col] = result[col].fillna(0)
+                    
+                    print(f"[CrossTable] Merged {table_name} on {daily_key} -> {len(numeric_cols)} numeric features")
+            except Exception as e:
+                print(f"[CrossTable] Merge failed for {table_name}: {e}")
+        
+        return result
 
+    def train(self, data: dict):
+        """
+        Trenira model na SVIM tabelama - automatski otkriva šta je bitno.
+        """
+        print("=" * 50)
+        print("Training Financial ML Model from ALL tables")
+        print("=" * 50)
+        
+        # Primary table: finansije
+        fin_df = data.get('finansije', pd.DataFrame())
+        if fin_df.empty:
+            print("[WARN] No finansije data - cannot train")
+            return {"error": "no_finansije_data"}
+        
+        print(f"Primary data: {len(fin_df)} records")
+        print(f"Total tables: {len(data)}")
+        
+        # Izgradi knowledge graph za logičko povezivanje
+        self.knowledge_graph.build_from_supabase(data)
+        print(f"[KnowledgeGraph] {len(self.knowledge_graph.nodes)} entiteta, {sum(len(v) for v in self.knowledge_graph.edges.values())} relacija")
+        
+        # Koristi AutoFeatureDiscovery za automatsko otkrivanje bitnih feature-a
+        print(f"[AutoFeature] Learning from {len(data)} tables...")
+        discovered_features = self.discoverer.discover_features(data, target_table='finansije')
+        print(f"[AutoFeature] Discovered {len(discovered_features)} potential features")
+        
         # Priprema podataka - SAMI otkrivamo sta je bitno
-        features, y_amount, y_type = self.prepare_training_data(df)
+        features, y_amount, y_type = self.prepare_training_data(fin_df)
         print(f"Auto-discovered features: {len(self.feature_columns)}")
         print(f"Amount target: {self.amount_target_col}")
         print(f"Type target: {self.type_target_col}")
@@ -126,6 +188,21 @@ class FinancialMLModel:
         if len(self.feature_columns) == 0:
             print("[WARN] Nema feature-a za treniranje!")
             return {"error": "no_features"}
+
+        # Dodaj cross-table feature-e ako postoje relevantne tabele
+        for table_name, table_df in data.items():
+            if table_name == 'finansije' or table_df.empty:
+                continue
+            try:
+                enriched = self._add_cross_table_features(fin_df, table_df, table_name)
+                if not enriched.empty:
+                    fin_df = enriched
+                    print(f"[CrossTable] Added features from {table_name}")
+            except Exception as e:
+                print(f"[CrossTable] Could not add features from {table_name}: {e}")
+        
+        # Re-prepare features after cross-table enrichment
+        features, y_amount, y_type = self.prepare_training_data(fin_df)
 
         # Split
         X_train, X_test, y_train_amount, y_test_amount = train_test_split(
@@ -185,34 +262,18 @@ class FinancialMLModel:
             print(f"\n[SKIP] Type model - {n_classes} class(es), need 2+ for classification")
             self.is_type_trained = False
 
-        # PAMTI sve sto si video i naucio
-        # Prvo otkrij koje tabele trenutno postoje u podacima
-        current_tables = []
-        for col in df.columns:
-            if '_id' in col:
-                # Izvedi ime tabele iz kolone (npr putnik_v3_auth_id -> v3_auth)
-                parts = col.replace('_id', '').split('_')
-                if len(parts) >= 2:
-                    current_tables.append('_'.join(parts))
-        # Uvek dodaj osnovnu tabelu
-        current_tables.append("finansije")
-        current_tables = list(set(current_tables))
+        # PAMTI sve sto si video i naucio iz SVIH tabela
+        self._last_data = data
+        self.memory.forget_old(list(data.keys()))
 
-        # ZABORAVI tabele koje vise ne postoje
-        self.memory.forget_old(current_tables)
-
-        sources = {
-            "finansije": {
-                "columns": list(df.columns),
-                "rows": len(df)
-            }
-        }
+        sources = {tbl: {"columns": list(df.columns), "rows": len(df)} for tbl, df in data.items()}
         metrics = {
             "amount_mse": self._safe_float(mse),
             "amount_r2": self._safe_float(r2),
             "amount_rmse": self._safe_float(np.sqrt(mse)),
             "features": len(self.feature_columns),
-            "samples": len(df),
+            "samples": len(fin_df),
+            "tables_used": len(data),
             "type_model_trained": self.is_type_trained,
             "type_classes": int(n_classes)
         }

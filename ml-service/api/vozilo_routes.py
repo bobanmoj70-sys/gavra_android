@@ -7,6 +7,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -22,9 +23,9 @@ _vozilo_model = VoziloMLModel()
 def init_vozilo_model():
     """Inicijalizuje model pri startup-u — uvek trenira od nule"""
     try:
-        df = extract_vozila()
-        if len(df) > 0:
-            _vozilo_model.train(df)
+        data = extract_vozila()
+        if data and len(data) > 0:
+            _vozilo_model.train(data)
             _vozilo_model.save()
         else:
             print("[WARN] No data for vehicle model training")
@@ -56,10 +57,10 @@ def predict_all():
     """Predvidja servis za sva vozila"""
     if not _vozilo_model.is_trained:
         raise HTTPException(status_code=503, detail="Model not trained")
-    df = extract_vozila()
-    if len(df) == 0:
+    data = extract_vozila()
+    if not data or len(data) == 0:
         raise HTTPException(status_code=404, detail="No vehicles found")
-    result = _vozilo_model.analyze_vehicle_health(df)
+    result = _vozilo_model.analyze_vehicle_health(data.get('vozila', pd.DataFrame()))
     return result
 
 
@@ -68,7 +69,8 @@ def predict_service(req: ServisPredictionRequest):
     """Predvidja servis za specificno vozilo"""
     if not _vozilo_model.is_trained:
         raise HTTPException(status_code=503, detail="Model not trained")
-    df = extract_vozila()
+    data = extract_vozila()
+    df = data.get('vozila', pd.DataFrame())
     if req.vozilo_id:
         df = df[df['id'] == req.vozilo_id]
     if len(df) == 0:
@@ -80,10 +82,10 @@ def predict_service(req: ServisPredictionRequest):
 @router.post("/train")
 def train_model():
     """Ponovo trenira model"""
-    df = extract_vozila()
-    if len(df) == 0:
+    data = extract_vozila()
+    if not data or len(data) == 0:
         raise HTTPException(status_code=404, detail="No training data")
-    metrics = _vozilo_model.train(df)
+    metrics = _vozilo_model.train(data)
     _vozilo_model.save()
     return {
         "status": "trained",

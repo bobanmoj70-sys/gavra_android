@@ -27,6 +27,9 @@ class VoziloMLModel:
         os.makedirs(self.model_dir, exist_ok=True)
         self.memory = LearningMemory("vozilo")
         self.discoverer = AutoFeatureDiscovery()
+        self._last_data = {}
+        from models.knowledge_graph import KnowledgeGraph
+        self.knowledge_graph = KnowledgeGraph()
 
     def _safe_float(self, val):
         return None if val != val else float(val)
@@ -130,17 +133,99 @@ class VoziloMLModel:
         age_factor = features['starost_godina'].values / age_max if age_max > 0 else 0
         return np.clip(avg_score * (1 + 0.3 * age_factor), 0, 1)
 
-    def train(self, df: pd.DataFrame):
-        """Trenira model na vozilo podacima sa pravim train/test splitom i metrikama"""
+    def _add_cross_table_features(self, primary_df: pd.DataFrame, other_df: pd.DataFrame, table_name: str) -> pd.DataFrame:
+        """Dodaje feature-e iz drugih tabela - automatski otkriva relevantne kolone"""
+        if primary_df.empty or other_df.empty:
+            return primary_df
+        
+        # Pronađi zajedničke ključeve
+        join_keys = []
+        for col in primary_df.columns:
+            if any(k in col.lower() for k in ['id', 'vozilo', 'vehicle']):
+                for other_col in other_df.columns:
+                    if col.lower() == other_col.lower() or col.lower() in other_col.lower():
+                        join_keys.append((col, other_col))
+        
+        if not join_keys:
+            return primary_df
+        
+        # Merge sa drugom tabelom
+        result = primary_df.copy()
+        for daily_key, other_key in join_keys[:1]:
+            try:
+                numeric_cols = other_df.select_dtypes(include=['number']).columns.tolist()
+                
+                if numeric_cols:
+                    agg_dict = {col: 'sum' for col in numeric_cols}
+                    stats = other_df.groupby(other_key).agg(agg_dict).reset_index()
+                    
+                    result = result.merge(
+                        stats,
+                        left_on=daily_key,
+                        right_on=other_key,
+                        how='left',
+                        suffixes=('', f'_{table_name}')
+                    )
+                    
+                    for col in result.columns:
+                        if f'_{table_name}' in col:
+                            result[col] = result[col].fillna(0)
+                    
+                    print(f"[CrossTable] Merged {table_name} on {daily_key} -> {len(numeric_cols)} numeric features")
+            except Exception as e:
+                print(f"[CrossTable] Merge failed for {table_name}: {e}")
+        
+        return result
+
+    def train(self, data: dict):
+        """Trenira model na SVIM tabelama - automatski otkriva šta je bitno"""
         print("=" * 50)
-        print("Training Vehicle ML Model from scratch")
+        print("Training Vehicle ML Model from ALL tables")
         print("=" * 50)
-        features = self._extract_features(df)
+        
+        # Primary table: vozila
+        vozila_df = data.get('vozila', pd.DataFrame())
+        if vozila_df.empty:
+            print("[WARN] No vozila data - cannot train")
+            self.is_trained = True
+            return {'r2_score': 0.0, 'feature_count': 0, 'samples': 0, 'warning': 'Nema podataka o vozilima'}
+        
+        print(f"Primary data: {len(vozila_df)} records")
+        print(f"Total tables: {len(data)}")
+        
+        # Izgradi knowledge graph za logičko povezivanje
+        self.knowledge_graph.build_from_supabase(data)
+        print(f"[KnowledgeGraph] {len(self.knowledge_graph.nodes)} entiteta, {sum(len(v) for v in self.knowledge_graph.edges.values())} relacija")
+        
+        # Koristi AutoFeatureDiscovery za automatsko otkrivanje bitnih feature-a
+        print(f"[AutoFeature] Learning from {len(data)} tables...")
+        discovered_features = self.discoverer.discover_features(data, target_table='vozila')
+        print(f"[AutoFeature] Discovered {len(discovered_features)} potential features")
+        
+        # Ekstraktuj feature-e iz vozila
+        features = self._extract_features(vozila_df)
         y = self._compute_health_target(features)
+        
+        # Dodaj cross-table feature-e ako postoje relevantne tabele
+        for table_name, table_df in data.items():
+            if table_name == 'vozila' or table_df.empty:
+                continue
+            try:
+                enriched = self._add_cross_table_features(vozila_df, table_df, table_name)
+                if not enriched.empty:
+                    vozila_df = enriched
+                    print(f"[CrossTable] Added features from {table_name}")
+            except Exception as e:
+                print(f"[CrossTable] Could not add features from {table_name}: {e}")
+        
+        # Re-prepare features after cross-table enrichment
+        features = self._extract_features(vozila_df)
+        y = self._compute_health_target(features)
+        
         self.scaler = StandardScaler()
         X_scaled = self.scaler.fit_transform(features)
         self.feature_columns = features.columns.tolist()
-        n_samples = len(df)
+        n_samples = len(vozila_df)
         eval_split = n_samples >= 10
         if eval_split:
             X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.25, random_state=42)
@@ -154,7 +239,7 @@ class VoziloMLModel:
         train_mae = mean_absolute_error(y_train, y_pred_train)
         metrics = {'train_r2': self._safe_float(train_r2), 'train_mae': self._safe_float(train_mae),
                    'feature_count': len(self.feature_columns), 'samples': n_samples,
-                   'eval_on_train': not eval_split}
+                   'eval_on_train': not eval_split, 'tables_used': len(data)}
         if eval_split:
             y_pred_test = self.health_model.predict(X_test)
             metrics['test_r2'] = self._safe_float(r2_score(y_test, y_pred_test))
@@ -164,16 +249,17 @@ class VoziloMLModel:
         else:
             metrics['r2_score'] = self._safe_float(train_r2)
         print(f"Train R²: {train_r2:.3f} | Train MAE: {train_mae:.4f}")
-        print(f"Samples: {n_samples} | Features: {len(self.feature_columns)}")
+        print(f"Samples: {n_samples} | Features: {len(self.feature_columns)} | Tables: {len(data)}")
         print("=" * 50)
         self.is_trained = True
         self._last_metrics = metrics
+        self._last_data = data
 
         # ZABORAVI stare tabele koje vise ne postoje
-        self.memory.forget_old(["vozilo"])
+        self.memory.forget_old(list(data.keys()))
 
-        # PAMTI sta je naucio
-        sources = {"vozilo": {"columns": list(self.feature_columns), "rows": n_samples}}
+        # PAMTI sta je naucio iz SVIH tabela
+        sources = {tbl: {"columns": list(df.columns), "rows": len(df)} for tbl, df in data.items()}
         feature_imp = dict(zip(self.feature_columns, self.health_model.feature_importances_)) if self.health_model else {}
         self.memory.record_training(sources, feature_imp, metrics)
         print("  [Memory] Vozilo model zapamtio ucenje")

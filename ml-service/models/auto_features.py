@@ -188,6 +188,41 @@ class AutoFeatureDiscovery:
 
         return relationships
 
+    def discover_features(self, tables: Dict[str, pd.DataFrame], target_table: str = None) -> List[str]:
+        """
+        Otkriva potencijalne feature-e iz SVIH tabela za target tabelu.
+        Koristi za cross-table feature engineering.
+        """
+        all_features = []
+        
+        for table_name, df in tables.items():
+            if df.empty:
+                continue
+            
+            schema = self.discover_table(df, table_name)
+            
+            for col, col_type in schema.items():
+                if col_type == self.TYPE_ID and col not in ['id', 'uuid']:
+                    continue
+                
+                # Dodaj feature nazive
+                if col_type == self.TYPE_NUMERIC:
+                    all_features.append(f"{table_name}_{col}")
+                elif col_type == self.TYPE_TIMESTAMP:
+                    all_features.extend([
+                        f"{table_name}_{col}_hour",
+                        f"{table_name}_{col}_dayofweek",
+                        f"{table_name}_{col}_dayofmonth",
+                        f"{table_name}_{col}_month",
+                        f"{table_name}_{col}_is_weekend"
+                    ])
+                elif col_type == self.TYPE_CATEGORICAL:
+                    top_vals = df[col].value_counts().head(5).index.tolist()
+                    for val in top_vals:
+                        all_features.append(f"{table_name}_{col}_{val}")
+        
+        return all_features
+
     def auto_select_important_features(self, X: pd.DataFrame, y: pd.Series,
                                       model, top_n: int = 20) -> List[str]:
         """

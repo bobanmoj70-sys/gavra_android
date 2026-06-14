@@ -54,30 +54,21 @@ def extract_all_supabase_tables() -> dict:
     return tables
 
 
-def extract_enriched_vozila() -> pd.DataFrame:
-    """Extract vehicles joined with fuel and trip frequency"""
-    vozila = extract_vozila()
-    gorivo = extract_gorivo()
-    oper = extract_operativna_for_vozila()
-
-    if not gorivo.empty and 'vozilo_id' in gorivo.columns and 'id' in vozila.columns:
-        gor_stats = gorivo.groupby('vozilo_id').agg({
-            'trenutno_stanje_litri': 'last',
-            'kapacitet_litri': 'last',
-            'cena_po_litru': 'mean'
-        }).reset_index()
-        vozila = vozila.merge(gor_stats, left_on='id', right_on='vozilo_id', how='left')
-
-    if not oper.empty and 'vozilo_id' in oper.columns and 'id' in vozila.columns:
-        trip_stats = oper.groupby('vozilo_id').size().reset_index(name='broj_voznji_30dana')
-        vozila = vozila.merge(trip_stats, left_on='id', right_on='vozilo_id', how='left')
-        vozila['broj_voznji_30dana'] = vozila['broj_voznji_30dana'].fillna(0)
-
-    print(f"[ENRICHED] Vehicle data: {len(vozila)} rows with fuel & trip features")
-    return vozila
+def extract_enriched_vozila() -> dict:
+    """Extract ALL tables for Vehicle AI to learn from"""
+    from data.etl_znanje import extract_all_tables
+    all_data = extract_all_tables()
+    
+    # Glavni fokus na vozilima, ali uključi sve tabele za kontekst
+    vozila = all_data.get('vozila', pd.DataFrame())
+    
+    print(f"[ENRICHED] Extracted {len(all_data)} tables for Vehicle AI")
+    print(f"[ENRICHED] Primary (vozila): {len(vozila)} rows")
+    
+    return all_data
 
 
 if __name__ == "__main__":
-    df = extract_enriched_vozila()
+    data = extract_enriched_vozila()
     print("\nEnriched vehicle data sample:")
-    print(df.head())
+    print(data.get('vozila', pd.DataFrame()).head())

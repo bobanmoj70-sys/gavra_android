@@ -19,11 +19,15 @@ class PutnikMLModel:
     def __init__(self):
         self.is_trained = False
         self.payment_model = None
+        self.ltv_model = None
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
         self.memory = LearningMemory("putnik")
         self.discoverer = AutoFeatureDiscovery()
+        self._last_data = {}
+        from models.knowledge_graph import KnowledgeGraph
+        self.knowledge_graph = KnowledgeGraph()
 
     def _safe_float(self, val):
         return None if val != val else float(val)
@@ -140,103 +144,176 @@ class PutnikMLModel:
         y_ltv = rfm['ltv'].fillna(0).values
         return y_churn, y_ltv
 
-    def train(self, fin_df: pd.DataFrame, zahtevi_df: pd.DataFrame):
-        """Trenira model na putnik podacima sa churn + LTV predikcijom"""
+    def _add_cross_table_features(self, primary_df: pd.DataFrame, other_df: pd.DataFrame, table_name: str) -> pd.DataFrame:
+        """Dodaje feature-e iz drugih tabela - automatski otkriva relevantne kolone"""
+        if primary_df.empty or other_df.empty:
+            return primary_df
+        
+        # Pronađi zajedničke ključeve
+        join_keys = []
+        for col in primary_df.columns:
+            if any(k in col.lower() for k in ['id', 'putnik', 'user', 'auth']):
+                for other_col in other_df.columns:
+                    if col.lower() == other_col.lower() or col.lower() in other_col.lower():
+                        join_keys.append((col, other_col))
+        
+        if not join_keys:
+            return primary_df
+        
+        # Merge sa drugom tabelom
+        result = primary_df.copy()
+        for daily_key, other_key in join_keys[:1]:
+            try:
+                numeric_cols = other_df.select_dtypes(include=['number']).columns.tolist()
+                
+                if numeric_cols:
+                    agg_dict = {col: 'sum' for col in numeric_cols}
+                    stats = other_df.groupby(other_key).agg(agg_dict).reset_index()
+                    
+                    result = result.merge(
+                        stats,
+                        left_on=daily_key,
+                        right_on=other_key,
+                        how='left',
+                        suffixes=('', f'_{table_name}')
+                    )
+                    
+                    for col in result.columns:
+                        if f'_{table_name}' in col:
+                            result[col] = result[col].fillna(0)
+                    
+                    print(f"[CrossTable] Merged {table_name} on {daily_key} -> {len(numeric_cols)} numeric features")
+            except Exception as e:
+                print(f"[CrossTable] Merge failed for {table_name}: {e}")
+        
+        return result
+
+    def train(self, data: dict):
+        """Trenira model na SVIM tabelama - automatski otkriva šta je bitno"""
         print("=" * 50)
-        print("Training Putnik ML Model from scratch")
+        print("Training Putnik ML Model from ALL tables")
         print("=" * 50)
-        rfm = self._extract_rfm_features(fin_df, zahtevi_df)
-        if rfm.empty:
-            print("[WARN] Nema dovoljno podataka za treniranje")
+        
+        # Primary tables: users (putnici), finansije, zahtevi
+        users_df = data.get('users', pd.DataFrame())
+        fin_df = data.get('finansije', pd.DataFrame())
+        zahtevi_df = data.get('zahtevi', pd.DataFrame())
+        
+        if users_df.empty:
+            print("[WARN] No users data - cannot train")
             self.is_trained = True
-            return {'r2_score': 0.0, 'feature_count': 0, 'samples': 0, 'warning': 'Nema podataka'}
-        all_feature_cols = ['recency_dana', 'frekvenca', 'ukupno_platio', 'prosecan_iznos', 'std_iznos',
-                              'broj_prihoda', 'ukupno_voznji', 'cancellation_rate', 'vrednost_po_voznji',
-                              'broj_zahteva', 'zahtevi_otkazano', 'tenure_dana']
-        feature_cols = [c for c in all_feature_cols if c in rfm.columns]
-        X = rfm[feature_cols].fillna(0)
-        self.scaler = StandardScaler()
-        X_scaled = self.scaler.fit_transform(X)
+            return {'r2_score': 0.0, 'feature_count': 0, 'samples': 0, 'warning': 'Nema podataka o putnicima'}
+        
+        print(f"Primary data: {len(users_df)} users, {len(fin_df)} finansije, {len(zahtevi_df)} zahtevi")
+        print(f"Total tables: {len(data)}")
+        
+        # Izgradi knowledge graph za logičko povezivanje
+        self.knowledge_graph.build_from_supabase(data)
+        print(f"[KnowledgeGraph] {len(self.knowledge_graph.nodes)} entiteta, {sum(len(v) for v in self.knowledge_graph.edges.values())} relacija")
+        
+        # Koristi AutoFeatureDiscovery za automatsko otkrivanje bitnih feature-a
+        print(f"[AutoFeature] Learning from {len(data)} tables...")
+        discovered_features = self.discoverer.discover_features(data, target_table='users')
+        print(f"[AutoFeature] Discovered {len(discovered_features)} potential features")
+        
+        # Ekstraktuj RFM feature-e
+        rfm = self._extract_rfm_features(fin_df, zahtevi_df)
         y_churn, y_ltv = self._compute_targets(rfm)
+        
+        # Dodaj cross-table feature-e ako postoje relevantne tabele
+        for table_name, table_df in data.items():
+            if table_name in ['users', 'finansije', 'zahtevi'] or table_df.empty:
+                continue
+            try:
+                enriched = self._add_cross_table_features(rfm, table_df, table_name)
+                if not enriched.empty:
+                    rfm = enriched
+                    print(f"[CrossTable] Added features from {table_name}")
+            except Exception as e:
+                print(f"[CrossTable] Could not add features from {table_name}: {e}")
+        
+        # Re-compute targets after enrichment
+        y_churn, y_ltv = self._compute_targets(rfm)
+        
+        X = rfm.select_dtypes(include=[np.number]).fillna(0)
+        X_scaled = self.scaler.fit_transform(X)
         n_samples = len(rfm)
         eval_split = n_samples >= 10
         if eval_split:
-            Xc_train, Xc_test, yc_train, yc_test = train_test_split(X_scaled, y_churn, test_size=0.25, random_state=42)
-            Xl_train, Xl_test, yl_train, yl_test = train_test_split(X_scaled, y_ltv, test_size=0.25, random_state=42)
+            X_train, X_test, y_train_churn, y_test_churn = train_test_split(X_scaled, y_churn, test_size=0.25, random_state=42)
+            _, _, y_train_ltv, y_test_ltv = train_test_split(X_scaled, y_ltv, test_size=0.25, random_state=42)
         else:
-            Xc_train, Xc_test, yc_train, yc_test = X_scaled, X_scaled, y_churn, y_churn
-            Xl_train, Xl_test, yl_train, yl_test = X_scaled, X_scaled, y_ltv, y_ltv
+            X_train, X_test, y_train_churn, y_test_churn = X_scaled, X_scaled, y_churn, y_churn
+            _, _, y_train_ltv, y_test_ltv = X_scaled, X_scaled, y_ltv, y_ltv
             print(f"[WARN] Samo {n_samples} putnika — evaluacija na trening setu")
-        # Churn classifier
-        self.churn_model = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
-        self.churn_model.fit(Xc_train, yc_train)
-        yc_pred_train = self.churn_model.predict(Xc_train)
-        try:
-            churn_auc_train = roc_auc_score(yc_train, self.churn_model.predict_proba(Xc_train)[:, 1])
-        except (ValueError, IndexError):
-            churn_auc_train = 0.5  # jedna klasa, nema smisla racunati AUC
-        # LTV regressor
-        self.value_model = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
-        self.value_model.fit(Xl_train, yl_train)
-        yl_pred_train = self.value_model.predict(Xl_train)
-        ltv_r2_train = r2_score(yl_train, yl_pred_train)
-        ltv_mae_train = mean_absolute_error(yl_train, yl_pred_train)
-        metrics = {'churn_auc_train': self._safe_float(churn_auc_train), 'ltv_r2_train': self._safe_float(ltv_r2_train),
-                   'ltv_mae_train': self._safe_float(ltv_mae_train), 'feature_count': len(feature_cols),
-                   'samples': n_samples, 'eval_on_train': not eval_split}
-        if eval_split:
-            yc_pred_test = self.churn_model.predict(Xc_test)
-            try:
-                churn_auc_test = roc_auc_score(yc_test, self.churn_model.predict_proba(Xc_test)[:, 1])
-            except (ValueError, IndexError):
-                churn_auc_test = 0.5
-            yl_pred_test = self.value_model.predict(Xl_test)
-            ltv_r2_test = r2_score(yl_test, yl_pred_test)
-            ltv_mae_test = mean_absolute_error(yl_test, yl_pred_test)
-            metrics['churn_auc_test'] = self._safe_float(churn_auc_test)
-            metrics['ltv_r2_test'] = self._safe_float(ltv_r2_test)
-            metrics['ltv_mae_test'] = self._safe_float(ltv_mae_test)
-            metrics['r2_score'] = self._safe_float(ltv_r2_test)
-            print(f"Churn AUC: {churn_auc_test:.3f} | LTV R²: {ltv_r2_test:.3f} | LTV MAE: {ltv_mae_test:.2f}")
-        else:
-            metrics['r2_score'] = self._safe_float(ltv_r2_train)
-        print(f"Churn AUC (train): {churn_auc_train:.3f} | LTV R² (train): {ltv_r2_train:.3f}")
-        print(f"Samples: {n_samples} | Features: {len(feature_cols)}")
+        
+        # Churn model
+        self.payment_model = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
+        self.payment_model.fit(X_train, y_train_churn)
+        y_pred_churn = self.payment_model.predict(X_test)
+        churn_auc = roc_auc_score(y_test_churn, y_pred_churn) if eval_split else 0.0
+        
+        # LTV model
+        self.ltv_model = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
+        self.ltv_model.fit(X_train, y_train_ltv)
+        y_pred_ltv = self.ltv_model.predict(X_test)
+        ltv_r2 = r2_score(y_test_ltv, y_pred_ltv) if eval_split else 0.0
+        
+        metrics = {
+            'churn_auc': self._safe_float(churn_auc),
+            'ltv_r2': self._safe_float(ltv_r2),
+            'feature_count': len(X.columns),
+            'samples': n_samples,
+            'eval_on_train': not eval_split,
+            'tables_used': len(data)
+        }
+        
+        print(f"Churn AUC: {churn_auc:.3f} | LTV R²: {ltv_r2:.3f}")
+        print(f"Samples: {n_samples} | Features: {len(X.columns)} | Tables: {len(data)}")
         print("=" * 50)
         self.is_trained = True
         self._last_metrics = metrics
+        self._last_data = data
 
         # ZABORAVI stare tabele koje vise ne postoje
-        self.memory.forget_old(["putnik"])
+        self.memory.forget_old(list(data.keys()))
 
-        # PAMTI sta je naucio
-        sources = {"putnik": {"columns": list(feature_cols), "rows": n_samples}}
-        feature_imp = dict(zip(feature_cols, self.value_model.feature_importances_)) if self.value_model else {}
+        # PAMTI sta je naucio iz SVIH tabela
+        sources = {tbl: {"columns": list(df.columns), "rows": len(df)} for tbl, df in data.items()}
+        feature_imp = dict(zip(X.columns, self.payment_model.feature_importances_)) if self.payment_model else {}
         self.memory.record_training(sources, feature_imp, metrics)
         print("  [Memory] Putnik model zapamtio ucenje")
 
         return metrics
 
-    def analyze_passengers(self, fin_df: pd.DataFrame, zahtevi_df: pd.DataFrame) -> dict:
+    def analyze_passengers(self, data: dict) -> dict:
         """Analizira putnike sa churn + LTV predikcijom"""
         if not self.is_trained:
             raise ValueError("Model not trained")
+        
+        fin_df = data.get('finansije', pd.DataFrame())
+        zahtevi_df = data.get('zahtevi', pd.DataFrame())
+        
         rfm = self._extract_rfm_features(fin_df, zahtevi_df)
         if rfm.empty:
             return {'passengers': [], 'total': 0, 'lojalan': 0, 'rizican': 0, 'prosecan': 0, 'ukupan_prihod': 0}
+        
         all_feature_cols = ['recency_dana', 'frekvenca', 'ukupno_platio', 'prosecan_iznos', 'std_iznos',
                               'broj_prihoda', 'ukupno_voznji', 'cancellation_rate', 'vrednost_po_voznji',
                               'broj_zahteva', 'zahtevi_otkazano', 'tenure_dana']
         feature_cols = [c for c in all_feature_cols if c in rfm.columns]
         X = rfm[feature_cols].fillna(0)
         X_scaled = self.scaler.transform(X)
+        
         # Churn predikcija
-        proba = self.churn_model.predict_proba(X_scaled)
+        proba = self.payment_model.predict_proba(X_scaled)
         churn_proba = proba[:, 1] if proba.shape[1] > 1 else np.zeros(len(proba))
         rfm['churn_risk'] = churn_proba
+        
         # LTV predikcija
-        ltv_pred = self.value_model.predict(X_scaled)
+        ltv_pred = self.ltv_model.predict(X_scaled)
         rfm['predicted_ltv'] = ltv_pred
+        
         # Kategorizacija na osnovu churn risk + LTV
         def kategorija(row):
             if row['churn_risk'] < 0.3 and row['predicted_ltv'] > rfm['predicted_ltv'].median():
@@ -246,6 +323,7 @@ class PutnikMLModel:
             else:
                 return 'prosecan'
         rfm['kategorija'] = rfm.apply(kategorija, axis=1)
+        
         passengers = []
         for _, row in rfm.iterrows():
             passengers.append({
@@ -258,6 +336,7 @@ class PutnikMLModel:
                 'recency_dana': int(row['recency_dana']),
                 'kategorija': row['kategorija']
             })
+        
         return {
             'passengers': sorted(passengers, key=lambda x: x['predicted_ltv'], reverse=True),
             'total': len(passengers),
@@ -265,23 +344,22 @@ class PutnikMLModel:
             'rizican': sum(1 for p in passengers if p['kategorija'] == 'rizican'),
             'prosecan': sum(1 for p in passengers if p['kategorija'] == 'prosecan'),
             'ukupan_prihod': sum(p['ukupno_platio'] for p in passengers),
-            'model_r2': getattr(self, '_last_metrics', {}).get('r2_score', None),
-            'churn_auc': getattr(self, '_last_metrics', {}).get('churn_auc_test',
-                                 getattr(self, '_last_metrics', {}).get('churn_auc_train', None))
+            'model_r2': getattr(self, '_last_metrics', {}).get('ltv_r2', None),
+            'churn_auc': getattr(self, '_last_metrics', {}).get('churn_auc', None)
         }
 
     def save(self):
         if not self.is_trained:
             return
-        joblib.dump(self.churn_model, f"{self.model_dir}/putnik_churn_model.pkl")
-        joblib.dump(self.value_model, f"{self.model_dir}/putnik_ltv_model.pkl")
+        joblib.dump(self.payment_model, f"{self.model_dir}/putnik_churn_model.pkl")
+        joblib.dump(self.ltv_model, f"{self.model_dir}/putnik_ltv_model.pkl")
         joblib.dump(self.scaler, f"{self.model_dir}/putnik_scaler.pkl")
         print("[OK] Putnik model saved")
 
     def load(self):
         try:
-            self.churn_model = joblib.load(f"{self.model_dir}/putnik_churn_model.pkl")
-            self.value_model = joblib.load(f"{self.model_dir}/putnik_ltv_model.pkl")
+            self.payment_model = joblib.load(f"{self.model_dir}/putnik_churn_model.pkl")
+            self.ltv_model = joblib.load(f"{self.model_dir}/putnik_ltv_model.pkl")
             self.scaler = joblib.load(f"{self.model_dir}/putnik_scaler.pkl")
             self.is_trained = True
             print("[OK] Putnik model loaded")

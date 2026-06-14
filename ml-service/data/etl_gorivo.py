@@ -54,26 +54,21 @@ def extract_all_supabase_tables() -> dict:
     return tables
 
 
-def extract_enriched_gorivo() -> pd.DataFrame:
-    """Extract fuel joined with vehicle specs and trip frequency"""
-    gorivo = extract_gorivo()
-    vozila = extract_vozila()
-    oper = extract_operativna()
-
-    if not vozila.empty and 'vozilo_id' in gorivo.columns:
-        gorivo = gorivo.merge(vozila.rename(columns={'id': 'vozilo_id'}),
-                              on='vozilo_id', how='left')
-
-    if not oper.empty and 'vozilo_id' in oper.columns and 'vozilo_id' in gorivo.columns:
-        trip_stats = oper.groupby('vozilo_id').size().reset_index(name='broj_voznji')
-        gorivo = gorivo.merge(trip_stats, on='vozilo_id', how='left')
-        gorivo['broj_voznji'] = gorivo['broj_voznji'].fillna(0)
-
-    print(f"[ENRICHED] Fuel data: {len(gorivo)} rows with vehicle & trip features")
-    return gorivo
+def extract_enriched_gorivo() -> dict:
+    """Extract ALL tables for Fuel AI to learn from"""
+    from data.etl_znanje import extract_all_tables
+    all_data = extract_all_tables()
+    
+    # Glavni fokus na gorivu, ali uključi sve tabele za kontekst
+    gorivo = all_data.get('gorivo', pd.DataFrame())
+    
+    print(f"[ENRICHED] Extracted {len(all_data)} tables for Fuel AI")
+    print(f"[ENRICHED] Primary (gorivo): {len(gorivo)} rows")
+    
+    return all_data
 
 
 if __name__ == "__main__":
-    df = extract_enriched_gorivo()
+    data = extract_enriched_gorivo()
     print("\nEnriched fuel data sample:")
-    print(df.head())
+    print(data.get('gorivo', pd.DataFrame()).head())

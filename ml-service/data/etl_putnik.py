@@ -60,3 +60,21 @@ def extract_all_supabase_tables() -> dict:
         except Exception:
             pass
     return tables
+
+def extract_enriched_putnik() -> dict:
+    """Extract ALL tables for Passenger AI to learn from"""
+    from data.etl_znanje import extract_all_tables
+    all_data = extract_all_tables()
+    
+    # Glavni fokus na putnicima (users), ali uključi sve tabele za kontekst
+    users = all_data.get('users', pd.DataFrame())
+    
+    print(f"[ENRICHED] Extracted {len(all_data)} tables for Passenger AI")
+    print(f"[ENRICHED] Primary (users): {len(users)} rows")
+    
+    return all_data
+
+if __name__ == "__main__":
+    data = extract_enriched_putnik()
+    print("\nEnriched passenger data sample:")
+    print(data.get('users', pd.DataFrame()).head())
