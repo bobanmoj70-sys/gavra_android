@@ -93,6 +93,7 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
+        "model_trained": financial_model.is_amount_trained and financial_model.is_type_trained,
         "amount_model_trained": financial_model.is_amount_trained,
         "type_model_trained": financial_model.is_type_trained,
         "timestamp": datetime.now().isoformat()
@@ -348,6 +349,35 @@ async def retrain_all():
         "results": results,
         "timestamp": datetime.now().isoformat()
     }
+
+@app.post("/auto-train")
+async def auto_train():
+    """
+    AUTOMATSKI trenira SVE modele - otkriva sve tabele, kolone, podatke
+    Sistem sam uči od nule bez ikakvog ručnog podesavanja
+    Poziva se kad se uđe u AI znanje ekran
+    """
+    import time
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'training'))
+    
+    from training.auto_train import auto_train_all
+    
+    start = time.time()
+    try:
+        results = auto_train_all()
+        elapsed = round(time.time() - start, 2)
+        
+        return {
+            "success": True,
+            "message": f"Auto-training complete in {elapsed}s",
+            "elapsed_seconds": elapsed,
+            "results": results,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

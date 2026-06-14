@@ -82,6 +82,23 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     // Učitaj samo aktivni tab odmah — ostali se učitavaju lezerno pri prelasku
     _loadZnanjeAI();
+    _autoTrainModels();
+  }
+
+  Future<void> _autoTrainModels() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_mlBaseUrl/auto-train'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print('[AutoTrain] Complete: ${data['message']}');
+      }
+    } catch (e) {
+      print('[AutoTrain] Error: $e');
+    }
   }
 
   Future<void> _loadFinancialAI() async {

@@ -26,6 +26,23 @@ class _V3AiChatScreenState extends State<V3AiChatScreen> {
   @override
   void initState() {
     super.initState();
+    _autoTrainModels();
+  }
+
+  Future<void> _autoTrainModels() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_mlBaseUrl/auto-train'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print('[AutoTrain] Complete: ${data['message']}');
+      }
+    } catch (e) {
+      print('[AutoTrain] Error: $e');
+    }
   }
 
   void _ask() async {
