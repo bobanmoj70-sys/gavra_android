@@ -17,6 +17,7 @@ class V3BottomNavBarSlotovi extends StatefulWidget {
     this.vsVremena,
     this.showVozacBoja = false,
     this.getVozacColor,
+    this.getVozacColors,
   });
   final String selectedGrad;
   final String selectedVreme;
@@ -28,6 +29,7 @@ class V3BottomNavBarSlotovi extends StatefulWidget {
   final List<String>? vsVremena;
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
+  final List<Color>? Function(String grad, String vreme)? getVozacColors;
 
   @override
   State<V3BottomNavBarSlotovi> createState() => _BottomNavBarSlotoviState();
@@ -143,6 +145,7 @@ class _BottomNavBarSlotoviState extends State<V3BottomNavBarSlotovi> {
                     currentThemeId: currentThemeId,
                     showVozacBoja: widget.showVozacBoja,
                     getVozacColor: widget.getVozacColor,
+                    getVozacColors: widget.getVozacColors,
                   ),
                 ),
                 const Divider(height: 1),
@@ -163,6 +166,7 @@ class _BottomNavBarSlotoviState extends State<V3BottomNavBarSlotovi> {
                     currentThemeId: currentThemeId,
                     showVozacBoja: widget.showVozacBoja,
                     getVozacColor: widget.getVozacColor,
+                    getVozacColors: widget.getVozacColors,
                   ),
                 ),
               ],
@@ -189,6 +193,7 @@ class _PolazakRow extends StatelessWidget {
     this.scrollController,
     this.showVozacBoja = false,
     this.getVozacColor,
+    this.getVozacColors,
   });
   final String label;
   final List<String> vremena;
@@ -203,6 +208,7 @@ class _PolazakRow extends StatelessWidget {
   final String currentThemeId;
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
+  final List<Color>? Function(String grad, String vreme)? getVozacColors;
 
   Color _selectedFillColor() {
     if (currentThemeId == 'dark_steel_grey') return const Color(0xFF4A4A4A).withOpacity(0.22);
@@ -245,7 +251,8 @@ class _PolazakRow extends StatelessWidget {
                   final selectedPrimaryColor = _selectedStrokeAndTextColor();
                   // Boja vozaca za termin (iz raspored cache-a)
                   final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
-                  final hasVozac = vozacBorderColor != null;
+                  final vozacBoje = showVozacBoja ? getVozacColors?.call(grad, vreme) : null;
+                  final hasVozac = vozacBorderColor != null || (vozacBoje != null && vozacBoje.isNotEmpty);
 
                   return GestureDetector(
                     onTap: () => onPolazakChanged(grad, vreme),
@@ -259,12 +266,26 @@ class _PolazakRow extends StatelessWidget {
                         color: selected
                             ? selectedFillColor
                             : hasVozac
-                                ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
+                                ? (vozacBoje != null && vozacBoje.length > 1)
+                                    ? null
+                                    : (vozacBorderColor != null
+                                        ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
+                                        : Colors.transparent)
                                 : Colors.transparent,
+                        gradient: hasVozac && vozacBoje != null && vozacBoje.length > 1 && !selected
+                            ? LinearGradient(
+                                colors: vozacBoje,
+                                stops: List.generate(vozacBoje.length, (i) => i / (vozacBoje.length - 1)),
+                              )
+                            : null,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: hasVozac
-                              ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
+                              ? (vozacBoje != null && vozacBoje.length > 1)
+                                  ? vozacBoje.first
+                                  : (vozacBorderColor != null
+                                      ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
+                                      : Colors.grey[300]!)
                               : selected
                                   ? selectedPrimaryColor.withOpacity(0.8)
                                   : Colors.grey[300]!,
