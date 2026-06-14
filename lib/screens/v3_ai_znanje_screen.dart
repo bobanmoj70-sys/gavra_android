@@ -41,7 +41,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   List<dynamic>? _finAnomalies;
   Map<String, dynamic>? _finTrendPredictions;
   Map<String, dynamic>? _finMemory;
-  Map<String, dynamic>? _modelComparison;
 
   // Vehicle AI state
   bool _vozLoading = true;
@@ -238,21 +237,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       }
     } catch (_) {
       _finMemory = null;
-    }
-
-    // Model comparison — ne-fatalno
-    try {
-      final compResp = await http
-          .get(
-            Uri.parse('$mlUrl/compare'),
-          )
-          .timeout(const Duration(seconds: 20));
-
-      if (compResp.statusCode == 200) {
-        _modelComparison = jsonDecode(compResp.body) as Map<String, dynamic>;
-      }
-    } catch (_) {
-      _modelComparison = null;
     }
 
     if (!mounted) return;
@@ -1071,9 +1055,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         if (_finMemory != null) _buildMemoryCard(_finMemory!),
         const SizedBox(height: 16),
 
-        // Model comparison
-        if (_modelComparison != null) _buildModelComparisonCard(_modelComparison!),
-
         if (!modelTrained && predictions == null && trends == null)
           _buildUntrainedMessage(
             'Finansijski model',
@@ -1514,84 +1495,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               label: 'Poslednje treniranje',
               value: lastTrained.substring(0, 10),
               color: Colors.white38,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModelComparisonCard(Map<String, dynamic> comparison) {
-    final rf = comparison['random_forest'] as Map<String, dynamic>? ?? {};
-    final xgb = comparison['xgboost'] as Map<String, dynamic>? ?? {};
-    final winner = comparison['winner']?.toString() ?? 'nepoznato';
-
-    return Card(
-      color: Colors.white.withOpacity(0.12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.compare_arrows, color: Colors.pink.withOpacity(0.8)),
-                const SizedBox(width: 8),
-                const Text(
-                  'Poređenje modela (RF vs XGBoost)',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _StatRow(
-              icon: Icons.emoji_events,
-              label: 'Pobednik',
-              value: winner.toUpperCase(),
-              color: winner == 'xgboost' ? Colors.blue : Colors.green,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Random Forest:',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            _StatRow(
-              icon: Icons.speed,
-              label: 'R²',
-              value: (rf['r2']?.toString() ?? 'N/A'),
-              color: Colors.green,
-            ),
-            const Divider(height: 12, color: Colors.white24),
-            _StatRow(
-              icon: Icons.timer,
-              label: 'Trening vreme',
-              value: '${rf['training_time']?.toString() ?? 'N/A'}s',
-              color: Colors.white70,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'XGBoost:',
-              style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            _StatRow(
-              icon: Icons.speed,
-              label: 'R²',
-              value: (xgb['r2']?.toString() ?? 'N/A'),
-              color: Colors.blue,
-            ),
-            const Divider(height: 12, color: Colors.white24),
-            _StatRow(
-              icon: Icons.timer,
-              label: 'Trening vreme',
-              value: '${xgb['training_time']?.toString() ?? 'N/A'}s',
-              color: Colors.white70,
             ),
           ],
         ),
