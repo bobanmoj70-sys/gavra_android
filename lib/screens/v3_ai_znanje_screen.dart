@@ -944,35 +944,35 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               ],
             ),
             const SizedBox(height: 12),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.merge_type,
               label: 'Ensemble (RF + XGBoost)',
               enabled: ensembleEnabled,
               color: Colors.green,
             ),
             const Divider(height: 16, color: Colors.white24),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.speed,
               label: 'XGBoost',
               enabled: xgboostAvailable,
               color: Colors.blue,
             ),
             const Divider(height: 16, color: Colors.white24),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.show_chart,
               label: 'Prophet Time Series',
               enabled: prophetTrained,
               color: Colors.purple,
             ),
             const Divider(height: 16, color: Colors.white24),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.update,
               label: 'Online Learning',
               enabled: onlineLearningEnabled,
               color: Colors.orange,
             ),
             const Divider(height: 16, color: Colors.white24),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.filter_list,
               label: 'RFE Feature Selection',
               enabled: rfeApplied,
@@ -984,7 +984,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     );
   }
 
-  Widget _FeatureRow({
+  Widget _featureRow({
     required IconData icon,
     required String label,
     required bool enabled,
@@ -1044,21 +1044,21 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               ],
             ),
             const SizedBox(height: 12),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.merge_type,
               label: 'Ensemble (RF + XGBoost)',
               enabled: ensembleEnabled,
               color: Colors.green,
             ),
             const Divider(height: 16, color: Colors.white24),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.speed,
               label: 'XGBoost',
               enabled: xgboostAvailable,
               color: Colors.blue,
             ),
             const Divider(height: 16, color: Colors.white24),
-            _FeatureRow(
+            _featureRow(
               icon: Icons.layers,
               label: 'Multi-Task (Churn + LTV + Segment)',
               enabled: multiTaskEnabled,
