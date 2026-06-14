@@ -256,87 +256,138 @@ class _PolazakRow extends StatelessWidget {
 
                   return GestureDetector(
                     onTap: () => onPolazakChanged(grad, vreme),
-                    child: Container(
-                      width: 60.0,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? selectedFillColor
-                            : hasVozac
-                                ? (vozacBoje != null && vozacBoje.length > 1)
-                                    ? null
-                                    : (vozacBorderColor != null
-                                        ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
-                                        : Colors.transparent)
-                                : Colors.transparent,
-                        gradient: hasVozac && vozacBoje != null && vozacBoje.length > 1 && !selected
-                            ? LinearGradient(
+                    child: hasVozac && vozacBoje != null && vozacBoje.length > 1
+                        ? CustomPaint(
+                            painter: _SplitBorderPainter(
+                              colors: vozacBoje,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: CustomPaint(
+                              painter: _SplitBackgroundPainter(
                                 colors: vozacBoje,
-                                stops: List.generate(vozacBoje.length, (i) => i / (vozacBoje.length - 1)),
-                              )
-                            : null,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: hasVozac
-                              ? (vozacBoje != null && vozacBoje.length > 1)
-                                  ? vozacBoje.first
-                                  : (vozacBorderColor != null
-                                      ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
-                                      : Colors.grey[300]!)
-                              : selected
-                                  ? selectedPrimaryColor.withOpacity(0.8)
-                                  : Colors.grey[300]!,
-                          width: hasVozac ? 1.5 : (selected ? 1.2 : 0.6),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            vreme,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: selected ? selectedPrimaryColor : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Container(
+                                width: 60.0,
+                                margin: const EdgeInsets.symmetric(horizontal: 2),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: selected ? selectedFillColor : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      vreme,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: selected ? Colors.black : Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Builder(
+                                      builder: (ctx) {
+                                        final loading = isSlotLoading?.call(grad, vreme) ?? false;
+                                        if (loading) {
+                                          return const SizedBox(
+                                            height: 12,
+                                            width: 12,
+                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                          );
+                                        }
+                                        final count = getPutnikCount(grad, vreme);
+                                        final kapacitet = getKapacitet?.call(grad, vreme);
+                                        final displayText = kapacitet != null ? '$count ($kapacitet)' : '$count';
+                                        final slobodna =
+                                            kapacitet != null ? (kapacitet - count).clamp(0, kapacitet) : null;
+                                        final textColor = slobodna == null
+                                            ? Colors.white70
+                                            : slobodna == 0
+                                                ? Colors.red
+                                                : slobodna <= 2
+                                                    ? Colors.orange
+                                                    : Colors.white70;
+                                        return Text(
+                                          displayText,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: textColor,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            width: 60.0,
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? selectedFillColor
+                                  : hasVozac
+                                      ? (vozacBorderColor != null
+                                          ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
+                                          : Colors.transparent)
+                                      : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: hasVozac
+                                    ? (vozacBorderColor != null
+                                        ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
+                                        : Colors.grey[300]!)
+                                    : selected
+                                        ? selectedPrimaryColor.withOpacity(0.8)
+                                        : Colors.grey[300]!,
+                                width: hasVozac ? 1.5 : (selected ? 1.2 : 0.6),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  vreme,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: selected ? Colors.black : Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Builder(
+                                  builder: (ctx) {
+                                    final loading = isSlotLoading?.call(grad, vreme) ?? false;
+                                    if (loading) {
+                                      return const SizedBox(
+                                        height: 12,
+                                        width: 12,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      );
+                                    }
+                                    final count = getPutnikCount(grad, vreme);
+                                    final kapacitet = getKapacitet?.call(grad, vreme);
+                                    final displayText = kapacitet != null ? '$count ($kapacitet)' : '$count';
+                                    final slobodna = kapacitet != null ? (kapacitet - count).clamp(0, kapacitet) : null;
+                                    final textColor = slobodna == null
+                                        ? Colors.white70
+                                        : slobodna == 0
+                                            ? Colors.red
+                                            : slobodna <= 2
+                                                ? Colors.orange
+                                                : Colors.white70;
+                                    return Text(
+                                      displayText,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: textColor,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Builder(
-                            builder: (ctx) {
-                              final loading = isSlotLoading?.call(grad, vreme) ?? false;
-                              if (loading) {
-                                return const SizedBox(
-                                  height: 12,
-                                  width: 12,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                );
-                              }
-                              final count = getPutnikCount(grad, vreme);
-                              final kapacitet = getKapacitet?.call(grad, vreme);
-                              final displayText = kapacitet != null ? '$count ($kapacitet)' : '$count';
-                              final slobodna = kapacitet != null ? (kapacitet - count).clamp(0, kapacitet) : null;
-                              final textColor = selected
-                                  ? selectedPrimaryColor
-                                  : slobodna == null
-                                      ? Colors.white70
-                                      : slobodna == 0
-                                          ? Colors.red
-                                          : slobodna <= 2
-                                              ? Colors.orange
-                                              : Colors.white70;
-                              return Text(
-                                displayText,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: textColor,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
                   );
                 }).toList(),
               ),
@@ -346,4 +397,83 @@ class _PolazakRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SplitBackgroundPainter extends CustomPainter {
+  final List<Color> colors;
+  final BorderRadius borderRadius;
+
+  _SplitBackgroundPainter({
+    required this.colors,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = borderRadius.toRRect(rect);
+
+    final clipPath = Path()..addRRect(rrect);
+    canvas.clipPath(clipPath);
+
+    final sectionHeight = size.height / colors.length;
+
+    for (int i = 0; i < colors.length; i++) {
+      final paint = Paint()
+        ..color = colors[i].withValues(alpha: 0.16)
+        ..style = PaintingStyle.fill;
+
+      final path = Path()
+        ..moveTo(0, i * sectionHeight)
+        ..lineTo(size.width, i * sectionHeight)
+        ..lineTo(size.width, (i + 1) * sectionHeight)
+        ..lineTo(0, (i + 1) * sectionHeight)
+        ..close();
+
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class _SplitBorderPainter extends CustomPainter {
+  final List<Color> colors;
+  final BorderRadius borderRadius;
+
+  _SplitBorderPainter({
+    required this.colors,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = borderRadius.toRRect(rect);
+
+    final clipPath = Path()..addRRect(rrect);
+    canvas.clipPath(clipPath);
+
+    final sectionHeight = size.height / colors.length;
+
+    for (int i = 0; i < colors.length; i++) {
+      final paint = Paint()
+        ..color = colors[i].withValues(alpha: 0.75)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+
+      final path = Path()
+        ..moveTo(0, i * sectionHeight)
+        ..lineTo(size.width, i * sectionHeight)
+        ..lineTo(size.width, (i + 1) * sectionHeight)
+        ..lineTo(0, (i + 1) * sectionHeight)
+        ..close();
+
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
