@@ -70,8 +70,8 @@ class V3FinansijeService {
   }
 
   static DateTime? _naplacenoAt(Map<String, dynamic> row) {
-    // Koristimo created_at za stvarni datum uplate, ne updated_at
-    final ts = row['created_at'];
+    // Koristimo updated_at za datum poslednje dopune
+    final ts = row['updated_at'];
     return V3DateUtils.parseTs(ts?.toString());
   }
 
@@ -150,13 +150,13 @@ class V3FinansijeService {
 
     _sortByCreatedAtDesc(candidates);
     final latest = candidates.first;
-    
+
     // Ukupan iznos je ukupna suma uplaćena
     final ukupanIznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
-    
+
     // Poslednja dopuna se čuva u posebnoj koloni
     final poslednjaDopuna = (latest['poslednja_dopuna'] as num?)?.toDouble() ?? 0;
-    
+
     return V3NaplataInfo(
       isPaid: ukupanIznos > 0,
       ukupanIznos: ukupanIznos,
@@ -175,17 +175,24 @@ class V3FinansijeService {
     final candidates = _naplataRows().where((row) {
       final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
       if (rPutnikId != putnik.toLowerCase()) return false;
-      final createdAt = row['created_at']?.toString() ?? '';
-      return createdAt.isNotEmpty;
+      // Uzimamo samo redove sa stvarnom uplatom (iznos > 0 ili postoji naplaceno_by)
+      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
+      final naplacenoBy = row['naplaceno_by']?.toString();
+      return iznos > 0 || (naplacenoBy != null && naplacenoBy.isNotEmpty);
     }).toList();
     if (candidates.isEmpty) return null;
 
-    _sortByCreatedAtDesc(candidates);
+    // Sortiramo po updated_at da bismo dobili poslednju dopunu
+    candidates.sort((a, b) {
+      final aUpdatedAt = V3DateUtils.parseTs(a['updated_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bUpdatedAt = V3DateUtils.parseTs(b['updated_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bUpdatedAt.compareTo(aUpdatedAt);
+    });
     final latest = candidates.first;
 
     final ukupanIznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
     final poslednjaDopuna = (latest['poslednja_dopuna'] as num?)?.toDouble() ?? 0;
-    
+
     return V3NaplataInfo(
       isPaid: ukupanIznos > 0,
       ukupanIznos: ukupanIznos,
