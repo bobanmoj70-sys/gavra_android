@@ -9,6 +9,7 @@ import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 import 'v3_operativna_nedelja_service.dart';
+import 'v3_trenutna_dodela_slot_service.dart';
 import 'v3_vozac_service.dart';
 import 'zahtevi/v3_zahtev_domain_service.dart';
 import 'zahtevi/v3_zahtev_repository.dart';
@@ -159,12 +160,37 @@ class V3ZahtevService {
       koristiSekundarnu: koristiSekundarnu,
     );
     await createZahtev(zahtev, createdBy: updatedBy);
-    await _syncOperativnaAssignmentsForContext(
-      putnikId: putnikId,
-      datum: datum,
-      grad: targetGrad,
-      updatedBy: updatedBy,
+
+    // Proveri da li postoji slot dodela za ovo vreme - ako da, automatski kreiraj operativna red
+    final datumIso = _datumKey(datum);
+    final slotAssignments = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(
+      datumIso: datumIso,
     );
+    final slotKey = V3TrenutnaDodelaSlotService.slotKey(
+      datumIso: datumIso,
+      grad: targetGrad,
+      vreme: novoVreme,
+    );
+    final assignedVozacId = (slotAssignments[slotKey] ?? '').trim();
+
+    if (assignedVozacId.isNotEmpty) {
+      // Postoji slot dodela - kreiraj operativna red automatski
+      await V3OperativnaNedeljaService.createOrUpdateByVozac(
+        putnikId: putnikId,
+        datum: datumIso,
+        grad: targetGrad,
+        polazakAt: novoVreme,
+        createdBy: updatedBy,
+        koristiSekundarnu: koristiSekundarnu,
+      );
+    } else {
+      await _syncOperativnaAssignmentsForContext(
+        putnikId: putnikId,
+        datum: datum,
+        grad: targetGrad,
+        updatedBy: updatedBy,
+      );
+    }
   }
 
   static Future<void> otkaziPolazakPutnikaPoKontekstu({
