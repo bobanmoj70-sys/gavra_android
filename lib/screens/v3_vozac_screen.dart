@@ -1092,10 +1092,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
-        // Deaktiviraj sve prethodne aktivne slotove za ovog vozača
-        await V3TrenutnaDodelaSlotService.deactivateAllSlotsForVozac(
+        // Obriši sve prethodne slotove za ovog vozača
+        await V3TrenutnaDodelaSlotService.deleteAllSlotsForVozac(
           vozacId: vozacId,
-          updatedBy: vozacId,
         );
         // Aktiviraj selektovani slot
         await V3TrenutnaDodelaSlotService.activateSlot(

@@ -1,20 +1,16 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_time_utils.dart';
 
 class V3TrenutnaDodelaSlotService {
   V3TrenutnaDodelaSlotService._();
 
   static const String tableName = 'v3_trenutna_dodela_slot';
-  static const String statusAktivan = 'aktivan';
-  static const String statusNeaktivan = 'neaktivan';
   static const String colDatum = 'datum';
   static const String colGrad = 'grad';
   static const String colVreme = 'vreme';
   static const String colVozacId = 'vozac_v3_auth_id';
-  static const String colStatus = 'status';
   static const String colUpdatedBy = 'updated_by';
   static const String colWaypointsJson = 'waypoints_json';
 
@@ -53,10 +49,7 @@ class V3TrenutnaDodelaSlotService {
     String? vozacId,
     String? datumIso,
   }) async {
-    dynamic query = supabase
-        .from(tableName)
-        .select('$colDatum, $colGrad, $colVreme, $colVozacId, $colStatus')
-        .eq(colStatus, statusAktivan);
+    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVozacId');
 
     final trimmedVozacId = (vozacId ?? '').trim();
     if (trimmedVozacId.isNotEmpty) {
@@ -73,9 +66,6 @@ class V3TrenutnaDodelaSlotService {
     final result = <String, String>{};
     for (final row in (rows as List<dynamic>)) {
       final mapped = row as Map<String, dynamic>;
-      final status = mapped[colStatus]?.toString() ?? '';
-      if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
-
       final datum = _normalizeDatumIso(mapped[colDatum]?.toString());
       final grad = _normalizeGrad(mapped[colGrad]?.toString());
       final vreme = _normalizeVreme(mapped[colVreme]?.toString());
@@ -94,18 +84,11 @@ class V3TrenutnaDodelaSlotService {
     final vozac = vozacId.trim();
     if (vozac.isEmpty) return <Map<String, String>>[];
 
-    final rows = await supabase
-        .from(tableName)
-        .select('$colDatum, $colGrad, $colVreme, $colStatus')
-        .eq(colStatus, statusAktivan)
-        .eq(colVozacId, vozac);
+    final rows = await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme').eq(colVozacId, vozac);
 
     final result = <Map<String, String>>[];
     for (final row in (rows as List<dynamic>)) {
       final mapped = row as Map<String, dynamic>;
-      final status = mapped[colStatus]?.toString() ?? '';
-      if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
-
       final datum = _normalizeDatumIso(mapped[colDatum]?.toString());
       final grad = _normalizeGrad(mapped[colGrad]?.toString());
       final vreme = _normalizeVreme(mapped[colVreme]?.toString());
@@ -140,7 +123,6 @@ class V3TrenutnaDodelaSlotService {
       colGrad: gradNorm,
       colVreme: vremeNorm,
       colVozacId: vozac,
-      colStatus: statusNeaktivan,
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
@@ -167,7 +149,6 @@ class V3TrenutnaDodelaSlotService {
         .eq(colGrad, gradNorm)
         .eq(colVreme, vremeNorm)
         .eq(colVozacId, vozacIdNorm)
-        .eq(colStatus, statusAktivan)
         .select('datum');
 
     if (updatedRows.isEmpty) {
@@ -206,7 +187,6 @@ class V3TrenutnaDodelaSlotService {
         .eq(colGrad, gradNorm)
         .eq(colVreme, vremeNorm)
         .eq(colVozacId, vozacIdNorm)
-        .eq(colStatus, statusAktivan)
         .select('datum');
 
     if (updatedRows.isEmpty) {
@@ -234,8 +214,7 @@ class V3TrenutnaDodelaSlotService {
         .eq(colDatum, datum)
         .eq(colGrad, gradNorm)
         .eq(colVreme, vremeNorm)
-        .eq(colVozacId, vozacIdNorm)
-        .eq(colStatus, statusAktivan);
+        .eq(colVozacId, vozacIdNorm);
 
     if ((rows as List<dynamic>).isEmpty) return;
 
@@ -265,23 +244,17 @@ class V3TrenutnaDodelaSlotService {
     await supabase.from(tableName).delete().eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
   }
 
-  static Future<void> deactivateSlot({
+  static Future<void> deleteSlot({
     required String datumIso,
     required String grad,
     required String vreme,
-    String? updatedBy,
   }) async {
     final datum = _normalizeDatumIso(datumIso);
     final gradNorm = _normalizeGrad(grad);
     final vremeNorm = _normalizeVreme(vreme);
     if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty) return;
 
-    final payload = <String, dynamic>{
-      colStatus: statusNeaktivan,
-      if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
-    };
-
-    await supabase.from(tableName).update(payload).eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
+    await supabase.from(tableName).delete().eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
   }
 
   static Future<void> activateSlot({
@@ -298,32 +271,23 @@ class V3TrenutnaDodelaSlotService {
     if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return;
 
     final payload = <String, dynamic>{
-      colStatus: statusAktivan,
+      colDatum: datum,
+      colGrad: gradNorm,
+      colVreme: vremeNorm,
+      colVozacId: vozac,
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
-    await supabase
-        .from(tableName)
-        .update(payload)
-        .eq(colDatum, datum)
-        .eq(colGrad, gradNorm)
-        .eq(colVreme, vremeNorm)
-        .eq(colVozacId, vozac);
+    await supabase.from(tableName).upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId');
   }
 
-  static Future<void> deactivateAllSlotsForVozac({
+  static Future<void> deleteAllSlotsForVozac({
     required String vozacId,
-    String? updatedBy,
   }) async {
     final vozac = vozacId.trim();
     if (vozac.isEmpty) return;
 
-    final payload = <String, dynamic>{
-      colStatus: statusNeaktivan,
-      if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
-    };
-
-    await supabase.from(tableName).update(payload).eq(colVozacId, vozac).eq(colStatus, statusAktivan);
+    await supabase.from(tableName).delete().eq(colVozacId, vozac);
   }
 
   static Future<List<Map<String, String>>> loadAllSlotsForVozac({
@@ -332,8 +296,7 @@ class V3TrenutnaDodelaSlotService {
     final vozac = vozacId.trim();
     if (vozac.isEmpty) return <Map<String, String>>[];
 
-    final rows =
-        await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colStatus').eq(colVozacId, vozac);
+    final rows = await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme').eq(colVozacId, vozac);
 
     final result = <Map<String, String>>[];
     for (final row in (rows as List<dynamic>)) {
@@ -356,7 +319,7 @@ class V3TrenutnaDodelaSlotService {
   static Future<Map<String, String>> loadAllVozacBySlotKey({
     String? datumIso,
   }) async {
-    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVozacId, $colStatus');
+    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVozacId');
 
     final trimmedDatum = _normalizeDatumIso(datumIso);
     if (trimmedDatum.isNotEmpty) {

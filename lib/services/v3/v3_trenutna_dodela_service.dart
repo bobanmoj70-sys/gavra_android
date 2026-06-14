@@ -1,23 +1,19 @@
 import '../../globals.dart';
-import '../../utils/v3_status_policy.dart';
 
 class V3TrenutnaDodelaService {
   V3TrenutnaDodelaService._();
 
   static const String tableName = 'v3_trenutna_dodela';
-  static const String statusAktivan = 'aktivan';
   static const String _colTerminId = 'termin_id';
   static const String _colPutnikId = 'putnik_v3_auth_id';
   static const String colVozacId = 'vozac_v3_auth_id';
-  static const String _colStatus = 'status';
   static const String _colUpdatedBy = 'updated_by';
 
   static Future<Map<String, String>> loadActiveVozacByTerminId({
     String? putnikId,
     String? vozacId,
   }) async {
-    dynamic query =
-        supabase.from(tableName).select('$_colTerminId, $colVozacId, $_colStatus').eq(_colStatus, statusAktivan);
+    dynamic query = supabase.from(tableName).select('$_colTerminId, $colVozacId');
 
     final trimmedPutnikId = (putnikId ?? '').trim();
     if (trimmedPutnikId.isNotEmpty) {
@@ -34,9 +30,6 @@ class V3TrenutnaDodelaService {
     final result = <String, String>{};
     for (final row in (rows as List<dynamic>)) {
       final mapped = row as Map<String, dynamic>;
-      final status = mapped[_colStatus]?.toString() ?? '';
-      if (!V3StatusPolicy.isDodelaAktivna(status)) continue;
-
       final terminId = mapped[_colTerminId]?.toString().trim() ?? '';
       final assignedVozacId = mapped[colVozacId]?.toString().trim() ?? '';
       if (terminId.isEmpty || assignedVozacId.isEmpty) continue;
@@ -68,7 +61,6 @@ class V3TrenutnaDodelaService {
       _colTerminId: terminId.trim(),
       _colPutnikId: putnikId.trim(),
       colVozacId: vozacId.trim(),
-      _colStatus: statusAktivan,
       if ((updatedBy ?? '').trim().isNotEmpty) _colUpdatedBy: updatedBy!.trim(),
     };
 
@@ -92,7 +84,6 @@ class V3TrenutnaDodelaService {
         _colTerminId: terminId,
         _colPutnikId: putnikId,
         colVozacId: vozacId,
-        _colStatus: statusAktivan,
         if (actor.isNotEmpty) _colUpdatedBy: actor,
       });
     }

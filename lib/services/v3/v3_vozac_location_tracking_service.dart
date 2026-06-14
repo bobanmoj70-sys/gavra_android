@@ -179,14 +179,13 @@ class V3VozacLocationTrackingService {
 
     if (_activeDatumIso.isNotEmpty && _activeGrad.isNotEmpty && _activeVreme.isNotEmpty) {
       try {
-        await V3TrenutnaDodelaSlotService.deactivateSlot(
+        await V3TrenutnaDodelaSlotService.deleteSlot(
           datumIso: _activeDatumIso,
           grad: _activeGrad,
           vreme: _activeVreme,
-          updatedBy: vozacIdToClean,
         );
       } catch (e) {
-        debugPrint('[V3VozacLocationTrackingService] deactivateSlot error: $e');
+        debugPrint('[V3VozacLocationTrackingService] deleteSlot error: $e');
       }
     }
   }
