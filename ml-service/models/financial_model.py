@@ -1,5 +1,5 @@
 """
-Financial ML Model - Random Forest
+Financial ML Model - Ensemble (Random Forest + XGBoost)
 Uči isključivo iz Supabase podataka (v3_finansije)
 Bez pre-trained znanja, čisti learning od nule
 """
@@ -15,6 +15,12 @@ import config
 from data.features import prepare_ml_features
 from models.learning_memory import LearningMemory
 from models.auto_features import AutoFeatureDiscovery
+try:
+    from xgboost import XGBRegressor, XGBClassifier
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("[WARN] XGBoost not available, using only Random Forest")
 
 
 class FinancialMLModel:
@@ -26,9 +32,11 @@ class FinancialMLModel:
         from models.knowledge_graph import KnowledgeGraph
         self.knowledge_graph = KnowledgeGraph()
 
-        # Modeli - prazne glave, sve se uci iz podataka
-        self.amount_model = None
-        self.type_model = None
+        # Modeli - ensemble Random Forest + XGBoost
+        self.amount_rf = None
+        self.amount_xgb = None
+        self.type_rf = None
+        self.type_xgb = None
         self.scaler = StandardScaler()
         self.feature_columns = None
         self.is_amount_trained = False
@@ -216,20 +224,40 @@ class FinancialMLModel:
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
 
-        # Inicijalizuj modele (prazne glave)
-        self.amount_model = RandomForestRegressor(
+        # Inicijalizuj ensemble modele (Random Forest + XGBoost)
+        self.amount_rf = RandomForestRegressor(
             n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
         )
-        self.type_model = RandomForestClassifier(
+        self.type_rf = RandomForestClassifier(
             n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
         )
 
-        # Treniraj amount model
-        print("\n[1/2] Training Amount Prediction Model...")
-        self.amount_model.fit(X_train_scaled, y_train_amount)
+        if XGBOOST_AVAILABLE:
+            self.amount_xgb = XGBRegressor(
+                n_estimators=100, max_depth=10, learning_rate=0.1, random_state=42, n_jobs=-1
+            )
+            self.type_xgb = XGBClassifier(
+                n_estimators=100, max_depth=10, learning_rate=0.1, random_state=42, n_jobs=-1
+            )
+            print("[Ensemble] Using Random Forest + XGBoost")
+        else:
+            print("[Ensemble] Using Random Forest only (XGBoost not available)")
+
+        # Treniraj amount model (ensemble)
+        print("\n[1/2] Training Amount Prediction Model (Ensemble)...")
+        self.amount_rf.fit(X_train_scaled, y_train_amount)
+        
+        if XGBOOST_AVAILABLE:
+            self.amount_xgb.fit(X_train_scaled, y_train_amount)
+            # Ensemble predikcija - prosečna vrednost
+            y_pred_rf = self.amount_rf.predict(X_test_scaled)
+            y_pred_xgb = self.amount_xgb.predict(X_test_scaled)
+            y_pred_amount = (y_pred_rf + y_pred_xgb) / 2
+        else:
+            y_pred_amount = self.amount_rf.predict(X_test_scaled)
+        
         self.is_amount_trained = True
 
-        y_pred_amount = self.amount_model.predict(X_test_scaled)
         mse = mean_squared_error(y_test_amount, y_pred_amount)
         r2 = r2_score(y_test_amount, y_pred_amount)
 
@@ -237,10 +265,17 @@ class FinancialMLModel:
         print(f"  R²: {self._safe_float(r2)}")
         print(f"  Avg Prediction Error: {np.sqrt(mse):.2f}")
 
-        # Feature importance - SAMI otkrivamo sta je bitno
+        # Feature importance - kombinujemo iz oba modela
+        if XGBOOST_AVAILABLE:
+            rf_importance = self.amount_rf.feature_importances_
+            xgb_importance = self.amount_xgb.feature_importances_
+            combined_importance = (rf_importance + xgb_importance) / 2
+        else:
+            combined_importance = self.amount_rf.feature_importances_
+
         importance = pd.DataFrame({
             'feature': self.feature_columns,
-            'importance': self.amount_model.feature_importances_
+            'importance': combined_importance
         }).sort_values('importance', ascending=False)
         top_features = importance.head(10)
         print("\nTop 10 Most Important Features (auto-discovered):")
@@ -249,13 +284,23 @@ class FinancialMLModel:
         # Pamti sta smo naucili
         feature_imp_dict = dict(zip(top_features['feature'], top_features['importance']))
 
-        # Treniraj type model
+        # Treniraj type model (ensemble)
         n_classes = y_train_type.nunique()
         if n_classes >= 2 and self.type_target_col:
-            print("\n[2/2] Training Type Prediction Model...")
-            self.type_model.fit(X_train_scaled, y_train_type)
+            print("\n[2/2] Training Type Prediction Model (Ensemble)...")
+            self.type_rf.fit(X_train_scaled, y_train_type)
+            
+            if XGBOOST_AVAILABLE:
+                self.type_xgb.fit(X_train_scaled, y_train_type)
+                # Ensemble predikcija - soft voting
+                proba_rf = self.type_rf.predict_proba(X_test_scaled)
+                proba_xgb = self.type_xgb.predict_proba(X_test_scaled)
+                avg_proba = (proba_rf + proba_xgb) / 2
+                y_pred_type = np.argmax(avg_proba, axis=1)
+            else:
+                y_pred_type = self.type_rf.predict(X_test_scaled)
+            
             self.is_type_trained = True
-            y_pred_type = self.type_model.predict(X_test_scaled)
             print("\nClassification Report:")
             print(classification_report(y_test_type, y_pred_type))
         else:
@@ -298,7 +343,7 @@ class FinancialMLModel:
     
     def predict_amount(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Predikcija iznosa za nove transakcije
+        Predikcija iznosa za nove transakcije (ensemble)
         Model koristi naučeno znanje isključivo iz Supabase podataka
         """
         if not self.is_amount_trained:
@@ -313,9 +358,15 @@ class FinancialMLModel:
         
         features = features[self.feature_columns]
         
-        # Scale i predict
+        # Scale i predict (ensemble)
         features_scaled = self.scaler.transform(features)
-        predictions = self.amount_model.predict(features_scaled)
+        
+        if XGBOOST_AVAILABLE and self.amount_xgb is not None:
+            pred_rf = self.amount_rf.predict(features_scaled)
+            pred_xgb = self.amount_xgb.predict(features_scaled)
+            predictions = (pred_rf + pred_xgb) / 2
+        else:
+            predictions = self.amount_rf.predict(features_scaled)
         
         results = df.copy()
         results['predicted_amount'] = predictions
@@ -324,7 +375,7 @@ class FinancialMLModel:
     
     def predict_type(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Predikcija tipa (prihod/rashod)
+        Predikcija tipa (prihod/rashod) - ensemble
         """
         if not self.is_type_trained:
             raise ValueError("Type model must be trained before prediction — need both 'prihod' and 'rashod' data")
@@ -338,10 +389,19 @@ class FinancialMLModel:
         
         features = features[self.feature_columns]
         
-        # Scale i predict
+        # Scale i predict (ensemble)
         features_scaled = self.scaler.transform(features)
-        predictions = self.type_model.predict(features_scaled)
-        probabilities = self.type_model.predict_proba(features_scaled)
+        
+        if XGBOOST_AVAILABLE and self.type_xgb is not None:
+            # Soft voting ensemble
+            proba_rf = self.type_rf.predict_proba(features_scaled)
+            proba_xgb = self.type_xgb.predict_proba(features_scaled)
+            avg_proba = (proba_rf + proba_xgb) / 2
+            predictions = np.argmax(avg_proba, axis=1)
+            probabilities = avg_proba
+        else:
+            predictions = self.type_rf.predict(features_scaled)
+            probabilities = self.type_rf.predict_proba(features_scaled)
         
         results = df.copy()
         results['predicted_type'] = ['prihod' if p == 1 else 'rashod' for p in predictions]
@@ -417,20 +477,32 @@ class FinancialMLModel:
         }
     
     def save(self):
-        """Čuva model u fajl sistem"""
+        """Čuva ensemble modele u fajl sistem"""
         os.makedirs(config.MODEL_DIR, exist_ok=True)
-        joblib.dump(self.amount_model, f"{config.MODEL_DIR}/financial_amount_model.pkl")
-        joblib.dump(self.type_model, f"{config.MODEL_DIR}/financial_type_model.pkl")
+        joblib.dump(self.amount_rf, f"{config.MODEL_DIR}/financial_amount_rf.pkl")
+        joblib.dump(self.type_rf, f"{config.MODEL_DIR}/financial_type_rf.pkl")
+        if XGBOOST_AVAILABLE and self.amount_xgb is not None:
+            joblib.dump(self.amount_xgb, f"{config.MODEL_DIR}/financial_amount_xgb.pkl")
+        if XGBOOST_AVAILABLE and self.type_xgb is not None:
+            joblib.dump(self.type_xgb, f"{config.MODEL_DIR}/financial_type_xgb.pkl")
         joblib.dump(self.scaler, f"{config.MODEL_DIR}/financial_scaler.pkl")
         joblib.dump(self.feature_columns, f"{config.MODEL_DIR}/financial_features.pkl")
         joblib.dump({'is_amount_trained': self.is_amount_trained, 'is_type_trained': self.is_type_trained},
                     f"{config.MODEL_DIR}/financial_flags.pkl")
-        print(f"\nModels saved to {config.MODEL_DIR}")
+        print(f"\nEnsemble models saved to {config.MODEL_DIR}")
 
     def load(self):
-        """Učitava model iz fajl sistema"""
-        self.amount_model = joblib.load(f"{config.MODEL_DIR}/financial_amount_model.pkl")
-        self.type_model = joblib.load(f"{config.MODEL_DIR}/financial_type_model.pkl")
+        """Učitava ensemble modele iz fajl sistema"""
+        self.amount_rf = joblib.load(f"{config.MODEL_DIR}/financial_amount_rf.pkl")
+        self.type_rf = joblib.load(f"{config.MODEL_DIR}/financial_type_rf.pkl")
+        try:
+            if XGBOOST_AVAILABLE:
+                self.amount_xgb = joblib.load(f"{config.MODEL_DIR}/financial_amount_xgb.pkl")
+                self.type_xgb = joblib.load(f"{config.MODEL_DIR}/financial_type_xgb.pkl")
+        except FileNotFoundError:
+            print("[WARN] XGBoost models not found, using only Random Forest")
+            self.amount_xgb = None
+            self.type_xgb = None
         self.scaler = joblib.load(f"{config.MODEL_DIR}/financial_scaler.pkl")
         self.feature_columns = joblib.load(f"{config.MODEL_DIR}/financial_features.pkl")
         try:
@@ -440,7 +512,7 @@ class FinancialMLModel:
         except FileNotFoundError:
             self.is_amount_trained = True
             self.is_type_trained = True
-        print(f"\nModels loaded from {config.MODEL_DIR}")
+        print(f"\nEnsemble models loaded from {config.MODEL_DIR}")
 
 if __name__ == "__main__":
     # Test training

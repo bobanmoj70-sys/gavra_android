@@ -1,5 +1,5 @@
 """
-Gorivo ML Model - Random Forest
+Gorivo ML Model - Ensemble (Random Forest + XGBoost)
 Uci iskljucivo iz Supabase v3_gorivo podataka
 """
 import pandas as pd
@@ -13,12 +13,19 @@ import os
 import config
 from models.learning_memory import LearningMemory
 from models.auto_features import AutoFeatureDiscovery
+try:
+    from xgboost import XGBRegressor
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("[WARN] XGBoost not available, using only Random Forest")
 
 
 class GorivoMLModel:
     def __init__(self):
         self.is_trained = False
-        self.model = None
+        self.model_rf = None
+        self.model_xgb = None
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
@@ -195,21 +202,43 @@ class GorivoMLModel:
         else:
             X_train, X_test, y_train, y_test = X_scaled, X_scaled, y, y
             print(f"[WARN] Samo {n_samples} zapisa — evaluacija na trening setu")
-        self.model = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
-        self.model.fit(X_train, y_train)
-        y_pred_train = self.model.predict(X_train)
+        
+        # Inicijalizuj ensemble modele
+        self.model_rf = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
+        
+        if XGBOOST_AVAILABLE:
+            self.model_xgb = XGBRegressor(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
+            print("[Ensemble] Using Random Forest + XGBoost")
+        else:
+            print("[Ensemble] Using Random Forest only (XGBoost not available)")
+        
+        # Treniraj ensemble
+        self.model_rf.fit(X_train, y_train)
+        
+        if XGBOOST_AVAILABLE:
+            self.model_xgb.fit(X_train, y_train)
+            # Ensemble predikcija
+            y_pred_rf = self.model_rf.predict(X_test)
+            y_pred_xgb = self.model_xgb.predict(X_test)
+            y_pred_test = (y_pred_rf + y_pred_xgb) / 2
+        else:
+            y_pred_test = self.model_rf.predict(X_test)
+        
+        y_pred_train = self.model_rf.predict(X_train)
         train_r2 = r2_score(y_train, y_pred_train)
         train_mae = mean_absolute_error(y_train, y_pred_train)
+        
         metrics = {'train_r2': self._safe_float(train_r2), 'train_mae': self._safe_float(train_mae),
                    'feature_count': len(X.columns), 'samples': n_samples, 'eval_on_train': not eval_split, 'tables_used': len(data)}
+        
         if eval_split:
-            y_pred_test = self.model.predict(X_test)
             metrics['test_r2'] = self._safe_float(r2_score(y_test, y_pred_test))
             metrics['test_mae'] = self._safe_float(mean_absolute_error(y_test, y_pred_test))
             metrics['r2_score'] = metrics['test_r2']
             print(f"Test R²: {metrics['test_r2']:.3f} | Test MAE: {metrics['test_mae']:.4f}")
         else:
             metrics['r2_score'] = self._safe_float(train_r2)
+        
         print(f"Train R²: {train_r2:.3f} | Train MAE: {train_mae:.4f}")
         print(f"Samples: {n_samples} | Features: {len(X.columns)} | Tables: {len(data)}")
         print("=" * 50)
@@ -220,22 +249,37 @@ class GorivoMLModel:
         # ZABORAVI stare tabele koje vise ne postoje
         self.memory.forget_old(list(data.keys()))
 
-        # PAMTI sta je naucio iz SVIH tabela
+        # PAMTI sta je naucio iz SVIH tabela - kombinujemo feature importance
+        if XGBOOST_AVAILABLE and self.model_xgb is not None:
+            rf_importance = self.model_rf.feature_importances_
+            xgb_importance = self.model_xgb.feature_importances_
+            combined_importance = (rf_importance + xgb_importance) / 2
+        else:
+            combined_importance = self.model_rf.feature_importances_
+        
         sources = {tbl: {"columns": list(df.columns), "rows": len(df)} for tbl, df in data.items()}
-        feature_imp = dict(zip(X.columns, self.model.feature_importances_)) if self.model else {}
+        feature_imp = dict(zip(X.columns, combined_importance)) if self.model_rf else {}
         self.memory.record_training(sources, feature_imp, metrics)
         print("  [Memory] Gorivo model zapamtio ucenje")
 
         return metrics
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Predviđa urgency score i dana do praznog rezervoara"""
+        """Predviđa urgency score i dana do praznog rezervoara (ensemble)"""
         if not self.is_trained:
             raise ValueError("Model not trained")
         features = self._extract_features(df)
         X = features.select_dtypes(include=[np.number]).fillna(0)
         X_scaled = self.scaler.transform(X)
-        pred = self.model.predict(X_scaled)
+        
+        # Ensemble predikcija
+        if XGBOOST_AVAILABLE and self.model_xgb is not None:
+            pred_rf = self.model_rf.predict(X_scaled)
+            pred_xgb = self.model_xgb.predict(X_scaled)
+            pred = (pred_rf + pred_xgb) / 2
+        else:
+            pred = self.model_rf.predict(X_scaled)
+        
         df = df.copy()
         df['urgency_score'] = pred.clip(0, 3).round(3)
         # Dana do praznog — uči iz podataka (median potrošnje flote)
@@ -287,15 +331,23 @@ class GorivoMLModel:
     def save(self):
         if not self.is_trained:
             return
-        joblib.dump(self.model, f"{self.model_dir}/gorivo_model.pkl")
+        joblib.dump(self.model_rf, f"{self.model_dir}/gorivo_model_rf.pkl")
+        if XGBOOST_AVAILABLE and self.model_xgb is not None:
+            joblib.dump(self.model_xgb, f"{self.model_dir}/gorivo_model_xgb.pkl")
         joblib.dump(self.scaler, f"{self.model_dir}/gorivo_scaler.pkl")
-        print("[OK] Gorivo model saved")
+        print("[OK] Gorivo ensemble model saved")
 
     def load(self):
         try:
-            self.model = joblib.load(f"{self.model_dir}/gorivo_model.pkl")
+            self.model_rf = joblib.load(f"{self.model_dir}/gorivo_model_rf.pkl")
+            try:
+                if XGBOOST_AVAILABLE:
+                    self.model_xgb = joblib.load(f"{self.model_dir}/gorivo_model_xgb.pkl")
+            except FileNotFoundError:
+                print("[WARN] XGBoost model not found, using only Random Forest")
+                self.model_xgb = None
             self.scaler = joblib.load(f"{self.model_dir}/gorivo_scaler.pkl")
             self.is_trained = True
-            print("[OK] Gorivo model loaded")
+            print("[OK] Gorivo ensemble model loaded")
         except FileNotFoundError:
             print("[MISSING] No saved gorivo model")

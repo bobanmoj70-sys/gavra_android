@@ -1,5 +1,5 @@
 """
-Vehicle ML Model - Random Forest
+Vehicle ML Model - Ensemble (Random Forest + XGBoost)
 Uci iskljucivo iz Supabase v3_vozila podataka
 """
 import pandas as pd
@@ -13,12 +13,19 @@ import os
 import config
 from models.learning_memory import LearningMemory
 from models.auto_features import AutoFeatureDiscovery
+try:
+    from xgboost import XGBRegressor
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("[WARN] XGBoost not available, using only Random Forest")
 
 
 class VoziloMLModel:
     def __init__(self):
         self.is_trained = False
-        self.health_model = None
+        self.health_rf = None
+        self.health_xgb = None
         self.scaler = None
         self.le_marka = None
         self.le_model = None
@@ -232,22 +239,44 @@ class VoziloMLModel:
         else:
             X_train, X_test, y_train, y_test = X_scaled, X_scaled, y, y
             print(f"[WARN] Samo {n_samples} vozila — evaluacija na trening setu")
-        self.health_model = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
-        self.health_model.fit(X_train, y_train)
-        y_pred_train = self.health_model.predict(X_train)
+        
+        # Inicijalizuj ensemble modele
+        self.health_rf = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
+        
+        if XGBOOST_AVAILABLE:
+            self.health_xgb = XGBRegressor(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
+            print("[Ensemble] Using Random Forest + XGBoost")
+        else:
+            print("[Ensemble] Using Random Forest only (XGBoost not available)")
+        
+        # Treniraj ensemble
+        self.health_rf.fit(X_train, y_train)
+        
+        if XGBOOST_AVAILABLE:
+            self.health_xgb.fit(X_train, y_train)
+            # Ensemble predikcija
+            y_pred_rf = self.health_rf.predict(X_test)
+            y_pred_xgb = self.health_xgb.predict(X_test)
+            y_pred_test = (y_pred_rf + y_pred_xgb) / 2
+        else:
+            y_pred_test = self.health_rf.predict(X_test)
+        
+        y_pred_train = self.health_rf.predict(X_train)
         train_r2 = r2_score(y_train, y_pred_train)
         train_mae = mean_absolute_error(y_train, y_pred_train)
+        
         metrics = {'train_r2': self._safe_float(train_r2), 'train_mae': self._safe_float(train_mae),
                    'feature_count': len(self.feature_columns), 'samples': n_samples,
                    'eval_on_train': not eval_split, 'tables_used': len(data)}
+        
         if eval_split:
-            y_pred_test = self.health_model.predict(X_test)
             metrics['test_r2'] = self._safe_float(r2_score(y_test, y_pred_test))
             metrics['test_mae'] = self._safe_float(mean_absolute_error(y_test, y_pred_test))
             metrics['r2_score'] = metrics['test_r2']
             print(f"Test R²: {metrics['test_r2']:.3f} | Test MAE: {metrics['test_mae']:.4f}")
         else:
             metrics['r2_score'] = self._safe_float(train_r2)
+        
         print(f"Train R²: {train_r2:.3f} | Train MAE: {train_mae:.4f}")
         print(f"Samples: {n_samples} | Features: {len(self.feature_columns)} | Tables: {len(data)}")
         print("=" * 50)
@@ -258,21 +287,36 @@ class VoziloMLModel:
         # ZABORAVI stare tabele koje vise ne postoje
         self.memory.forget_old(list(data.keys()))
 
-        # PAMTI sta je naucio iz SVIH tabela
+        # PAMTI sta je naucio iz SVIH tabela - kombinujemo feature importance
+        if XGBOOST_AVAILABLE and self.health_xgb is not None:
+            rf_importance = self.health_rf.feature_importances_
+            xgb_importance = self.health_xgb.feature_importances_
+            combined_importance = (rf_importance + xgb_importance) / 2
+        else:
+            combined_importance = self.health_rf.feature_importances_
+        
         sources = {tbl: {"columns": list(df.columns), "rows": len(df)} for tbl, df in data.items()}
-        feature_imp = dict(zip(self.feature_columns, self.health_model.feature_importances_)) if self.health_model else {}
+        feature_imp = dict(zip(self.feature_columns, combined_importance)) if self.health_rf else {}
         self.memory.record_training(sources, feature_imp, metrics)
         print("  [Memory] Vozilo model zapamtio ucenje")
 
         return metrics
 
     def predict_health(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Predviđa health risk score za svako vozilo"""
+        """Predviđa health risk score za svako vozilo (ensemble)"""
         if not self.is_trained:
             raise ValueError("Model not trained")
         features = self._extract_features(df)
         X = self.scaler.transform(features)
-        pred = self.health_model.predict(X)
+        
+        # Ensemble predikcija
+        if XGBOOST_AVAILABLE and self.health_xgb is not None:
+            pred_rf = self.health_rf.predict(X)
+            pred_xgb = self.health_xgb.predict(X)
+            pred = (pred_rf + pred_xgb) / 2
+        else:
+            pred = self.health_rf.predict(X)
+        
         df = df.copy()
         df['health_risk_score'] = pred
         return df
@@ -318,21 +362,29 @@ class VoziloMLModel:
     def save(self):
         if not self.is_trained:
             return
-        joblib.dump(self.health_model, f"{self.model_dir}/vozilo_health_model.pkl")
+        joblib.dump(self.health_rf, f"{self.model_dir}/vozilo_health_rf.pkl")
+        if XGBOOST_AVAILABLE and self.health_xgb is not None:
+            joblib.dump(self.health_xgb, f"{self.model_dir}/vozilo_health_xgb.pkl")
         joblib.dump(self.scaler, f"{self.model_dir}/vozilo_scaler.pkl")
         joblib.dump(self.le_marka, f"{self.model_dir}/vozilo_le_marka.pkl")
         joblib.dump(self.le_model, f"{self.model_dir}/vozilo_le_model.pkl")
         joblib.dump(self.feature_columns, f"{self.model_dir}/vozilo_features.pkl")
-        print("[OK] Vehicle model saved")
+        print("[OK] Vehicle ensemble model saved")
 
     def load(self):
         try:
-            self.health_model = joblib.load(f"{self.model_dir}/vozilo_health_model.pkl")
+            self.health_rf = joblib.load(f"{self.model_dir}/vozilo_health_rf.pkl")
+            try:
+                if XGBOOST_AVAILABLE:
+                    self.health_xgb = joblib.load(f"{self.model_dir}/vozilo_health_xgb.pkl")
+            except FileNotFoundError:
+                print("[WARN] XGBoost model not found, using only Random Forest")
+                self.health_xgb = None
             self.scaler = joblib.load(f"{self.model_dir}/vozilo_scaler.pkl")
             self.le_marka = joblib.load(f"{self.model_dir}/vozilo_le_marka.pkl")
             self.le_model = joblib.load(f"{self.model_dir}/vozilo_le_model.pkl")
             self.feature_columns = joblib.load(f"{self.model_dir}/vozilo_features.pkl")
             self.is_trained = True
-            print("[OK] Vehicle model loaded")
+            print("[OK] Vehicle ensemble model loaded")
         except FileNotFoundError:
             print("[MISSING] No saved vehicle model")

@@ -1,5 +1,5 @@
 """
-Putnik ML Model - Random Forest
+Putnik ML Model - Ensemble (Random Forest + XGBoost)
 Uci iskljucivo iz Supabase v3_finansije i v3_zahtevi podataka
 """
 import pandas as pd
@@ -13,13 +13,21 @@ import os
 import config
 from models.learning_memory import LearningMemory
 from models.auto_features import AutoFeatureDiscovery
+try:
+    from xgboost import XGBRegressor, XGBClassifier
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    print("[WARN] XGBoost not available, using only Random Forest")
 
 
 class PutnikMLModel:
     def __init__(self):
         self.is_trained = False
-        self.payment_model = None
-        self.ltv_model = None
+        self.payment_rf = None
+        self.payment_xgb = None
+        self.ltv_rf = None
+        self.ltv_xgb = None
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
@@ -247,16 +255,44 @@ class PutnikMLModel:
             _, _, y_train_ltv, y_test_ltv = X_scaled, X_scaled, y_ltv, y_ltv
             print(f"[WARN] Samo {n_samples} putnika — evaluacija na trening setu")
         
-        # Churn model
-        self.payment_model = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
-        self.payment_model.fit(X_train, y_train_churn)
-        y_pred_churn = self.payment_model.predict(X_test)
+        # Inicijalizuj ensemble modele
+        self.payment_rf = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
+        self.ltv_rf = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
+        
+        if XGBOOST_AVAILABLE:
+            self.payment_xgb = XGBClassifier(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
+            self.ltv_xgb = XGBRegressor(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
+            print("[Ensemble] Using Random Forest + XGBoost")
+        else:
+            print("[Ensemble] Using Random Forest only (XGBoost not available)")
+        
+        # Churn model (ensemble)
+        self.payment_rf.fit(X_train, y_train_churn)
+        
+        if XGBOOST_AVAILABLE:
+            self.payment_xgb.fit(X_train, y_train_churn)
+            # Ensemble predikcija - soft voting
+            proba_rf = self.payment_rf.predict_proba(X_test)
+            proba_xgb = self.payment_xgb.predict_proba(X_test)
+            avg_proba = (proba_rf + proba_xgb) / 2
+            y_pred_churn = np.argmax(avg_proba, axis=1)
+        else:
+            y_pred_churn = self.payment_rf.predict(X_test)
+        
         churn_auc = roc_auc_score(y_test_churn, y_pred_churn) if eval_split else 0.0
         
-        # LTV model
-        self.ltv_model = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
-        self.ltv_model.fit(X_train, y_train_ltv)
-        y_pred_ltv = self.ltv_model.predict(X_test)
+        # LTV model (ensemble)
+        self.ltv_rf.fit(X_train, y_train_ltv)
+        
+        if XGBOOST_AVAILABLE:
+            self.ltv_xgb.fit(X_train, y_train_ltv)
+            # Ensemble predikcija
+            y_pred_rf = self.ltv_rf.predict(X_test)
+            y_pred_xgb = self.ltv_xgb.predict(X_test)
+            y_pred_ltv = (y_pred_rf + y_pred_xgb) / 2
+        else:
+            y_pred_ltv = self.ltv_rf.predict(X_test)
+        
         ltv_r2 = r2_score(y_test_ltv, y_pred_ltv) if eval_split else 0.0
         
         metrics = {
@@ -278,16 +314,23 @@ class PutnikMLModel:
         # ZABORAVI stare tabele koje vise ne postoje
         self.memory.forget_old(list(data.keys()))
 
-        # PAMTI sta je naucio iz SVIH tabela
+        # PAMTI sta je naucio iz SVIH tabela - kombinujemo feature importance
+        if XGBOOST_AVAILABLE and self.payment_xgb is not None:
+            rf_importance = self.payment_rf.feature_importances_
+            xgb_importance = self.payment_xgb.feature_importances_
+            combined_importance = (rf_importance + xgb_importance) / 2
+        else:
+            combined_importance = self.payment_rf.feature_importances_
+        
         sources = {tbl: {"columns": list(df.columns), "rows": len(df)} for tbl, df in data.items()}
-        feature_imp = dict(zip(X.columns, self.payment_model.feature_importances_)) if self.payment_model else {}
+        feature_imp = dict(zip(X.columns, combined_importance)) if self.payment_rf else {}
         self.memory.record_training(sources, feature_imp, metrics)
         print("  [Memory] Putnik model zapamtio ucenje")
 
         return metrics
 
     def analyze_passengers(self, data: dict) -> dict:
-        """Analizira putnike sa churn + LTV predikcijom"""
+        """Analizira putnike sa churn + LTV predikcijom (ensemble)"""
         if not self.is_trained:
             raise ValueError("Model not trained")
         
@@ -305,13 +348,26 @@ class PutnikMLModel:
         X = rfm[feature_cols].fillna(0)
         X_scaled = self.scaler.transform(X)
         
-        # Churn predikcija
-        proba = self.payment_model.predict_proba(X_scaled)
-        churn_proba = proba[:, 1] if proba.shape[1] > 1 else np.zeros(len(proba))
+        # Churn predikcija (ensemble)
+        if XGBOOST_AVAILABLE and self.payment_xgb is not None:
+            proba_rf = self.payment_rf.predict_proba(X_scaled)
+            proba_xgb = self.payment_xgb.predict_proba(X_scaled)
+            avg_proba = (proba_rf + proba_xgb) / 2
+            churn_proba = avg_proba[:, 1] if avg_proba.shape[1] > 1 else np.zeros(len(avg_proba))
+        else:
+            proba = self.payment_rf.predict_proba(X_scaled)
+            churn_proba = proba[:, 1] if proba.shape[1] > 1 else np.zeros(len(proba))
+        
         rfm['churn_risk'] = churn_proba
         
-        # LTV predikcija
-        ltv_pred = self.ltv_model.predict(X_scaled)
+        # LTV predikcija (ensemble)
+        if XGBOOST_AVAILABLE and self.ltv_xgb is not None:
+            ltv_rf = self.ltv_rf.predict(X_scaled)
+            ltv_xgb = self.ltv_xgb.predict(X_scaled)
+            ltv_pred = (ltv_rf + ltv_xgb) / 2
+        else:
+            ltv_pred = self.ltv_rf.predict(X_scaled)
+        
         rfm['predicted_ltv'] = ltv_pred
         
         # Kategorizacija na osnovu churn risk + LTV
@@ -351,17 +407,29 @@ class PutnikMLModel:
     def save(self):
         if not self.is_trained:
             return
-        joblib.dump(self.payment_model, f"{self.model_dir}/putnik_churn_model.pkl")
-        joblib.dump(self.ltv_model, f"{self.model_dir}/putnik_ltv_model.pkl")
+        joblib.dump(self.payment_rf, f"{self.model_dir}/putnik_churn_rf.pkl")
+        joblib.dump(self.ltv_rf, f"{self.model_dir}/putnik_ltv_rf.pkl")
+        if XGBOOST_AVAILABLE and self.payment_xgb is not None:
+            joblib.dump(self.payment_xgb, f"{self.model_dir}/putnik_churn_xgb.pkl")
+        if XGBOOST_AVAILABLE and self.ltv_xgb is not None:
+            joblib.dump(self.ltv_xgb, f"{self.model_dir}/putnik_ltv_xgb.pkl")
         joblib.dump(self.scaler, f"{self.model_dir}/putnik_scaler.pkl")
-        print("[OK] Putnik model saved")
+        print("[OK] Putnik ensemble model saved")
 
     def load(self):
         try:
-            self.payment_model = joblib.load(f"{self.model_dir}/putnik_churn_model.pkl")
-            self.ltv_model = joblib.load(f"{self.model_dir}/putnik_ltv_model.pkl")
+            self.payment_rf = joblib.load(f"{self.model_dir}/putnik_churn_rf.pkl")
+            self.ltv_rf = joblib.load(f"{self.model_dir}/putnik_ltv_rf.pkl")
+            try:
+                if XGBOOST_AVAILABLE:
+                    self.payment_xgb = joblib.load(f"{self.model_dir}/putnik_churn_xgb.pkl")
+                    self.ltv_xgb = joblib.load(f"{self.model_dir}/putnik_ltv_xgb.pkl")
+            except FileNotFoundError:
+                print("[WARN] XGBoost models not found, using only Random Forest")
+                self.payment_xgb = None
+                self.ltv_xgb = None
             self.scaler = joblib.load(f"{self.model_dir}/putnik_scaler.pkl")
             self.is_trained = True
-            print("[OK] Putnik model loaded")
+            print("[OK] Putnik ensemble model loaded")
         except FileNotFoundError:
             print("[MISSING] No saved putnik model")
