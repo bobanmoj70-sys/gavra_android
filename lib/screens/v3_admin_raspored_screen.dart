@@ -67,9 +67,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   Future<void> _reloadTrenutnaDodelaMap() async {
     try {
-      final maps = await V3DodelaResolverService.loadActiveAssignments();
-      _activeVozacByTerminId = maps.byTerminId;
-      _activeVozacBySlotKey = maps.bySlotKey;
+      final byTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId();
+      final bySlotKey = await V3TrenutnaDodelaSlotService.loadAllVozacBySlotKey(
+        datumIso: _selectedDatumIso,
+      );
+      _activeVozacByTerminId = byTerminId;
+      _activeVozacBySlotKey = bySlotKey;
     } catch (e) {
       debugPrint('[V3AdminRasporedScreen] _reloadTrenutnaDodelaMap error: $e');
       _activeVozacByTerminId = const {};

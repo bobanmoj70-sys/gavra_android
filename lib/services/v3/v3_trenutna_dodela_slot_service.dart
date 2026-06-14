@@ -325,4 +325,30 @@ class V3TrenutnaDodelaSlotService {
 
     await supabase.from(tableName).update(payload).eq(colVozacId, vozac).eq(colStatus, statusAktivan);
   }
+
+  static Future<Map<String, String>> loadAllVozacBySlotKey({
+    String? datumIso,
+  }) async {
+    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVozacId, $colStatus');
+
+    final trimmedDatum = _normalizeDatumIso(datumIso);
+    if (trimmedDatum.isNotEmpty) {
+      query = query.eq(colDatum, trimmedDatum);
+    }
+
+    final rows = await query;
+
+    final result = <String, String>{};
+    for (final row in (rows as List<dynamic>)) {
+      final mapped = row as Map<String, dynamic>;
+      final datum = _normalizeDatumIso(mapped[colDatum]?.toString());
+      final grad = _normalizeGrad(mapped[colGrad]?.toString());
+      final vreme = _normalizeVreme(mapped[colVreme]?.toString());
+      final vozacId = (mapped[colVozacId]?.toString() ?? '').trim();
+      if (datum.isNotEmpty && grad.isNotEmpty && vreme.isNotEmpty && vozacId.isNotEmpty) {
+        result['$datum|$grad|$vreme'] = vozacId;
+      }
+    }
+    return result;
+  }
 }
