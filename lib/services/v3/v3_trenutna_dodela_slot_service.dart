@@ -326,6 +326,33 @@ class V3TrenutnaDodelaSlotService {
     await supabase.from(tableName).update(payload).eq(colVozacId, vozac).eq(colStatus, statusAktivan);
   }
 
+  static Future<List<Map<String, String>>> loadAllSlotsForVozac({
+    required String vozacId,
+  }) async {
+    final vozac = vozacId.trim();
+    if (vozac.isEmpty) return <Map<String, String>>[];
+
+    final rows =
+        await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colStatus').eq(colVozacId, vozac);
+
+    final result = <Map<String, String>>[];
+    for (final row in (rows as List<dynamic>)) {
+      final mapped = row as Map<String, dynamic>;
+      final datum = _normalizeDatumIso(mapped[colDatum]?.toString());
+      final grad = _normalizeGrad(mapped[colGrad]?.toString());
+      final vreme = _normalizeVreme(mapped[colVreme]?.toString());
+      if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) continue;
+
+      result.add(<String, String>{
+        colDatum: datum,
+        colGrad: grad,
+        colVreme: vreme,
+      });
+    }
+
+    return result;
+  }
+
   static Future<Map<String, String>> loadAllVozacBySlotKey({
     String? datumIso,
   }) async {

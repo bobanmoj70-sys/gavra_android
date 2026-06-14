@@ -124,7 +124,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _loadingDodela = true;
     try {
       _assignedOperativnaIds = await V3TrenutnaDodelaService.loadActiveTerminIds(vozacId: vozacAuthId);
-      _assignedSlotRows = await V3TrenutnaDodelaSlotService.loadActiveSlotsForVozac(vozacId: vozacAuthId);
+      _assignedSlotRows = await V3TrenutnaDodelaSlotService.loadAllSlotsForVozac(vozacId: vozacAuthId);
       _allTerminToVozac = await V3TrenutnaDodelaService.loadActiveVozacByTerminId();
     } catch (e) {
       debugPrint('[V3VozacScreen] _reloadTrenutnaDodelaForVozac error: $e');
