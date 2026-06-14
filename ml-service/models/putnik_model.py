@@ -28,6 +28,8 @@ class PutnikMLModel:
         self.payment_xgb = None
         self.ltv_rf = None
         self.ltv_xgb = None
+        self.segment_rf = None
+        self.segment_xgb = None
         self.scaler = StandardScaler()
         self.model_dir = config.MODEL_DIR
         os.makedirs(self.model_dir, exist_ok=True)
@@ -243,6 +245,18 @@ class PutnikMLModel:
         # Re-compute targets after enrichment
         y_churn, y_ltv = self._compute_targets(rfm)
         
+        # Kreiraj segment target (0: low_value, 1: medium_value, 2: high_value)
+        def create_segment(row):
+            ltv_median = rfm['ukupno_platio'].median()
+            if row['ukupno_platio'] < ltv_median * 0.5:
+                return 0  # low_value
+            elif row['ukupno_platio'] > ltv_median * 1.5:
+                return 2  # high_value
+            else:
+                return 1  # medium_value
+        
+        y_segment = rfm.apply(create_segment, axis=1).values
+        
         X = rfm.select_dtypes(include=[np.number]).fillna(0)
         X_scaled = self.scaler.fit_transform(X)
         n_samples = len(rfm)
@@ -250,19 +264,23 @@ class PutnikMLModel:
         if eval_split:
             X_train, X_test, y_train_churn, y_test_churn = train_test_split(X_scaled, y_churn, test_size=0.25, random_state=42)
             _, _, y_train_ltv, y_test_ltv = train_test_split(X_scaled, y_ltv, test_size=0.25, random_state=42)
+            _, _, y_train_segment, y_test_segment = train_test_split(X_scaled, y_segment, test_size=0.25, random_state=42)
         else:
             X_train, X_test, y_train_churn, y_test_churn = X_scaled, X_scaled, y_churn, y_churn
             _, _, y_train_ltv, y_test_ltv = X_scaled, X_scaled, y_ltv, y_ltv
+            _, _, y_train_segment, y_test_segment = X_scaled, X_scaled, y_segment, y_segment
             print(f"[WARN] Samo {n_samples} putnika — evaluacija na trening setu")
         
         # Inicijalizuj ensemble modele
         self.payment_rf = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
         self.ltv_rf = RandomForestRegressor(n_estimators=200, random_state=42, max_depth=12)
+        self.segment_rf = RandomForestClassifier(n_estimators=200, random_state=42, max_depth=12)
         
         if XGBOOST_AVAILABLE:
             self.payment_xgb = XGBClassifier(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
             self.ltv_xgb = XGBRegressor(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
-            print("[Ensemble] Using Random Forest + XGBoost")
+            self.segment_xgb = XGBClassifier(n_estimators=200, max_depth=12, learning_rate=0.1, random_state=42)
+            print("[Ensemble] Using Random Forest + XGBoost (Multi-task: Churn + LTV + Segment)")
         else:
             print("[Ensemble] Using Random Forest only (XGBoost not available)")
         
@@ -295,16 +313,32 @@ class PutnikMLModel:
         
         ltv_r2 = r2_score(y_test_ltv, y_pred_ltv) if eval_split else 0.0
         
+        # Segment model (ensemble)
+        self.segment_rf.fit(X_train, y_train_segment)
+        
+        if XGBOOST_AVAILABLE:
+            self.segment_xgb.fit(X_train, y_train_segment)
+            # Ensemble predikcija - soft voting
+            proba_rf = self.segment_rf.predict_proba(X_test)
+            proba_xgb = self.segment_xgb.predict_proba(X_test)
+            avg_proba = (proba_rf + proba_xgb) / 2
+            y_pred_segment = np.argmax(avg_proba, axis=1)
+        else:
+            y_pred_segment = self.segment_rf.predict(X_test)
+        
+        segment_acc = (y_pred_segment == y_test_segment).mean() if eval_split else 0.0
+        
         metrics = {
             'churn_auc': self._safe_float(churn_auc),
             'ltv_r2': self._safe_float(ltv_r2),
+            'segment_acc': self._safe_float(segment_acc),
             'feature_count': len(X.columns),
             'samples': n_samples,
             'eval_on_train': not eval_split,
             'tables_used': len(data)
         }
         
-        print(f"Churn AUC: {churn_auc:.3f} | LTV R²: {ltv_r2:.3f}")
+        print(f"Churn AUC: {churn_auc:.3f} | LTV R²: {ltv_r2:.3f} | Segment Acc: {segment_acc:.3f}")
         print(f"Samples: {n_samples} | Features: {len(X.columns)} | Tables: {len(data)}")
         print("=" * 50)
         self.is_trained = True
@@ -409,27 +443,33 @@ class PutnikMLModel:
             return
         joblib.dump(self.payment_rf, f"{self.model_dir}/putnik_churn_rf.pkl")
         joblib.dump(self.ltv_rf, f"{self.model_dir}/putnik_ltv_rf.pkl")
+        joblib.dump(self.segment_rf, f"{self.model_dir}/putnik_segment_rf.pkl")
         if XGBOOST_AVAILABLE and self.payment_xgb is not None:
             joblib.dump(self.payment_xgb, f"{self.model_dir}/putnik_churn_xgb.pkl")
         if XGBOOST_AVAILABLE and self.ltv_xgb is not None:
             joblib.dump(self.ltv_xgb, f"{self.model_dir}/putnik_ltv_xgb.pkl")
+        if XGBOOST_AVAILABLE and self.segment_xgb is not None:
+            joblib.dump(self.segment_xgb, f"{self.model_dir}/putnik_segment_xgb.pkl")
         joblib.dump(self.scaler, f"{self.model_dir}/putnik_scaler.pkl")
-        print("[OK] Putnik ensemble model saved")
+        print("[OK] Putnik ensemble model saved (Multi-task: Churn + LTV + Segment)")
 
     def load(self):
         try:
             self.payment_rf = joblib.load(f"{self.model_dir}/putnik_churn_rf.pkl")
             self.ltv_rf = joblib.load(f"{self.model_dir}/putnik_ltv_rf.pkl")
+            self.segment_rf = joblib.load(f"{self.model_dir}/putnik_segment_rf.pkl")
             try:
                 if XGBOOST_AVAILABLE:
                     self.payment_xgb = joblib.load(f"{self.model_dir}/putnik_churn_xgb.pkl")
                     self.ltv_xgb = joblib.load(f"{self.model_dir}/putnik_ltv_xgb.pkl")
+                    self.segment_xgb = joblib.load(f"{self.model_dir}/putnik_segment_xgb.pkl")
             except FileNotFoundError:
                 print("[WARN] XGBoost models not found, using only Random Forest")
                 self.payment_xgb = None
                 self.ltv_xgb = None
+                self.segment_xgb = None
             self.scaler = joblib.load(f"{self.model_dir}/putnik_scaler.pkl")
             self.is_trained = True
-            print("[OK] Putnik ensemble model loaded")
+            print("[OK] Putnik ensemble model loaded (Multi-task: Churn + LTV + Segment)")
         except FileNotFoundError:
             print("[MISSING] No saved putnik model")
