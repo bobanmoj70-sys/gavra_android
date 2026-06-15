@@ -25,6 +25,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
 
   String get _selectedDatumIso =>
       V3DanHelper.datumIsoZaDanPuniUTekucojSedmici(_selectedDay, anchor: V3DanHelper.schedulingWeekAnchor());
+
   @override
   void initState() {
     super.initState();
@@ -33,33 +34,54 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
     _streamTrigger = V3MasterRealtimeManager.instance.tableRevisionStream('v3_kapacitet_slots');
   }
 
-  /// Čita max_mesta iz kapacitetSlotsCache: {grad: {vreme: max_mesta?}}
-  Map<String, Map<String, int?>> _getKapacitetSync() {
-    final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-    final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
-    final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
-    final datumIso = _selectedDatumIso;
-    int? _find(String grad, String vreme) {
-      for (final r in cache) {
-        if (r['grad'] == grad &&
-            V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
-            r['datum'].toString().startsWith(datumIso)) {
-          return (r['max_mesta'] as num?)?.toInt();
-        }
-      }
-      return null;
-    }
-
-    return {
-      'BC': {for (final v in bcVremena) v: _find('BC', v)},
-      'VS': {for (final v in vsVremena) v: _find('VS', v)},
-    };
-  }
-
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  /// Traži red u kešu normalizovanim poređenjem grad/vreme/datum.
+  Map<String, dynamic>? _findCacheRow(String grad, String vreme, String datumIso) {
+    final gradNorm = grad.trim().toUpperCase();
+    final vremeNorm = V3StringUtils.trimTimeToHhMm(vreme);
+    final datumNorm = datumIso.trim();
+    for (final r in V3MasterRealtimeManager.instance.kapacitetSlotsCache.values) {
+      final rGrad = (r['grad']?.toString() ?? '').trim().toUpperCase();
+      final rVreme = V3StringUtils.trimTimeToHhMm(r['vreme']?.toString() ?? '');
+      final rDatum = (r['datum']?.toString() ?? '').trim();
+      if (rGrad == gradNorm && rVreme == vremeNorm && rDatum.startsWith(datumNorm)) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  /// Čita max_mesta iz kapacitetSlotsCache: {grad: {vreme: max_mesta?}}
+  Map<String, Map<String, int?>> _getKapacitetSync() {
+    final datumIso = _selectedDatumIso;
+    final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+    final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
+    return {
+      'BC': {for (final v in bcVremena) v: (_findCacheRow('BC', v, datumIso)?['max_mesta'] as num?)?.toInt()},
+      'VS': {for (final v in vsVremena) v: (_findCacheRow('VS', v, datumIso)?['max_mesta'] as num?)?.toInt()},
+    };
+  }
+
+  Future<void> _upsertKapacitet(String grad, String vreme, int maxMesta) async {
+    final datumIso = _selectedDatumIso;
+    final slotId = _findCacheRow(grad, vreme, datumIso)?['id'] as String?;
+    try {
+      await V3KapacitetSlotsService.upsertSlot(
+        grad: grad,
+        vreme: vreme,
+        datumIso: datumIso,
+        maxMesta: maxMesta,
+        id: slotId,
+      );
+    } catch (e) {
+      debugPrint('[KapacitetScreen] upsertKapacitet error: $e');
+      if (mounted) V3AppSnackBar.error(context, '❌ Greška pri čuvanju');
+    }
   }
 
   Future<void> _editKapacitet(String grad, String vreme, int? trenutni) async {
@@ -69,31 +91,75 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
       builder: (_) => _KapacitetEditDialog(grad: grad, vreme: vreme, trenutni: trenutni ?? 0),
     );
     if (result != null && result != trenutni) {
-      final success = await _setKapacitet(grad, vreme, result);
-      if (!mounted) return;
-      if (success) {
-        V3AppSnackBar.success(context, '\u2705 $grad $vreme = $result mesta');
-      } else {
-        V3AppSnackBar.error(context, '\u274c Greška pri čuvanju');
-      }
+      await _upsertKapacitet(grad, vreme, result);
+      if (mounted) V3AppSnackBar.success(context, '✅ $grad $vreme = $result mesta');
     }
   }
 
-  /// Upsert max_mesta u v3_kapacitet_slots za dati grad/vreme/datum.
-  Future<bool> _setKapacitet(String grad, String vreme, int maxMesta) async {
-    try {
-      final datumIso = _selectedDatumIso;
-      await V3KapacitetSlotsService.upsertSlot(
-        grad: grad,
-        vreme: vreme,
-        datumIso: datumIso,
-        maxMesta: maxMesta,
-      );
-      return true;
-    } catch (e) {
-      debugPrint('[KapacitetScreen] setKapacitet error: $e');
-      return false;
-    }
+  Color _getBoja(int mesta) {
+    if (mesta >= 8) return Colors.green;
+    if (mesta >= 5) return Colors.orange;
+    return Colors.red;
+  }
+
+  Widget _buildGradTab(String grad, List<String> vremena, Map<String, int?> kapacitet) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: vremena.length,
+      itemBuilder: (ctx, index) {
+        final vreme = vremena[index];
+        final maxMesta = kapacitet[vreme];
+        return Card(
+          color: Theme.of(ctx).glassContainer,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(
+              vreme,
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              maxMesta != null ? 'Kapacitet: $maxMesta mesta' : 'Kapacitet: nije postavljen',
+              style: TextStyle(
+                color: maxMesta == null
+                    ? Colors.red
+                    : maxMesta < 8
+                        ? Colors.orange
+                        : Colors.white70,
+              ),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed:
+                      maxMesta != null && maxMesta > 1 ? () => _upsertKapacitet(grad, vreme, maxMesta - 1) : null,
+                  icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
+                ),
+                V3ContainerUtils.iconContainer(
+                  width: V3ContainerUtils.responsiveHeight(ctx, 40),
+                  height: V3ContainerUtils.responsiveHeight(ctx, 40),
+                  backgroundColor: maxMesta != null ? _getBoja(maxMesta) : Colors.grey,
+                  borderRadiusGeometry: BorderRadius.circular(8),
+                  child: Center(
+                    child: Text(
+                      maxMesta != null ? '$maxMesta' : '?',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: maxMesta == null || maxMesta < 20
+                      ? () => _upsertKapacitet(grad, vreme, (maxMesta ?? 0) + 1)
+                      : null,
+                  icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
+                ),
+              ],
+            ),
+            onTap: () => _editKapacitet(grad, vreme, maxMesta),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -167,29 +233,20 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                 ),
                 // ── TabBarView ─────────────────────────────────────────
                 Expanded(
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Padding(
-                          padding: EdgeInsets.zero,
-                          child: StreamBuilder<int>(
-                            stream: _streamTrigger,
-                            builder: (context, snapshot) {
-                              final data = _getKapacitetSync();
-                              final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
-                              final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
-                              return TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  _kapacitetGradTab('BC', bcVremena, data, _editKapacitet, _selectedDatumIso),
-                                  _kapacitetGradTab('VS', vsVremena, data, _editKapacitet, _selectedDatumIso),
-                                ],
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: StreamBuilder<int>(
+                    stream: _streamTrigger,
+                    builder: (context, snapshot) {
+                      final data = _getKapacitetSync();
+                      final bcVremena = getRasporedVremena('bc', navBarTypeNotifier.value, day: _selectedDay);
+                      final vsVremena = getRasporedVremena('vs', navBarTypeNotifier.value, day: _selectedDay);
+                      return TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildGradTab('BC', bcVremena, data['BC'] ?? {}),
+                          _buildGradTab('VS', vsVremena, data['VS'] ?? {}),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -199,112 +256,6 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
       ),
     );
   }
-}
-
-Color _kapacitetGetBoja(int mesta) {
-  if (mesta >= 8) return Colors.green;
-  if (mesta >= 5) return Colors.orange;
-  return Colors.red;
-}
-
-// ─── top-level tab builder ───────────────────────────────────────────────────
-Widget _kapacitetGradTab(
-  String grad,
-  List<String> vremena,
-  Map<String, Map<String, int?>> kapacitet,
-  Future<void> Function(String grad, String vreme, int? trenutni) onEdit,
-  String datumIso,
-) {
-  return ListView.builder(
-    padding: const EdgeInsets.all(16),
-    itemCount: vremena.length,
-    itemBuilder: (ctx, index) {
-      final vreme = vremena[index];
-      final maxMesta = kapacitet[grad]?[vreme];
-      return Card(
-        color: Theme.of(ctx).glassContainer,
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          title: Text(
-            vreme,
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(
-            maxMesta != null ? 'Kapacitet: $maxMesta mesta' : 'Kapacitet: nije postavljen',
-            style: TextStyle(
-              color: maxMesta == null
-                  ? Colors.red
-                  : maxMesta < 8
-                      ? Colors.orange
-                      : Colors.white70,
-            ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                onPressed: maxMesta != null && maxMesta > 1
-                    ? () async {
-                        final newVal = maxMesta - 1;
-                        final slotId = _getSlotId(grad, vreme, datumIso);
-                        await V3KapacitetSlotsService.upsertSlot(
-                          grad: grad,
-                          vreme: vreme,
-                          datumIso: datumIso,
-                          maxMesta: newVal,
-                          id: slotId,
-                        );
-                      }
-                    : null,
-                icon: const Icon(Icons.remove_circle, color: Colors.red, size: 32),
-              ),
-              V3ContainerUtils.iconContainer(
-                width: V3ContainerUtils.responsiveHeight(ctx, 40),
-                height: V3ContainerUtils.responsiveHeight(ctx, 40),
-                backgroundColor: maxMesta != null ? _kapacitetGetBoja(maxMesta) : Colors.grey,
-                borderRadiusGeometry: BorderRadius.circular(8),
-                child: Center(
-                  child: Text(
-                    maxMesta != null ? '$maxMesta' : '?',
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: maxMesta == null || maxMesta < 20
-                    ? () async {
-                        final newVal = (maxMesta ?? 0) + 1;
-                        final slotId = _getSlotId(grad, vreme, datumIso);
-                        await V3KapacitetSlotsService.upsertSlot(
-                          grad: grad,
-                          vreme: vreme,
-                          datumIso: datumIso,
-                          maxMesta: newVal,
-                          id: slotId,
-                        );
-                      }
-                    : null,
-                icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
-              ),
-            ],
-          ),
-          onTap: () => onEdit(grad, vreme, maxMesta),
-        ),
-      );
-    },
-  );
-}
-
-String? _getSlotId(String grad, String vreme, String datumIso) {
-  final cache = V3MasterRealtimeManager.instance.kapacitetSlotsCache.values;
-  for (final r in cache) {
-    if (r['grad'] == grad &&
-        V3StringUtils.trimTimeToHhMm(r['vreme'].toString()) == vreme &&
-        r['datum'].toString().startsWith(datumIso)) {
-      return r['id'] as String?;
-    }
-  }
-  return null;
 }
 
 // ─── _KapacitetEditDialog ────────────────────────────────────────────────────
