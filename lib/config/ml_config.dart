@@ -1,4 +1,10 @@
 class MlConfig {
-  // Tailscale Funnel - HTTPS (Funnel uvek zahteva HTTPS)
-  static const baseUrl = 'https://win-vfeglqf71ss.tail61b7a2.ts.net';
+  // Ngrok public tunnel
+  static const baseUrl = 'https://cross-groovy-frostily.ngrok-free.dev';
+
+  // Headers potrebni za ngrok (preskace browser warning stranicu)
+  static const headers = {
+    'ngrok-skip-browser-warning': 'true',
+    'Content-Type': 'application/json',
+  };
 }

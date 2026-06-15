@@ -74,13 +74,13 @@ class KnowledgeGraph:
 
         # Dinamicki: povezi sve tabele koje imaju _id kolone
         for table_name, df in data.items():
-            if df.empty:
+            if df.empty or 'id' not in df.columns:
                 continue
             for col in df.columns:
                 if col.endswith('_id') and col != 'id':
                     # Npr. 'vozilo_id', 'putnik_v3_auth_id', 'termin_id'
                     for _, row in df.iterrows():
-                        if pd.notna(row[col]):
+                        if pd.notna(row[col]) and pd.notna(row.get('id')):
                             from_id = str(row[col])
                             to_id = str(row['id'])
                             relation = f'povezan_preko_{col}'

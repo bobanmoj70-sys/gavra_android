@@ -218,10 +218,16 @@ async def auto_train():
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'training'))
     
     from training.auto_train import auto_train_all
-    
+    from api.znanje_routes import _load_znanje_data
+
     start = time.time()
     try:
         results = auto_train_all()
+        # Reload znanje model nakon treninga
+        try:
+            _load_znanje_data()
+        except Exception as ze:
+            print(f"[WARN] znanje reload after auto-train: {ze}")
         elapsed = round(time.time() - start, 2)
         
         return {

@@ -16,7 +16,6 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
-import 'v3_ai_chat_screen.dart';
 import 'v3_ai_znanje_screen.dart';
 import 'v3_dnevnik_naplate_screen.dart';
 import 'v3_dugovi_screen.dart';
@@ -1582,28 +1581,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.deepPurple,
-                        height: V3ContainerUtils.responsiveHeight(context, 44),
-                        onTap: () => V3NavigationUtils.pushScreen<void>(
-                          context,
-                          const V3AiChatScreen(),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '🤖 AI Chat',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     Expanded(
                       child: _NavBtn(
                         color: Colors.pink,

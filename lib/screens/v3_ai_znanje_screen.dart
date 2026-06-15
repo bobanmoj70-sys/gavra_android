@@ -9,6 +9,11 @@ import '../utils/v3_container_utils.dart';
 
 final _mlHttpClient = http.Client();
 
+Future<http.Response> _mlGet(String url) => _mlHttpClient.get(Uri.parse(url), headers: MlConfig.headers);
+
+Future<http.Response> _mlPost(String url, {Object? body}) =>
+    _mlHttpClient.post(Uri.parse(url), headers: MlConfig.headers, body: body);
+
 class V3AiZnanjeScreen extends StatefulWidget {
   const V3AiZnanjeScreen({super.key});
 
@@ -97,9 +102,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
   Future<void> _autoTrainModels() async {
     try {
-      final response = await _mlHttpClient.post(
-        Uri.parse('$_mlBaseUrl/auto-train'),
-        headers: {'Content-Type': 'application/json'},
+      final response = await _mlPost(
+        '$_mlBaseUrl/auto-train',
       ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
@@ -306,8 +310,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     const mlUrl = _mlBaseUrl;
     try {
-      final healthResp =
-          await _mlHttpClient.get(Uri.parse('$mlUrl/gorivo/health')).timeout(const Duration(seconds: 15));
+      final healthResp = await _mlGet('$mlUrl/gorivo/health').timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -327,8 +330,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
 
     try {
-      final predictResp =
-          await _mlHttpClient.get(Uri.parse('$mlUrl/gorivo/predict')).timeout(const Duration(seconds: 20));
+      final predictResp = await _mlGet('$mlUrl/gorivo/predict').timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _gorPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
     } catch (_) {
       _gorPredictions = null;
@@ -347,8 +349,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     const mlUrl = _mlBaseUrl;
     try {
-      final healthResp =
-          await _mlHttpClient.get(Uri.parse('$mlUrl/putnik/health')).timeout(const Duration(seconds: 15));
+      final healthResp = await _mlGet('$mlUrl/putnik/health').timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -375,8 +376,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
 
     try {
-      final predictResp =
-          await _mlHttpClient.get(Uri.parse('$mlUrl/putnik/predict/all')).timeout(const Duration(seconds: 20));
+      final predictResp = await _mlGet('$mlUrl/putnik/predict/all').timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _putPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
     } catch (_) {
       _putPredictions = null;
@@ -395,8 +395,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     const mlUrl = _mlBaseUrl;
     try {
-      final healthResp =
-          await _mlHttpClient.get(Uri.parse('$mlUrl/zahtevi/health')).timeout(const Duration(seconds: 15));
+      final healthResp = await _mlGet('$mlUrl/zahtevi/health').timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -416,8 +415,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
 
     try {
-      final predictResp =
-          await _mlHttpClient.get(Uri.parse('$mlUrl/zahtevi/predict/next-week')).timeout(const Duration(seconds: 20));
+      final predictResp = await _mlGet('$mlUrl/zahtevi/predict/next-week').timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _zahPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
     } catch (_) {
       _zahPredictions = null;
@@ -478,7 +476,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   Future<void> _trainModel(String endpoint, Future<void> Function() reload, String label) async {
     final scaffold = ScaffoldMessenger.of(context);
     try {
-      final resp = await _mlHttpClient.post(Uri.parse('$_mlBaseUrl$endpoint')).timeout(const Duration(seconds: 30));
+      final resp = await _mlPost('$_mlBaseUrl$endpoint').timeout(const Duration(seconds: 30));
       if (resp.statusCode == 200) {
         scaffold.showSnackBar(
           SnackBar(content: Text('$label je treniran! Osvezavam podatke...'), duration: const Duration(seconds: 2)),

@@ -2,7 +2,7 @@
 AI Znanje (Knowledge Base) API Endpoints
 Chat asistent koji odgovara na pitanja o podacima iz baze
 """
-import sys, os
+import sys, os, threading, time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import APIRouter, HTTPException
@@ -17,15 +17,35 @@ _znanje_model = ZnanjeAIModel()
 _gemini_service = GeminiService()
 
 
-def init_znanje_model():
-    """Inicijalizuje AI Znanje pri startup-u"""
+def _load_znanje_data():
+    """Ucitava podatke i trenira model. Vraca True ako uspe."""
     try:
         data = extract_all_tables()
         schema = get_database_schema()
         _znanje_model.train(data, schema)
         print("[OK] AI Znanje asistent spreman")
+        return True
     except Exception as e:
-        print(f"[WARN] AI Znanje init error: {e}")
+        print(f"[WARN] AI Znanje load error: {e}")
+        return False
+
+
+def _background_retry():
+    """Background thread koji ponavlja ucitavanje svakih 30s dok ne uspe."""
+    retry_interval = 30
+    while not _znanje_model.is_ready:
+        time.sleep(retry_interval)
+        print("[Znanje] Retry ucitavanja podataka...")
+        if _load_znanje_data():
+            break
+
+
+def init_znanje_model():
+    """Inicijalizuje AI Znanje pri startup-u, pokrece retry u pozadini ako ne uspe."""
+    if not _load_znanje_data():
+        t = threading.Thread(target=_background_retry, daemon=True)
+        t.start()
+        print("[Znanje] Background retry pokrenut (svakih 30s)")
 
 
 class AskRequest(BaseModel):
