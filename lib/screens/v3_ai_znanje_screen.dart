@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 
+final _mlHttpClient = http.Client();
+
 class V3AiZnanjeScreen extends StatefulWidget {
   const V3AiZnanjeScreen({super.key});
 
@@ -95,7 +97,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
   Future<void> _autoTrainModels() async {
     try {
-      final response = await http.post(
+      final response = await _mlHttpClient.post(
         Uri.parse('$_mlBaseUrl/auto-train'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 60));
@@ -119,7 +121,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
     // Health check
     try {
-      final healthResp = await http
+      final healthResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/health'),
           )
@@ -155,7 +157,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
     // Trends analysis — ne-fatalno
     try {
-      final trendsResp = await http
+      final trendsResp = await _mlHttpClient
           .post(
             Uri.parse('$mlUrl/analyze/trends'),
             headers: {'Content-Type': 'application/json'},
@@ -173,7 +175,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     // Amount prediction for current month — ne-fatalno
     try {
       final now = DateTime.now();
-      final predictResp = await http
+      final predictResp = await _mlHttpClient
           .post(
             Uri.parse('$mlUrl/predict/amount'),
             headers: {'Content-Type': 'application/json'},
@@ -193,7 +195,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
     // Anomalies detection — ne-fatalno
     try {
-      final anomaliesResp = await http
+      final anomaliesResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/detect/anomalies'),
           )
@@ -209,7 +211,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
     // Time series trend predictions — ne-fatalno
     try {
-      final trendResp = await http
+      final trendResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/predict/trends?days_ahead=7'),
           )
@@ -224,7 +226,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
     // Memory summary — ne-fatalno
     try {
-      final memoryResp = await http
+      final memoryResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/memory'),
           )
@@ -252,7 +254,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     const mlUrl = _mlBaseUrl;
 
     try {
-      final healthResp = await http
+      final healthResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/vozilo/health'),
           )
@@ -278,7 +280,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
 
     try {
-      final predictResp = await http
+      final predictResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/vozilo/predict/all'),
           )
@@ -304,7 +306,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     const mlUrl = _mlBaseUrl;
     try {
-      final healthResp = await http.get(Uri.parse('$mlUrl/gorivo/health')).timeout(const Duration(seconds: 15));
+      final healthResp =
+          await _mlHttpClient.get(Uri.parse('$mlUrl/gorivo/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -324,7 +327,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
 
     try {
-      final predictResp = await http.get(Uri.parse('$mlUrl/gorivo/predict')).timeout(const Duration(seconds: 20));
+      final predictResp =
+          await _mlHttpClient.get(Uri.parse('$mlUrl/gorivo/predict')).timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _gorPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
     } catch (_) {
       _gorPredictions = null;
@@ -343,7 +347,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     const mlUrl = _mlBaseUrl;
     try {
-      final healthResp = await http.get(Uri.parse('$mlUrl/putnik/health')).timeout(const Duration(seconds: 15));
+      final healthResp =
+          await _mlHttpClient.get(Uri.parse('$mlUrl/putnik/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -370,7 +375,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
 
     try {
-      final predictResp = await http.get(Uri.parse('$mlUrl/putnik/predict/all')).timeout(const Duration(seconds: 20));
+      final predictResp =
+          await _mlHttpClient.get(Uri.parse('$mlUrl/putnik/predict/all')).timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _putPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
     } catch (_) {
       _putPredictions = null;
@@ -389,7 +395,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
     const mlUrl = _mlBaseUrl;
     try {
-      final healthResp = await http.get(Uri.parse('$mlUrl/zahtevi/health')).timeout(const Duration(seconds: 15));
+      final healthResp =
+          await _mlHttpClient.get(Uri.parse('$mlUrl/zahtevi/health')).timeout(const Duration(seconds: 15));
       if (healthResp.statusCode != 200) {
         if (!mounted) return;
         setState(() {
@@ -410,7 +417,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
     try {
       final predictResp =
-          await http.get(Uri.parse('$mlUrl/zahtevi/predict/next-week')).timeout(const Duration(seconds: 20));
+          await _mlHttpClient.get(Uri.parse('$mlUrl/zahtevi/predict/next-week')).timeout(const Duration(seconds: 20));
       if (predictResp.statusCode == 200) _zahPredictions = jsonDecode(predictResp.body) as Map<String, dynamic>?;
     } catch (_) {
       _zahPredictions = null;
@@ -438,7 +445,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     const mlUrl = _mlBaseUrl;
 
     try {
-      final healthResp = await http
+      final healthResp = await _mlHttpClient
           .get(
             Uri.parse('$mlUrl/znanje/health'),
           )
@@ -471,7 +478,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   Future<void> _trainModel(String endpoint, Future<void> Function() reload, String label) async {
     final scaffold = ScaffoldMessenger.of(context);
     try {
-      final resp = await http.post(Uri.parse('$_mlBaseUrl$endpoint')).timeout(const Duration(seconds: 30));
+      final resp = await _mlHttpClient.post(Uri.parse('$_mlBaseUrl$endpoint')).timeout(const Duration(seconds: 30));
       if (resp.statusCode == 200) {
         scaffold.showSnackBar(
           SnackBar(content: Text('$label je treniran! Osvezavam podatke...'), duration: const Duration(seconds: 2)),
@@ -505,7 +512,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     });
 
     try {
-      final response = await http
+      final response = await _mlHttpClient
           .post(
             Uri.parse('$_mlBaseUrl/znanje/ask'),
             headers: {'Content-Type': 'application/json'},
