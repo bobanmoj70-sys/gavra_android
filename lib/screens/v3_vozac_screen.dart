@@ -1070,25 +1070,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     await _startDriverLocationTracking();
 
-    // Optimizuj redosled putnika OSRM-om pre pravljenja rute za mapu
-    try {
-      final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
-      debugPrint('[START] ETA order: ${etaResult.order}');
-      if (etaResult.order.isNotEmpty) {
-        _refreshPutniciOrderFromEtaCache();
-      }
-    } catch (e) {
-      debugPrint('[START] ETA optimization error: $e');
-    }
-
-    final preparedRoute = await _buildHereRouteWaypoints();
-    debugPrint('[START] prepared route result: $preparedRoute');
-    if (preparedRoute == null || !mounted) {
-      debugPrint('[START] => prepared route null or not mounted, returning');
-      await V3VozacLocationTrackingService.instance.stop();
-      return;
-    }
-
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
@@ -1109,7 +1090,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
     }
 
-    unawaited(_syncPassengersToSlot());
+    // Upiši putnike u slot pre OSRM/ETA poziva — edge funkcija čita iz slota
+    await _syncPassengersToSlot();
+
+    // Optimizuj redosled putnika OSRM-om tek pošto su slot i putnici upisani u DB
+    try {
+      final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
+      debugPrint('[START] ETA order: ${etaResult.order}');
+      if (etaResult.order.isNotEmpty) {
+        _refreshPutniciOrderFromEtaCache();
+      }
+    } catch (e) {
+      debugPrint('[START] ETA optimization error: $e');
+    }
+
+    final preparedRoute = await _buildHereRouteWaypoints();
+    debugPrint('[START] prepared route result: $preparedRoute');
+    if (preparedRoute == null || !mounted) {
+      debugPrint('[START] => prepared route null or not mounted, returning');
+      await V3VozacLocationTrackingService.instance.stop();
+      return;
+    }
 
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {

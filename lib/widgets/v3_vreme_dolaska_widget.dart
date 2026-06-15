@@ -97,9 +97,11 @@ class V3VremeDolaskaWidget extends StatelessWidget {
 
       final departure = _parseDepartureDateTime(row);
       if (departure == null) continue;
-      if (departure.isBefore(now)) continue;
-
       final terminId = row['id']?.toString();
+      final hasActiveEta =
+          terminId != null && V3MasterRealtimeManager.instance.etaResultsCache.containsKey('$terminId:$putnikId');
+      if (departure.isBefore(now) && !hasActiveEta) continue;
+      if (departure.isBefore(now.subtract(const Duration(minutes: 60)))) continue;
       String? vozacId;
 
       // Prvo proveri individualnu dodelu u v3_trenutna_dodela
