@@ -1,4 +1,4 @@
 class MlConfig {
-  // Tailscale Funnel - HTTP (Tailscale mesh je vec enkriptovan, ne treba HTTPS)
-  static const baseUrl = 'http://win-vfeglqf71ss.tail61b7a2.ts.net';
+  // Tailscale Funnel - HTTPS (Funnel uvek zahteva HTTPS)
+  static const baseUrl = 'https://win-vfeglqf71ss.tail61b7a2.ts.net';
 }
