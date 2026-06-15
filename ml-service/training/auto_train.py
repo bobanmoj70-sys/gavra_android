@@ -120,7 +120,8 @@ def train_putnik():
         return None
     
     model = PutnikMLModel()
-    metrics = model.train(fin_df, zahtevi_df)
+    data = {'finansije': fin_df, 'zahtevi': zahtevi_df}
+    metrics = model.train(data)
     model.save()
     r2 = metrics.get('r2_score')
     if r2 is None or pd.isna(r2):
