@@ -1353,7 +1353,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     final totalSamples = memory['total_samples_seen']?.toString() ?? '0';
     final tablesKnown = memory['tables_known'] as List<dynamic>? ?? [];
     final columnsKnown = memory['columns_known'] as List<dynamic>? ?? [];
-    final topFeatures = memory['top_features'] as Map<String, dynamic>? ?? {};
+    final topFeatures = (memory['top_features'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
     final firstTrained = memory['first_trained']?.toString() ?? '-';
     final lastTrained = memory['last_trained']?.toString() ?? '-';
 
@@ -1423,25 +1423,17 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            ...topFeatures.entries.take(5).map((e) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 8),
-                    Text(
-                      e.key,
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      (e.value as num).toStringAsFixed(3),
-                      style: const TextStyle(color: Colors.cyan, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              );
-            }),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: topFeatures.take(5).map((f) {
+                return Chip(
+                  label: Text(f, style: const TextStyle(fontSize: 10)),
+                  backgroundColor: Colors.cyan.withOpacity(0.15),
+                  labelStyle: const TextStyle(color: Colors.cyan),
+                );
+              }).toList(),
+            ),
             const SizedBox(height: 12),
             _StatRow(
               icon: Icons.access_time,
