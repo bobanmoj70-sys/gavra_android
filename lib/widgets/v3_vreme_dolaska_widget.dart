@@ -27,7 +27,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   @override
   void initState() {
     super.initState();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       if (mounted) setState(() {});
     });
   }
