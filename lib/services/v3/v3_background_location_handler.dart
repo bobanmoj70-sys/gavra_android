@@ -162,7 +162,7 @@ Future<void> _bgSendLocation() async {
       ),
     );
 
-    await activeClient.functions.invoke(
+    final etaResponse = await activeClient.functions.invoke(
       'v3-compute-eta',
       body: <String, dynamic>{
         'vozac_id': vozacId,
@@ -172,7 +172,13 @@ Future<void> _bgSendLocation() async {
         'vreme': _bgVreme,
       },
     );
-    debugPrint('[BG] Lokacija poslata: ${position.latitude}, ${position.longitude}');
+    final responseData = etaResponse.data;
+    if (responseData is Map && responseData['ok'] != true) {
+      debugPrint('[BG] ETA greška: reason=${responseData['reason']} warning=${responseData['warning']}');
+    } else {
+      debugPrint(
+          '[BG] Lokacija poslata: ${position.latitude}, ${position.longitude} updated=${responseData is Map ? responseData['updated'] : '?'}');
+    }
   } catch (e) {
     debugPrint('[BG] Greška pri slanju lokacije: $e');
   } finally {

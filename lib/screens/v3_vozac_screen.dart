@@ -906,7 +906,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         waypointId: item.putnik.id,
         waypointLabel: item.putnik.imePrezime,
       );
-      if (waypoint == null) continue;
+      if (waypoint == null) {
+        debugPrint(
+            '[SYNC] waypoint nije razrešen za putnika ${item.putnik.imePrezime} (${item.putnik.id}), preskačem iz ETA');
+        continue;
+      }
 
       passengerData.add(<String, dynamic>{
         'putnik_id': item.putnik.id,
