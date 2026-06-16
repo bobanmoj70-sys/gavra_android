@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
@@ -5,13 +7,36 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_string_utils.dart';
 
-class V3VremeDolaskaWidget extends StatelessWidget {
+class V3VremeDolaskaWidget extends StatefulWidget {
   const V3VremeDolaskaWidget({
     super.key,
     required this.putnikId,
   });
 
   final String putnikId;
+
+  @override
+  State<V3VremeDolaskaWidget> createState() => _V3VremeDolaskaWidgetState();
+}
+
+class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
+  Timer? _refreshTimer;
+
+  String get putnikId => widget.putnikId;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
 
   static const String _colVozacId = 'vozac_id';
   static const String _colEtaSeconds = 'eta_seconds';
