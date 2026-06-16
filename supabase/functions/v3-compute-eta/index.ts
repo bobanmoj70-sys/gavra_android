@@ -217,8 +217,10 @@ Deno.serve(async (req) => {
     const rawWaypoints = osrmData.waypoints;
     const rawTrips = osrmData.trips;
 
-    if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== tripCoords.split(";").length) {
-      return json(200, { ok: false, reason: "osrm_waypoints_mismatch" });
+    const expectedWaypointCount = remaining.length + 2; // vozač + putnici + destinacija
+    if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
+      console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
+      return json(200, { ok: false, reason: "osrm_waypoints_mismatch", expected: expectedWaypointCount, got: rawWaypoints?.length });
     }
     if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
       return json(200, { ok: false, reason: "osrm_no_trips" });
