@@ -30,6 +30,14 @@ class V3DodelaOrchestratorService {
         matchedRows.map((r) => r['id']?.toString() ?? '').where((id) => id.isNotEmpty).toList(growable: false);
     await V3TrenutnaDodelaService.deleteByTerminIds(terminIds);
 
+    final slotId = await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: normVreme,
+      vozacId: vozacId,
+      updatedBy: updatedBy,
+    );
+
     await V3TrenutnaDodelaService.upsertActiveTerminDodele(
       matchedRows
           .map((row) => (
@@ -39,14 +47,7 @@ class V3DodelaOrchestratorService {
               ))
           .toList(growable: false),
       updatedBy: updatedBy,
-    );
-
-    await V3TrenutnaDodelaSlotService.upsertActiveSlotDodela(
-      datumIso: datumIso,
-      grad: grad,
-      vreme: normVreme,
-      vozacId: vozacId,
-      updatedBy: updatedBy,
+      slotId: slotId,
     );
 
     return matchedRows.length;

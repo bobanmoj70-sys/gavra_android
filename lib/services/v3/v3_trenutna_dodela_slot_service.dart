@@ -104,7 +104,7 @@ class V3TrenutnaDodelaSlotService {
     return result;
   }
 
-  static Future<void> upsertActiveSlotDodela({
+  static Future<String?> upsertActiveSlotDodela({
     required String datumIso,
     required String grad,
     required String vreme,
@@ -116,7 +116,7 @@ class V3TrenutnaDodelaSlotService {
     final vremeNorm = _normalizeVreme(vreme);
     final vozac = vozacId.trim();
 
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return;
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
 
     final payload = <String, dynamic>{
       colDatum: datum,
@@ -126,7 +126,12 @@ class V3TrenutnaDodelaSlotService {
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
-    await supabase.from(tableName).upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId');
+    final result = await supabase
+        .from(tableName)
+        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId')
+        .select('id')
+        .single();
+    return result['id']?.toString();
   }
 
   static Future<void> updateWaypointsJson({
@@ -257,7 +262,7 @@ class V3TrenutnaDodelaSlotService {
     await supabase.from(tableName).delete().eq(colDatum, datum).eq(colGrad, gradNorm).eq(colVreme, vremeNorm);
   }
 
-  static Future<void> activateSlot({
+  static Future<String?> activateSlot({
     required String datumIso,
     required String grad,
     required String vreme,
@@ -268,7 +273,7 @@ class V3TrenutnaDodelaSlotService {
     final gradNorm = _normalizeGrad(grad);
     final vremeNorm = _normalizeVreme(vreme);
     final vozac = vozacId.trim();
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return;
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
 
     final payload = <String, dynamic>{
       colDatum: datum,
@@ -278,7 +283,12 @@ class V3TrenutnaDodelaSlotService {
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
-    await supabase.from(tableName).upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId');
+    final result = await supabase
+        .from(tableName)
+        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId')
+        .select('id')
+        .single();
+    return result['id']?.toString();
   }
 
   static Future<void> deleteAllSlotsForVozac({

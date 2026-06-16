@@ -8,6 +8,7 @@ class V3TrenutnaDodelaService {
   static const String _colPutnikId = 'putnik_v3_auth_id';
   static const String colVozacId = 'vozac_v3_auth_id';
   static const String _colUpdatedBy = 'updated_by';
+  static const String colSlotId = 'slot_id';
 
   static Future<Map<String, String>> loadActiveVozacByTerminId({
     String? putnikId,
@@ -56,12 +57,14 @@ class V3TrenutnaDodelaService {
     required String putnikId,
     required String vozacId,
     String? updatedBy,
+    String? slotId,
   }) async {
     final payload = <String, dynamic>{
       _colTerminId: terminId.trim(),
       _colPutnikId: putnikId.trim(),
       colVozacId: vozacId.trim(),
       if ((updatedBy ?? '').trim().isNotEmpty) _colUpdatedBy: updatedBy!.trim(),
+      if ((slotId ?? '').trim().isNotEmpty) colSlotId: slotId!.trim(),
     };
 
     await supabase.from(tableName).upsert(payload, onConflict: _colTerminId);
@@ -70,8 +73,10 @@ class V3TrenutnaDodelaService {
   static Future<void> upsertActiveTerminDodele(
     Iterable<({String terminId, String putnikId, String vozacId})> assignments, {
     String? updatedBy,
+    String? slotId,
   }) async {
     final actor = (updatedBy ?? '').trim();
+    final slotIdNorm = (slotId ?? '').trim();
     final payload = <Map<String, dynamic>>[];
 
     for (final assignment in assignments) {
@@ -85,6 +90,7 @@ class V3TrenutnaDodelaService {
         _colPutnikId: putnikId,
         colVozacId: vozacId,
         if (actor.isNotEmpty) _colUpdatedBy: actor,
+        if (slotIdNorm.isNotEmpty) colSlotId: slotIdNorm,
       });
     }
 
