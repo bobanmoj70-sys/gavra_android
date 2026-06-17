@@ -177,7 +177,7 @@ class V3ZahtevService {
     // Učitaj sve slotove za datum (bez status filtera) da pokupimo i neaktivne zauzete termine
     final allSlotsForDatum = await supabase
         .from('v3_trenutna_dodela_slot')
-        .select('datum, grad, vreme, vozac_v3_auth_id, status')
+        .select('datum, grad, vreme, vozac_v3_auth_id')
         .eq('datum', datumIso);
     final allSlotAssignments = <String, String>{};
     for (final row in (allSlotsForDatum as List<dynamic>)) {
