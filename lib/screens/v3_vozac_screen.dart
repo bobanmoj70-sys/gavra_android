@@ -318,7 +318,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final hasOrder = wj is Map && wj['optimized_order'] is List && (wj['optimized_order'] as List).isNotEmpty;
       debugPrint('[OSRM_SLOT]   row vozac=$rowVozac status=$rowStatus hasWj=${wj != null} hasOrder=$hasOrder');
       if (rowVozac != vozacId) continue;
-      if (rowStatus != 'aktivan') continue;
       if (wj is Map) {
         final order = wj['optimized_order'];
         if (order is List && order.isNotEmpty) {
