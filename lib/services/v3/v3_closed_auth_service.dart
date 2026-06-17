@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -21,18 +22,24 @@ class V3ClosedAuthService {
   static Future<bool> ensureClientReady() => ensureSupabaseReady();
 
   static Future<String?> findAuthIdByPhone(String rawPhone) async {
+    debugPrint('[findAuthIdByPhone] Called with: $rawPhone');
     final ready = await ensureClientReady();
+    debugPrint('[findAuthIdByPhone] Client ready: $ready');
     if (!ready) return null;
 
     final phone = normalizePhone(rawPhone);
+    debugPrint('[findAuthIdByPhone] Normalized phone: $phone');
     if (phone.isEmpty) return null;
 
+    debugPrint('[findAuthIdByPhone] Calling RPC v3_auth_find_id_by_phone...');
     final data = await _client.rpc(
       'v3_auth_find_id_by_phone',
       params: {'p_telefon': phone},
     );
+    debugPrint('[findAuthIdByPhone] RPC response: $data');
 
     final authId = data?.toString().trim() ?? '';
+    debugPrint('[findAuthIdByPhone] AuthId: $authId');
     if (authId.isEmpty) return null;
     return authId;
   }

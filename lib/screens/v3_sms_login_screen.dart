@@ -98,12 +98,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   bool get _canSubmitPhoneStep => !_isLoading && _isBackendReady;
 
   Future<void> _waitForBackendReady() async {
+    debugPrint('[V3SmsLogin] _waitForBackendReady started');
     while (mounted && !_isBackendReady) {
       final ready = await V3ClosedAuthService.ensureClientReady();
+      debugPrint('[V3SmsLogin] ensureClientReady returned: $ready');
       if (!mounted) return;
 
       if (ready) {
         setState(() => _isBackendReady = true);
+        debugPrint('[V3SmsLogin] _isBackendReady set to true');
         return;
       }
 
@@ -205,7 +208,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   // ─── Korak 1: Proveri telefon + pošalji SMS ────────────────────
 
   Future<void> _sendSms() async {
+    debugPrint(
+        '[V3SmsLogin] _sendSms called, _canSubmitPhoneStep=$_canSubmitPhoneStep, _isLoading=$_isLoading, _isBackendReady=$_isBackendReady');
     if (!_canSubmitPhoneStep) {
+      debugPrint('[V3SmsLogin] _sendSms blocked: _isLoading=$_isLoading, _isBackendReady=$_isBackendReady');
       return;
     }
 
@@ -241,7 +247,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _statusMessage = '';
       });
 
+      debugPrint('[V3SmsLogin] About to call _advanceAfterPhoneAuth');
       await _advanceAfterPhoneAuth();
+      debugPrint('[V3SmsLogin] _advanceAfterPhoneAuth completed');
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _sendSms error: $e');
@@ -253,8 +261,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   }
 
   Future<void> _advanceAfterPhoneAuth({bool skipBiometricSave = false}) async {
+    debugPrint('[V3SmsLogin] _advanceAfterPhoneAuth started');
     final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
     final authId = (_targetAuthId ?? '').trim();
+    debugPrint('[V3SmsLogin] phone empty: ${phone.isEmpty}, authId empty: ${authId.isEmpty}');
     if (phone.isEmpty) {
       if (mounted) {
         V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
@@ -270,16 +280,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
+    debugPrint('[V3SmsLogin] Calling getActiveById...');
     final putnik = await V3PutnikService.getActiveById(authId);
+    debugPrint('[V3SmsLogin] getActiveById returned: ${putnik != null ? 'data' : 'null'}');
     if (!mounted) return;
 
     if (putnik == null) {
-      // Putnik ne postoji u bazi - nije autorizovan
-      if (!mounted) {
-        V3AppSnackBar.error(context,
-            '❌ Niste dobili odobrenje za korišćenje aplikacije. Molimo pošaljite poruku adminu sa sledećim podacima: ime, prezime, broj telefona.');
-        _resetToStep1();
-      }
+      // Putnik nije pronađen - možda je vozač, prosledi onVerified da odluči
+      debugPrint('[V3SmsLogin] putnik is null, calling onVerified for possible vozac');
+      await widget.onVerified(phone, authId);
       return;
     }
 
@@ -623,8 +632,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildInfoBox(
-          icon: Icons.sms_outlined,
-          text: 'Unesite broj telefona za prijavu.',
+          icon: _isBackendReady ? Icons.sms_outlined : Icons.hourglass_top,
+          text: _isBackendReady ? 'Unesite broj telefona za prijavu.' : 'Povezivanje sa serverom u toku, sačekajte...',
         ),
         const SizedBox(height: 24),
         TextField(
@@ -668,9 +677,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: 'Nastavi',
-          icon: Icons.send,
-          isLoading: _isLoading,
+          text: _isBackendReady ? 'Nastavi' : 'Učitavanje...',
+          icon: _isBackendReady ? Icons.send : Icons.hourglass_empty,
+          isLoading: !_isBackendReady || _isLoading,
           onPressed: _canSubmitPhoneStep ? _sendSms : null,
         ),
         if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[

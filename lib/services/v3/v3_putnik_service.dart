@@ -32,9 +32,14 @@ class V3PutnikService {
 
   static Future<Map<String, dynamic>?> getActiveById(String putnikId) async {
     final id = putnikId.trim();
-    if (id.isEmpty) return null;
+    debugPrint('[V3PutnikService] getActiveById called with: $id');
+    if (id.isEmpty) {
+      debugPrint('[V3PutnikService] id is empty, returning null');
+      return null;
+    }
 
     final row = await _repo.getActiveById(id);
+    debugPrint('[V3PutnikService] getActiveById repo returned: ${row != null ? 'data' : 'null'}');
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 

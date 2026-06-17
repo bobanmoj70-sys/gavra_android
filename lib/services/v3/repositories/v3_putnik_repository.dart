@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../globals.dart';
@@ -9,8 +10,20 @@ class V3PutnikRepository {
   static const String _putnikSelectProjection =
       'id:id, ime_prezime:ime, telefon_1:telefon, telefon_2, tip_putnika:tip, adresa_bc_id:adresa_primary_bc_id, adresa_vs_id:adresa_primary_vs_id, adresa_bc_id_2:adresa_secondary_bc_id, adresa_vs_id_2:adresa_secondary_vs_id, cena_po_danu, cena_po_pokupljenju, push_token, push_token_2, created_at, updated_at';
 
-  Future<Map<String, dynamic>?> getActiveById(String id) {
-    return supabase.from('v3_auth').select(_putnikSelectProjection).eq('id', id).neq('tip', 'vozac').maybeSingle();
+  Future<Map<String, dynamic>?> getActiveById(String id) async {
+    debugPrint('[V3PutnikRepository] Querying v3_auth for id: $id');
+    try {
+      final result =
+          await supabase.from('v3_auth').select(_putnikSelectProjection).eq('id', id).neq('tip', 'vozac').maybeSingle();
+      debugPrint('[V3PutnikRepository] Query result: ${result != null ? 'found' : 'null'}');
+      if (result != null) {
+        debugPrint('[V3PutnikRepository] tip: ${result['tip_putnika']}');
+      }
+      return result;
+    } catch (e) {
+      debugPrint('[V3PutnikRepository] Query error: $e');
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> getActiveByPushToken(String token) {

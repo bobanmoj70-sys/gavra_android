@@ -41,19 +41,33 @@ bool get isSupabaseReady {
 }
 
 Future<bool> ensureSupabaseReady() async {
-  if (isSupabaseReady) return true;
+  if (isSupabaseReady) {
+    debugPrint('[ensureSupabaseReady] Already ready');
+    return true;
+  }
 
   try {
+    debugPrint('[ensureSupabaseReady] Initializing config...');
     await configService.initializeBasic();
+    debugPrint('[ensureSupabaseReady] Config initialized: ${configService.isInitialized}');
+
     if (isSupabaseReady) return true;
 
     final url = configService.getSupabaseUrl().trim();
     final anonKey = configService.getSupabaseAnonKey().trim();
-    if (url.isEmpty || anonKey.isEmpty) return false;
+    debugPrint('[ensureSupabaseReady] URL empty: ${url.isEmpty}, AnonKey empty: ${anonKey.isEmpty}');
 
+    if (url.isEmpty || anonKey.isEmpty) {
+      debugPrint('[ensureSupabaseReady] Missing credentials!');
+      return false;
+    }
+
+    debugPrint('[ensureSupabaseReady] Initializing Supabase...');
     await Supabase.initialize(url: url, anonKey: anonKey);
+    debugPrint('[ensureSupabaseReady] Supabase initialized: $isSupabaseReady');
     return isSupabaseReady;
-  } catch (_) {
+  } catch (e) {
+    debugPrint('[ensureSupabaseReady] Error: $e');
     return isSupabaseReady;
   }
 }
