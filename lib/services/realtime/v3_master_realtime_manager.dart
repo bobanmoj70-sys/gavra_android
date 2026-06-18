@@ -8,6 +8,7 @@ import '../../globals.dart';
 import '../v3/v3_address_coordinate_service.dart';
 import '../v3/v3_app_settings_state.dart';
 import '../v3/v3_app_update_service.dart';
+import '../v3/v3_operativna_nedelja_service.dart';
 import 'engine/v3_bootstrap_loader.dart';
 import 'engine/v3_cache_store.dart';
 import 'engine/v3_event_bus.dart';
@@ -584,6 +585,18 @@ class V3MasterRealtimeManager {
 
     if (config.name == 'v3_auth') {
       _rebuildRoleCachesFromAuth();
+    }
+
+    if (config.name == 'v3_operativna_nedelja' &&
+        payload.eventType != PostgresChangeEvent.delete &&
+        payload.newRecord.isNotEmpty) {
+      unawaited(
+        V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+          operativnaRow: normalizedNew,
+        ).catchError(
+          (Object e) => debugPrint('[RT] syncTerminDodela error: $e'),
+        ),
+      );
     }
 
     final affected = <String>{config.name, ...config.dependsOn};
