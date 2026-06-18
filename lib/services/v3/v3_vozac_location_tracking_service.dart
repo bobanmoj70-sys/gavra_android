@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_time_utils.dart';
+import 'v3_trenutna_dodela_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 
 enum V3LocationPrereqStatus {
@@ -175,6 +176,11 @@ class V3VozacLocationTrackingService {
 
     if (vozacIdToClean.isNotEmpty) {
       await clearEtaForVozac(vozacId: vozacIdToClean);
+      try {
+        await V3TrenutnaDodelaService.deleteByVozacId(vozacIdToClean);
+      } catch (e) {
+        debugPrint('[V3VozacLocationTrackingService] deleteByVozacId error: $e');
+      }
     }
 
     if (_activeDatumIso.isNotEmpty && _activeGrad.isNotEmpty && _activeVreme.isNotEmpty) {
@@ -183,6 +189,7 @@ class V3VozacLocationTrackingService {
           datumIso: _activeDatumIso,
           grad: _activeGrad,
           vreme: _activeVreme,
+          vozacId: vozacIdToClean,
         );
       } catch (e) {
         debugPrint('[V3VozacLocationTrackingService] deleteSlot error: $e');
