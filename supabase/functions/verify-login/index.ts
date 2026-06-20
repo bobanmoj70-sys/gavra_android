@@ -7,6 +7,7 @@ type VerifyLoginPayload = {
   v3_auth_id?: string;
   telefon?: string;
   phone?: string;
+  installation_id?: string;
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
 
     const { data: account, error: lookupError } = await client
       .from("v3_auth")
-      .select("id, telefon, telefon_2")
+      .select("id, telefon, telefon_2, installation_id, installation_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -90,10 +91,36 @@ Deno.serve(async (req) => {
       });
     }
 
+    const incomingInstallationId = String(payload.installation_id ?? "").trim();
+    let deviceRecognized = false;
+    let deviceSlotsFull = false;
+    let deviceAllowed = true;
+
+    if (incomingInstallationId) {
+      const slot1 = String(account.installation_id ?? "").trim();
+      const slot2 = String(account.installation_id_2 ?? "").trim();
+      deviceRecognized = incomingInstallationId === slot1 || incomingInstallationId === slot2;
+      deviceSlotsFull = slot1 !== "" && slot2 !== "";
+      deviceAllowed = deviceRecognized || !deviceSlotsFull;
+    }
+
+    if (!deviceAllowed) {
+      return json(200, {
+        ok: false,
+        reason: "device_limit_reached",
+        v3_auth_id: userId,
+        telefon: canonicalPhone,
+        device_recognized: deviceRecognized,
+        device_slots_full: deviceSlotsFull,
+      });
+    }
+
     return json(200, {
       ok: true,
       v3_auth_id: userId,
       telefon: canonicalPhone,
+      device_recognized: deviceRecognized,
+      device_slots_full: deviceSlotsFull,
     });
   } catch (error) {
     return json(200, {

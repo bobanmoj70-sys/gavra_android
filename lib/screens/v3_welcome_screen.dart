@@ -9,6 +9,7 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
@@ -227,6 +228,22 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
             final authId = (await V3ClosedAuthService.findAuthIdByPhone(normalizedPhone) ?? '').trim();
             if (authId.isEmpty) return;
+
+            final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+            final verification = await V3ClosedAuthService.verifyLogin(
+              rawPhone: normalizedPhone,
+              expectedAuthId: authId,
+              installationId: deviceId,
+            ).timeout(_startupTimeout, onTimeout: () => const V3LoginVerification(ok: false, reason: 'timeout'));
+
+            if (!verification.ok || !verification.deviceAllowed) {
+              if (verification.reason == 'device_limit_reached') {
+                _showSafeSnackBar('❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.');
+              } else {
+                _showSafeSnackBar('❌ Telefon nije uparen sa UUID nalogom.');
+              }
+              return;
+            }
 
             await _onLoginVerified(normalizedPhone, authId);
           }
@@ -477,13 +494,19 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         return;
       }
 
-      final verifiedId = await V3ClosedAuthService.findAuthIdByPhoneViaEdge(
-        phone,
+      final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+      final verification = await V3ClosedAuthService.verifyLogin(
+        rawPhone: phone,
         expectedAuthId: resolvedId,
-      ).timeout(_startupTimeout, onTimeout: () => null);
+        installationId: deviceId,
+      ).timeout(_startupTimeout, onTimeout: () => const V3LoginVerification(ok: false, reason: 'timeout'));
 
-      if ((verifiedId ?? '').trim().isEmpty) {
-        _showSafeSnackBar('❌ Telefon nije uparen sa UUID nalogom.');
+      if (!verification.ok || !verification.deviceAllowed) {
+        if (verification.reason == 'device_limit_reached') {
+          _showSafeSnackBar('❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.');
+        } else {
+          _showSafeSnackBar('❌ Telefon nije uparen sa UUID nalogom.');
+        }
         return;
       }
 

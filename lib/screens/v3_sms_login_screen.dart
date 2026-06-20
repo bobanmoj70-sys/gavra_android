@@ -7,6 +7,7 @@ import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
@@ -277,6 +278,27 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         V3AppSnackBar.error(context, '❌ UUID naloga nedostaje. Prijavi se ponovo.');
         _resetToStep1();
       }
+      return;
+    }
+
+    debugPrint('[V3SmsLogin] Verifying device identity...');
+    final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+    final verification = await V3ClosedAuthService.verifyLogin(
+      rawPhone: phone,
+      expectedAuthId: authId,
+      installationId: deviceId,
+    );
+    if (!verification.ok || !verification.deviceAllowed) {
+      if (!mounted) return;
+      if (verification.reason == 'device_limit_reached') {
+        V3AppSnackBar.error(
+          context,
+          '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
+        );
+      } else {
+        V3AppSnackBar.error(context, '❌ Telefon nije uparen sa UUID nalogom.');
+      }
+      _resetToStep1();
       return;
     }
 

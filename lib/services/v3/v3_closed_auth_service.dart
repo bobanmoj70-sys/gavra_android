@@ -4,8 +4,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_phone_utils.dart';
+import 'v3_device_identity_service.dart';
 import 'v3_putnik_service.dart';
 import 'v3_vozac_service.dart';
+
+class V3LoginVerification {
+  final bool ok;
+  final String? authId;
+  final bool deviceRecognized;
+  final bool deviceAllowed;
+  final bool deviceSlotsFull;
+  final String? reason;
+
+  const V3LoginVerification({
+    required this.ok,
+    this.authId,
+    this.deviceRecognized = false,
+    this.deviceAllowed = true,
+    this.deviceSlotsFull = false,
+    this.reason,
+  });
+}
 
 class V3ClosedAuthService {
   V3ClosedAuthService._();
@@ -20,6 +39,64 @@ class V3ClosedAuthService {
   static String normalizePhone(String rawPhone) => V3PhoneUtils.normalize(rawPhone.trim());
 
   static Future<bool> ensureClientReady() => ensureSupabaseReady();
+
+  static Future<V3LoginVerification> verifyLogin({
+    required String rawPhone,
+    required String expectedAuthId,
+    String? installationId,
+  }) async {
+    final ready = await ensureClientReady();
+    if (!ready) {
+      return const V3LoginVerification(ok: false, reason: 'supabase_not_ready');
+    }
+
+    final phone = normalizePhone(rawPhone);
+    if (phone.isEmpty) {
+      return const V3LoginVerification(ok: false, reason: 'missing_phone');
+    }
+
+    final expectedId = expectedAuthId.trim();
+    if (expectedId.isEmpty) {
+      return const V3LoginVerification(ok: false, reason: 'missing_v3_auth_id');
+    }
+
+    try {
+      final body = <String, dynamic>{
+        'telefon': phone,
+        'v3_auth_id': expectedId,
+      };
+      final incomingInstallationId = (installationId ?? '').trim();
+      if (incomingInstallationId.isNotEmpty) {
+        body['installation_id'] = incomingInstallationId;
+      }
+
+      final response = await _client.functions.invoke(
+        'verify-login',
+        body: body,
+      );
+
+      final status = response.status;
+      final data = response.data;
+      if (status < 200 || status >= 300 || data is! Map) {
+        return const V3LoginVerification(ok: false, reason: 'edge_error');
+      }
+
+      final ok = data['ok'] == true;
+      final verifiedId = data['v3_auth_id']?.toString().trim() ?? '';
+      final reason = data['reason']?.toString();
+
+      return V3LoginVerification(
+        ok: ok,
+        authId: verifiedId.isNotEmpty ? verifiedId : expectedId,
+        deviceRecognized: data['device_recognized'] == true,
+        deviceAllowed: ok,
+        deviceSlotsFull: data['device_slots_full'] == true,
+        reason: reason,
+      );
+    } catch (_) {
+      return const V3LoginVerification(ok: false, reason: 'unexpected_error');
+    }
+  }
 
   static Future<String?> findAuthIdByPhone(String rawPhone) async {
     debugPrint('[findAuthIdByPhone] Called with: $rawPhone');
@@ -48,44 +125,14 @@ class V3ClosedAuthService {
     String rawPhone, {
     String? expectedAuthId,
   }) async {
-    final ready = await ensureClientReady();
-    if (!ready) return null;
-
-    final phone = normalizePhone(rawPhone);
-    if (phone.isEmpty) return null;
-    final expectedId = (expectedAuthId ?? '').trim();
-    if (expectedId.isEmpty) return null;
-
-    try {
-      final response = await _client.functions.invoke(
-        'verify-login',
-        body: {
-          'telefon': phone,
-          'v3_auth_id': expectedId,
-        },
-      );
-
-      final status = response.status;
-      final data = response.data;
-      if (status < 200 || status >= 300 || data is! Map) {
-        return null;
-      }
-
-      final ok = data['ok'] == true;
-      if (!ok) return null;
-
-      final verifiedId = data['v3_auth_id']?.toString().trim() ?? '';
-      if (verifiedId.isNotEmpty) {
-        if (expectedId.isNotEmpty && verifiedId != expectedId) {
-          return null;
-        }
-        return verifiedId;
-      }
-
-      return null;
-    } catch (_) {
-      return null;
-    }
+    final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+    final verification = await verifyLogin(
+      rawPhone: rawPhone,
+      expectedAuthId: expectedAuthId ?? '',
+      installationId: deviceId,
+    );
+    if (!verification.ok || !verification.deviceAllowed) return null;
+    return verification.authId;
   }
 
   // ─── Manual SMS sesija ──────────────────────────────────────────

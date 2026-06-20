@@ -5,7 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:uuid/uuid.dart';
+
+import 'v3_device_identity_service.dart';
 
 class V3PushTokenResult {
   final String token;
@@ -27,7 +28,6 @@ class V3PushTokenProvider {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
   );
-  static const String _installationStorageKey = 'installation_device_id';
   static const String _lastFcmTokenStorageKey = 'v3_last_known_fcm_token';
   static const String _lastApnsTokenStorageKey = 'v3_last_known_apns_token';
 
@@ -47,12 +47,12 @@ class V3PushTokenProvider {
   }
 
   static Future<String?> getInstallationId() async {
-    final stored = (await _storage.read(key: _installationStorageKey) ?? '').trim();
-    if (stored.isNotEmpty) return stored;
-
-    final generated = const Uuid().v4();
-    await _storage.write(key: _installationStorageKey, value: generated);
-    return generated;
+    try {
+      return await V3DeviceIdentityService.getStableDeviceId();
+    } catch (e) {
+      debugPrint('[V3PushTokenProvider] getInstallationId error: $e');
+      return null;
+    }
   }
 
   static Future<V3PushTokenResult?> _tryGetFcmToken() async {
