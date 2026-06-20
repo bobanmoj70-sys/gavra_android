@@ -482,6 +482,166 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }
   }
 
+  Future<void> _openInfoBannerEditor() async {
+    try {
+      final row = await V3AppSettingsService.loadGlobal(selectColumns: 'info_banner');
+      if (!mounted) return;
+
+      final raw = row['info_banner'];
+      final initial = raw is Map ? raw : <String, dynamic>{};
+
+      final titleCtrl = TextEditingController(text: (initial['title'] ?? '').toString());
+      final messageCtrl = TextEditingController(text: (initial['message'] ?? '').toString());
+      var enabled = initial['enabled'] == true;
+      var color = (initial['color'] ?? 'amber').toString().trim().toLowerCase();
+      if (color.isEmpty) color = 'amber';
+
+      const colors = ['amber', 'blue', 'red', 'green'];
+
+      await V3DialogHelper.showDialogBuilder<void>(
+        context: context,
+        builder: (dialogContext) {
+          var isSaving = false;
+          return StatefulBuilder(
+            builder: (context, setModalState) => AlertDialog(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              title: const Text('📢 Info baner', style: TextStyle(color: Colors.white)),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Jedna poruka prikazana svim korisnicima. Isključi kada ne treba da se prikazuje.',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        activeColor: Colors.amber,
+                        title: const Text('Prikaži baner',
+                            style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                        value: enabled,
+                        onChanged: (val) => setModalState(() => enabled = val),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: titleCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Naslov',
+                          hintText: 'Obaveštenje',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          prefixIcon: Icon(Icons.title, color: Colors.white70),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: messageCtrl,
+                        minLines: 3,
+                        maxLines: 6,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Poruka',
+                          hintText: 'Unesi tekst obaveštenja...',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          prefixIcon: Icon(Icons.message_outlined, color: Colors.white70),
+                          alignLabelWithHint: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('Boja banera', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: colors
+                            .map(
+                              (c) => ChoiceChip(
+                                label: Text(
+                                  c.toUpperCase(),
+                                  style: TextStyle(
+                                    color: color == c ? Colors.black : Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                selected: color == c,
+                                selectedColor: _chipColor(c),
+                                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                onSelected: (_) => setModalState(() => color = c),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Otkaži'),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final title = titleCtrl.text.trim();
+                          final message = messageCtrl.text.trim();
+
+                          if (enabled && (title.isEmpty || message.isEmpty)) {
+                            V3AppSnackBar.warning(context, 'Ako je baner uključen, moraš uneti i naslov i poruku.');
+                            return;
+                          }
+
+                          setModalState(() => isSaving = true);
+                          try {
+                            await V3AppSettingsService.updateGlobal({
+                              'info_banner': {
+                                'enabled': enabled,
+                                'title': title,
+                                'message': message,
+                                'color': color,
+                              },
+                            });
+                            if (!mounted) return;
+                            Navigator.of(dialogContext).pop();
+                            V3AppSnackBar.success(this.context, '✅ Info baner sačuvan');
+                          } catch (e) {
+                            if (!mounted) return;
+                            setModalState(() => isSaving = false);
+                            V3AppSnackBar.error(context, 'Greška pri čuvanju: $e');
+                          }
+                        },
+                  child: const Text('Sačuvaj'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      V3AppSnackBar.error(context, 'Greška pri učitavanju info banera: $e');
+    }
+  }
+
+  Color _chipColor(String color) {
+    switch (color) {
+      case 'blue':
+        return Colors.blue;
+      case 'red':
+        return Colors.red;
+      case 'green':
+        return Colors.green;
+      case 'amber':
+      default:
+        return Colors.amber;
+    }
+  }
+
   Future<void> _openUpdateVersionsEditor() async {
     final row = await _loadUpdateSettings();
     if (!mounted) return;
@@ -1179,6 +1339,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       value: '__non_working_days__',
                                       child: Text('📅  Uredi neradne dane', style: TextStyle(color: Colors.white))),
                                   const PopupMenuItem(
+                                      value: '__info_banner__',
+                                      child: Text('📢  Uredi info baner', style: TextStyle(color: Colors.white))),
+                                  const PopupMenuItem(
                                       value: '__vozaci__',
                                       child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
                                 ],
@@ -1190,6 +1353,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               }
                               if (val == '__non_working_days__') {
                                 _runAfterMenuClose(_openNeradniDaniEditor);
+                                return;
+                              }
+                              if (val == '__info_banner__') {
+                                _runAfterMenuClose(_openInfoBannerEditor);
                                 return;
                               }
                               if (val == '__vozaci__') {

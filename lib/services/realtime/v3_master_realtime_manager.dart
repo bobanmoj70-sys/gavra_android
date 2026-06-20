@@ -122,6 +122,10 @@ class V3MasterRealtimeManager {
       applyNeradniDaniFromSettings(row['neradni_dani']);
     }
 
+    if (row.containsKey('info_banner')) {
+      applyInfoBannerFromSettings(row['info_banner']);
+    }
+
     if (row.containsKey('active_week_start')) {
       final awsParsed = _tryParseDateTime(row['active_week_start']);
       if (awsParsed != null) {

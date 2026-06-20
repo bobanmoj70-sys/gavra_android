@@ -169,6 +169,47 @@ bool isNeradanDan({
   return getNeradanDanRazlog(datumIso: datumIso, grad: grad) != null;
 }
 
+/// INFO BANNER - jedna admin-kontrolisana poruka prikazana kroz V3InfoBanner.
+/// Očekivani format iz v3_app_settings.info_banner:
+/// {"enabled": true, "title": "Obaveštenje", "message": "...", "color": "amber|blue|red|green"}
+class V3InfoBannerData {
+  final bool enabled;
+  final String title;
+  final String message;
+  final String color;
+
+  const V3InfoBannerData({
+    this.enabled = false,
+    this.title = '',
+    this.message = '',
+    this.color = 'amber',
+  });
+
+  bool get isVisible => enabled && title.trim().isNotEmpty && message.trim().isNotEmpty;
+}
+
+final ValueNotifier<V3InfoBannerData> infoBannerNotifier = ValueNotifier<V3InfoBannerData>(const V3InfoBannerData());
+
+V3InfoBannerData _parseInfoBanner(dynamic raw) {
+  if (raw is! Map) return const V3InfoBannerData();
+
+  final enabled = raw['enabled'] == true;
+  final title = (raw['title'] ?? '').toString().trim();
+  final message = (raw['message'] ?? '').toString().trim();
+  final color = (raw['color'] ?? 'amber').toString().trim().toLowerCase();
+
+  return V3InfoBannerData(
+    enabled: enabled,
+    title: title,
+    message: message,
+    color: color.isEmpty ? 'amber' : color,
+  );
+}
+
+void applyInfoBannerFromSettings(dynamic raw) {
+  infoBannerNotifier.value = _parseInfoBanner(raw);
+}
+
 /// Helper - vraća listu polazaka za grad iz dnevnog custom rasporeda.
 /// Parametar [sezona] je zadržan samo radi kompatibilnosti pozivaoca.
 List<String> getRasporedVremena(String grad, String sezona, {String? day}) {

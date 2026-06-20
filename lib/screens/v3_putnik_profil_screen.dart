@@ -25,8 +25,8 @@ import '../utils/v3_stream_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_uuid_utils.dart';
+import '../widgets/v3_info_banner.dart';
 import '../widgets/v3_live_clock_text.dart';
-import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import '../widgets/v3_vreme_dolaska_widget.dart';
 import 'v3_help_screen.dart';
@@ -814,7 +814,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   top: 8,
                   left: 16,
                   right: 16,
-                  child: const V3NeradniDaniBanner(),
+                  child: const V3InfoBanner(),
                 ),
               ],
             ),

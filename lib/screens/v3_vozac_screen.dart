@@ -34,6 +34,7 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_time_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
+import '../widgets/v3_info_banner.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
@@ -1442,6 +1443,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                       padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
                       child: V3NeradniDaniBanner(),
                     ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
+                    child: V3InfoBanner(),
+                  ),
                   Expanded(
                     child: _mojiPutnici.isEmpty
                         ? Center(

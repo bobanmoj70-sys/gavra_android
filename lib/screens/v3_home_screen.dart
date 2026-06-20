@@ -36,6 +36,7 @@ import '../utils/v3_text_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
+import '../widgets/v3_info_banner.dart';
 import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
@@ -1125,6 +1126,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           const V3UpdateBanner(),
                           const V3NeradniDaniBanner(
                             margin: EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 4),
+                          ),
+                          const V3InfoBanner(
+                            margin: EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 4),
                           ),
                           // Action buttons
                           Padding(
