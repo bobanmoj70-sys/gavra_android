@@ -162,7 +162,13 @@ class V3VozacLocationTrackingService {
 
   Future<void> stop() async {
     final vozacIdToClean = _activeVozacId;
+    final datumIsoToClean = _activeDatumIso;
+    final gradToClean = _activeGrad;
+    final vremeToClean = _activeVreme;
     _activeVozacId = '';
+    _activeDatumIso = '';
+    _activeGrad = '';
+    _activeVreme = '';
     _lastSentPosition = null;
     _isRunning = false;
     onLocationSent = null;
@@ -176,19 +182,29 @@ class V3VozacLocationTrackingService {
 
     if (vozacIdToClean.isNotEmpty) {
       await clearEtaForVozac(vozacId: vozacIdToClean);
-      try {
-        await V3TrenutnaDodelaService.deleteByVozacId(vozacIdToClean);
-      } catch (e) {
-        debugPrint('[V3VozacLocationTrackingService] deleteByVozacId error: $e');
+      if (datumIsoToClean.isNotEmpty && gradToClean.isNotEmpty && vremeToClean.isNotEmpty) {
+        try {
+          final slotId = await V3TrenutnaDodelaSlotService.fetchSlotId(
+            datumIso: datumIsoToClean,
+            grad: gradToClean,
+            vreme: vremeToClean,
+            vozacId: vozacIdToClean,
+          );
+          if (slotId != null) {
+            await V3TrenutnaDodelaService.deleteBySlotId(slotId);
+          }
+        } catch (e) {
+          debugPrint('[V3VozacLocationTrackingService] deleteBySlotId error: $e');
+        }
       }
     }
 
-    if (_activeDatumIso.isNotEmpty && _activeGrad.isNotEmpty && _activeVreme.isNotEmpty) {
+    if (datumIsoToClean.isNotEmpty && gradToClean.isNotEmpty && vremeToClean.isNotEmpty) {
       try {
         await V3TrenutnaDodelaSlotService.deleteSlot(
-          datumIso: _activeDatumIso,
-          grad: _activeGrad,
-          vreme: _activeVreme,
+          datumIso: datumIsoToClean,
+          grad: gradToClean,
+          vreme: vremeToClean,
           vozacId: vozacIdToClean,
         );
       } catch (e) {

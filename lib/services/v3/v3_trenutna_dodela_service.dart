@@ -114,6 +114,12 @@ class V3TrenutnaDodelaService {
     await supabase.from(tableName).delete().inFilter(_colTerminId, ids);
   }
 
+  static Future<void> deleteBySlotId(String slotId) async {
+    final id = slotId.trim();
+    if (id.isEmpty) return;
+    await supabase.from(tableName).delete().eq(colSlotId, id);
+  }
+
   static Future<void> deleteByVozacId(String vozacId) async {
     final id = vozacId.trim();
     if (id.isEmpty) return;

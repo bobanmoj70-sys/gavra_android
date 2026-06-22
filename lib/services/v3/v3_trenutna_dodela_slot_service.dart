@@ -297,6 +297,30 @@ class V3TrenutnaDodelaSlotService {
     return result['id']?.toString();
   }
 
+  static Future<String?> fetchSlotId({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+    required String vozacId,
+  }) async {
+    final datum = _normalizeDatumIso(datumIso);
+    final gradNorm = _normalizeGrad(grad);
+    final vremeNorm = _normalizeVreme(vreme);
+    final vozac = vozacId.trim();
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
+
+    final rows = await supabase
+        .from(tableName)
+        .select('id')
+        .eq(colDatum, datum)
+        .eq(colGrad, gradNorm)
+        .eq(colVreme, vremeNorm)
+        .eq(colVozacId, vozac)
+        .limit(1);
+    if ((rows as List).isEmpty) return null;
+    return rows.first['id']?.toString();
+  }
+
   static Future<void> deleteAllSlotsForVozac({
     required String vozacId,
   }) async {
