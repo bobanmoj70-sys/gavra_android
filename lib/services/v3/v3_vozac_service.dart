@@ -76,6 +76,7 @@ class V3VozacService {
     required String vozacId,
     required String pushToken,
     String? installationId,
+    String? hardwareId,
   }) async {
     final safeId = vozacId.trim();
     final safeToken = pushToken.trim();
@@ -87,6 +88,7 @@ class V3VozacService {
         v3AuthId: safeId,
         pushToken: safeToken,
         installationId: safeInstallationId,
+        hardwareId: hardwareId,
       );
     } catch (e) {
       debugPrint('[V3VozacService] writePushTokenOnLogin error: $e');

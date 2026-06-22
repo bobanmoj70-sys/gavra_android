@@ -31,10 +31,12 @@ class V3PushTokenEdgeService {
     required String v3AuthId,
     String? pushToken,
     String? installationId,
+    String? hardwareId,
   }) async {
     final targetId = v3AuthId.trim();
     final safePushToken = (pushToken ?? '').trim();
     final incomingInstallationId = (installationId ?? '').trim();
+    final incomingHardwareId = (hardwareId ?? '').trim();
     final incomingPlatform = _resolvePlatform();
     final incomingAppVersion = await _resolveAppVersion();
 
@@ -51,6 +53,7 @@ class V3PushTokenEdgeService {
         'v3_auth_id': targetId,
         'incoming_installation_id': incomingInstallationId,
         if (safePushToken.isNotEmpty) 'incoming_push_token': safePushToken,
+        if (incomingHardwareId.isNotEmpty) 'incoming_hardware_id': incomingHardwareId,
         if (incomingPlatform.isNotEmpty) 'incoming_platform': incomingPlatform,
         if (incomingAppVersion.isNotEmpty) 'incoming_app_version': incomingAppVersion,
       },

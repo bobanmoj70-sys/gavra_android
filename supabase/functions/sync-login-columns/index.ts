@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     const { data: existing, error: existingError } = await client
       .from("v3_auth")
-      .select("id, installation_id, installation_id_2")
+      .select("id, installation_id, installation_id_2, push_token, push_token_2, hardware_id, hardware_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
     });
     const incomingPlatform = firstNonEmpty(payload.incoming_platform, payload.platform);
     const incomingAppVersion = firstNonEmpty(payload.incoming_app_version, payload.app_version);
+    const incomingHardwareId = firstNonEmpty(payload.incoming_hardware_id, payload.hardware_id);
 
     if (!incomingInstallationIdResolved) {
       return json(200, { ok: false, updated: false, reason: "missing_incoming_installation_id" });
@@ -88,6 +89,10 @@ Deno.serve(async (req) => {
 
     const slot1Installation = String(existing.installation_id ?? "").trim();
     const slot2Installation = String(existing.installation_id_2 ?? "").trim();
+    const slot1Token = String(existing.push_token ?? "").trim();
+    const slot2Token = String(existing.push_token_2 ?? "").trim();
+    const slot1Hardware = String(existing.hardware_id ?? "").trim();
+    const slot2Hardware = String(existing.hardware_id_2 ?? "").trim();
 
     let slot: 1 | 2 | null = null;
     let reason = "";
@@ -98,6 +103,18 @@ Deno.serve(async (req) => {
     } else if (slot2Installation && slot2Installation === incomingInstallationIdResolved) {
       slot = 2;
       reason = "slot_matched";
+    } else if (incomingHardwareId && slot1Hardware && incomingHardwareId === slot1Hardware) {
+      slot = 1;
+      reason = "hardware_matched";
+    } else if (incomingHardwareId && slot2Hardware && incomingHardwareId === slot2Hardware) {
+      slot = 2;
+      reason = "hardware_matched";
+    } else if (incomingPushToken && slot1Token && incomingPushToken === slot1Token) {
+      slot = 1;
+      reason = "token_matched";
+    } else if (incomingPushToken && slot2Token && incomingPushToken === slot2Token) {
+      slot = 2;
+      reason = "token_matched";
     } else if (!slot1Installation) {
       slot = 1;
       reason = "slot_assigned";
@@ -120,6 +137,7 @@ Deno.serve(async (req) => {
     if (slot === 1) {
       if (incomingPushToken) patch.push_token = incomingPushToken;
       patch.installation_id = incomingInstallationIdResolved;
+      if (incomingHardwareId) patch.hardware_id = incomingHardwareId;
       patch.last_seen_at = now;
       if (incomingPlatform) patch.platform = incomingPlatform;
       if (incomingAppVersion) patch.app_version = incomingAppVersion;
@@ -128,6 +146,7 @@ Deno.serve(async (req) => {
     if (slot === 2) {
       if (incomingPushToken) patch.push_token_2 = incomingPushToken;
       patch.installation_id_2 = incomingInstallationIdResolved;
+      if (incomingHardwareId) patch.hardware_id_2 = incomingHardwareId;
       patch.last_seen_at_2 = now;
       if (incomingPlatform) patch.platform_2 = incomingPlatform;
       if (incomingAppVersion) patch.app_version_2 = incomingAppVersion;

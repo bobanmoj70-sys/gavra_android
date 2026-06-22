@@ -377,6 +377,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     try {
       final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
       if (installationId.isEmpty) return;
+      final hardwareId = await V3DeviceIdentityService.getHardwareId();
 
       String token = '';
       var resolvedInstallationId = installationId;
@@ -408,6 +409,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           vozacId: v3AuthId,
           pushToken: token,
           installationId: resolvedInstallationId,
+          hardwareId: hardwareId,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
         if (token.isEmpty) {
           unawaited(
@@ -425,6 +427,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         putnikId: v3AuthId,
         pushToken: token,
         installationId: resolvedInstallationId,
+        hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
       if (token.isEmpty) {
         unawaited(
@@ -447,6 +450,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }) async {
     try {
       await Future<void>.delayed(const Duration(seconds: 8));
+      final hardwareId = await V3DeviceIdentityService.getHardwareId();
 
       String token = '';
       for (var attempt = 1; attempt <= 3; attempt++) {
@@ -469,6 +473,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           vozacId: v3AuthId,
           pushToken: token,
           installationId: installationId,
+          hardwareId: hardwareId,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
         return;
       }
@@ -477,6 +482,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         putnikId: v3AuthId,
         pushToken: token,
         installationId: installationId,
+        hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
     } catch (e) {
       debugPrint('[V3WelcomeScreen] delayed push token write error: $e');

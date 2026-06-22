@@ -48,6 +48,18 @@ class V3DeviceIdentityService {
     return id;
   }
 
+  static Future<String?> getHardwareId() async {
+    try {
+      final identity = await V3OsDeviceIdService.getDeviceIdentity();
+      if (kIsWeb) return null;
+      if (Platform.isAndroid) return _clean(identity.androidDeviceId);
+      if (Platform.isIOS) return _clean(identity.iosDeviceId);
+    } catch (e) {
+      debugPrint('[V3DeviceIdentityService] getHardwareId error: $e');
+    }
+    return null;
+  }
+
   static Future<void> clear() async {
     try {
       await _storage.delete(key: _stableDeviceIdKey);

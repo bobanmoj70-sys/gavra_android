@@ -21,6 +21,7 @@ import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_background_location_handler.dart';
+import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
@@ -628,6 +629,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
   if (safeToken.isEmpty) return;
   if (_lastSyncedPushToken == safeToken) return;
   final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
+  final hardwareId = await V3DeviceIdentityService.getHardwareId();
 
   Future<bool> doSyncAttempt() async {
     final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
@@ -636,6 +638,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
         putnikId: putnikId,
         pushToken: safeToken,
         installationId: installationId,
+        hardwareId: hardwareId,
       );
       return true;
     }
@@ -646,6 +649,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
         vozacId: vozacId,
         pushToken: safeToken,
         installationId: installationId,
+        hardwareId: hardwareId,
       );
       return true;
     }
