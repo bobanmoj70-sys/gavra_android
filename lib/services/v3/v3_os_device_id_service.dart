@@ -59,9 +59,8 @@ class V3OsDeviceIdService {
 
       if (defaultTargetPlatform == TargetPlatform.android) {
         final androidInfo = await _deviceInfo.androidInfo;
-        var androidDeviceId = _clean(androidInfo.data['androidId']?.toString());
-        androidDeviceId ??= _clean(androidInfo.data['android_id']?.toString());
-        androidDeviceId ??= await _getAndroidIdFromChannel();
+        var androidDeviceId = await _getAndroidIdFromChannel();
+        androidDeviceId ??= _clean(androidInfo.serialNumber);
         final androidBuildId = _clean(androidInfo.id);
 
         return V3DeviceIdentity(
