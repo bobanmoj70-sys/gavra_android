@@ -1,10 +1,8 @@
 class MlConfig {
-  // Ngrok public tunnel
-  static const baseUrl = 'https://cross-groovy-frostily.ngrok-free.dev';
+  // Lokalna IP adresa laptopa na Tailscale VPN mreži kako bi i telefon i emulator imali pristup
+  static const baseUrl = 'http://100.79.160.71:8000';
 
-  // Headers potrebni za ngrok (preskace browser warning stranicu)
   static const headers = {
-    'ngrok-skip-browser-warning': 'true',
     'Content-Type': 'application/json',
   };
 }

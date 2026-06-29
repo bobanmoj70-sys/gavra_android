@@ -141,3 +141,9 @@ temp_secrets/
 ios/ios_cert_key_pkcs8.pem
 
 /secrets/
+# Python/ML logs and databases
+__pycache__/
+*.pyc
+*.db
+ml-service/gavra_ai.db
+ml-service/__pycache__/
