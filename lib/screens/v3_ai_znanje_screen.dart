@@ -15,7 +15,8 @@ class V3AiZnanjeScreen extends StatefulWidget {
   State<V3AiZnanjeScreen> createState() => _V3AiZnanjeScreenState();
 }
 
-class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerProviderStateMixin {
+class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
@@ -108,7 +109,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         final data = json.decode(utf8.decode(response.bodyBytes));
         final List<dynamic> insightList = data['insights'] ?? [];
         setState(() {
-          _insights = insightList.map((e) => Map<String, dynamic>.from(e)).toList();
+          _insights =
+              insightList.map((e) => Map<String, dynamic>.from(e)).toList();
         });
       }
     } catch (e) {
@@ -136,11 +138,14 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             headers: MlConfig.headers,
             body: json.encode({'message': text}),
           )
-          .timeout(const Duration(seconds: 120)); // LLM lokalni upit može potrajati malo duže, produženo na 120s za CPU rad
+          .timeout(const Duration(
+              seconds:
+                  120)); // LLM lokalni upit može potrajati malo duže, produženo na 120s za CPU rad
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
-        final replyText = data['response'] ?? 'Došlo je do greške u interpretaciji odgovora.';
+        final replyText =
+            data['response'] ?? 'Došlo je do greške u interpretaciji odgovora.';
         setState(() {
           _messages.add({'role': 'ai', 'content': replyText});
         });
@@ -192,7 +197,9 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           children: [
             Icon(Icons.psychology_outlined, color: Colors.blueAccent, size: 28),
             SizedBox(width: 8),
-            Text('🧠 Gavra AI Brain', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            Text('🧠 Gavra AI Brain',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
         backgroundColor: const Color(0xFF11111B),
@@ -259,11 +266,14 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                   controller: _chatController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Pitaj me (npr. "koliko je bilo putnika u BC u 07:00")...',
-                    hintStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+                    hintText:
+                        'Pitaj me (npr. "koliko je bilo putnika u BC u 07:00")...',
+                    hintStyle:
+                        const TextStyle(color: Colors.grey, fontSize: 13),
                     filled: true,
                     fillColor: const Color(0xFF252538),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24.0),
                       borderSide: BorderSide.none,
@@ -354,7 +364,10 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             SizedBox(width: 10),
             Text(
               'Gavra AI se priseća i analizira bazu...',
-              style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+              style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic),
             ),
           ],
         ),
@@ -415,7 +428,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             return Card(
               color: const Color(0xFF252538),
               margin: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               clipBehavior: Clip.antiAlias,
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -441,7 +455,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                     const Divider(color: Color(0xFF32324D), height: 20),
                     Text(
                       ins['description'] ?? '',
-                      style: const TextStyle(color: Colors.white, fontSize: 13.5, height: 1.4),
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13.5, height: 1.4),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -449,21 +464,24 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                       children: [
                         if ((ins['source_table'] ?? '').toString().isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: const Color(0xFF1A1A26),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Izvor: ${ins['source_table']}',
-                              style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 11),
                             ),
                           )
                         else
                           const SizedBox(),
                         Text(
                           ins['created_at'] ?? '',
-                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                          style:
+                              const TextStyle(color: Colors.grey, fontSize: 11),
                         ),
                       ],
                     ),
@@ -491,10 +509,15 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               children: [
                 Icon(Icons.online_prediction, color: Colors.green, size: 18),
                 SizedBox(width: 8),
-                Text(
-                  'Aktivno mrežno nadgledanje učenja (Realtime log)',
-                  style: TextStyle(
-                      color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                Expanded(
+                  child: Text(
+                    'Aktivno mrežno nadgledanje učenja (Realtime log)',
+                    style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace'),
+                  ),
                 ),
               ],
             ),
@@ -505,7 +528,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
                 ? const Center(
                     child: Text(
                       'Čekanje na prve logove učenja...',
-                      style: TextStyle(color: Colors.grey, fontFamily: 'monospace'),
+                      style: TextStyle(
+                          color: Colors.grey, fontFamily: 'monospace'),
                     ),
                   )
                 : ListView.builder(
