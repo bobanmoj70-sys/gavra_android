@@ -589,7 +589,7 @@ def get_insights():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
     """Glavni pretraživač i generator pametnih odgovora koristeći Llama 3.2 i lokalnu pretragu"""
     try:
         usr_msg = request.message

@@ -136,7 +136,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             headers: MlConfig.headers,
             body: json.encode({'message': text}),
           )
-          .timeout(const Duration(seconds: 45)); // LLM lokalni upit može potrajati malo duže
+          .timeout(const Duration(seconds: 120)); // LLM lokalni upit može potrajati malo duže, produženo na 120s za CPU rad
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
