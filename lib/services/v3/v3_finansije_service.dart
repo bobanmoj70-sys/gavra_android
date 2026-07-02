@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -30,6 +32,7 @@ class V3NaplataInfo {
 class V3FinansijeService {
   V3FinansijeService._();
   static const Uuid _uuid = Uuid();
+  static const String _nenaplaceneVoznjeKey = 'nenaplacene_voznje_json';
   static final V3FinansijeRepository _repo = V3FinansijeRepository();
   static final Set<String> _mesecnaNaplataLocks = <String>{};
 
@@ -77,6 +80,120 @@ class V3FinansijeService {
 
   static void _sortByCreatedAtDesc(List<Map<String, dynamic>> rows) {
     rows.sort((a, b) => _createdAtOrEpoch(b).compareTo(_createdAtOrEpoch(a)));
+  }
+
+  static double _resolveCenaZaPutnik(String putnikId, {String? fallbackTip}) {
+    final rm = V3MasterRealtimeManager.instance;
+    final putnik = rm.putniciCache[putnikId];
+    final tip =
+        (putnik?['tip_putnika']?.toString() ?? putnik?['tip']?.toString() ?? fallbackTip ?? '').trim().toLowerCase();
+    final cenaPoDanu = (putnik?['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+    final cenaPoPokupljenju = (putnik?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+    return _cenaZaTip(
+      tip: tip,
+      cenaPoDanu: cenaPoDanu,
+      cenaPoPokupljenju: cenaPoPokupljenju,
+    );
+  }
+
+  static String _resolveOperativnaStavkaId({
+    required String putnikId,
+    required DateTime datum,
+    required String dogadjajId,
+    required bool isPoDanu,
+  }) {
+    final safeDogadjajId = dogadjajId.trim();
+    if (safeDogadjajId.isNotEmpty) return safeDogadjajId;
+    if (isPoDanu) {
+      final danIso = V3DateUtils.parseIsoDatePart(datum.toIso8601String());
+      return 'auto:${putnikId.trim().toLowerCase()}:$danIso';
+    }
+    return 'auto:${_uuid.v4()}';
+  }
+
+  static DateTime _parseNenaplacenaDatumOrEpoch(Map<String, dynamic> stavka) {
+    final dt = V3DateUtils.parseTs(stavka['datum']?.toString());
+    return dt ?? DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static List<Map<String, dynamic>> _readNenaplaceneVoznje(Map<String, dynamic> row) {
+    final raw = row[_nenaplaceneVoznjeKey];
+    final result = <Map<String, dynamic>>[];
+
+    try {
+      Iterable<dynamic> src;
+      if (raw is List) {
+        src = raw;
+      } else if (raw is String) {
+        final decoded = jsonDecode(raw);
+        if (decoded is! List) return result;
+        src = decoded;
+      } else {
+        return result;
+      }
+
+      for (final item in src) {
+        if (item is! Map) continue;
+        final operativnaId = (item['operativna_id']?.toString() ?? '').trim();
+        final datum = item['datum']?.toString();
+        final cena = (item['cena'] as num?)?.toDouble() ?? 0.0;
+        if (operativnaId.isEmpty || datum == null || datum.isEmpty) continue;
+        result.add({
+          'operativna_id': operativnaId,
+          'datum': datum,
+          'cena': cena,
+        });
+      }
+    } catch (_) {
+      return result;
+    }
+
+    result.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+    return result;
+  }
+
+  static List<Map<String, dynamic>> _appendNenaplacenaVoznja({
+    required List<Map<String, dynamic>> stavke,
+    required String operativnaId,
+    required DateTime datum,
+    required double cena,
+  }) {
+    final safeOperativnaId = operativnaId.trim();
+    if (safeOperativnaId.isEmpty) return stavke;
+    if (stavke.any((s) => (s['operativna_id']?.toString() ?? '').trim() == safeOperativnaId)) {
+      return stavke;
+    }
+
+    final updated = List<Map<String, dynamic>>.from(stavke);
+    updated.add({
+      'operativna_id': safeOperativnaId,
+      'datum': datum.toIso8601String(),
+      'cena': cena,
+    });
+    updated.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+    return updated;
+  }
+
+  static List<Map<String, dynamic>> _consumeNenaplaceneVoznje({
+    required List<Map<String, dynamic>> stavke,
+    required double uplacenIznos,
+    required double defaultCena,
+  }) {
+    var preostalo = uplacenIznos;
+    final queue = List<Map<String, dynamic>>.from(stavke)
+      ..sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+
+    while (queue.isNotEmpty && preostalo > 0.009) {
+      final first = queue.first;
+      final cenaStavke =
+          ((first['cena'] as num?)?.toDouble() ?? 0.0) > 0 ? (first['cena'] as num).toDouble() : defaultCena;
+      if (cenaStavke <= 0) break;
+      if (preostalo + 0.009 < cenaStavke) break;
+      preostalo -= cenaStavke;
+      queue.removeAt(0);
+    }
+
+    return queue;
   }
 
   static Iterable<Map<String, dynamic>> _naplataRows() {
@@ -260,6 +377,7 @@ class V3FinansijeService {
     _mesecnaNaplataLocks.add(lockKey);
 
     final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    final cenaVoznje = _resolveCenaZaPutnik(safePutnikId, fallbackTip: tip);
 
     try {
       // 1. Pronađi postojeći master red za ovaj mesec
@@ -304,8 +422,22 @@ class V3FinansijeService {
 
         if (latestId.isNotEmpty) {
           final currentBroj = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
+          final operativnaId = _resolveOperativnaStavkaId(
+            putnikId: safePutnikId,
+            datum: datum,
+            dogadjajId: safeDogadjajId,
+            isPoDanu: isPoDanu,
+          );
+          final currentNenaplacene = _readNenaplaceneVoznje(latest);
+          final updatedNenaplacene = _appendNenaplacenaVoznja(
+            stavke: currentNenaplacene,
+            operativnaId: operativnaId,
+            datum: datum,
+            cena: cenaVoznje,
+          );
           final updated = await _repo.updateByIdReturning(latestId, {
             'broj_voznji': currentBroj + 1,
+            _nenaplaceneVoznjeKey: updatedNenaplacene,
             'updated_at': DateTime.now().toIso8601String(),
           });
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updated);
@@ -323,6 +455,18 @@ class V3FinansijeService {
         'naplaceno_by': (evidentiraoBy ?? '').trim().isEmpty ? null : evidentiraoBy,
         'dogadjaj_id': safeDogadjajId.isEmpty ? null : safeDogadjajId,
         'broj_voznji': 1,
+        _nenaplaceneVoznjeKey: [
+          {
+            'operativna_id': _resolveOperativnaStavkaId(
+              putnikId: safePutnikId,
+              datum: datum,
+              dogadjajId: safeDogadjajId,
+              isPoDanu: isPoDanu,
+            ),
+            'datum': datum.toIso8601String(),
+            'cena': cenaVoznje,
+          }
+        ],
         'mesec': datum.month,
         'godina': datum.year,
       });
@@ -547,6 +691,13 @@ class V3FinansijeService {
 
         final currentIznos = (latest['iznos'] as num?)?.toDouble() ?? 0.0;
         final currentBrojVoznji = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
+        final currentNenaplacene = _readNenaplaceneVoznje(latest);
+        final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
+        final updatedNenaplacene = _consumeNenaplaceneVoznje(
+          stavke: currentNenaplacene,
+          uplacenIznos: iznos,
+          defaultCena: cenaVoznje,
+        );
         // Broj vožnji se ne menja pri plaćanju - samo pri pokupljanju (evidentirajRealizacijuPriPokupljanju)
         // Zadržavamo trenutnu vrednost da ne bi smanjili broj vožnji ako se u međuvremenu povećao
         final finalBrojVoznji = currentBrojVoznji;
@@ -556,6 +707,7 @@ class V3FinansijeService {
           'poslednja_dopuna': iznos, // Čuvamo iznos poslednje dopune
           'naplaceno_by': naplacenoBy,
           'broj_voznji': finalBrojVoznji,
+          _nenaplaceneVoznjeKey: updatedNenaplacene,
           'updated_at': DateTime.now().toIso8601String(),
           'dogadjaj_id': _uuid.v4(),
         });
@@ -570,6 +722,7 @@ class V3FinansijeService {
           'dogadjaj_id': _uuid.v4(),
           'naplaceno_by': naplacenoBy,
           'broj_voznji': brojVoznji,
+          _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           'mesec': mesec,
           'godina': godina,
         });
