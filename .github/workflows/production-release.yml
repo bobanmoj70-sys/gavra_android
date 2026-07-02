@@ -251,10 +251,10 @@ jobs:
           echo "Version name: $VERSION"
           echo "Version code: $VERSION_CODE"
 
-      - name: Select Xcode 26
+      - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.0'
+          xcode-version: latest-stable
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -358,10 +358,6 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -showsdks
-          if ! xcodebuild -showsdks | grep -Eq "iphoneos26(\\.[0-9]+)?"; then
-            echo "Required iOS 26 SDK not found. Use Xcode 26 or later."
-            exit 1
-          fi
 
       - name: Enable Push Notifications Entitlements
         run: |
