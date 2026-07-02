@@ -175,10 +175,12 @@ class V3FinansijeService {
     final candidates = _naplataRows().where((row) {
       final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
       if (rPutnikId != putnik.toLowerCase()) return false;
-      // Uzimamo samo redove sa stvarnom uplatom (iznos > 0 ili postoji naplaceno_by)
+      // Uzimamo samo redove sa stvarnom uplatom.
+      // naplaceno_by se može pojaviti i na evidenciji realizacije (bez uplate),
+      // pa nije pouzdan kriterijum za "zadnju naplatu".
       final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
-      final naplacenoBy = row['naplaceno_by']?.toString();
-      return iznos > 0 || (naplacenoBy != null && naplacenoBy.isNotEmpty);
+      final poslednjaDopuna = (row['poslednja_dopuna'] as num?)?.toDouble() ?? 0;
+      return iznos > 0 || poslednjaDopuna > 0;
     }).toList();
     if (candidates.isEmpty) return null;
 
