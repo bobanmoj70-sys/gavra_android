@@ -450,6 +450,7 @@ Future<void> _doStartupTasks() async {
   try {
     WakelockPlus.enable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   } catch (e) {
     debugPrint('⚠️ [main] Wakelock/SystemChrome greška: $e');
   }

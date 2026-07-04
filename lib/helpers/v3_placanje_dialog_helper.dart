@@ -1,8 +1,12 @@
+import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
+import '../utils/v3_container_utils.dart';
 import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 
@@ -99,163 +103,283 @@ class V3PlacanjeDialogHelper {
             }
 
             if (uplaceno <= 0) {
-              return (color: cs.onSurface, weight: FontWeight.w500);
+              return (color: Colors.white, weight: FontWeight.w500);
             }
 
             return (color: const Color(0xFF00C853), weight: FontWeight.w700);
           }
 
-          return AlertDialog(
-            backgroundColor: cs.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: cs.outline.withValues(alpha: 0.25), width: 1),
-            ),
-            titlePadding: const EdgeInsets.fromLTRB(22, 20, 22, 8),
-            contentPadding: const EdgeInsets.fromLTRB(22, 6, 22, 8),
-            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Naplata: $imePrezime',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (zadnjaNaplata != null)
-                  Container(
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.9,
+              ),
+              decoration: BoxDecoration(
+                gradient: Theme.of(context).backgroundGradient,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  V3ContainerUtils.iconContainer(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.outline.withValues(alpha: 0.25)),
+                    padding: const EdgeInsets.all(16),
+                    backgroundColor: Theme.of(context).glassContainer,
+                    borderRadiusGeometry: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
+                    child: Row(
                       children: [
-                        Text(
-                          'Zadnja naplata',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface),
+                        Expanded(
+                          child: Text(
+                            'Naplata: $imePrezime',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen)}',
-                          style: TextStyle(color: cs.onSurfaceVariant),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: V3ContainerUtils.iconContainer(
+                            padding: const EdgeInsets.all(8),
+                            backgroundColor: Colors.red.withValues(alpha: 0.2),
+                            borderRadiusGeometry: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+                            child: const Icon(Icons.close, color: Colors.white, size: 20),
+                          ),
                         ),
-                        Text(
-                          'Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD',
-                          style: TextStyle(color: cs.onSurfaceVariant),
-                        ),
-                        Text('Naplatio: $naplatioIme', style: TextStyle(color: cs.onSurfaceVariant)),
                       ],
                     ),
                   ),
-                TextField(
-                  controller: _iznosController,
-                  decoration: InputDecoration(
-                    labelText: 'Iznos (RSD)',
-                    suffixText: 'RSD',
-                    prefixIcon: const Icon(Icons.payments_outlined),
-                  ),
-                  style: TextStyle(color: cs.onSurface),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.calendar_month_outlined),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        ),
-                        value: _selectedMonth,
-                        isExpanded: true,
-                        items: List.generate(12, (i) => i + 1).map((m) {
-                          final mesecStyle = _mesecStyle(m);
-                          return DropdownMenuItem(
-                            value: m,
-                            child: Text(
-                              V3DateUtils.mesecNaziv(m),
-                              style: TextStyle(
-                                color: mesecStyle.color,
-                                fontWeight: mesecStyle.weight,
+                  // Content
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (zadnjaNaplata != null)
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 14),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cs.surface.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Theme.of(context).glassBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Zadnja naplata',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Datum: ${vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen)}',
+                                    style: const TextStyle(color: Colors.white70),
+                                  ),
+                                  Text(
+                                    'Iznos: ${zadnjiIznos.toStringAsFixed(0)} RSD',
+                                    style: const TextStyle(color: Colors.white70),
+                                  ),
+                                  Text(
+                                    'Naplatio: $naplatioIme',
+                                    style: const TextStyle(color: Colors.white70),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (v) => setState(() {
-                          _selectedMonth = v!;
-                          if (_autoIznosEnabled) {
-                            _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                          }
-                        }),
+                          TextField(
+                            controller: _iznosController,
+                            decoration: const InputDecoration(
+                              labelText: 'Iznos (RSD)',
+                              labelStyle: TextStyle(color: Colors.white70),
+                              suffixText: 'RSD',
+                              suffixStyle: TextStyle(color: Colors.white70),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white38),
+                              ),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white),
+                              ),
+                            ),
+                            style: const TextStyle(color: Colors.white),
+                            keyboardType: TextInputType.number,
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField2<int>(
+                                  isExpanded: true,
+                                  dropdownStyleData: DropdownStyleData(
+                                    decoration: BoxDecoration(
+                                      gradient: Theme.of(context).backgroundGradient,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                    ),
+                                  ),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  iconStyleData: const IconStyleData(
+                                    iconEnabledColor: Colors.white,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.zero,
+                                    labelText: 'Mesec',
+                                    labelStyle: TextStyle(color: Colors.white70),
+                                    enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(color: Colors.white38),
+                                    ),
+                                    focusedBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(color: Colors.white),
+                                    ),
+                                  ),
+                                  value: _selectedMonth,
+                                  items: List.generate(12, (i) => i + 1).map((m) {
+                                    final mesecStyle = _mesecStyle(m);
+                                    return DropdownMenuItem(
+                                      value: m,
+                                      child: Text(
+                                        V3DateUtils.mesecNaziv(m),
+                                        style: TextStyle(
+                                          color: mesecStyle.color,
+                                          fontWeight: mesecStyle.weight,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (v) => setState(() {
+                                    _selectedMonth = v!;
+                                    if (_autoIznosEnabled) {
+                                      _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                    }
+                                  }),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField2<int>(
+                                  isExpanded: true,
+                                  dropdownStyleData: DropdownStyleData(
+                                    decoration: BoxDecoration(
+                                      gradient: Theme.of(context).backgroundGradient,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                    ),
+                                  ),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  iconStyleData: const IconStyleData(
+                                    iconEnabledColor: Colors.white,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    contentPadding: EdgeInsets.zero,
+                                    labelText: 'Godina',
+                                    labelStyle: TextStyle(color: Colors.white70),
+                                    enabledBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(color: Colors.white38),
+                                    ),
+                                    focusedBorder: UnderlineInputBorder(
+                                      borderSide: BorderSide(color: Colors.white),
+                                    ),
+                                  ),
+                                  value: _selectedYear,
+                                  items: years.map((y) {
+                                    return DropdownMenuItem(
+                                      value: y,
+                                      child: Text(
+                                        '$y.',
+                                        style: const TextStyle(color: Colors.white),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (v) => setState(() {
+                                    _selectedYear = v!;
+                                    if (_autoIznosEnabled) {
+                                      _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                    }
+                                  }),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.event_outlined),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  // Actions
+                  V3ContainerUtils.iconContainer(
+                    padding: const EdgeInsets.all(16),
+                    backgroundColor: Theme.of(context).glassContainer,
+                    borderRadiusGeometry: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    border: Border(top: BorderSide(color: Theme.of(context).glassBorder)),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: V3ButtonUtils.outlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            text: 'Otkaži',
+                            borderColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
-                        value: _selectedYear,
-                        isExpanded: true,
-                        items: years.map((y) {
-                          return DropdownMenuItem(value: y, child: Text('$y.'));
-                        }).toList(),
-                        onChanged: (v) => setState(() {
-                          _selectedYear = v!;
-                          if (_autoIznosEnabled) {
-                            _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                          }
-                        }),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: V3ButtonUtils.elevatedButton(
+                            onPressed: () {
+                              final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
+                              final iznos = double.tryParse(rawIznos) ?? 0;
+                              if (iznos <= 0) {
+                                V3AppSnackBar.warning(context, 'Unesite ispravan iznos (> 0 RSD).');
+                                return;
+                              }
+                              Navigator.pop(
+                                context,
+                                V3PlacanjeRezultat(
+                                  iznos: iznos,
+                                  mesec: _selectedMonth,
+                                  godina: _selectedYear,
+                                ),
+                              );
+                            },
+                            text: 'Potvrdi',
+                            icon: Icons.check,
+                            backgroundColor: Colors.green.withValues(alpha: 0.7),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(foregroundColor: cs.error),
-                child: const Text('ODUSTANI'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: cs.primary,
-                  foregroundColor: cs.onPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                ),
-                onPressed: () {
-                  final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
-                  final iznos = double.tryParse(rawIznos) ?? 0;
-                  if (iznos <= 0) {
-                    V3AppSnackBar.warning(context, 'Unesite ispravan iznos (> 0 RSD).');
-                    return;
-                  }
-                  Navigator.pop(
-                    context,
-                    V3PlacanjeRezultat(
-                      iznos: iznos,
-                      mesec: _selectedMonth,
-                      godina: _selectedYear,
-                    ),
-                  );
-                },
-                child: const Text('POTVRDI'),
-              ),
-            ],
           );
         },
       ),
