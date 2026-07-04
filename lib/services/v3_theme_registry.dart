@@ -19,10 +19,10 @@ class V3ThemeRegistry {
     ),
     'dark_steel_grey': V3ThemeDefinition(
       id: 'dark_steel_grey',
-      name: '🖤 Dark Steel Grey',
+      name: '🦤 Dark Steel Grey',
       description: 'Triple Blue Fashion sa crno-sivim gradijentom',
       colorScheme: darkSteelGreyColorScheme,
-      themeData: tripleBlueFashionTheme,
+      themeData: darkSteelGreyTheme,
       styles: DarkSteelGreyStyles,
       gradient: darkSteelGreyGradient,
     ),
@@ -31,7 +31,7 @@ class V3ThemeRegistry {
       name: '❤️ Passionate Rose',
       description: 'Electric Red + Ruby + Crimson + Pink Ice kombinacija',
       colorScheme: passionateRoseColorScheme,
-      themeData: tripleBlueFashionTheme,
+      themeData: passionateRoseTheme,
       styles: PassionateRoseStyles,
       gradient: passionateRoseGradient,
     ),
@@ -40,18 +40,9 @@ class V3ThemeRegistry {
       name: '💖 Dark Pink',
       description: 'Tamna tema sa neon pink akcentima',
       colorScheme: darkPinkColorScheme,
-      themeData: tripleBlueFashionTheme,
+      themeData: darkPinkTheme,
       styles: DarkPinkStyles,
       gradient: darkPinkGradient,
-    ),
-    'night_blue': V3ThemeDefinition(
-      id: 'night_blue',
-      name: '🌙 Night Blue',
-      description: 'Tema iz nijansi Pošiljke gradient screenshot-a',
-      colorScheme: nightBlueColorScheme,
-      themeData: nightBlueTheme,
-      styles: NightBlueStyles,
-      gradient: nightBlueGradient,
     ),
   };
 
@@ -63,8 +54,7 @@ class V3ThemeRegistry {
   static final List<String> _themeNames = List.unmodifiable(_themes.keys);
 
   /// Vraća sve dostupne teme
-  static Map<String, V3ThemeDefinition> get allThemes =>
-      Map.unmodifiable(_themes);
+  static Map<String, V3ThemeDefinition> get allThemes => Map.unmodifiable(_themes);
 
   /// Vraća listu ID-eva tema (keširana, nealocira novu listu pri svakom pozivu)
   static List<String> get themeNames => _themeNames;
@@ -134,10 +124,7 @@ class V3ThemeDefinition {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is V3ThemeDefinition &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
+      identical(this, other) || other is V3ThemeDefinition && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;

@@ -271,20 +271,6 @@ const LinearGradient darkPinkGradient = LinearGradient(
   stops: [0.0, 0.25, 0.5, 0.75, 1.0],
 );
 
-// NIGHT BLUE GRADIENT - konzistentan template kao ostale teme
-const LinearGradient nightBlueGradient = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  colors: [
-    Color(0xFF1653D8),
-    Color(0xFF142C86),
-    Color(0xFF2B4680),
-    Color(0xFF7DB2D5),
-    Color(0xFF276DC0),
-  ],
-  stops: [0.0, 0.25, 0.5, 0.75, 1.0],
-);
-
 // PASSIONATE ROSE COLOR SCHEME
 const ColorScheme passionateRoseColorScheme = ColorScheme(
   brightness: Brightness.light,
@@ -359,33 +345,6 @@ const ColorScheme darkPinkColorScheme = ColorScheme(
   onErrorContainer: Color(0xFFFF8888),
 );
 
-// NIGHT BLUE COLOR SCHEME
-const ColorScheme nightBlueColorScheme = ColorScheme(
-  brightness: Brightness.dark,
-  primary: Color(0xFF1B40A8),
-  onPrimary: Colors.white,
-  primaryContainer: Color(0xFF243C89),
-  onPrimaryContainer: Colors.white,
-  secondary: Color(0xFF425E92),
-  onSecondary: Colors.white,
-  secondaryContainer: Color(0xFF5D96BA),
-  onSecondaryContainer: Colors.white,
-  tertiary: Color(0xFF5D9CCC),
-  onTertiary: Color(0xFF10244F),
-  tertiaryContainer: Color(0xFF78A8D8),
-  onTertiaryContainer: Color(0xFF10244F),
-  surface: Color(0xFF1A2D5F),
-  onSurface: Colors.white,
-  surfaceContainerHighest: Color(0xFF2A3F74),
-  onSurfaceVariant: Color(0xFFCAD7EE),
-  outline: Color(0xFF7E9FCC),
-  outlineVariant: Color(0xFF496B9F),
-  error: Color(0xFFEF4444),
-  onError: Colors.white,
-  errorContainer: Color(0xFF5A1D2A),
-  onErrorContainer: Color(0xFFFFDADF),
-);
-
 // TEMA EKSTENZIJA - dodaje gradijent pozadinu
 extension ThemeGradients on ThemeData {
   LinearGradient get backgroundGradient => V3ThemeManager().currentGradient;
@@ -404,8 +363,7 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
   scaffoldBackgroundColor: const Color(0xFFF0F9FF),
   appBarTheme: AppBarTheme(
     elevation: 0,
-    backgroundColor:
-        const Color(0xFF021B79), // Originalna tamna Electric Blue boja
+    backgroundColor: const Color(0xFF021B79), // Originalna tamna Electric Blue boja
     foregroundColor: Colors.white,
     systemOverlayStyle: SystemUiOverlayStyle.light,
     titleTextStyle: SerbianTextStyle.create(
@@ -416,16 +374,56 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
   ),
 );
 
-// Night Blue Theme
-final ThemeData nightBlueTheme = ThemeData(
-  colorScheme: nightBlueColorScheme,
+// Dark Steel Grey Theme
+final ThemeData darkSteelGreyTheme = ThemeData(
+  colorScheme: darkSteelGreyColorScheme,
   useMaterial3: true,
   fontFamily: 'Inter',
   textTheme: createSerbianTextTheme(),
-  scaffoldBackgroundColor: const Color(0xFF1A2D5F),
+  scaffoldBackgroundColor: const Color(0xFF1A1A1A),
   appBarTheme: AppBarTheme(
     elevation: 0,
-    backgroundColor: const Color(0xFF243C89),
+    backgroundColor: const Color(0xFF2C2C2C), // Tamno siva
+    foregroundColor: Colors.white,
+    systemOverlayStyle: SystemUiOverlayStyle.light,
+    titleTextStyle: SerbianTextStyle.create(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      color: Colors.white,
+    ),
+  ),
+);
+
+// Passionate Rose Theme
+final ThemeData passionateRoseTheme = ThemeData(
+  colorScheme: passionateRoseColorScheme,
+  useMaterial3: true,
+  fontFamily: 'Inter',
+  textTheme: createSerbianTextTheme(),
+  scaffoldBackgroundColor: const Color(0xFFFFF8F9),
+  appBarTheme: AppBarTheme(
+    elevation: 0,
+    backgroundColor: const Color(0xFF8B0000), // Dark Red
+    foregroundColor: Colors.white,
+    systemOverlayStyle: SystemUiOverlayStyle.light,
+    titleTextStyle: SerbianTextStyle.create(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      color: Colors.white,
+    ),
+  ),
+);
+
+// Dark Pink Theme
+final ThemeData darkPinkTheme = ThemeData(
+  colorScheme: darkPinkColorScheme,
+  useMaterial3: true,
+  fontFamily: 'Inter',
+  textTheme: createSerbianTextTheme(),
+  scaffoldBackgroundColor: const Color(0xFF1A0A14),
+  appBarTheme: AppBarTheme(
+    elevation: 0,
+    backgroundColor: const Color(0xFF8B2F6B), // Deep pink
     foregroundColor: Colors.white,
     systemOverlayStyle: SystemUiOverlayStyle.light,
     titleTextStyle: SerbianTextStyle.create(
@@ -637,79 +635,6 @@ class DarkPinkStyles {
         blurRadius: 32,
         offset: const Offset(0, 12),
         spreadRadius: 4,
-      ),
-    ],
-  );
-}
-
-// NIGHT BLUE Styles - izvedeno iz screenshot gradijenta
-class NightBlueStyles {
-  static BoxDecoration cardDecoration = BoxDecoration(
-    color: const Color(0xFF2A3F74),
-    borderRadius: V3StyleHelper.radius20,
-    border: Border.all(
-      width: 1.8,
-      color: const Color(0xFF78A8D8).withOpacity(0.5),
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: const Color(0xFF1B40A8).withOpacity(0.25),
-        blurRadius: 18,
-        offset: const Offset(0, 6),
-        spreadRadius: 1,
-      ),
-    ],
-  );
-
-  static BoxDecoration gradientBackground = const BoxDecoration(
-    gradient: nightBlueGradient,
-  );
-
-  static BoxDecoration gradientButton = BoxDecoration(
-    gradient: nightBlueGradient,
-    borderRadius: V3StyleHelper.radius16,
-    border: Border.all(
-      width: 1.4,
-      color: const Color(0xFF78A8D8).withOpacity(0.6),
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: const Color(0xFF243C89).withOpacity(0.35),
-        blurRadius: 16,
-        offset: const Offset(0, 6),
-      ),
-    ],
-  );
-
-  static BoxDecoration dropdownDecoration = BoxDecoration(
-    color: const Color(0xFF2A3F74),
-    borderRadius: V3StyleHelper.radius16,
-    border: Border.all(
-      color: const Color(0xFF78A8D8).withOpacity(0.35),
-      width: 1.3,
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: const Color(0xFF243C89).withOpacity(0.18),
-        blurRadius: 12,
-        offset: const Offset(0, 4),
-      ),
-    ],
-  );
-
-  static BoxDecoration popupDecoration = BoxDecoration(
-    color: const Color(0xFF1A2D5F),
-    borderRadius: V3StyleHelper.radius24,
-    border: Border.all(
-      color: const Color(0xFF78A8D8).withOpacity(0.45),
-      width: 1.8,
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: const Color(0xFF243C89).withOpacity(0.28),
-        blurRadius: 24,
-        offset: const Offset(0, 10),
-        spreadRadius: 2,
       ),
     ],
   );

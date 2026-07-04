@@ -866,80 +866,88 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           const SizedBox(height: 12),
         ],
         if (showBcDropdown) ...[
-          DropdownButtonFormField<V3Adresa>(
-            value: _selectedBcAdresa,
-            isExpanded: true,
-            dropdownColor: const Color(0xFF1E1E1E),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Adresa BC *',
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.location_city_outlined, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
+          V3ContainerUtils.gradientContainer(
+            gradient: Theme.of(context).backgroundGradient,
+            borderRadius: BorderRadius.circular(12),
+            child: DropdownButtonFormField<V3Adresa>(
+              value: _selectedBcAdresa,
+              isExpanded: true,
+              dropdownColor: const Color(0xFF1E1E1E),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Adresa BC *',
+                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                filled: true,
+                fillColor: Colors.transparent,
+                prefixIcon: const Icon(Icons.location_city_outlined, color: Colors.amber),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white30),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white30),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.amber, width: 2),
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
-              ),
+              items: adreseBc
+                  .map((a) => DropdownMenuItem<V3Adresa>(
+                        value: a,
+                        child: Text(a.naziv),
+                      ))
+                  .toList(),
+              onChanged: _isLoading
+                  ? null
+                  : (value) {
+                      setState(() => _selectedBcAdresa = value);
+                    },
             ),
-            items: adreseBc
-                .map((a) => DropdownMenuItem<V3Adresa>(
-                      value: a,
-                      child: Text(a.naziv),
-                    ))
-                .toList(),
-            onChanged: _isLoading
-                ? null
-                : (value) {
-                    setState(() => _selectedBcAdresa = value);
-                  },
           ),
           const SizedBox(height: 12),
         ],
         if (showVsDropdown) ...[
-          DropdownButtonFormField<V3Adresa>(
-            value: _selectedVsAdresa,
-            isExpanded: true,
-            dropdownColor: const Color(0xFF1E1E1E),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Adresa VS *',
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
+          V3ContainerUtils.gradientContainer(
+            gradient: Theme.of(context).backgroundGradient,
+            borderRadius: BorderRadius.circular(12),
+            child: DropdownButtonFormField<V3Adresa>(
+              value: _selectedVsAdresa,
+              isExpanded: true,
+              dropdownColor: const Color(0xFF1E1E1E),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Adresa VS *',
+                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                filled: true,
+                fillColor: Colors.transparent,
+                prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.amber),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white30),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white30),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.amber, width: 2),
+                ),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
-              ),
+              items: adreseVs
+                  .map((a) => DropdownMenuItem<V3Adresa>(
+                        value: a,
+                        child: Text(a.naziv),
+                      ))
+                  .toList(),
+              onChanged: _isLoading
+                  ? null
+                  : (value) {
+                      setState(() => _selectedVsAdresa = value);
+                    },
             ),
-            items: adreseVs
-                .map((a) => DropdownMenuItem<V3Adresa>(
-                      value: a,
-                      child: Text(a.naziv),
-                    ))
-                .toList(),
-            onChanged: _isLoading
-                ? null
-                : (value) {
-                    setState(() => _selectedVsAdresa = value);
-                  },
           ),
           const SizedBox(height: 12),
         ],
