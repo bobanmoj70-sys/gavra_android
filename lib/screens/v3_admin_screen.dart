@@ -27,7 +27,6 @@ import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
-import 'v3_vozaci_admin_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
 
 class V3AdminScreen extends StatefulWidget {
@@ -1341,9 +1340,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   const PopupMenuItem(
                                       value: '__info_banner__',
                                       child: Text('📢  Uredi info baner', style: TextStyle(color: Colors.white))),
-                                  const PopupMenuItem(
-                                      value: '__vozaci__',
-                                      child: Text('🚗  Vozači admin', style: TextStyle(color: Colors.white))),
                                 ],
                               );
                               if (val == null) return;
@@ -1357,13 +1353,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               }
                               if (val == '__info_banner__') {
                                 _runAfterMenuClose(_openInfoBannerEditor);
-                                return;
-                              }
-                              if (val == '__vozaci__') {
-                                _runAfterMenuClose(() async {
-                                  if (!mounted) return;
-                                  V3NavigationUtils.pushScreen<void>(context, const V3VozaciAdminScreen());
-                                });
                                 return;
                               }
                             },

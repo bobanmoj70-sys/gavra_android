@@ -269,6 +269,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final defaultCena = ocekivaniIznos;
 
     try {
+      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
       final rezultat = await V3PlacanjeDialogHelper.naplati(
         context: context,
         putnikId: widget.putnik.id,
@@ -277,6 +278,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         cenaPoModelu: cenaPoModelu,
         snimiMesecnuUplatu: isPoDanuModel,
         brojVoznji: defaults.brojVoznji,
+        mesec: datumRef.month,
+        godina: datumRef.year,
       );
       if (rezultat != null && mounted) {
         V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');
@@ -722,7 +725,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                             () {
                               final vpl = poslednjaDopunaAt ?? naplataAt;
                               final ukupnoStr = ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
-                              final poslednjeStr = poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
+                              final poslednjeStr =
+                                  poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);
                               return [
                                 if (ukupnoStr.isNotEmpty) ukupnoStr,
@@ -739,7 +743,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              final defaults = _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
+                              final defaults =
+                                  _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
                               final brojVoznji = defaults.brojVoznji;
                               final voznjaText = brojVoznji > 1 ? 'Vožnje' : 'Vožnja';
                               if (dtStr.isNotEmpty) {
@@ -757,7 +762,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              final defaults = _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
+                              final defaults =
+                                  _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
                               final brojVoznji = defaults.brojVoznji;
                               final voznjaText = brojVoznji > 1 ? 'Vožnje' : 'Vožnja';
                               if (dtStr.isNotEmpty) {
@@ -772,7 +778,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                             () {
                               final vpl = poslednjaDopunaAt ?? naplataAt;
                               final ukupnoStr = ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
-                              final poslednjeStr = poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
+                              final poslednjeStr =
+                                  poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);
                               return [
                                 if (ukupnoStr.isNotEmpty) ukupnoStr,

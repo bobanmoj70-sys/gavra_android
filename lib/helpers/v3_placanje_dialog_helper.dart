@@ -37,6 +37,8 @@ class V3PlacanjeDialogHelper {
     required String imePrezime,
     required double defaultCena,
     double? cenaPoModelu,
+    int? mesec,
+    int? godina,
   }) async {
     final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
     var _autoIznosEnabled = true;
@@ -70,9 +72,10 @@ class V3PlacanjeDialogHelper {
       _autoIznosEnabled = false;
     });
 
-    int _selectedMonth = DateTime.now().month;
-    int _selectedYear = DateTime.now().year;
-    final currentYear = DateTime.now().year;
+    final now = DateTime.now();
+    int _selectedMonth = mesec ?? now.month;
+    int _selectedYear = godina ?? now.year;
+    final currentYear = now.year;
     final years = List.generate(6, (i) => currentYear - 1 + i);
     final zadnjaNaplata = V3FinansijeService.getLatestNaplataForPutnik(putnikId);
     final vremePlacen = zadnjaNaplata?.paidAt;
@@ -394,6 +397,8 @@ class V3PlacanjeDialogHelper {
     double? cenaPoModelu,
     bool snimiMesecnuUplatu = false,
     int brojVoznji = 0,
+    int? mesec,
+    int? godina,
   }) async {
     final dialogRezultat = await _prikaziDialog(
       context: context,
@@ -401,6 +406,8 @@ class V3PlacanjeDialogHelper {
       imePrezime: imePrezime,
       defaultCena: defaultCena,
       cenaPoModelu: cenaPoModelu,
+      mesec: mesec,
+      godina: godina,
     );
     if (dialogRezultat == null) return null;
 

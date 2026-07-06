@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_finansije_service.dart';
-import 'package:gavra_android/services/v3/v3_vozac_service.dart';
 import 'package:gavra_android/utils/v3_date_utils.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
 
@@ -134,6 +133,8 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                       defaultCena: dug.iznos,
                                       snimiMesecnuUplatu: true,
                                       brojVoznji: dug.brojVoznji,
+                                      mesec: dug.mesec,
+                                      godina: dug.godina,
                                     );
                                     if (rezultat == null) return;
 
@@ -212,7 +213,6 @@ class _DugCard extends StatelessWidget {
   final V3Dug dug;
   final VoidCallback onNaplati;
 
-
   String _formatTs(DateTime? ts) {
     if (ts == null) return '-';
     final dd = ts.day.toString().padLeft(2, '0');
@@ -279,7 +279,8 @@ class _DugCard extends StatelessWidget {
                   Text('Uplaćeno: $uplataStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
                   if (dug.pokupioVozacIme.isNotEmpty) ...[
-                    Text('Pokupio: ${dug.pokupioVozacIme}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    Text('Pokupio: ${dug.pokupioVozacIme}',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     const SizedBox(height: 1),
                   ],
                   if (naplatioStr != null) ...[
