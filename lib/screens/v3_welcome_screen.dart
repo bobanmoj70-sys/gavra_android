@@ -500,22 +500,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         return;
       }
 
-      final deviceId = await V3DeviceIdentityService.getStableDeviceId();
-      final verification = await V3ClosedAuthService.verifyLogin(
-        rawPhone: phone,
-        expectedAuthId: resolvedId,
-        installationId: deviceId,
-      ).timeout(_startupTimeout, onTimeout: () => const V3LoginVerification(ok: false, reason: 'timeout'));
-
-      if (!verification.ok || !verification.deviceAllowed) {
-        if (verification.reason == 'device_limit_reached') {
-          _showSafeSnackBar('❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.');
-        } else {
-          _showSafeSnackBar('❌ Telefon nije uparen sa UUID nalogom.');
-        }
-        return;
-      }
-
       vozac = V3VozacService.getVozacById(resolvedId);
       if (vozac == null) {
         final vozacDirect = await V3VozacService.getVozacByIdDirect(resolvedId).timeout(
