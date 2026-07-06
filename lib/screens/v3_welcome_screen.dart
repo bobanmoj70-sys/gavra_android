@@ -163,10 +163,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
   }
 
-  bool _hasMissingPassengerAddresses(Map<String, dynamic> putnik) {
+  bool _hasMissingPassengerProfileFields(Map<String, dynamic> putnik) {
+    final ime = putnik['ime_prezime']?.toString().trim() ?? '';
+    final tip = putnik['tip_putnika']?.toString().trim() ?? '';
     final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
     final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
-    return bc.isEmpty || vs.isEmpty;
+    return ime.isEmpty || tip.isEmpty || bc.isEmpty || vs.isEmpty;
   }
 
   Future<Map<String, dynamic>?> _getPutnikWithAddressRefresh(String authId) async {
@@ -176,7 +178,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     );
 
     for (var attempt = 0; attempt < 2; attempt++) {
-      if (putnik == null || !_hasMissingPassengerAddresses(putnik)) {
+      if (putnik == null || !_hasMissingPassengerProfileFields(putnik)) {
         return putnik;
       }
 
@@ -286,7 +288,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       if (!mounted || restored == null) return false;
 
-      if (_hasMissingPassengerAddresses(restored)) {
+      if (_hasMissingPassengerProfileFields(restored)) {
         await _stopAudio();
         if (!mounted) return false;
         _openPassengerAddressCompletionFlow(_extractPassengerPhone(restored));
@@ -537,7 +539,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         return;
       }
 
-      if (_hasMissingPassengerAddresses(putnik)) {
+      if (_hasMissingPassengerProfileFields(putnik)) {
         _openPassengerAddressCompletionFlow(_extractPassengerPhone(putnik));
         return;
       }

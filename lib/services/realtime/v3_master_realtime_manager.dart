@@ -695,6 +695,17 @@ class V3MasterRealtimeManager {
     _scheduleEmit(tables: {table});
   }
 
+  void v3RemoveFromCache(String table, String id) {
+    if (id.isEmpty) return;
+    _cacheStore.remove(table, id);
+
+    if (table == 'v3_auth') {
+      _rebuildRoleCachesFromAuth();
+    }
+
+    _scheduleEmit(tables: {table});
+  }
+
   Map<String, dynamic> _normalizeRowForTable(String table, Map<String, dynamic> row) {
     if (row.isEmpty) return row;
     final normalized = Map<String, dynamic>.from(row);

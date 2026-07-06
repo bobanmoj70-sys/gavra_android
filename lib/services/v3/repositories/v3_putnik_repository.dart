@@ -47,7 +47,7 @@ class V3PutnikRepository {
   }
 
   Future<void> deleteById(String id) {
-    return Future.value();
+    return supabase.from('v3_auth').delete().eq('id', id).neq('tip', 'vozac');
   }
 
   Map<String, dynamic> _mapPayload(Map<String, dynamic> payload) {

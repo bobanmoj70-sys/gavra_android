@@ -71,6 +71,7 @@ class V3PutnikService {
 
   static Future<void> deactivatePutnik(String id) async {
     await _repo.deleteById(id);
+    V3MasterRealtimeManager.instance.v3RemoveFromCache('v3_auth', id);
   }
 
   static Future<void> writePushTokenOnLogin({
