@@ -8,6 +8,7 @@ type VerifyLoginPayload = {
   telefon?: string;
   phone?: string;
   installation_id?: string;
+  hardware_id?: string;
 };
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
 
     const { data: account, error: lookupError } = await client
       .from("v3_auth")
-      .select("id, telefon, telefon_2, installation_id, installation_id_2")
+      .select("id, telefon, telefon_2, installation_id, installation_id_2, hardware_id, hardware_id_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -92,15 +93,24 @@ Deno.serve(async (req) => {
     }
 
     const incomingInstallationId = String(payload.installation_id ?? "").trim();
+    const incomingHardwareId = String(payload.hardware_id ?? "").trim();
     let deviceRecognized = false;
     let deviceSlotsFull = false;
     let deviceAllowed = true;
 
-    if (incomingInstallationId) {
-      const slot1 = String(account.installation_id ?? "").trim();
-      const slot2 = String(account.installation_id_2 ?? "").trim();
-      deviceRecognized = incomingInstallationId === slot1 || incomingInstallationId === slot2;
-      deviceSlotsFull = slot1 !== "" && slot2 !== "";
+    if (incomingInstallationId || incomingHardwareId) {
+      const slot1Installation = String(account.installation_id ?? "").trim();
+      const slot2Installation = String(account.installation_id_2 ?? "").trim();
+      const slot1Hardware = String(account.hardware_id ?? "").trim();
+      const slot2Hardware = String(account.hardware_id_2 ?? "").trim();
+
+      const installationMatched = incomingInstallationId &&
+        (incomingInstallationId === slot1Installation || incomingInstallationId === slot2Installation);
+      const hardwareMatched = incomingHardwareId &&
+        (incomingHardwareId === slot1Hardware || incomingHardwareId === slot2Hardware);
+
+      deviceRecognized = installationMatched || hardwareMatched;
+      deviceSlotsFull = slot1Installation !== "" && slot2Installation !== "";
       deviceAllowed = deviceRecognized || !deviceSlotsFull;
     }
 

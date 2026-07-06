@@ -13,44 +13,28 @@ class V3DeviceIdentityService {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
   );
-  static const _stableDeviceIdKey = 'v3_stable_device_id';
+  static const _installationIdKey = 'v3_installation_id';
 
   static String? _clean(String? value) {
     final safe = (value ?? '').trim();
     return safe.isEmpty ? null : safe;
   }
 
+  /// UUID po instalaciji aplikacije. Menja se nakon reinstall-a.
   static Future<String> getStableDeviceId() async {
-    String? nativeId;
+    final cached = _clean(await _storage.read(key: _installationIdKey));
+    if (cached != null) return cached;
+
+    final id = const Uuid().v4();
     try {
-      final identity = await V3OsDeviceIdService.getDeviceIdentity();
-      if (kIsWeb) {
-        nativeId = null;
-      } else if (Platform.isAndroid) {
-        nativeId = _clean(identity.androidDeviceId);
-      } else if (Platform.isIOS) {
-        nativeId = _clean(identity.iosDeviceId);
-      }
-    } catch (e) {
-      debugPrint('[V3DeviceIdentityService] Native device id error: $e');
-    }
-
-    // Uvek preferiraj nativni ID (SSAID / IDFV) ako je dostupan.
-    final effectiveId = nativeId ?? const Uuid().v4();
-
-    final cached = _clean(await _storage.read(key: _stableDeviceIdKey));
-    if (cached != null && cached == effectiveId) return cached;
-
-    // Ažuriraj keš ako se promenio (npr. prvi put, reinstall, promena naloga).
-    try {
-      await _storage.write(key: _stableDeviceIdKey, value: effectiveId);
+      await _storage.write(key: _installationIdKey, value: id);
     } catch (e) {
       debugPrint('[V3DeviceIdentityService] SecureStorage write error: $e');
     }
-
-    return effectiveId;
+    return id;
   }
 
+  /// Stabilan ID fizičkog uređaja: SSAID na Androidu, IDFV na iOS-u.
   static Future<String?> getHardwareId() async {
     try {
       final identity = await V3OsDeviceIdService.getDeviceIdentity();
@@ -63,9 +47,16 @@ class V3DeviceIdentityService {
     return null;
   }
 
+  /// Vraća oba identifikatora odjednom.
+  static Future<({String installationId, String? hardwareId})> getDeviceIds() async {
+    final installationId = await getStableDeviceId();
+    final hardwareId = await getHardwareId();
+    return (installationId: installationId, hardwareId: hardwareId);
+  }
+
   static Future<void> clear() async {
     try {
-      await _storage.delete(key: _stableDeviceIdKey);
+      await _storage.delete(key: _installationIdKey);
     } catch (e) {
       debugPrint('[V3DeviceIdentityService] SecureStorage delete error: $e');
     }

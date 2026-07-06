@@ -44,6 +44,7 @@ class V3ClosedAuthService {
     required String rawPhone,
     required String expectedAuthId,
     String? installationId,
+    String? hardwareId,
   }) async {
     final ready = await ensureClientReady();
     if (!ready) {
@@ -68,6 +69,10 @@ class V3ClosedAuthService {
       final incomingInstallationId = (installationId ?? '').trim();
       if (incomingInstallationId.isNotEmpty) {
         body['installation_id'] = incomingInstallationId;
+      }
+      final incomingHardwareId = (hardwareId ?? '').trim();
+      if (incomingHardwareId.isNotEmpty) {
+        body['hardware_id'] = incomingHardwareId;
       }
 
       final response = await _client.functions.invoke(
@@ -126,10 +131,12 @@ class V3ClosedAuthService {
     String? expectedAuthId,
   }) async {
     final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+    final hardwareId = await V3DeviceIdentityService.getHardwareId();
     final verification = await verifyLogin(
       rawPhone: rawPhone,
       expectedAuthId: expectedAuthId ?? '',
       installationId: deviceId,
+      hardwareId: hardwareId,
     );
     if (!verification.ok || !verification.deviceAllowed) return null;
     return verification.authId;

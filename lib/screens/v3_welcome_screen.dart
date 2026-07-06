@@ -230,10 +230,12 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
             if (authId.isEmpty) return;
 
             final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+            final hardwareId = await V3DeviceIdentityService.getHardwareId();
             final verification = await V3ClosedAuthService.verifyLogin(
               rawPhone: normalizedPhone,
               expectedAuthId: authId,
               installationId: deviceId,
+              hardwareId: hardwareId,
             ).timeout(_startupTimeout, onTimeout: () => const V3LoginVerification(ok: false, reason: 'timeout'));
 
             if (!verification.ok || !verification.deviceAllowed) {

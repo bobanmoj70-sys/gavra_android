@@ -283,10 +283,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     debugPrint('[V3SmsLogin] Verifying device identity...');
     final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+    final hardwareId = await V3DeviceIdentityService.getHardwareId();
     final verification = await V3ClosedAuthService.verifyLogin(
       rawPhone: phone,
       expectedAuthId: authId,
       installationId: deviceId,
+      hardwareId: hardwareId,
     );
     if (!verification.ok || !verification.deviceAllowed) {
       if (!mounted) return;
