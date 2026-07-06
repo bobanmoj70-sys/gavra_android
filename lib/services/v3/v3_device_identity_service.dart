@@ -21,9 +21,6 @@ class V3DeviceIdentityService {
   }
 
   static Future<String> getStableDeviceId() async {
-    final cached = _clean(await _storage.read(key: _stableDeviceIdKey));
-    if (cached != null) return cached;
-
     String? nativeId;
     try {
       final identity = await V3OsDeviceIdService.getDeviceIdentity();
@@ -38,14 +35,20 @@ class V3DeviceIdentityService {
       debugPrint('[V3DeviceIdentityService] Native device id error: $e');
     }
 
-    final id = nativeId ?? const Uuid().v4();
+    // Uvek preferiraj nativni ID (SSAID / IDFV) ako je dostupan.
+    final effectiveId = nativeId ?? const Uuid().v4();
+
+    final cached = _clean(await _storage.read(key: _stableDeviceIdKey));
+    if (cached != null && cached == effectiveId) return cached;
+
+    // Ažuriraj keš ako se promenio (npr. prvi put, reinstall, promena naloga).
     try {
-      await _storage.write(key: _stableDeviceIdKey, value: id);
+      await _storage.write(key: _stableDeviceIdKey, value: effectiveId);
     } catch (e) {
       debugPrint('[V3DeviceIdentityService] SecureStorage write error: $e');
     }
 
-    return id;
+    return effectiveId;
   }
 
   static Future<String?> getHardwareId() async {

@@ -7,12 +7,16 @@ class V3DeviceIdentity {
   final String? androidBuildId;
   final String? iosDeviceId;
   final String? iosBuildId;
+  final String? deviceModel;
+  final String? osVersion;
 
   const V3DeviceIdentity({
     this.androidDeviceId,
     this.androidBuildId,
     this.iosDeviceId,
     this.iosBuildId,
+    this.deviceModel,
+    this.osVersion,
   });
 }
 
@@ -60,12 +64,18 @@ class V3OsDeviceIdService {
       if (defaultTargetPlatform == TargetPlatform.android) {
         final androidInfo = await _deviceInfo.androidInfo;
         var androidDeviceId = await _getAndroidIdFromChannel();
+        // Fallback na device_info_plus AndroidId (SSAID) ako native channel ne uspe.
+        androidDeviceId ??= _clean(androidInfo.id);
         androidDeviceId ??= _clean(androidInfo.serialNumber);
         final androidBuildId = _clean(androidInfo.id);
+        final deviceModel = _clean(androidInfo.model);
+        final osVersion = _clean(androidInfo.version.release);
 
         return V3DeviceIdentity(
           androidDeviceId: androidDeviceId,
           androidBuildId: androidBuildId,
+          deviceModel: deviceModel,
+          osVersion: osVersion,
         );
       }
 
@@ -87,9 +97,14 @@ class V3OsDeviceIdService {
           }
         }
 
+        final deviceModel = _clean((await _deviceInfo.iosInfo).utsname.machine);
+        final osVersion = _clean(iosBuildId);
+
         return V3DeviceIdentity(
           iosDeviceId: iosDeviceId,
           iosBuildId: iosBuildId,
+          deviceModel: deviceModel,
+          osVersion: osVersion,
         );
       }
 
