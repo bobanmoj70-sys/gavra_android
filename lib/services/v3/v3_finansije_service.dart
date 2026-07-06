@@ -33,8 +33,25 @@ class V3FinansijeService {
   V3FinansijeService._();
   static const Uuid _uuid = Uuid();
   static const String _nenaplaceneVoznjeKey = 'nenaplacene_voznje_json';
+  static const String _realizovaneVoznjeKey = 'realizovane_voznje_json';
   static final V3FinansijeRepository _repo = V3FinansijeRepository();
   static final Set<String> _mesecnaNaplataLocks = <String>{};
+
+  static String? _resolvePokupljenByIzOperativneNedelje(String putnikId, int godina, int mesec) {
+    final rm = V3MasterRealtimeManager.instance;
+    for (final operRow in rm.operativnaNedeljaCache.values) {
+      final rPutnikId = (operRow['created_by']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnikId.toLowerCase()) continue;
+      final pokupljenBy = operRow['pokupljen_by']?.toString().trim();
+      if (pokupljenBy == null || pokupljenBy.isEmpty) continue;
+      final datum = V3DateUtils.parseTs(operRow['datum']?.toString());
+      if (datum == null) continue;
+      if (datum.year == godina && datum.month == mesec) {
+        return pokupljenBy;
+      }
+    }
+    return null;
+  }
 
   static bool _isPoDanuTip(String tip) {
     final normalized = tip.trim().toLowerCase();
@@ -109,11 +126,6 @@ class V3FinansijeService {
       return 'auto:${putnikId.trim().toLowerCase()}:$danIso';
     }
     return 'auto:${_uuid.v4()}';
-  }
-
-  static DateTime _parseNenaplacenaDatumOrEpoch(Map<String, dynamic> stavka) {
-    final dt = V3DateUtils.parseTs(stavka['datum']?.toString());
-    return dt ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   static List<Map<String, dynamic>> _readNenaplaceneVoznje(Map<String, dynamic> row) {
@@ -217,8 +229,9 @@ class V3FinansijeService {
 
   static Iterable<Map<String, dynamic>> _naplataRowsForDan(DateTime day) {
     return _naplataRows().where((row) {
-      // Koristimo created_at jer nas zanima datum kada je naplata stvarno izvršena
-      final ts = row['created_at'];
+      // Danas je pazar onoliko koliko je danas uplaceno.
+      // Red se kreira prilikom pokupljanja (created_at), a azurira prilikom uplate (updated_at).
+      final ts = row['updated_at'];
       final dt = V3DateUtils.parseTs(ts?.toString());
       if (dt == null) return false;
       return dt.year == day.year && dt.month == day.month && dt.day == day.day;
@@ -362,6 +375,11 @@ class V3FinansijeService {
     required DateTime datum,
     String? dogadjajId,
     String? evidentiraoBy,
+    String? pokupljenAt,
+    String? dodaoBy,
+    String? azuriraoBy,
+    String? grad,
+    String? vreme,
   }) async {
     final safePutnikId = putnikId.trim();
     if (safePutnikId.isEmpty) return;
@@ -422,6 +440,7 @@ class V3FinansijeService {
 
         if (latestId.isNotEmpty) {
           final currentBroj = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
+          final currentPokupljenBy = latest['pokupljen_by']?.toString().trim() ?? '';
           final operativnaId = _resolveOperativnaStavkaId(
             putnikId: safePutnikId,
             datum: datum,
@@ -435,17 +454,41 @@ class V3FinansijeService {
             datum: datum,
             cena: cenaVoznje,
           );
-          final updated = await _repo.updateByIdReturning(latestId, {
+          final currentRealizovane = _readRealizovaneVoznje(latest);
+          final updatedRealizovane = _appendRealizovanaVoznja(
+            stavke: currentRealizovane,
+            operativnaId: operativnaId,
+            datum: datum,
+            pokupljenBy: evidentiraoBy,
+            pokupljenAt: pokupljenAt,
+            dodaoBy: dodaoBy,
+            azuriraoBy: azuriraoBy,
+            grad: grad,
+            vreme: vreme,
+          );
+          final updatePayload = <String, dynamic>{
             'broj_voznji': currentBroj + 1,
             _nenaplaceneVoznjeKey: updatedNenaplacene,
+            _realizovaneVoznjeKey: updatedRealizovane,
             'updated_at': DateTime.now().toIso8601String(),
-          });
+          };
+          // Ako nije vec zabelezen ko je pokupio, sacuvaj to trajno.
+          if (currentPokupljenBy.isEmpty && (evidentiraoBy ?? '').trim().isNotEmpty) {
+            updatePayload['pokupljen_by'] = evidentiraoBy!.trim();
+          }
+          final updated = await _repo.updateByIdReturning(latestId, updatePayload);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updated);
           return;
         }
       }
 
       // 2. Ako ne postoji red, kreiraj novi master red
+      final operativnaId = _resolveOperativnaStavkaId(
+        putnikId: safePutnikId,
+        datum: datum,
+        dogadjajId: safeDogadjajId,
+        isPoDanu: isPoDanu,
+      );
       final row = await _repo.insertReturning({
         'naziv': 'Evidencija prevoza ${datum.month}/${datum.year}',
         'kategorija': _masterKategorija(),
@@ -453,18 +496,26 @@ class V3FinansijeService {
         'iznos': 0,
         'putnik_v3_auth_id': safePutnikId,
         'naplaceno_by': (evidentiraoBy ?? '').trim().isEmpty ? null : evidentiraoBy,
+        'pokupljen_by': (evidentiraoBy ?? '').trim().isEmpty ? null : evidentiraoBy,
         'dogadjaj_id': safeDogadjajId.isEmpty ? null : safeDogadjajId,
         'broj_voznji': 1,
         _nenaplaceneVoznjeKey: [
           {
-            'operativna_id': _resolveOperativnaStavkaId(
-              putnikId: safePutnikId,
-              datum: datum,
-              dogadjajId: safeDogadjajId,
-              isPoDanu: isPoDanu,
-            ),
+            'operativna_id': operativnaId,
             'datum': datum.toIso8601String(),
             'cena': cenaVoznje,
+          }
+        ],
+        _realizovaneVoznjeKey: [
+          {
+            'operativna_id': operativnaId,
+            'datum': datum.toIso8601String(),
+            if (evidentiraoBy != null && evidentiraoBy.isNotEmpty) 'pokupljen_by': evidentiraoBy,
+            if (pokupljenAt != null && pokupljenAt.isNotEmpty) 'pokupljen_at': pokupljenAt,
+            if (dodaoBy != null && dodaoBy.isNotEmpty) 'dodao_by': dodaoBy,
+            if (azuriraoBy != null && azuriraoBy.isNotEmpty) 'azurirao_by': azuriraoBy,
+            if (grad != null && grad.isNotEmpty) 'grad': grad,
+            if (vreme != null && vreme.isNotEmpty) 'vreme': vreme,
           }
         ],
         'mesec': datum.month,
@@ -474,6 +525,64 @@ class V3FinansijeService {
     } finally {
       _mesecnaNaplataLocks.remove(lockKey);
     }
+  }
+
+  /// Vraća sve vožnje koje je vozač pokupio na zadati dan iz arhive v3_finansije.
+  static List<Map<String, dynamic>> getPokupljeniPutniciZaVozacaDan({
+    required String vozacId,
+    required DateTime dan,
+  }) {
+    final id = vozacId.trim();
+    if (id.isEmpty) return <Map<String, dynamic>>[];
+
+    final datumIso = V3DateUtils.parseIsoDatePart(dan.toIso8601String());
+    final result = <Map<String, dynamic>>[];
+
+    for (final row in _naplataRows()) {
+      final realizovane = _readRealizovaneVoznje(row);
+      for (final voznja in realizovane) {
+        final voznjaDatumIso = V3DateUtils.parseIsoDatePart(voznja['datum']?.toString() ?? '');
+        if (voznjaDatumIso != datumIso) continue;
+        if ((voznja['pokupljen_by']?.toString() ?? '').trim() != id) continue;
+        result.add({
+          ...voznja,
+          'putnik_v3_auth_id': row['putnik_v3_auth_id']?.toString(),
+          'finansije_id': row['id']?.toString(),
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /// Vraća sve vožnje koje je vozač uneo/azurirao na zadati dan iz arhive v3_finansije.
+  static List<Map<String, dynamic>> getDodatiPutniciZaVozacaDan({
+    required String vozacId,
+    required DateTime dan,
+  }) {
+    final id = vozacId.trim();
+    if (id.isEmpty) return <Map<String, dynamic>>[];
+
+    final datumIso = V3DateUtils.parseIsoDatePart(dan.toIso8601String());
+    final result = <Map<String, dynamic>>[];
+
+    for (final row in _naplataRows()) {
+      final realizovane = _readRealizovaneVoznje(row);
+      for (final voznja in realizovane) {
+        final voznjaDatumIso = V3DateUtils.parseIsoDatePart(voznja['datum']?.toString() ?? '');
+        if (voznjaDatumIso != datumIso) continue;
+        final dodaoBy = (voznja['dodao_by']?.toString() ?? '').trim();
+        final azuriraoBy = (voznja['azurirao_by']?.toString() ?? '').trim();
+        if (dodaoBy != id && azuriraoBy != id) continue;
+        result.add({
+          ...voznja,
+          'putnik_v3_auth_id': row['putnik_v3_auth_id']?.toString(),
+          'finansije_id': row['id']?.toString(),
+        });
+      }
+    }
+
+    return result;
   }
 
   static Set<(int, int)> getNaplataMeseciForPutnik(String putnikId) {
@@ -527,7 +636,9 @@ class V3FinansijeService {
       final naplatioBy = row['naplaceno_by']?.toString().trim() ?? '';
       if (naplatioBy.isEmpty) continue;
 
-      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
+      // Sabiramo samo iznos poslednje dopune, jer je to uplata izvrsena na ovaj dan.
+      final iznos = (row['poslednja_dopuna'] as num?)?.toDouble() ?? 0.0;
+      if (iznos <= 0) continue;
       result[naplatioBy] = (result[naplatioBy] ?? 0.0) + iznos;
     }
 
@@ -578,20 +689,27 @@ class V3FinansijeService {
         final vozacIme = vozacData?['ime_prezime']?.toString() ?? '';
 
         // Nađi vozača koji je pokupio putnika u ovom mesecu
-        String pokupioVozacId = '';
+        // Prvo proverimo trajno sacuvanu kolonu u v3_finansije, pa tek onda operativnu nedelju.
+        String pokupioVozacId = latestNaplata?['pokupljen_by']?.toString().trim() ?? '';
         String pokupioVozacIme = '';
-        for (final operRow in rm.operativnaNedeljaCache.values) {
-          final rPutnikId = (operRow['created_by']?.toString() ?? '').trim().toLowerCase();
-          if (rPutnikId != putnikId.toLowerCase()) continue;
-          final pokupljenBy = operRow['pokupljen_by']?.toString().trim();
-          if (pokupljenBy == null || pokupljenBy.isEmpty) continue;
-          final datum = V3DateUtils.parseTs(operRow['datum']?.toString());
-          if (datum == null) continue;
-          if (datum.year == godina && datum.month == mesec) {
-            pokupioVozacId = pokupljenBy;
-            final pokupioVozacData = rm.vozaciCache[pokupljenBy];
-            pokupioVozacIme = pokupioVozacData?['ime_prezime']?.toString() ?? '';
-            break;
+        if (pokupioVozacId.isNotEmpty) {
+          final pokupioVozacData = rm.vozaciCache[pokupioVozacId];
+          pokupioVozacIme = pokupioVozacData?['ime_prezime']?.toString() ?? '';
+        }
+        if (pokupioVozacId.isEmpty) {
+          for (final operRow in rm.operativnaNedeljaCache.values) {
+            final rPutnikId = (operRow['created_by']?.toString() ?? '').trim().toLowerCase();
+            if (rPutnikId != putnikId.toLowerCase()) continue;
+            final pokupljenBy = operRow['pokupljen_by']?.toString().trim();
+            if (pokupljenBy == null || pokupljenBy.isEmpty) continue;
+            final datum = V3DateUtils.parseTs(operRow['datum']?.toString());
+            if (datum == null) continue;
+            if (datum.year == godina && datum.month == mesec) {
+              pokupioVozacId = pokupljenBy;
+              final pokupioVozacData = rm.vozaciCache[pokupljenBy];
+              pokupioVozacIme = pokupioVozacData?['ime_prezime']?.toString() ?? '';
+              break;
+            }
           }
         }
 
@@ -702,16 +820,22 @@ class V3FinansijeService {
         // Zadržavamo trenutnu vrednost da ne bi smanjili broj vožnji ako se u međuvremenu povećao
         final finalBrojVoznji = currentBrojVoznji;
 
+        final currentPokupljenBy = latest['pokupljen_by']?.toString().trim() ?? '';
+        String? resolvedPokupljenBy = currentPokupljenBy.isNotEmpty ? currentPokupljenBy : null;
+        resolvedPokupljenBy ??= _resolvePokupljenByIzOperativneNedelje(safePutnikId, godina, mesec);
+
         row = await _repo.updateByIdReturning(existingId, {
           'iznos': currentIznos + iznos,
           'poslednja_dopuna': iznos, // Čuvamo iznos poslednje dopune
           'naplaceno_by': naplacenoBy,
+          if (resolvedPokupljenBy != null) 'pokupljen_by': resolvedPokupljenBy,
           'broj_voznji': finalBrojVoznji,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
           'updated_at': DateTime.now().toIso8601String(),
           'dogadjaj_id': _uuid.v4(),
         });
       } else {
+        final resolvedPokupljenBy = _resolvePokupljenByIzOperativneNedelje(safePutnikId, godina, mesec);
         row = await _repo.insertReturning({
           'naziv': 'Evidencija prevoza $mesec/$godina',
           'kategorija': _masterKategorija(),
@@ -721,6 +845,7 @@ class V3FinansijeService {
           'putnik_v3_auth_id': safePutnikId,
           'dogadjaj_id': _uuid.v4(),
           'naplaceno_by': naplacenoBy,
+          if (resolvedPokupljenBy != null) 'pokupljen_by': resolvedPokupljenBy,
           'broj_voznji': brojVoznji,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           'mesec': mesec,
@@ -771,5 +896,90 @@ class V3FinansijeService {
       godina: datum.year,
       brojVoznji: brojVoznji,
     );
+  }
+
+  static List<Map<String, dynamic>> _readRealizovaneVoznje(Map<String, dynamic> row) {
+    final raw = row[_realizovaneVoznjeKey];
+    final result = <Map<String, dynamic>>[];
+
+    try {
+      Iterable<dynamic> src;
+      if (raw is List) {
+        src = raw;
+      } else if (raw is String) {
+        final decoded = jsonDecode(raw);
+        if (decoded is! List) return result;
+        src = decoded;
+      } else {
+        return result;
+      }
+
+      for (final item in src) {
+        if (item is! Map) continue;
+        final operativnaId = (item['operativna_id']?.toString() ?? '').trim();
+        final datum = item['datum']?.toString();
+        if (operativnaId.isEmpty || datum == null || datum.isEmpty) continue;
+        result.add({
+          'operativna_id': operativnaId,
+          'datum': datum,
+          'pokupljen_by': item['pokupljen_by']?.toString(),
+          'pokupljen_at': item['pokupljen_at']?.toString(),
+          'dodao_by': item['dodao_by']?.toString(),
+          'azurirao_by': item['azurirao_by']?.toString(),
+          'grad': item['grad']?.toString(),
+          'vreme': item['vreme']?.toString(),
+        });
+      }
+    } catch (_) {
+      return result;
+    }
+
+    result.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+    return result;
+  }
+
+  static List<Map<String, dynamic>> _appendRealizovanaVoznja({
+    required List<Map<String, dynamic>> stavke,
+    required String operativnaId,
+    required DateTime datum,
+    String? pokupljenBy,
+    String? pokupljenAt,
+    String? dodaoBy,
+    String? azuriraoBy,
+    String? grad,
+    String? vreme,
+  }) {
+    final safeOperativnaId = operativnaId.trim();
+    if (safeOperativnaId.isEmpty) return stavke;
+
+    final existingIndex = stavke.indexWhere(
+      (s) => (s['operativna_id']?.toString() ?? '').trim() == safeOperativnaId,
+    );
+
+    final updated = List<Map<String, dynamic>>.from(stavke);
+    final novaStavka = <String, dynamic>{
+      'operativna_id': safeOperativnaId,
+      'datum': datum.toIso8601String(),
+      if (pokupljenBy != null && pokupljenBy.isNotEmpty) 'pokupljen_by': pokupljenBy,
+      if (pokupljenAt != null && pokupljenAt.isNotEmpty) 'pokupljen_at': pokupljenAt,
+      if (dodaoBy != null && dodaoBy.isNotEmpty) 'dodao_by': dodaoBy,
+      if (azuriraoBy != null && azuriraoBy.isNotEmpty) 'azurirao_by': azuriraoBy,
+      if (grad != null && grad.isNotEmpty) 'grad': grad,
+      if (vreme != null && vreme.isNotEmpty) 'vreme': vreme,
+    };
+
+    if (existingIndex >= 0) {
+      updated[existingIndex] = {...updated[existingIndex], ...novaStavka};
+    } else {
+      updated.add(novaStavka);
+    }
+
+    updated.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+    return updated;
+  }
+
+  static DateTime _parseNenaplacenaDatumOrEpoch(Map<String, dynamic> stavka) {
+    final dt = V3DateUtils.parseTs(stavka['datum']?.toString());
+    return dt ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 }

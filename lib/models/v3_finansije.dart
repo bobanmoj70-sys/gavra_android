@@ -10,7 +10,8 @@ class V3Trosak {
   final String isplataIz; // 'pazar', 'racun', ...
   final int mesec;
   final int godina;
-  final String? vozacId;
+  final String? vozacId; // naplaceno_by
+  final String? pokupljenBy; // ko je fizicki pokupio putnika
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -24,6 +25,7 @@ class V3Trosak {
     required this.mesec,
     required this.godina,
     this.vozacId,
+    this.pokupljenBy,
     this.createdAt,
     this.updatedAt,
   });
@@ -40,6 +42,7 @@ class V3Trosak {
       mesec: json['mesec'] as int? ?? now.month,
       godina: json['godina'] as int? ?? now.year,
       vozacId: json['naplaceno_by']?.toString(),
+      pokupljenBy: json['pokupljen_by']?.toString(),
       createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
       updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
     );
@@ -55,5 +58,6 @@ class V3Trosak {
         'mesec': mesec,
         'godina': godina,
         'naplaceno_by': vozacId,
+        'pokupljen_by': pokupljenBy,
       };
 }
