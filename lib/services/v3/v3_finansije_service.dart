@@ -497,7 +497,6 @@ class V3FinansijeService {
         'putnik_v3_auth_id': safePutnikId,
         'naplaceno_by': (evidentiraoBy ?? '').trim().isEmpty ? null : evidentiraoBy,
         'pokupljen_by': (evidentiraoBy ?? '').trim().isEmpty ? null : evidentiraoBy,
-        'dogadjaj_id': safeDogadjajId.isEmpty ? null : safeDogadjajId,
         'broj_voznji': 1,
         _nenaplaceneVoznjeKey: [
           {
@@ -832,7 +831,6 @@ class V3FinansijeService {
           'broj_voznji': finalBrojVoznji,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
           'updated_at': DateTime.now().toIso8601String(),
-          'dogadjaj_id': _uuid.v4(),
         });
       } else {
         final resolvedPokupljenBy = _resolvePokupljenByIzOperativneNedelje(safePutnikId, godina, mesec);
@@ -843,7 +841,6 @@ class V3FinansijeService {
           'iznos': iznos,
           'poslednja_dopuna': iznos, // Prva uplata je ujedno i poslednja dopuna
           'putnik_v3_auth_id': safePutnikId,
-          'dogadjaj_id': _uuid.v4(),
           'naplaceno_by': naplacenoBy,
           if (resolvedPokupljenBy != null) 'pokupljen_by': resolvedPokupljenBy,
           'broj_voznji': brojVoznji,
