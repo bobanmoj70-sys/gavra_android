@@ -10,9 +10,11 @@ import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
+import '../services/v3/v3_push_token_edge_service.dart';
 import '../services/v3/v3_putnik_adresa_resolver_service.dart';
 import '../services/v3/v3_route_models.dart';
 import '../services/v3/v3_route_waypoint_resolver_service.dart';
@@ -752,6 +754,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
       if (normalizedPhone.isNotEmpty) {
         await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
+      }
+
+      // Oslobodi uređaj slot u bazi pre brisanja lokalne sesije
+      final vozacId = V3VozacService.currentVozac?.id ?? '';
+      if (vozacId.isNotEmpty) {
+        final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+        await V3PushTokenEdgeService.releaseDeviceSlot(
+          v3AuthId: vozacId,
+          installationId: deviceId,
+        );
       }
 
       await V3BiometricService().clearCredentials();

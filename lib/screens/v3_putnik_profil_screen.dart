@@ -7,6 +7,8 @@ import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
+import '../services/v3/v3_device_identity_service.dart';
+import '../services/v3/v3_push_token_edge_service.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
@@ -688,6 +690,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
     if (normalizedPhone.isNotEmpty) {
       await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
+    }
+
+    // Oslobodi uređaj slot u bazi pre brisanja lokalne sesije
+    final putnikId = (_putnikData['id'] ?? '').toString().trim();
+    if (putnikId.isNotEmpty) {
+      final deviceId = await V3DeviceIdentityService.getStableDeviceId();
+      await V3PushTokenEdgeService.releaseDeviceSlot(
+        v3AuthId: putnikId,
+        installationId: deviceId,
+      );
     }
 
     await V3BiometricService().clearCredentials();

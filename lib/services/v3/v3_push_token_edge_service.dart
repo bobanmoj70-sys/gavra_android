@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../globals.dart';
@@ -65,6 +66,41 @@ class V3PushTokenEdgeService {
 
     if (status < 200 || status >= 300 || !isSuccess) {
       throw Exception('Edge sync-login-columns failed (status=$status, data=$data)');
+    }
+  }
+
+  static Future<void> releaseDeviceSlot({
+    required String v3AuthId,
+    required String installationId,
+  }) async {
+    final targetId = v3AuthId.trim();
+    final incomingInstallationId = installationId.trim();
+
+    if (targetId.isEmpty || incomingInstallationId.isEmpty) {
+      debugPrint('[V3PushTokenEdgeService] releaseDeviceSlot skipped: missing id');
+      return;
+    }
+
+    try {
+      final response = await supabase.functions.invoke(
+        'release-device-slot',
+        body: {
+          'v3_auth_id': targetId,
+          'installation_id': incomingInstallationId,
+        },
+      );
+
+      final status = response.status;
+      final data = response.data;
+      final isSuccess = data is Map && data['ok'] == true;
+
+      if (status < 200 || status >= 300 || !isSuccess) {
+        debugPrint('[V3PushTokenEdgeService] releaseDeviceSlot failed (status=$status, data=$data)');
+      } else {
+        debugPrint('[V3PushTokenEdgeService] releaseDeviceSlot success: $data');
+      }
+    } catch (e) {
+      debugPrint('[V3PushTokenEdgeService] releaseDeviceSlot error: $e');
     }
   }
 }
