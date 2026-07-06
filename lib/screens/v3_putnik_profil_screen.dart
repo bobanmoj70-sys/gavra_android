@@ -1078,7 +1078,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           ),
           const SizedBox(height: 12),
           Center(
-            child: _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
+                const SizedBox(width: 12),
+                _kpiTile('Otkazano', '${stats.otkazano}', Colors.redAccent),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Divider(color: V3StyleHelper.whiteAlpha15),
@@ -1115,6 +1122,19 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               ),
             ],
           ),
+          if (stats.otkazano > 0) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Otkazano', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(
+                  '${stats.otkazano}',
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

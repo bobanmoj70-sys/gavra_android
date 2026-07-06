@@ -17,7 +17,7 @@ import '../utils/v3_status_policy.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_ai_znanje_screen.dart';
-import 'v3_dnevnik_naplate_screen.dart';
+import 'v3_dnevnik_vozaca_screen.dart';
 import 'v3_dugovi_screen.dart';
 import 'v3_finansije_screen.dart';
 import 'v3_gorivo_screen.dart';
@@ -1372,7 +1372,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 child: _buildSaVsWidget(context),
               ),
 
-              // ─── RED 3: Kalendar, Dnevnik, Putnici, Gorivo ───
+              // ─── RED 3: Kalendar, Dnevnik vozača, Putnici, Gorivo ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
                 child: Row(
@@ -1402,7 +1402,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // Dnevnik naplate
+                    // Dnevnik vozača
                     Expanded(
                       flex: 1,
                       child: _NavBtn(
@@ -1410,7 +1410,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         height: V3ContainerUtils.responsiveHeight(context, 50),
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          const V3DnevnikNaplateScreen(),
+                          const V3DnevnikVozacaScreen(),
                         ),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,

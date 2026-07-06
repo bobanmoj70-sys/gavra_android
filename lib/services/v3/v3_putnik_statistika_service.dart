@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../utils/v3_date_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_finansije_service.dart';
@@ -399,6 +401,51 @@ class V3PutnikStatistikaService {
     }
   }
 
+  static int _countOtkazivanjaZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final safePutnikId = putnikId.trim();
+    if (safePutnikId.isEmpty) return 0;
+
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    var count = 0;
+
+    for (final row in cache) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != safePutnikId.toLowerCase()) continue;
+      final rG = (row['godina'] as num?)?.toInt();
+      final rM = (row['mesec'] as num?)?.toInt();
+      if (rG != godina || rM != mesec) continue;
+
+      final raw = row['otkazane_voznje_json'];
+      Iterable<dynamic> src;
+      if (raw is List) {
+        src = raw;
+      } else if (raw is String) {
+        final decoded = jsonDecode(raw);
+        if (decoded is! List) continue;
+        src = decoded;
+      } else {
+        continue;
+      }
+
+      for (final item in src) {
+        if (item is! Map) continue;
+        final datumStr = item['datum']?.toString();
+        if (datumStr == null || datumStr.isEmpty) continue;
+        final datum = V3DateUtils.parseTs(datumStr) ?? DateTime.tryParse(datumStr);
+        if (datum == null) continue;
+        if (datum.year == godina && datum.month == mesec) {
+          count++;
+        }
+      }
+    }
+
+    return count;
+  }
+
   static List<V3PutnikMesecnaStatistika> getZaGodinu(
     String putnikId, {
     required int godina,
@@ -410,6 +457,11 @@ class V3PutnikStatistikaService {
 
     return poravnanje.meseci.map(
       (stavka) {
+        final otkazano = _countOtkazivanjaZaMesec(
+          putnikId: putnikId,
+          godina: stavka.godina,
+          mesec: stavka.mesec,
+        );
         return V3PutnikMesecnaStatistika(
           godina: stavka.godina,
           mesec: stavka.mesec,
@@ -417,7 +469,7 @@ class V3PutnikStatistikaService {
           ukupnoVoznji: stavka.brojVoznji,
           pokupljeno: stavka.brojVoznji,
           placeno: stavka.cena > 0 ? (stavka.uplata / stavka.cena).floor() : stavka.brojVoznji,
-          otkazano: 0,
+          otkazano: otkazano,
           neplaceno: stavka.cena > 0
               ? (stavka.brojVoznji - (stavka.uplata / stavka.cena).floor()).clamp(0, stavka.brojVoznji).toInt()
               : 0,
@@ -490,6 +542,11 @@ class V3PutnikStatistikaService {
     }
 
     final neplaceno = (obracun.brojVoznji - placeno).clamp(0, obracun.brojVoznji);
+    final otkazano = _countOtkazivanjaZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
 
     return V3PutnikMesecnaStatistika(
       godina: godina,
@@ -498,7 +555,7 @@ class V3PutnikStatistikaService {
       ukupnoVoznji: obracun.brojVoznji,
       pokupljeno: obracun.brojVoznji,
       placeno: placeno,
-      otkazano: 0,
+      otkazano: otkazano,
       neplaceno: neplaceno,
       naplacenoIznos: obracun.uplaceno,
       dugIznos: obracun.dug,

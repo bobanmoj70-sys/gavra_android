@@ -9,6 +9,7 @@ import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
+import 'v3_finansije_service.dart';
 import 'v3_operativna_nedelja_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 import 'v3_vozac_service.dart';
@@ -240,12 +241,14 @@ class V3ZahtevService {
 
     final datumIso = _datumKey(datum);
     final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
+    final otkazanoAt = DateTime.now().toIso8601String();
     final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
       putnikId: putnikId,
       datumIso: datumIso,
       grad: targetGrad,
       payload: {
         if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
+        'otkazano_at': otkazanoAt,
         if (updBy != null) 'updated_by': updBy,
       },
     );
@@ -256,6 +259,17 @@ class V3ZahtevService {
       await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
         operativnaRow: row,
         updatedBy: updBy,
+      );
+
+      await V3FinansijeService.evidentirajOtkazivanje(
+        putnikId: putnikId,
+        datum: datum,
+        operativnaId: row['id']?.toString(),
+        otkazaoBy: otkazaoPutnikId,
+        otkazanoAt: otkazanoAt,
+        tipOtkazivanja: 'putnik',
+        grad: row['grad']?.toString(),
+        vreme: row['polazak_at']?.toString(),
       );
     }
 
@@ -295,11 +309,14 @@ class V3ZahtevService {
         throw Exception('Obavezno je navesti tačno jednog aktera otkazivanja');
       }
 
+      final otkazanoAt = DateTime.now().toIso8601String();
+
       if (hasVozacActor) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
         final String? updBy = V3UuidUtils.normalizeUuid(safeVozacId);
         final payload = {
           'otkazano_by': safeVozacId,
+          'otkazano_at': otkazanoAt,
           if (updBy != null) 'updated_by': updBy,
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
@@ -308,6 +325,17 @@ class V3ZahtevService {
           await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
             operativnaRow: row,
             updatedBy: updBy,
+          );
+
+          await V3FinansijeService.evidentirajOtkazivanje(
+            putnikId: putnikId ?? row['created_by']?.toString() ?? '',
+            datum: _parseTs(row['datum']?.toString()),
+            operativnaId: operativnaId,
+            otkazaoBy: safeVozacId,
+            otkazanoAt: otkazanoAt,
+            tipOtkazivanja: 'vozac',
+            grad: row['grad']?.toString(),
+            vreme: row['polazak_at']?.toString(),
           );
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
@@ -330,6 +358,7 @@ class V3ZahtevService {
         V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
         final payload2 = {
           'otkazano_by': safePutnikOtkazaoId,
+          'otkazano_at': otkazanoAt,
           if (updBy != null) 'updated_by': updBy,
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
@@ -338,6 +367,17 @@ class V3ZahtevService {
           await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
             operativnaRow: row2,
             updatedBy: updBy,
+          );
+
+          await V3FinansijeService.evidentirajOtkazivanje(
+            putnikId: putnikId ?? row2['created_by']?.toString() ?? '',
+            datum: _parseTs(row2['datum']?.toString()),
+            operativnaId: operativnaId,
+            otkazaoBy: safePutnikOtkazaoId,
+            otkazanoAt: otkazanoAt,
+            tipOtkazivanja: 'putnik',
+            grad: row2['grad']?.toString(),
+            vreme: row2['polazak_at']?.toString(),
           );
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
@@ -353,6 +393,7 @@ class V3ZahtevService {
     try {
       final payload = {
         if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
+        'pokupljen_at': DateTime.now().toIso8601String(),
       };
       if (operativnaId != null && operativnaId.isNotEmpty) {
         final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);

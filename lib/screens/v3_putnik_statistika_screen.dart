@@ -118,7 +118,14 @@ class _MesecCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Center(
-            child: _MiniKpi(label: 'Vožnji', value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _MiniKpi(label: 'Vožnji', value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
+                const SizedBox(width: 12),
+                _MiniKpi(label: 'Otkazano', value: '${stats.otkazano}', color: Colors.redAccent),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           if (stats.cena > 0) ...[
@@ -155,6 +162,19 @@ class _MesecCard extends StatelessWidget {
               ),
             ],
           ),
+          if (stats.otkazano > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Otkazano', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(
+                  '${stats.otkazano}',
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

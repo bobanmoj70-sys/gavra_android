@@ -24,17 +24,17 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
 
-/// DNEVNIK NAPLATE — V3
-/// Admin bira vozača i datum → vidi sve naplate tog vozača za taj dan
+/// DNEVNIK VOZAČA — V3
+/// Admin bira vozača i datum → vidi sve aktivnosti tog vozača za taj dan
 /// Podaci iz v3_finansije cache (prihod operativna_naplata)
-class V3DnevnikNaplateScreen extends StatefulWidget {
-  const V3DnevnikNaplateScreen({super.key});
+class V3DnevnikVozacaScreen extends StatefulWidget {
+  const V3DnevnikVozacaScreen({super.key});
 
   @override
-  State<V3DnevnikNaplateScreen> createState() => _V3DnevnikNaplateScreenState();
+  State<V3DnevnikVozacaScreen> createState() => _V3DnevnikVozacaScreenState();
 }
 
-class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
+class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
   String? _selectedVozacId;
   String? _selectedVozacIme;
   DateTime _selectedDate = DateTime.now();
@@ -53,7 +53,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     _ucitajVozace();
 
     V3StreamUtils.subscribe<int>(
-      key: 'dnevnik_naplate_cache',
+      key: 'dnevnik_vozaca_cache',
       stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_auth']),
       onData: (_) {
         if (!mounted) return;
@@ -61,9 +61,9 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
         if (_selectedVozacId == null) return;
 
-        V3StreamUtils.cancelTimer('dnevnik_naplate_refresh_debounce');
+        V3StreamUtils.cancelTimer('dnevnik_vozaca_refresh_debounce');
         V3StreamUtils.createTimer(
-          key: 'dnevnik_naplate_refresh_debounce',
+          key: 'dnevnik_vozaca_refresh_debounce',
           duration: const Duration(milliseconds: 300),
           callback: () {
             if (mounted) _prikaziNaplate();
@@ -75,8 +75,8 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
 
   @override
   void dispose() {
-    V3StreamUtils.cancelSubscription('dnevnik_naplate_cache');
-    V3StreamUtils.cancelTimer('dnevnik_naplate_refresh_debounce');
+    V3StreamUtils.cancelSubscription('dnevnik_vozaca_cache');
+    V3StreamUtils.cancelTimer('dnevnik_vozaca_refresh_debounce');
     super.dispose();
   }
 
@@ -144,7 +144,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     if (_naplate.isEmpty) return;
 
     final buf = StringBuffer();
-    buf.writeln('DNEVNIK NAPLATE — $_selectedVozacIme');
+    buf.writeln('DNEVNIK VOZAČA — $_selectedVozacIme');
     buf.writeln('Datum: ${_formatDatum(_selectedDate)}');
     buf.writeln('─────────────────────────');
 
@@ -155,7 +155,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       buf.writeln('POKUPLJENI PUTNICI (${_pokupio.length}):');
       for (int i = 0; i < _pokupio.length; i++) {
         final p = _pokupio[i];
-        final datum = V3DateUtils.parseTs(p['datum']?.toString()) ?? DateTime.now();
+        final datum = V3DateUtils.parseTs(p['pokupljen_at']?.toString()) ?? DateTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['created_by']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
@@ -184,7 +184,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
     buf.writeln('NAPLATE (${_naplate.length}):');
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
-      final datum = V3DateUtils.parseTs(n['created_at']?.toString()) ?? DateTime.now();
+      final datum = V3DateUtils.parseTs(n['updated_at']?.toString()) ?? DateTime.now();
       final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
       final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
       final putnik = rm.putniciCache[putnikId];
@@ -232,7 +232,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         build: (_) => [
-          pw.Text('DNEVNIK NAPLATE', style: titleStyle),
+          pw.Text('DNEVNIK VOZAČA', style: titleStyle),
           pw.SizedBox(height: 4),
           pw.Text('Vozač: $_selectedVozacIme', style: headerStyle),
           pw.Text('Datum: ${_formatDatum(_selectedDate)}', style: normalStyle),
@@ -273,8 +273,8 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                           style: baseStyle),
                       _pdfCell(
                           V3DanHelper.formatVreme(
-                              (V3DateUtils.parseTs(_pokupio[i]['datum']?.toString()) ?? DateTime.now()).hour,
-                              (V3DateUtils.parseTs(_pokupio[i]['datum']?.toString()) ?? DateTime.now()).minute),
+                              (V3DateUtils.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now()).hour,
+                              (V3DateUtils.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now()).minute),
                           style: baseStyle),
                     ],
                   ),
@@ -366,8 +366,8 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
                         style: baseStyle),
                     _pdfCell(
                         V3DanHelper.formatVreme(
-                            (V3DateUtils.parseTs(_naplate[i]['created_at']?.toString()) ?? DateTime.now()).hour,
-                            (V3DateUtils.parseTs(_naplate[i]['created_at']?.toString()) ?? DateTime.now()).minute),
+                            (V3DateUtils.parseTs(_naplate[i]['updated_at']?.toString()) ?? DateTime.now()).hour,
+                            (V3DateUtils.parseTs(_naplate[i]['updated_at']?.toString()) ?? DateTime.now()).minute),
                         style: baseStyle),
                   ],
                 ),
@@ -413,7 +413,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       final dir = await getApplicationDocumentsDirectory();
       final vozacStr = (_selectedVozacIme ?? 'vozac').replaceAll(' ', '_');
       final datumStr = _formatDatum(_selectedDate).replaceAll('.', '-');
-      final file = File('${dir.path}/dnevnik_${vozacStr}_$datumStr.pdf');
+      final file = File('${dir.path}/dnevnik_vozaca_${vozacStr}_$datumStr.pdf');
       await file.writeAsBytes(await doc.save());
       if (!mounted) return;
       await OpenFilex.open(file.path);
@@ -429,7 +429,7 @@ class _V3DnevnikNaplateScreenState extends State<V3DnevnikNaplateScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Dnevnik naplate', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Dnevnik vozača', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           if (_naplate.isNotEmpty) ...[
             IconButton(
@@ -604,10 +604,9 @@ class _PokupioCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final datum = V3DateUtils.parseTs(p['datum']?.toString()) ?? DateTime.now();
-    final vreme = p['vreme']?.toString().isNotEmpty == true
-        ? p['vreme'].toString()
-        : V3DanHelper.formatVreme(datum.hour, datum.minute);
+    final pokupljenAt = V3DateUtils.parseTs(p['pokupljen_at']?.toString());
+    final datum = pokupljenAt ?? V3DateUtils.parseTs(p['datum']?.toString()) ?? DateTime.now();
+    final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
     final putnik = rm.putniciCache[putnikId];
@@ -690,7 +689,7 @@ class _NaplataCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final datum = V3DateUtils.parseTs(n['created_at']?.toString()) ?? DateTime.now();
+    final datum = V3DateUtils.parseTs(n['updated_at']?.toString()) ?? DateTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
