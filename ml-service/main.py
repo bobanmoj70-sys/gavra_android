@@ -697,6 +697,9 @@ async def startup_event():
     init_local_db()
     log_event("Lokalna SQLite baza podataka je inicijalizovana.")
     
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        log_event("⚠️  Upozorenje: SUPABASE_SERVICE_ROLE_KEY nije definisan. Koristim SUPABASE_ANON_KEY. AI može biti ograničen RLS pravilima i ne videti sve tabele.")
+    
     supabase = await create_async_client(SUPABASE_URL, SUPABASE_KEY)
     log_event("Supabase asinhrona konekcija uspešno otvorena.")
     
