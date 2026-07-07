@@ -102,11 +102,11 @@ class V3FinansijeService {
   static String _resolveOperativnaStavkaId({
     required String putnikId,
     required DateTime datum,
-    required String dogadjajId,
+    required String operativnaId,
     required bool isPoDanu,
   }) {
-    final safeDogadjajId = dogadjajId.trim();
-    if (safeDogadjajId.isNotEmpty) return safeDogadjajId;
+    final safeOperativnaId = operativnaId.trim();
+    if (safeOperativnaId.isNotEmpty) return safeOperativnaId;
     if (isPoDanu) {
       final danIso = V3DateUtils.parseIsoDatePart(datum.toIso8601String());
       return 'auto:${putnikId.trim().toLowerCase()}:$danIso';
@@ -359,7 +359,7 @@ class V3FinansijeService {
     required String putnikId,
     required String tipPutnika,
     required DateTime datum,
-    String? dogadjajId,
+    String? operativnaId,
     String? evidentiraoBy,
     String? pokupljenAt,
     String? dodaoBy,
@@ -374,7 +374,7 @@ class V3FinansijeService {
     if (tip == 'vozac') return;
 
     final isPoDanu = _isPoDanuTip(tip);
-    final safeDogadjajId = (dogadjajId ?? '').trim();
+    final safeOperativnaId = (operativnaId ?? '').trim();
 
     final lockKey = _getLockKey(safePutnikId, datum.month, datum.year);
     if (_mesecnaNaplataLocks.contains(lockKey)) return;
@@ -412,11 +412,11 @@ class V3FinansijeService {
 
             if (r['pokupljen_at'] == null) return false;
 
-            // Trenutni događaj (operativnaId) ne tretiramo kao "već vozio danas",
+            // Trenutna operativna stavka ne tretira se kao "već vozio danas",
             // inače bi prvo pokupljanje dana bilo preskočeno.
-            if (safeDogadjajId.isNotEmpty) {
+            if (safeOperativnaId.isNotEmpty) {
               final rOperativnaId = (r['id']?.toString() ?? '').trim();
-              if (rOperativnaId == safeDogadjajId) return false;
+              if (rOperativnaId == safeOperativnaId) return false;
             }
 
             return true;
@@ -429,7 +429,7 @@ class V3FinansijeService {
           final operativnaId = _resolveOperativnaStavkaId(
             putnikId: safePutnikId,
             datum: datum,
-            dogadjajId: safeDogadjajId,
+            operativnaId: safeOperativnaId,
             isPoDanu: isPoDanu,
           );
           final currentNenaplacene = _readNenaplaceneVoznje(latest);
@@ -475,7 +475,7 @@ class V3FinansijeService {
       final operativnaId = _resolveOperativnaStavkaId(
         putnikId: safePutnikId,
         datum: datum,
-        dogadjajId: safeDogadjajId,
+        operativnaId: safeOperativnaId,
         isPoDanu: isPoDanu,
       );
       final row = await _repo.insertReturning({

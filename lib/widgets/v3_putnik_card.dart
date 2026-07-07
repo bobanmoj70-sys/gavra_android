@@ -146,7 +146,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           putnikId: widget.putnik.id,
           tipPutnika: widget.putnik.tipPutnika,
           datum: widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now(),
-          dogadjajId: widget.entry?.id,
+          operativnaId: widget.entry?.id,
           evidentiraoBy: currentVozac.id,
           pokupljenAt: DateTime.now().toIso8601String(),
           dodaoBy: widget.entry?.createdBy,
