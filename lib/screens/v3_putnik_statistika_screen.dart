@@ -124,8 +124,6 @@ class _MesecCard extends StatelessWidget {
                 _MiniKpi(label: 'Vožnji', value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
                 const SizedBox(width: 12),
                 _MiniKpi(label: 'Otkazano', value: '${stats.otkazano}', color: Colors.redAccent),
-                const SizedBox(width: 12),
-                _MiniKpi(label: 'Uplata', value: '${stats.brojUplata}', color: Colors.blueAccent),
               ],
             ),
           ),

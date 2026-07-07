@@ -1084,8 +1084,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
                 const SizedBox(width: 12),
                 _kpiTile('Otkazano', '${stats.otkazano}', Colors.redAccent),
-                const SizedBox(width: 12),
-                _kpiTile('Uplata', '${stats.brojUplata}', Colors.blueAccent),
               ],
             ),
           ),
