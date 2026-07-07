@@ -17,6 +17,7 @@ class V3NaplataInfo {
   final String? paidBy;
   final DateTime? updatedAt;
   final String? updatedBy;
+  final DateTime? uplataAt;
 
   const V3NaplataInfo({
     required this.isPaid,
@@ -26,6 +27,7 @@ class V3NaplataInfo {
     this.paidBy,
     this.updatedAt,
     this.updatedBy,
+    this.uplataAt,
   });
 }
 
@@ -79,6 +81,13 @@ class V3FinansijeService {
     // Koristimo updated_at za datum poslednje dopune
     final ts = row['updated_at'];
     return V3DateUtils.parseTs(ts?.toString());
+  }
+
+  static DateTime? _readLastUplata(Map<String, dynamic> row) {
+    final uplate = _readUplate(row);
+    if (uplate.isEmpty) return null;
+    final last = uplate.last;
+    return V3DateUtils.parseTs(last['datum']?.toString());
   }
 
   static void _sortByCreatedAtDesc(List<Map<String, dynamic>> rows) {
@@ -281,6 +290,7 @@ class V3FinansijeService {
       paidBy: latest['naplaceno_by']?.toString(),
       updatedAt: V3DateUtils.parseTs(latest['updated_at']?.toString()),
       updatedBy: latest['updated_by']?.toString(),
+      uplataAt: _readLastUplata(latest),
     );
   }
 
@@ -319,6 +329,7 @@ class V3FinansijeService {
       paidBy: latest['naplaceno_by']?.toString(),
       updatedAt: V3DateUtils.parseTs(latest['updated_at']?.toString()),
       updatedBy: latest['updated_by']?.toString(),
+      uplataAt: _readLastUplata(latest),
     );
   }
 

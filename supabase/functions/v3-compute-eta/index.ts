@@ -18,6 +18,7 @@ type ComputeEtaPayload = {
   lng?: number;
   grad?: string;
   vreme?: string;
+  datum_iso?: string;
 };
 
 type PassengerEntry = {
@@ -46,6 +47,14 @@ function normalizeTime(value: unknown): string {
     return `${hour}:${minute}`;
   }
   return timePart.slice(0, 5);
+}
+
+function normalizeDateIso(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (raw.includes("T")) return raw.split("T")[0];
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? "";
 }
 
 /// Fetch sa eksponencijalnim backoff retry-om
@@ -91,12 +100,16 @@ Deno.serve(async (req) => {
     const driverLng = Number(payload.lng);
     const activeGrad = String(payload.grad ?? "").trim().toUpperCase();
     const activeVreme = normalizeTime(payload.vreme);
+    const activeDatumIso = normalizeDateIso(payload.datum_iso);
 
     if (!vozacId || !Number.isFinite(driverLat) || !Number.isFinite(driverLng)) {
       return json(200, { ok: false, reason: "invalid_payload" });
     }
     if (!activeGrad || !activeVreme) {
       return json(200, { ok: false, reason: "missing_grad_vreme" });
+    }
+    if (!activeDatumIso) {
+      return json(200, { ok: false, reason: "missing_datum_iso" });
     }
 
     const client = createClient(supabaseUrl, serviceRoleKey, {
@@ -107,12 +120,13 @@ Deno.serve(async (req) => {
     const staleThreshold = new Date(Date.now() - ETA_STALE_THRESHOLD_SECONDS * 1000).toISOString();
     await client.from("v3_eta_results").delete().lt("computed_at", staleThreshold);
 
-    // 2. Dohvati aktivan slot za ovog vozača + grad → čitaj passengers[] iz waypoints_json
+    // 2. Dohvati aktivan slot za ovog vozača + grad + datum → čitaj passengers[] iz waypoints_json
     const { data: slotRows, error: slotError } = await client
       .from("v3_trenutna_dodela_slot")
       .select("id, vreme, waypoints_json")
       .eq("vozac_v3_auth_id", vozacId)
-      .eq("grad", activeGrad);
+      .eq("grad", activeGrad)
+      .eq("datum", activeDatumIso);
 
     if (slotError) {
       return json(200, { ok: false, reason: "slot_lookup_error", warning: slotError.message });

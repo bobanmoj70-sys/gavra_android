@@ -480,7 +480,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isPlacen = naplataInfo?.isPaid ?? false;
     final String? naplataById = naplataInfo?.paidBy;
     final DateTime? naplataAt = naplataInfo?.paidAt;
-    final DateTime? poslednjaDopunaAt = naplataInfo?.updatedAt;
+    final DateTime? poslednjaDopunaAt = naplataInfo?.uplataAt;
     final double ukupanIznos = naplataInfo?.ukupanIznos ?? 0;
     final double poslednjaDopuna = naplataInfo?.poslednjaDopuna ?? 0;
     final bool hasTel = _firstValidTelefon() != null;

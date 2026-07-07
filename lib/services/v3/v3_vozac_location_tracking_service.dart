@@ -83,6 +83,10 @@ class V3VozacLocationTrackingService {
     _activeGrad = grad.trim().toUpperCase();
     _activeVreme = V3TimeUtils.normalizeToHHmm(vreme);
 
+    // Očisti deljene ETA/redosled keševe jer je termin promenjen
+    _optimizedPutnikIds.clear();
+    _etaSecondsCache.clear();
+
     // Prosledi background servisu da i on šalje pravilne vrednosti
     final service = FlutterBackgroundService();
     service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
@@ -217,7 +221,7 @@ class V3VozacLocationTrackingService {
   /// Ispravka: _lastSentPosition nije mogao biti setovan iz background isolate-a,
   /// pa se GPS pozicija sada dobavlja direktno.
   Future<({Map<String, int> etaMap, List<String> order})> fetchPositionAndComputeEta() async {
-    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
+    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) {
       return (etaMap: <String, int>{}, order: <String>[]);
     }
     try {
@@ -234,6 +238,7 @@ class V3VozacLocationTrackingService {
         lng: position.longitude,
         grad: _activeGrad,
         vreme: _activeVreme,
+        datumIso: _activeDatumIso,
       );
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] fetchPositionAndComputeEta error: $e');
@@ -267,6 +272,7 @@ class V3VozacLocationTrackingService {
     required double lng,
     required String grad,
     required String vreme,
+    String? datumIso,
   }) async {
     final supabase = Supabase.instance.client;
     final response = await supabase.functions.invoke(
@@ -277,6 +283,7 @@ class V3VozacLocationTrackingService {
         'lng': lng,
         'grad': grad,
         'vreme': vreme,
+        if (datumIso != null && datumIso.isNotEmpty) 'datum_iso': datumIso,
       },
     );
     debugPrint('[V3VozacLocationTrackingService] computeEta response: ${response.data}');

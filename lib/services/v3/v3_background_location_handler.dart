@@ -23,6 +23,7 @@ bool _bgInFlight = false;
 SupabaseClient? _bgSupabaseClient;
 String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
+bool _bgConfigReady = false;
 
 Future<void> _bgClearEtaForVozac(String vozacId) async {
   final normalized = vozacId.trim();
@@ -62,7 +63,11 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     _bgSupabaseUrl = (event?['url'] ?? '').toString().trim();
     _bgSupabaseAnonKey = (event?['anon_key'] ?? '').toString().trim();
     _bgSupabaseClient = null;
+    _bgConfigReady = false;
     _bgTryInitSupabaseClient();
+    if (_bgSupabaseClient != null) {
+      _bgConfigReady = true;
+    }
   });
 
   service.on(_kActionStop).listen((event) async {
@@ -115,13 +120,27 @@ void _bgStartTimer() {
   _bgTimer = Timer.periodic(_kInterval, (_) {
     unawaited(_bgSendLocation());
   });
-  // Prvo slanje odmah
-  unawaited(_bgSendLocation());
+  // Prvo slanje odmah, ali samo ako je config spreman
+  if (_bgConfigReady) {
+    unawaited(_bgSendLocation());
+  } else {
+    debugPrint('[BG] Odlažem prvo slanje dok Supabase config nije spreman');
+  }
 }
 
 Future<void> _bgSendLocation() async {
   final vozacId = _bgVozacId;
   if (vozacId == null || vozacId.isEmpty || _bgInFlight) return;
+
+  if (!_bgConfigReady) {
+    _bgTryInitSupabaseClient();
+    if (_bgSupabaseClient != null) {
+      _bgConfigReady = true;
+    } else {
+      debugPrint('[BG] Supabase config još nije spreman, preskačem slanje');
+      return;
+    }
+  }
 
   if (_bgDatumIso.isEmpty || _bgGrad.isEmpty || _bgVreme.isEmpty) {
     debugPrint(
@@ -170,6 +189,7 @@ Future<void> _bgSendLocation() async {
         'lng': position.longitude,
         'grad': _bgGrad,
         'vreme': _bgVreme,
+        'datum_iso': _bgDatumIso,
       },
     );
     final responseData = etaResponse.data;
