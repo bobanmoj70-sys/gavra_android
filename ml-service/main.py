@@ -57,6 +57,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- PYDANTIC MODELI ZA API ENDPOINTE ---
+class LogResponse(BaseModel):
+    logs: list[str]
+
+
+class InsightResponse(BaseModel):
+    insights: list[dict]
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+class ChatResponse(BaseModel):
+    response: str
+    sources: list[str]
+
+
 # Globalni objekti
 supabase: AsyncClient = None
 embedder = None
@@ -72,31 +90,52 @@ ANALYSIS_DEBOUNCE_SECONDS = 60
 chat_rate_limits: dict[str, deque] = {}
 CHAT_RATE_LIMIT_MAX = 10
 CHAT_RATE_LIMIT_WINDOW_SECONDS = 60
+# Praćenje poslednje aktivnosti sesije za čišćenje starih sesija
+session_last_activity: dict[str, float] = {}
+SESSION_INACTIVITY_TIMEOUT_SECONDS = 3600  # 1 sat
 
 api_key_header = APIKeyHeader(name='X-API-Key', auto_error=False)
 session_id_header = APIKeyHeader(name='X-Session-ID', auto_error=False)
 
 
+def _normalize_session_id(session_id: str | None) -> str:
+    return session_id or 'default'
+
+
+def _cleanup_inactive_sessions():
+    """Briše sesije koje nisu aktivne duže od SESSION_INACTIVITY_TIMEOUT_SECONDS."""
+    now = datetime.now().timestamp()
+    cutoff = now - SESSION_INACTIVITY_TIMEOUT_SECONDS
+    stale_sessions = [sid for sid, last in session_last_activity.items() if last < cutoff]
+    for sid in stale_sessions:
+        conversation_history.pop(sid, None)
+        chat_rate_limits.pop(sid, None)
+        session_last_activity.pop(sid, None)
+
+
 def _get_or_create_session_history(session_id: str | None) -> deque:
     """Vraća konverzacijsku memoriju za datu sesiju."""
-    if not session_id:
-        session_id = 'default'
-    if session_id not in conversation_history:
-        conversation_history[session_id] = deque(maxlen=20)
-    return conversation_history[session_id]
+    sid = _normalize_session_id(session_id)
+    _cleanup_inactive_sessions()
+    session_last_activity[sid] = datetime.now().timestamp()
+    if sid not in conversation_history:
+        conversation_history[sid] = deque(maxlen=20)
+    return conversation_history[sid]
 
 
 def _check_chat_rate_limit(session_id: str | None) -> bool:
     """Proverava da li sesija premašuje dozvoljen broj chat poziva u vremenskom prozoru."""
-    if not session_id:
-        session_id = 'default'
+    sid = _normalize_session_id(session_id)
     now = datetime.now().timestamp()
     window_start = now - CHAT_RATE_LIMIT_WINDOW_SECONDS
     
-    if session_id not in chat_rate_limits:
-        chat_rate_limits[session_id] = deque()
+    _cleanup_inactive_sessions()
+    session_last_activity[sid] = now
     
-    history = chat_rate_limits[session_id]
+    if sid not in chat_rate_limits:
+        chat_rate_limits[sid] = deque()
+    
+    history = chat_rate_limits[sid]
     # Ukloni stare zapise izvan prozora
     while history and history[0] < window_start:
         history.popleft()
@@ -297,14 +336,45 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
         return f"Greška pri parsiranju reda iz tabele {table_name}: {e}"
 
 # --- FUNKCIJA ZA ANALIZU I DETEKCIJU ANOMALIJA (SAM ZAKLJUČUJE ŠTA JE BITNO) ---
+def _upsert_insight(cursor, title: str, description: str, source_table: str, source_id: str, severity: str):
+    """Ažurira postojeći zaključak po (title, source_table, source_id) ili ubacuje novi."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+        SELECT id FROM ai_insights
+        WHERE title=? AND source_table=? AND source_id=?
+    """, (title, source_table, source_id))
+    row = cursor.fetchone()
+    if row:
+        cursor.execute("""
+            UPDATE ai_insights
+            SET description=?, severity=?, created_at=?
+            WHERE id=?
+        """, (description, severity, now, row[0]))
+    else:
+        cursor.execute("""
+            INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (title, description, source_table, source_id, severity, now))
+
+
 def _analyze_and_detect_insights_sync():
     """Sinhrona verzija analize — poziva se unutar executor-a"""
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
-        # Očistimo stare nominalne i significant zaključke (da uvek generišemo sveže), kritične čuvamo
-        cursor.execute("DELETE FROM ai_insights WHERE severity != 'critical'")
+        # Brišemo zastarele nominal/significant zaključke čiji izvor više ne postoji u bazi znanja,
+        # ali zadržavamo kritične (koje korisnik možda želi ručno da pregleda).
+        cursor.execute("""
+            DELETE FROM ai_insights
+            WHERE severity != 'critical'
+              AND source_id != ''
+              AND NOT EXISTS (
+                  SELECT 1 FROM ai_knowledge_base kb
+                  WHERE kb.source_table = ai_insights.source_table
+                    AND kb.source_id = ai_insights.source_id
+              )
+        """)
         
         # 1. ANALIZA TROŠKOVA GORIVA (v3_gorivo)
         cursor.execute("SELECT id, content FROM ai_knowledge_base WHERE source_table='v3_gorivo'")
@@ -328,17 +398,14 @@ def _analyze_and_detect_insights_sync():
                     parts = content.split("vrednosti od ")
                     iznos = float(parts[1].split(" RSD")[0])
                     if iznos > avg_fuel * 1.5:
-                        cursor.execute("""
-                            INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                        """, (
+                        _upsert_insight(
+                            cursor,
                             "Uočena anomalija u trošku za gorivo",
                             f"Registrovan je izuzetno visok trošak goriva u iznosu od {iznos} RSD, što drastično odudara od prosečnog sipanja koje iznosi {avg_fuel:.1f} RSD.",
                             "v3_gorivo",
                             source_id,
-                            "significant",
-                            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        ))
+                            "significant"
+                        )
                 except:
                     continue
 
@@ -366,29 +433,23 @@ def _analyze_and_detect_insights_sync():
                 continue
                 
         if rashodi > prihodi and rashodi > 0:
-            cursor.execute("""
-                INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
+            _upsert_insight(
+                cursor,
                 "Rashodi premašili prihode",
                 f"Ukupni zabeleženi rashodi u bazi iznose {rashodi:.1f} RSD kroz {n_rashod} transakcija, dok su prihodi {prihodi:.1f} RSD. Kompanija posluje sa deficitom u ovom posmatranom periodu.",
                 "v3_finansije",
                 "",
-                "significant",
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ))
+                "significant"
+            )
         elif prihodi > 0:
-            cursor.execute("""
-                INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
+            _upsert_insight(
+                cursor,
                 "Stabilan finansijski bilans",
                 f"Prihodi iznose ukupno {prihodi:.1f} RSD, dok su rashodi uspešno zadržani na {rashodi:.1f} RSD. Neto profit iznosi {(prihodi-rashodi):.1f} RSD.",
                 "v3_finansije",
                 "",
-                "nominal",
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ))
+                "nominal"
+            )
 
         # 3. ANALIZA ZAHTEVA PO GRADOVIMA
         cursor.execute("SELECT content FROM ai_knowledge_base WHERE source_table='v3_zahtevi'")
@@ -408,21 +469,18 @@ def _analyze_and_detect_insights_sync():
             ukupno_zahteva = sum(gradovi.values())
             procenat = (gradovi[omiljeni_grad] / ukupno_zahteva) * 100
             
-            cursor.execute("""
-                INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
+            _upsert_insight(
+                cursor,
                 f"Dominantno gradsko tržište: {omiljeni_grad}",
                 f"Grad sa ubedljivo najvećim brojem zahteva za transport je {omiljeni_grad} sa ukupno {gradovi[omiljeni_grad]} vožnji, što predstavlja {procenat:.1f}% od ukupnih zahteva u aplikaciji.",
                 "v3_zahtevi",
                 "",
-                "nominal",
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ))
+                "nominal"
+            )
 
         conn.commit()
         conn.close()
-        log_event("Analiza baze uspešno izvršena. Generisani novi samostalni zaključci.")
+        log_event("Analiza baze uspešno izvršena. Generisani/ažurirani samostalni zaključci.")
     except Exception as e:
         log_event(f"Greška tokom izvršavanja analize zaključaka: {e}")
 
@@ -542,9 +600,20 @@ async def start_realtime_sync():
             # Držimo kanal otvorenim dok se ne desi greška
             while True:
                 await asyncio.sleep(30)
-                # Health check: ako je kanal zatvoren, izađi iz unutrašnje petle
-                if not channel.is_joined:
-                    log_event("🟡 Realtime kanal više nije aktivan. Pokušavam reconnect...")
+                # Health check: pokušavamo da pročitamo stanje kanala na bezbedan način.
+                # Različite verzije supabase-py realtime klijenta izlažu različita svojstva,
+                # pa koristimo try/except umesto direktnog pristupa is_joined.
+                try:
+                    is_joined = getattr(channel, 'is_joined', None)
+                    if is_joined is False:
+                        log_event("🟡 Realtime kanal više nije aktivan. Pokušavam reconnect...")
+                        break
+                    # Alternativna provera: pokušaj slanja heartbeat-a ako postoji metoda
+                    heartbeat = getattr(channel, 'send_heartbeat', None)
+                    if callable(heartbeat):
+                        await heartbeat()
+                except Exception as e:
+                    log_event(f"🟡 Realtime kanal health check nije uspeo: {e}. Pokušavam reconnect...")
                     break
                     
         except Exception as e:
@@ -607,6 +676,17 @@ async def process_realtime_event(payload: dict):
     await loop.run_in_executor(None, _process_realtime_event_sync, payload)
     # Nakon svake izmene, asinhrono okidamo re-kalkulaciju anomalija
     await analyze_and_detect_insights()
+
+
+def _load_embedder_sync():
+    """Sinhrono učitavanje SentenceTransformer modela za semantičku pretragu."""
+    try:
+        from sentence_transformers import SentenceTransformer
+        return SentenceTransformer('all-MiniLM-L6-v2')
+    except Exception as e:
+        log_event(f"SentenceTransformer nije mogao biti učitan: {e}")
+        return None
+
 
 # --- FASTAPI ENDPOINTI ---
 
@@ -681,12 +761,13 @@ def get_insights():
         raise HTTPException(status_code=500, detail=str(e))
 
 def _search_knowledge_base_sync(usr_msg: str):
-    """Sinhrona pretraga lokalne baze znanja"""
+    """Sinhrona pretraga lokalne baze znanja. Vraća listu (content, source_id) tuple-a."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
     # Prvo pokušavamo semantičku pretragu ako imamo embedder
     matched_content = []
+    matched_sources = []
     semantic_scores = {}
     
     if embedder:
@@ -711,6 +792,7 @@ def _search_knowledge_base_sync(usr_msg: str):
         top_matches = scores[:15]
         for score, content, kid in top_matches:
             matched_content.append(content)
+            matched_sources.append(kid)
             semantic_scores[content] = score
     
     # Hibridna tekstualna pretraga po ključnim rečima
@@ -729,15 +811,17 @@ def _search_knowledge_base_sync(usr_msg: str):
             content_lower = content.lower()
             match_count = sum(1 for kw in keywords if kw in content_lower)
             if match_count > 0:
-                text_matches.append((match_count, content))
+                text_matches.append((match_count, content, kid))
         
         text_matches.sort(key=lambda x: x[0], reverse=True)
-        for _, content in text_matches[:10]:
+        for _, content, kid in text_matches[:10]:
             if content not in matched_content:
                 matched_content.append(content)
+                matched_sources.append(kid)
     
     conn.close()
-    return matched_content[:15]
+    return list(zip(matched_content, matched_sources))[:15]
+
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, session_id: str = Header(None)):
@@ -754,9 +838,11 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         log_event(f"Korisnički upit (sesija: {session_id or 'default'}): '{usr_msg}'")
         
         # Direktna sinhrona pretraga (FastAPI sync endpoint već radi u thread pool-u)
-        matched_content = _search_knowledge_base_sync(usr_msg)
+        matched = _search_knowledge_base_sync(usr_msg)
+        matched_content = [content for content, _ in matched]
+        matched_sources = [source_id for _, source_id in matched]
         
-        context_str = "\n".join([f"- {content}" for content in matched_content])
+        context_str = "\n".join([f"[{source_id}] {content}" for content, source_id in matched])
         
         # Konverzacijska memorija izolovana po sesiji
         history = _get_or_create_session_history(session_id)
@@ -769,7 +855,8 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         
         system_prompt = (
             "Ti si Gavra AI, visoko stručni i pouzdani analitički sistem za logistiku i transport, razvijen isključivo za vlasnika aplikacije.\n"
-            "Tvoj zadatak je da odgovaraš na pitanja isključivo na osnovu sledećih sirovih podataka dobijenih iz tabela u realnom vremenu:\n"
+            "Tvoj zadatak je da odgovaraš na pitanja isključivo na osnovu sledećih sirovih podataka dobijenih iz tabela u realnom vremenu.\n"
+            "Svaki podatak je označen identifikatorom oblika [tabela:id] koji predstavlja njegov izvor u bazi.\n"
             "-------------------\n"
             f"{context_str if context_str else 'U bazi trenutno nema zabeleženih relevantnih podataka za ovo pitanje.'}\n"
             "-------------------\n"
@@ -778,8 +865,9 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
             "2. Ukoliko odgovor na pitanje ne može da se izvuče iz dostavljenih sirovih podataka, tvoj jedini odgovor MORA biti: \n"
             "   'Oprostite, nemam te podatke u svojoj bazi podataka.'\n"
             "3. Nemoj izmišljati, pretpostavljati niti dopunjavati podatke opštim znanjem sa interneta! Ako ne vidiš tačne brojeve ili imena u kontekstu, za tebe oni ne postoje.\n"
-            "4. Piši odgovore tečnim, prijatnim i profesionalnim srpskim jezikom, sa uvažavanjem i bez suvišnog filozofiranja.\n"
-            "5. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj isključivo na poslovne podatke iz baze."
+            "4. Nakon svake tvrdnje koja se oslanja na konkretan podatak, obavezno navedi izvor u formatu [tabela:id]. Na primer: 'Ukupni rashodi su 150.000 RSD [v3_finansije:abc-123].'\n"
+            "5. Piši odgovore tečnim, prijatnim i profesionalnim srpskim jezikom, sa uvažavanjem i bez suvišnog filozofiranja.\n"
+            "6. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj isključivo na poslovne podatke iz baze."
         )
         
         messages = [
@@ -805,7 +893,7 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         
         return ChatResponse(
             response=ai_resp,
-            sources=matched_content[:5]
+            sources=matched_sources[:5]
         )
         
     except Exception as e:
