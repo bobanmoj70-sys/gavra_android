@@ -35,6 +35,7 @@ class V3FinansijeService {
   static const String _nenaplaceneVoznjeKey = 'nenaplacene_voznje_json';
   static const String _realizovaneVoznjeKey = 'realizovane_voznje_json';
   static const String _otkazaneVoznjeKey = 'otkazane_voznje_json';
+  static const String _uplateKey = 'uplate_json';
   static final V3FinansijeRepository _repo = V3FinansijeRepository();
   static final Set<String> _mesecnaNaplataLocks = <String>{};
 
@@ -450,10 +451,18 @@ class V3FinansijeService {
             grad: grad,
             vreme: vreme,
           );
+          final currentUplate = _readUplate(latest);
+          final updatedUplate = _appendUplata(currentUplate, {
+            'uplata_id': 'upl:${_uuid.v4()}',
+            'datum': DateTime.now().toIso8601String(),
+            'iznos': cenaVoznje,
+            'naplatio_by': evidentiraoBy,
+          });
           final updatePayload = <String, dynamic>{
             'broj_voznji': currentBroj + 1,
             _nenaplaceneVoznjeKey: updatedNenaplacene,
             _realizovaneVoznjeKey: updatedRealizovane,
+            _uplateKey: updatedUplate,
             'updated_at': DateTime.now().toIso8601String(),
           };
           final updated = await _repo.updateByIdReturning(latestId, updatePayload);
@@ -790,6 +799,14 @@ class V3FinansijeService {
         return (row['tip']?.toString().toLowerCase() ?? '') == 'prihod';
       }).toList();
 
+      final now = DateTime.now();
+      final uplataStavka = <String, dynamic>{
+        'uplata_id': 'upl:${_uuid.v4()}',
+        'datum': now.toIso8601String(),
+        'iznos': iznos,
+        'naplatio_by': naplacenoBy,
+      };
+
       Map<String, dynamic> row;
       if (existing.isNotEmpty) {
         _sortByCreatedAtDesc(existing);
@@ -811,6 +828,8 @@ class V3FinansijeService {
         // Broj vožnji se ne menja pri plaćanju - samo pri pokupljanju (evidentirajRealizacijuPriPokupljanju)
         // Zadržavamo trenutnu vrednost da ne bi smanjili broj vožnji ako se u međuvremenu povećao
         final finalBrojVoznji = currentBrojVoznji;
+        final currentUplate = _readUplate(latest);
+        final updatedUplate = _appendUplata(currentUplate, uplataStavka);
 
         row = await _repo.updateByIdReturning(existingId, {
           'iznos': currentIznos + iznos,
@@ -818,7 +837,8 @@ class V3FinansijeService {
           'naplaceno_by': naplacenoBy,
           'broj_voznji': finalBrojVoznji,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
-          'updated_at': DateTime.now().toIso8601String(),
+          _uplateKey: updatedUplate,
+          'updated_at': now.toIso8601String(),
         });
       } else {
         row = await _repo.insertReturning({
@@ -831,6 +851,7 @@ class V3FinansijeService {
           'naplaceno_by': naplacenoBy,
           'broj_voznji': brojVoznji,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
+          _uplateKey: [uplataStavka],
           'mesec': mesec,
           'godina': godina,
         });
@@ -1107,5 +1128,91 @@ class V3FinansijeService {
 
     updated.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
     return updated;
+  }
+
+  static List<Map<String, dynamic>> _readUplate(Map<String, dynamic> row) {
+    final raw = row[_uplateKey];
+    final result = <Map<String, dynamic>>[];
+
+    try {
+      Iterable<dynamic> src;
+      if (raw is List) {
+        src = raw;
+      } else if (raw is String) {
+        final decoded = jsonDecode(raw);
+        if (decoded is! List) return result;
+        src = decoded;
+      } else {
+        return result;
+      }
+
+      for (final item in src) {
+        if (item is! Map) continue;
+        final uplataId = (item['uplata_id']?.toString() ?? '').trim();
+        final datum = item['datum']?.toString();
+        final iznos = (item['iznos'] as num?)?.toDouble();
+        if (uplataId.isEmpty || datum == null || datum.isEmpty || iznos == null) continue;
+        result.add({
+          'uplata_id': uplataId,
+          'datum': datum,
+          'iznos': iznos,
+          'naplatio_by': item['naplatio_by']?.toString(),
+        });
+      }
+    } catch (_) {
+      return result;
+    }
+
+    result.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+    return result;
+  }
+
+  static List<Map<String, dynamic>> _appendUplata(
+    List<Map<String, dynamic>> stavke,
+    Map<String, dynamic> novaStavka,
+  ) {
+    final uplataId = (novaStavka['uplata_id']?.toString() ?? '').trim();
+    if (uplataId.isEmpty) return stavke;
+
+    final updated = List<Map<String, dynamic>>.from(stavke);
+    updated.add(novaStavka);
+    updated.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
+    return updated;
+  }
+
+  static List<V3Uplata> getUplateZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final safePutnikId = putnikId.trim();
+    if (safePutnikId.isEmpty) return const <V3Uplata>[];
+
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    final result = <V3Uplata>[];
+
+    for (final row in cache) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != safePutnikId.toLowerCase()) continue;
+      final rG = _parseInternalInt(row['godina']);
+      final rM = _parseInternalInt(row['mesec']);
+      if (rG != godina || rM != mesec) continue;
+
+      final uplate = _readUplate(row);
+      for (final uplataMap in uplate) {
+        final datum = V3DateUtils.parseTs(uplataMap['datum']?.toString()) ??
+            DateTime.tryParse(uplataMap['datum']?.toString() ?? '');
+        if (datum == null) continue;
+        result.add(V3Uplata(
+          uplataId: uplataMap['uplata_id']?.toString() ?? '',
+          datum: datum,
+          iznos: (uplataMap['iznos'] as num?)?.toDouble() ?? 0,
+          naplatioBy: uplataMap['naplatio_by']?.toString(),
+        ));
+      }
+    }
+
+    result.sort((a, b) => a.datum.compareTo(b.datum));
+    return result;
   }
 }

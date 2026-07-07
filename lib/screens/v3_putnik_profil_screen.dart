@@ -1084,6 +1084,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
                 const SizedBox(width: 12),
                 _kpiTile('Otkazano', '${stats.otkazano}', Colors.redAccent),
+                const SizedBox(width: 12),
+                _kpiTile('Uplata', '${stats.brojUplata}', Colors.blueAccent),
               ],
             ),
           ),
@@ -1122,6 +1124,19 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               ),
             ],
           ),
+          if (stats.poslednjaUplata != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Poslednja uplata', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(
+                  '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
+                  style: const TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ],
           if (stats.otkazano > 0) ...[
             const SizedBox(height: 6),
             Row(

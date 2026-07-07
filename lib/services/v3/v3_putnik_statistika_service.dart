@@ -63,6 +63,8 @@ class V3PutnikMesecnaStatistika {
   final double dugIznos;
   final double cena;
   final double ukupnaObaveza;
+  final int brojUplata;
+  final DateTime? poslednjaUplata;
 
   const V3PutnikMesecnaStatistika({
     required this.godina,
@@ -77,6 +79,8 @@ class V3PutnikMesecnaStatistika {
     this.dugIznos = 0,
     this.cena = 0,
     this.ukupnaObaveza = 0,
+    this.brojUplata = 0,
+    this.poslednjaUplata,
   });
 }
 
@@ -462,6 +466,11 @@ class V3PutnikStatistikaService {
           godina: stavka.godina,
           mesec: stavka.mesec,
         );
+        final uplate = V3FinansijeService.getUplateZaMesec(
+          putnikId: putnikId,
+          godina: stavka.godina,
+          mesec: stavka.mesec,
+        );
         return V3PutnikMesecnaStatistika(
           godina: stavka.godina,
           mesec: stavka.mesec,
@@ -477,6 +486,8 @@ class V3PutnikStatistikaService {
           dugIznos: stavka.saldoKraj < 0 ? -stavka.saldoKraj : 0,
           cena: stavka.cena,
           ukupnaObaveza: stavka.obaveza,
+          brojUplata: uplate.length,
+          poslednjaUplata: uplate.isNotEmpty ? uplate.last.datum : null,
         );
       },
     ).toList(growable: false);
@@ -547,6 +558,11 @@ class V3PutnikStatistikaService {
       godina: godina,
       mesec: mesec,
     );
+    final uplate = V3FinansijeService.getUplateZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
 
     return V3PutnikMesecnaStatistika(
       godina: godina,
@@ -561,6 +577,8 @@ class V3PutnikStatistikaService {
       dugIznos: obracun.dug,
       cena: obracun.cena,
       ukupnaObaveza: obracun.obaveza,
+      brojUplata: uplate.length,
+      poslednjaUplata: uplate.isNotEmpty ? uplate.last.datum : null,
     );
   }
 

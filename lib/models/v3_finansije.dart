@@ -57,3 +57,35 @@ class V3Trosak {
         'naplaceno_by': vozacId,
       };
 }
+
+class V3Uplata {
+  final String uplataId;
+  final DateTime datum;
+  final double iznos;
+  final String? naplatioBy;
+
+  V3Uplata({
+    required this.uplataId,
+    required this.datum,
+    required this.iznos,
+    this.naplatioBy,
+  });
+
+  factory V3Uplata.fromJson(Map<String, dynamic> json) {
+    return V3Uplata(
+      uplataId: json['uplata_id']?.toString() ?? '',
+      datum: V3DateUtils.parseTs(json['datum']?.toString()) ??
+          DateTime.tryParse(json['datum']?.toString() ?? '') ??
+          DateTime.now(),
+      iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
+      naplatioBy: json['naplatio_by']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'uplata_id': uplataId,
+        'datum': datum.toIso8601String(),
+        'iznos': iznos,
+        if (naplatioBy != null && naplatioBy!.isNotEmpty) 'naplatio_by': naplatioBy,
+      };
+}
