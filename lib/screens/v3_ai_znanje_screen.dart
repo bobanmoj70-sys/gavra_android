@@ -240,6 +240,40 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
   }
 
+  Future<void> _triggerResync() async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${MlConfig.baseUrl}/resync'),
+            headers: MlConfig.headers(),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Resync pokrenut. AI ponovo uči sve podatke.')),
+          );
+        }
+      } else if (response.statusCode == 401) {
+        setState(() {
+          _serverReachable = false;
+          _lastError = 'Nevažeći API ključ za AI server';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _serverReachable = false;
+        _lastError = 'AI server nije dostupan';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI server nije dostupan. Proveri konekciju.')),
+        );
+      }
+    }
+  }
+
   void _scrollToBottom(ScrollController controller) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.hasClients) {
@@ -279,6 +313,13 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync, color: Colors.white),
+            tooltip: 'Ponovo uči sve podatke',
+            onPressed: _triggerResync,
+          ),
+        ],
         backgroundColor: const Color(0xFF11111B),
         elevation: 4,
         bottom: TabBar(

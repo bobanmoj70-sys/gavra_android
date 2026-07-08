@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import ollama
 from supabase._async.client import create_client as create_async_client, AsyncClient
 import os
@@ -13,6 +13,15 @@ from datetime import datetime
 import numpy as np
 from dotenv import load_dotenv
 from collections import deque
+import concurrent.futures
+import sqlite_vec
+import re
+from contextlib import asynccontextmanager
+from functools import lru_cache
+import hashlib
+import threading
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Učitavanje .env pre bilo kakve druge inicijalizacije
 load_dotenv()
@@ -46,9 +55,60 @@ if not ML_API_KEY:
 # Lokalne SQLite baze
 DB_FILE = os.path.join(os.path.dirname(__file__), "gavra_ai.db")
 
-app = FastAPI(title="Gavra Realtime AI Backend")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager za inicijalizaciju i gašenje resursa."""
+    global supabase, embedder, realtime_task
+    
+    try:
+        init_local_db()
+        log_event("Lokalna SQLite baza podataka je inicijalizovana.")
+        
+        if not SUPABASE_SERVICE_ROLE_KEY:
+            log_event("⚠️  Upozorenje: SUPABASE_SERVICE_ROLE_KEY nije definisan. Koristim SUPABASE_ANON_KEY. AI može biti ograničen RLS pravilima i ne videti sve tabele.")
+        
+        supabase = await create_async_client(SUPABASE_URL, SUPABASE_KEY)
+        log_event("Supabase asinhrona konekcija uspešno otvorena.")
+        
+        # Učitavanje SentenceTransformer-a za semantiku (lazy, u pozadinskom thread-u)
+        try:
+            log_event("Učitavam SentenceTransformer model ('all-MiniLM-L6-v2') za semantičko razumevanje...")
+            loop = asyncio.get_event_loop()
+            embedder = await loop.run_in_executor(None, _load_embedder_sync)
+            if embedder:
+                log_event("Semantički model uspešno pokrenut i uskladišten.")
+            else:
+                log_event("SentenceTransformer nije dostupan. Koristićemo klasične SQLite LIKE pretrage.")
+        except Exception as e:
+            log_event(f"Upozorenje: Nije moguće podići SentenceTransformer: {e}. Koristićemo klasične SQLite LIKE pretrage.")
+
+        asyncio.create_task(learn_past_data())
+        realtime_task = asyncio.create_task(start_realtime_sync())
+        
+        yield
+        
+        # Shutdown
+        if realtime_task:
+            realtime_task.cancel()
+            try:
+                await realtime_task
+            except asyncio.CancelledError:
+                pass
+        log_event("Gavra AI Backend je uspešno zaustavljen.")
+    except asyncio.CancelledError:
+        log_event("Gavra AI Backend je zaustavljen po zahtevu (CancelledError).")
+        if realtime_task:
+            realtime_task.cancel()
+        raise
+    except Exception as e:
+        log_event(f"Greška u lifespan-u: {e}")
+        raise
+
 
 # CORS podrška za komunikaciju sa mobilnim i drugim klijentima
+app = FastAPI(title="Gavra Realtime AI Backend", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,7 +127,7 @@ class InsightResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=2000)
 
 
 class ChatResponse(BaseModel):
@@ -93,6 +153,44 @@ CHAT_RATE_LIMIT_WINDOW_SECONDS = 60
 # Praćenje poslednje aktivnosti sesije za čišćenje starih sesija
 session_last_activity: dict[str, float] = {}
 SESSION_INACTIVITY_TIMEOUT_SECONDS = 3600  # 1 sat
+
+# Šira lista srpskih stop-reči za kvalitetniju tekstualnu pretragu
+SRPSKE_STOP_RECI = {
+    "ili", "sam", "kod", "bilo", "sve", "kako", "šta", "gde", "kad", "kada",
+    "i", "u", "je", "se", "na", "za", "sa", "od", "do", "po", "da", "ne",
+    "li", "pa", "ako", "koji", "koja", "koje", "što", "kakav", "kakva", "kakvo",
+    "ovaj", "ova", "ovo", "taj", "ta", "to", "svaki", "svaka", "svako", "svi", "sva",
+    "mi", "ti", "on", "ona", "ono", "vi", "oni", "one", "smo", "ste", "su",
+    "bi", "bismo", "biste", "bih", "si", "ću", "ćeš", "će", "ćemo", "ćete",
+    "neću", "nećeš", "neće", "nećemo", "nećete", "ma", "baš", "već", "još",
+    "samo", "takođe", "međutim", "dakle", "zato", "jer", "dok", "čiji", "čija", "čije",
+    "gdje", "kuda", "odakle", "koliko", "kolika", "mnogo", "malo", "više", "manje",
+    "najviše", "najmanje", "tako", "ovako", "onako", "ovde", "onde", "tamo",
+    "ovamo", "onamo", "gore", "dole", "levo", "desno", "blizu", "daleko",
+    "spreman", "spremna", "spremno", "molim", "hvala", "izvoli", "izvolite"
+}
+
+# Ollama parametri za kontrolisanije i brže odgovore
+OLLAMA_TEMPERATURE = float(os.environ.get('OLLAMA_TEMPERATURE', '0.3'))
+OLLAMA_MAX_TOKENS = int(os.environ.get('OLLAMA_MAX_TOKENS', '800'))
+OLLAMA_TIMEOUT_SECONDS = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '30'))
+
+# Parametri vektorske pretrage
+VECTOR_DIMENSION = 384  # all-MiniLM-L6-v2
+VECTOR_TOP_K = 15
+VECTOR_MIN_SIMILARITY = 0.30
+
+# Keširanje čestih chat upita (smanjuje pozive ka Ollama)
+CHAT_CACHE_MAXSIZE = int(os.environ.get('CHAT_CACHE_MAXSIZE', '100'))
+CHAT_CACHE_ENABLED = os.environ.get('CHAT_CACHE_ENABLED', 'true').lower() in ('true', '1', 'yes')
+
+# Tabele koje AI prati i uči u realnom vremenu
+TABLES_TO_SYNC = [
+    "v3_adrese", "v3_auth", "v3_vozila", "v3_zahtevi",
+    "v3_gorivo", "v3_finansije", "v3_racuni",
+    "v3_trenutna_dodela", "v3_trenutna_dodela_slot",
+    "v3_operativna_nedelja", "v3_kapacitet_slots", "v3_app_settings"
+]
 
 api_key_header = APIKeyHeader(name='X-API-Key', auto_error=False)
 session_id_header = APIKeyHeader(name='X-Session-ID', auto_error=False)
@@ -168,6 +266,16 @@ def init_local_db():
     cursor.execute('PRAGMA journal_mode=WAL;')
     cursor.execute('PRAGMA synchronous=NORMAL;')
     
+    # Učitavanje sqlite-vec ekstenzije za efikasnu vektorsku pretragu
+    try:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        cursor.execute("SELECT vec_version()")
+        vec_ver = cursor.fetchone()[0]
+        log_event(f"sqlite-vec ekstenzija učitana (verzija {vec_ver}).")
+    except Exception as e:
+        log_event(f"Upozorenje: sqlite-vec ekstenzija nije učitana: {e}. Vektorska pretraga će biti spora.")
+    
     # Brana baza znanja
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS ai_knowledge_base (
@@ -175,7 +283,8 @@ def init_local_db():
             source_table TEXT,
             source_id TEXT,
             content TEXT,
-            embedding TEXT,  -- JSON niz brojeva
+            embedding TEXT,  -- JSON niz brojeva (fallback)
+            metadata TEXT,   -- JSON sa izvornim vrednostima za pouzdaniju analizu
             updated_at TEXT
         )
     ''')
@@ -204,13 +313,37 @@ def init_local_db():
     # Indeksi za bržu pretragu
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_kb_table ON ai_knowledge_base(source_table)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_kb_content ON ai_knowledge_base(content)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_kb_metadata ON ai_knowledge_base(metadata)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_insights_severity ON ai_insights(severity)')
+    
+    # Vektorska tabela za efikasnu semantičku pretragu
+    cursor.execute('''
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_knowledge_base USING vec0(
+            id TEXT PRIMARY KEY,
+            embedding FLOAT[{dim}]
+        )
+    '''.format(dim=VECTOR_DIMENSION))
     
     conn.commit()
     conn.close()
 
+# Konfiguracija file logging-a (rotirajući fajl do 5MB, max 3 backup-a)
+LOG_FILE = os.path.join(os.path.dirname(__file__), "gavra_ai.log")
+_file_logger = logging.getLogger("gavra_ai_file")
+_file_logger.setLevel(logging.INFO)
+_file_logger.propagate = False
+
+if not _file_logger.handlers:
+    try:
+        handler = RotatingFileHandler(LOG_FILE, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
+        handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+        _file_logger.addHandler(handler)
+    except Exception as e:
+        print(f"Nije moguće konfigurisati file logger: {e}")
+
+
 def log_event(message: str):
-    """Zapisuje događaj u memorijski log i konzolu"""
+    """Zapisuje događaj u konzolu, memorijski log i rotirajući fajl."""
     timestamp = datetime.now().strftime("%H:%M:%S")
     log_line = f"[{timestamp}] {message}"
     try:
@@ -225,6 +358,23 @@ def log_event(message: str):
             except Exception:
                 pass
     live_logs.append(log_line)
+    _file_logger.info(message)
+
+
+# Regex za maskiranje potencijalno osetljivih podataka u logovima
+_SENSITIVE_PATTERNS = [
+    (re.compile(r'\b\d{13,16}\b'), '***MASKED_CARD***'),  # brojevi kartica
+    (re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'), '***MASKED_EMAIL***'),
+]
+
+
+def _sanitize_log_line(line: str) -> str:
+    """Maskira osetljive podatke u log liniji pre slanja klijentu."""
+    sanitized = line
+    for pattern, replacement in _SENSITIVE_PATTERNS:
+        sanitized = pattern.sub(replacement, sanitized)
+    return sanitized
+
 
 # --- DETALJNE FAZNE PREVODILAČKE FUNKCIJE ZA SVAKU TABELU ---
 def parse_row_to_text(table_name: str, row: dict) -> str:
@@ -377,15 +527,15 @@ def _analyze_and_detect_insights_sync():
         """)
         
         # 1. ANALIZA TROŠKOVA GORIVA (v3_gorivo)
-        cursor.execute("SELECT id, content FROM ai_knowledge_base WHERE source_table='v3_gorivo'")
+        cursor.execute("SELECT source_id, metadata FROM ai_knowledge_base WHERE source_table='v3_gorivo'")
         fuel_rows = cursor.fetchall()
         
         amounts = []
-        for _, content in fuel_rows:
+        for _, metadata_json in fuel_rows:
             try:
-                parts = content.split("vrednosti od ")
-                if len(parts) > 1:
-                    iznos = float(parts[1].split(" RSD")[0])
+                metadata = json.loads(metadata_json or '{}')
+                iznos = float(metadata.get("iznos", 0))
+                if iznos > 0:
                     amounts.append(iznos)
             except:
                 continue
@@ -393,10 +543,10 @@ def _analyze_and_detect_insights_sync():
         if amounts:
             avg_fuel = sum(amounts) / len(amounts)
             
-            for source_id, content in fuel_rows:
+            for source_id, metadata_json in fuel_rows:
                 try:
-                    parts = content.split("vrednosti od ")
-                    iznos = float(parts[1].split(" RSD")[0])
+                    metadata = json.loads(metadata_json or '{}')
+                    iznos = float(metadata.get("iznos", 0))
                     if iznos > avg_fuel * 1.5:
                         _upsert_insight(
                             cursor,
@@ -410,7 +560,7 @@ def _analyze_and_detect_insights_sync():
                     continue
 
         # 2. ANALIZA SVEUKUPNIH RAČUNA I FINANSIJA (Rashodi naspram prihoda)
-        cursor.execute("SELECT content FROM ai_knowledge_base WHERE source_table='v3_finansije'")
+        cursor.execute("SELECT metadata FROM ai_knowledge_base WHERE source_table='v3_finansije'")
         fin_rows = cursor.fetchall()
         
         rashodi = 0.0
@@ -418,17 +568,19 @@ def _analyze_and_detect_insights_sync():
         n_rashod = 0
         n_prihod = 0
         
-        for (content,) in fin_rows:
+        for (metadata_json,) in fin_rows:
             try:
-                iznos_part = content.split("iznosi ")
-                if len(iznos_part) > 1:
-                    iznos = float(iznos_part[1].split(" RSD")[0])
-                    if "PRIHOD" in content:
-                        prihodi += iznos
-                        n_prihod += 1
-                    else:
-                        rashodi += iznos
-                        n_rashod += 1
+                metadata = json.loads(metadata_json or '{}')
+                iznos = float(metadata.get("iznos", 0))
+                tip = metadata.get("tip", "rashod").lower()
+                if iznos <= 0:
+                    continue
+                if tip == "prihod":
+                    prihodi += iznos
+                    n_prihod += 1
+                else:
+                    rashodi += iznos
+                    n_rashod += 1
             except:
                 continue
                 
@@ -452,14 +604,15 @@ def _analyze_and_detect_insights_sync():
             )
 
         # 3. ANALIZA ZAHTEVA PO GRADOVIMA
-        cursor.execute("SELECT content FROM ai_knowledge_base WHERE source_table='v3_zahtevi'")
+        cursor.execute("SELECT metadata FROM ai_knowledge_base WHERE source_table='v3_zahtevi'")
         req_rows = cursor.fetchall()
         
         gradovi = {}
-        for (content,) in req_rows:
+        for (metadata_json,) in req_rows:
             try:
-                if "Relacija/Grad: " in content:
-                    grad = content.split("Relacija/Grad: ")[1].split(".")[0].strip()
+                metadata = json.loads(metadata_json or '{}')
+                grad = metadata.get("grad", "").strip()
+                if grad:
                     gradovi[grad] = gradovi.get(grad, 0) + 1
             except:
                 continue
@@ -500,31 +653,30 @@ async def analyze_and_detect_insights():
         await loop.run_in_executor(None, _analyze_and_detect_insights_sync)
 
 # --- UČENJE PROŠLOSTI (ISTORIJSKA SINHRONIZACIJA) ---
-async def _learn_past_data_async():
+async def _learn_past_data_async(force: bool = False):
     """Asinhrona verzija istorijskog učenja — direktno koristi Supabase klijent"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    cursor.execute("SELECT val FROM sync_status WHERE key='history_synced'")
-    synced = cursor.fetchone()
-    
-    if synced and synced[0] == "true":
-        log_event("Istorijski podaci su već sinhronizovani. Preskačem istorijsko učenje.")
-        conn.close()
-        return
+    if not force:
+        cursor.execute("SELECT val FROM sync_status WHERE key='history_synced'")
+        synced = cursor.fetchone()
+        
+        if synced and synced[0] == "true":
+            log_event("Istorijski podaci su već sinhronizovani. Preskačem istorijsko učenje.")
+            conn.close()
+            return
+    else:
+        log_event(" Forsiran resync: brišem status sinhronizacije...")
+        cursor.execute("DELETE FROM sync_status WHERE key='history_synced'")
+        cursor.execute("DELETE FROM ai_knowledge_base")
+        conn.commit()
     
     log_event("Pokrećem učenje prošlosti (Istorijska sinhronizacija svih tabela)...")
     
-    tables_to_sync = [
-        "v3_adrese", "v3_auth", "v3_vozila", "v3_zahtevi", 
-        "v3_gorivo", "v3_finansije", "v3_racuni", 
-        "v3_trenutna_dodela", "v3_trenutna_dodela_slot", 
-        "v3_operativna_nedelja", "v3_kapacitet_slots", "v3_app_settings"
-    ]
-    
     total_rows = 0
     
-    for table_name in tables_to_sync:
+    for table_name in TABLES_TO_SYNC:
         try:
             log_event(f"Preuzimam podatke za tabelu: {table_name}...")
             # Povlačimo do 500 najsvežijih slogova po tabeli za offline analizu
@@ -538,23 +690,25 @@ async def _learn_past_data_async():
                         continue
                         
                     content_text = parse_row_to_text(table_name, row_data)
+                    metadata = _extract_metadata(table_name, row_data)
+                    unique_id = f"{table_name}:{rid}"
                     embedding_str = ""
                     
                     if embedder:
                         emb = embedder.encode(content_text).tolist()
                         embedding_str = json.dumps(emb)
-                    
-                    unique_id = f"{table_name}:{rid}"
+                        _upsert_vector(conn, unique_id, emb)
                     
                     cursor.execute("""
-                        INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, metadata, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, (
                         unique_id,
                         table_name,
                         rid,
                         content_text,
                         embedding_str,
+                        json.dumps(metadata, ensure_ascii=False),
                         datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     ))
                     rows_synced += 1
@@ -570,9 +724,9 @@ async def _learn_past_data_async():
     
     log_event(f"Istorijsko učenje završeno! Ukupno naučeno {total_rows} poslovnih događaja.")
 
-async def learn_past_data():
+async def learn_past_data(force: bool = False):
     """Async wrapper za istorijsko učenje"""
-    await _learn_past_data_async()
+    await _learn_past_data_async(force=force)
     await analyze_and_detect_insights()
 
 # --- REALTIME ASINHRONI LISTENERS (UČENJE U REALNOM VREMENU) ---
@@ -589,11 +743,13 @@ async def start_realtime_sync():
                 asyncio.create_task(process_realtime_event(payload))
             
             channel = supabase.channel("realtime-ai-learning")
-            channel.on_postgres_changes(
-                event="*",
-                schema="public",
-                callback=handle_db_change
-            )
+            for table_name in TABLES_TO_SYNC:
+                channel.on_postgres_changes(
+                    event="*",
+                    schema="public",
+                    table=table_name,
+                    callback=handle_db_change
+                )
             await channel.subscribe()
             log_event("🟢 Realtime mrežni kanal je uspešno otvoren i sada aktivno sluša sve tabele u sistemu!")
             
@@ -642,25 +798,29 @@ def _process_realtime_event_sync(payload: dict):
         
         if event_type == "DELETE":
             cursor.execute("DELETE FROM ai_knowledge_base WHERE id=?", (unique_id,))
+            _delete_vector(conn, unique_id)
             conn.commit()
             log_event(f"🗑️ Podatak uklonjen iz baze (DELETE iz {table_name}). Automatski zaboravljam događaj.")
         else:
             content_text = parse_row_to_text(table_name, new_record)
+            metadata = _extract_metadata(table_name, new_record)
             embedding_str = ""
             
             if embedder:
                 emb = embedder.encode(content_text).tolist()
                 embedding_str = json.dumps(emb)
-                
+                _upsert_vector(conn, unique_id, emb)
+            
             cursor.execute("""
-                INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, metadata, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 unique_id,
                 table_name,
                 rid,
                 content_text,
                 embedding_str,
+                json.dumps(metadata, ensure_ascii=False),
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             ))
             conn.commit()
@@ -690,40 +850,6 @@ def _load_embedder_sync():
 
 # --- FASTAPI ENDPOINTI ---
 
-@app.on_event("startup")
-async def startup_event():
-    global supabase, embedder, realtime_task
-    
-    init_local_db()
-    log_event("Lokalna SQLite baza podataka je inicijalizovana.")
-    
-    if not SUPABASE_SERVICE_ROLE_KEY:
-        log_event("⚠️  Upozorenje: SUPABASE_SERVICE_ROLE_KEY nije definisan. Koristim SUPABASE_ANON_KEY. AI može biti ograničen RLS pravilima i ne videti sve tabele.")
-    
-    supabase = await create_async_client(SUPABASE_URL, SUPABASE_KEY)
-    log_event("Supabase asinhrona konekcija uspešno otvorena.")
-    
-    # 3. Učitavanje SentenceTransformer-a za semantiku (lazy, u pozadinskom thread-u)
-    try:
-        log_event("Učitavam SentenceTransformer model ('all-MiniLM-L6-v2') za semantičko razumevanje...")
-        loop = asyncio.get_event_loop()
-        embedder = await loop.run_in_executor(None, _load_embedder_sync)
-        if embedder:
-            log_event("Semantički model uspešno pokrenut i uskladišten.")
-        else:
-            log_event("SentenceTransformer nije dostupan. Koristićemo klasične SQLite LIKE pretrage.")
-    except Exception as e:
-        log_event(f"Upozorenje: Nije moguće podići SentenceTransformer: {e}. Koristićemo klasične SQLite LIKE pretrage.")
-
-    asyncio.create_task(learn_past_data())
-    realtime_task = asyncio.create_task(start_realtime_sync())
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if realtime_task:
-        realtime_task.cancel()
-    log_event("Gavra AI Backend je uspešno zaustavljen.")
-
 @app.get("/")
 def read_root():
     return {
@@ -735,8 +861,8 @@ def read_root():
 
 @app.get("/logs", response_model=LogResponse)
 def get_logs():
-    """Vraća najnovije logove učenja u realnom vremenu"""
-    return LogResponse(logs=list(live_logs))
+    """Vraća najnovije logove učenja u realnom vremenu (maskirane)"""
+    return LogResponse(logs=[_sanitize_log_line(line) for line in live_logs])
 
 @app.get("/insights", response_model=InsightResponse)
 def get_insights():
@@ -763,67 +889,84 @@ def get_insights():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/resync")
+async def resync():
+    """Forsira ponovno učenje svih istorijskih podataka iz Supabase-a."""
+    log_event("Ručno pokrenut resync od strane klijenta.")
+    asyncio.create_task(learn_past_data(force=True))
+    return {"status": "resync_started"}
+
+
 def _search_knowledge_base_sync(usr_msg: str):
     """Sinhrona pretraga lokalne baze znanja. Vraća listu (content, source_id) tuple-a."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # Prvo pokušavamo semantičku pretragu ako imamo embedder
-    matched_content = []
-    matched_sources = []
-    semantic_scores = {}
+    # Učitaj sqlite-vec ekstenziju na konekciji
+    try:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+    except Exception:
+        pass
     
+    matched_scores: dict[str, tuple[str, str, float]] = {}  # source_id -> (content, table_id, score)
+    
+    # 1. Semantička pretraga preko sqlite-vec
     if embedder:
-        q_emb = embedder.encode(usr_msg)
-        cursor.execute("SELECT id, content, embedding FROM ai_knowledge_base WHERE embedding IS NOT NULL AND embedding != '' LIMIT 2000")
-        kb_rows = cursor.fetchall()
-        
-        scores = []
-        for kid, content, emb_json in kb_rows:
-            try:
-                emb = np.array(json.loads(emb_json))
-                dot_product = np.dot(q_emb, emb)
-                norm_q = np.linalg.norm(q_emb)
-                norm_emb = np.linalg.norm(emb)
-                score = dot_product / (norm_q * norm_emb) if norm_q > 0 and norm_emb > 0 else 0
-                if score > 0.30:
-                    scores.append((score, content, kid))
-            except Exception:
-                continue
-        
-        scores.sort(key=lambda x: x[0], reverse=True)
-        top_matches = scores[:15]
-        for score, content, kid in top_matches:
-            matched_content.append(content)
-            matched_sources.append(kid)
-            semantic_scores[content] = score
+        try:
+            q_emb = embedder.encode(usr_msg)
+            q_blob = sqlite_vec.serialize_float32(q_emb.tolist())
+            cursor.execute("""
+                SELECT id, distance
+                FROM vec_knowledge_base
+                WHERE embedding MATCH ?
+                ORDER BY distance
+                LIMIT ?
+            """, (q_blob, VECTOR_TOP_K * 2))
+            
+            for unique_id, distance in cursor.fetchall():
+                # sqlite-vec distance je obično (1 - cosine_similarity) za vec0
+                score = max(0.0, 1.0 - float(distance))
+                if score < VECTOR_MIN_SIMILARITY:
+                    continue
+                cursor.execute("SELECT id, source_table, source_id, content FROM ai_knowledge_base WHERE id=?", (unique_id,))
+                row = cursor.fetchone()
+                if row:
+                    _, source_table, source_id, content = row
+                    matched_scores[unique_id] = (content, f"{source_table}:{source_id}", score * 1.0)
+        except Exception as e:
+            log_event(f"Vektorska pretraga nije uspela: {e}. Koristim tekstualnu pretragu.")
     
-    # Hibridna tekstualna pretraga po ključnim rečima
+    # 2. Tekstualna pretraga po ključnim rečima
     words = usr_msg.lower().split()
-    keywords = [w for w in words if len(w) > 2 and w not in ["ili", "sam", "kod", "bilo", "sve", "kako", "šta", "gde", "kad"]]
+    keywords = [w for w in words if len(w) > 2 and w not in SRPSKE_STOP_RECI]
     
     if keywords:
-        # Koristimo LIKE za svaku ključnu reč umesto učitavanja cele tabele
         placeholders = ' OR '.join(["LOWER(content) LIKE ?" for _ in keywords])
         params = [f'%{kw}%' for kw in keywords]
-        cursor.execute(f"SELECT id, content FROM ai_knowledge_base WHERE {placeholders} LIMIT 200", params)
-        text_rows = cursor.fetchall()
+        cursor.execute(f"SELECT id, source_table, source_id, content FROM ai_knowledge_base WHERE {placeholders} LIMIT 200", params)
         
-        text_matches = []
-        for kid, content in text_rows:
+        for unique_id, source_table, source_id, content in cursor.fetchall():
             content_lower = content.lower()
             match_count = sum(1 for kw in keywords if kw in content_lower)
-            if match_count > 0:
-                text_matches.append((match_count, content, kid))
-        
-        text_matches.sort(key=lambda x: x[0], reverse=True)
-        for _, content, kid in text_matches[:10]:
-            if content not in matched_content:
-                matched_content.append(content)
-                matched_sources.append(kid)
+            if match_count == 0:
+                continue
+            # Normalizovan tekstualni score: procenat poklopljenih reči
+            text_score = min(1.0, match_count / len(keywords)) * 0.8
+            
+            if unique_id in matched_scores:
+                content, source, sem_score = matched_scores[unique_id]
+                # Kombinujemo semantički i tekstualni score
+                combined = max(sem_score, text_score * 1.2)
+                matched_scores[unique_id] = (content, source, combined)
+            else:
+                matched_scores[unique_id] = (content, f"{source_table}:{source_id}", text_score)
     
     conn.close()
-    return list(zip(matched_content, matched_sources))[:15]
+    
+    # Sortiraj po kombinovanom score-u i vrati top 15
+    sorted_matches = sorted(matched_scores.values(), key=lambda x: x[2], reverse=True)
+    return [(content, source_id) for content, source_id, _ in sorted_matches[:15]]
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -846,15 +989,18 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         matched_sources = [source_id for _, source_id in matched]
         
         context_str = "\n".join([f"[{source_id}] {content}" for content, source_id in matched])
+        context_hash = _hash_context(context_str, conversation_context)
         
-        # Konverzacijska memorija izolovana po sesiji
-        history = _get_or_create_session_history(session_id)
-        conversation_context = ""
-        if history:
-            conversation_context = "\n".join([
-                f"{'Korisnik' if msg['role'] == 'user' else 'Asistent'}: {msg['content']}"
-                for msg in history
-            ])
+        # Proveri keš pre poziva Ollama
+        cached_response = _chat_cache.get(usr_msg, context_hash)
+        if cached_response is not None:
+            log_event("Odgovor pronađen u kešu, preskačem poziv ka Ollama.")
+            history.append({'role': 'user', 'content': usr_msg})
+            history.append({'role': 'assistant', 'content': cached_response})
+            return ChatResponse(
+                response=cached_response,
+                sources=matched_sources[:5]
+            )
         
         system_prompt = (
             "Ti si Gavra AI, visoko stručni i pouzdani analitički sistem za logistiku i transport, razvijen isključivo za vlasnika aplikacije.\n"
@@ -870,7 +1016,17 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
             "3. Nemoj izmišljati, pretpostavljati niti dopunjavati podatke opštim znanjem sa interneta! Ako ne vidiš tačne brojeve ili imena u kontekstu, za tebe oni ne postoje.\n"
             "4. Nakon svake tvrdnje koja se oslanja na konkretan podatak, obavezno navedi izvor u formatu [tabela:id]. Na primer: 'Ukupni rashodi su 150.000 RSD [v3_finansije:abc-123].'\n"
             "5. Piši odgovore tečnim, prijatnim i profesionalnim srpskim jezikom, sa uvažavanjem i bez suvišnog filozofiranja.\n"
-            "6. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj isključivo na poslovne podatke iz baze."
+            "6. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj isključivo na poslovne podatke iz baze.\n"
+            "\n"
+            "PRIMERI ODGOVARANJA:\n"
+            "Pitanje: Koliko je ukupno rashoda ovog meseca?\n"
+            "Odgovor: Ukupni rashodi u tekućem mesecu iznose 125.000 RSD [v3_finansije:xyz-789]. Najveći trošak je gorivo od 45.000 RSD [v3_gorivo:abc-123].\n"
+            "\n"
+            "Pitanje: Koji grad ima najviše zahteva za vožnju?\n"
+            "Odgovor: Grad sa najviše zahteva je Beograd sa 42 vožnje [v3_zahtevi:def-456], što čini 58% od ukupnog broja zahteva.\n"
+            "\n"
+            "Pitanje: Šta je kvantna fizika?\n"
+            "Odgovor: Oprostite, nemam te podatke u svojoj bazi podataka."
         )
         
         messages = [
@@ -882,13 +1038,31 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         
         log_event(f"Šaljem upit lokalnom {OLLAMA_MODEL} modelu na Ollama server...")
         
-        response = ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=messages
-        )
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(
+                ollama.chat,
+                model=OLLAMA_MODEL,
+                messages=messages,
+                options={
+                    'temperature': OLLAMA_TEMPERATURE,
+                    'num_predict': OLLAMA_MAX_TOKENS,
+                },
+                keep_alive='5m'
+            )
+            try:
+                response = future.result(timeout=OLLAMA_TIMEOUT_SECONDS)
+            except concurrent.futures.TimeoutError:
+                log_event(f"Ollama model nije odgovorio u {OLLAMA_TIMEOUT_SECONDS}s.")
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"AI modelu je potrebno previše vremena za odgovor. Pokušaj ponovo za trenutak."
+                )
         
         ai_resp = response['message']['content']
         log_event("Odgovor od LLM modela uspešno generisan i vraćen.")
+        
+        # Sačuvaj u keš za buduće identične upite
+        _chat_cache.set(usr_msg, context_hash, ai_resp)
         
         # Ažuriramo konverzacijsku memoriju za konkretnu sesiju
         history.append({'role': 'user', 'content': usr_msg})
@@ -902,6 +1076,121 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
     except Exception as e:
         log_event(f"Greška tokom izvršavanja chat upita: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _extract_metadata(table_name: str, row: dict) -> dict:
+    """Izdvaja ključne numeričke/kategoričke vrednosti iz reda za pouzdaniju analizu."""
+    metadata = {}
+    if not row:
+        return metadata
+    
+    try:
+        if table_name == "v3_finansije":
+            metadata["tip"] = row.get("tip", "rashod")
+            metadata["iznos"] = float(row.get("iznos", 0) or 0)
+            metadata["kategorija"] = row.get("kategorija", "")
+            metadata["mesec"] = row.get("mesec", "")
+            metadata["godina"] = row.get("godina", "")
+        elif table_name == "v3_gorivo":
+            metadata["vozilo_id"] = row.get("vozilo_id", "")
+            metadata["iznos"] = float(row.get("iznos", 0) or 0)
+            metadata["litara"] = float(row.get("litara", 0) or 0)
+            metadata["km_sat"] = float(row.get("km_sat", 0) or 0)
+        elif table_name == "v3_zahtevi":
+            metadata["grad"] = row.get("grad", "")
+            metadata["status"] = row.get("status", "")
+            metadata["datum"] = row.get("datum", "")
+        elif table_name == "v3_auth":
+            metadata["tip"] = row.get("tip", "")
+            metadata["ime"] = row.get("ime", "")
+            metadata["cena_po_danu"] = float(row.get("cena_po_danu", 0) or 0)
+        elif table_name == "v3_racuni":
+            metadata["stanje"] = float(row.get("stanje", 0) or 0)
+            metadata["tip"] = row.get("tip", "")
+        elif table_name == "v3_operativna_nedelja":
+            metadata["dan"] = row.get("dan", "")
+            metadata["pravac"] = row.get("pravac", "")
+            metadata["putnik_id"] = row.get("putnik_id", "")
+            metadata["vozac_id"] = row.get("vozac_id", "")
+    except Exception:
+        pass
+    
+    return metadata
+
+
+def _ensure_vec_extension(conn: sqlite3.Connection):
+    """Učitava sqlite-vec ekstenziju na datoj konekciji, ignorisanjem grešaka."""
+    try:
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+    except Exception:
+        pass
+
+
+def _delete_vector(conn: sqlite3.Connection, unique_id: str):
+    """Briše vektor iz vektorske tabele."""
+    _ensure_vec_extension(conn)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM vec_knowledge_base WHERE id=?", (unique_id,))
+
+
+def _upsert_vector(conn: sqlite3.Connection, unique_id: str, embedding: list):
+    """Upsertuje embedding u vektorsku tabelu."""
+    _ensure_vec_extension(conn)
+    cursor = conn.cursor()
+    emb_blob = sqlite_vec.serialize_float32(embedding)
+    cursor.execute("DELETE FROM vec_knowledge_base WHERE id=?", (unique_id,))
+    cursor.execute(
+        "INSERT INTO vec_knowledge_base(id, embedding) VALUES (?, ?)",
+        (unique_id, emb_blob)
+    )
+
+
+class _LRUChatCache:
+    """Jednostavan thread-safe LRU keš za chat odgovore."""
+    def __init__(self, maxsize: int):
+        self.maxsize = maxsize
+        self._cache: dict[str, str] = {}
+        self._lock = threading.Lock()
+
+    def _make_key(self, query: str, context_hash: str) -> str:
+        normalized = " ".join(query.lower().split())
+        return hashlib.sha256(f"{normalized}|{context_hash}".encode('utf-8')).hexdigest()
+
+    def get(self, query: str, context_hash: str) -> str | None:
+        if self.maxsize <= 0:
+            return None
+        key = self._make_key(query, context_hash)
+        with self._lock:
+            value = self._cache.pop(key, None)
+            if value is not None:
+                # Pomeri na kraj (najskorije korišćen)
+                self._cache[key] = value
+            return value
+
+    def set(self, query: str, context_hash: str, response: str):
+        if self.maxsize <= 0:
+            return
+        key = self._make_key(query, context_hash)
+        with self._lock:
+            if key in self._cache:
+                self._cache.pop(key)
+            elif len(self._cache) >= self.maxsize:
+                # Ukloni najstariji
+                oldest = next(iter(self._cache))
+                del self._cache[oldest]
+            self._cache[key] = response
+
+
+_chat_cache = _LRUChatCache(CHAT_CACHE_MAXSIZE if CHAT_CACHE_ENABLED else 0)
+
+
+def _hash_context(context_str: str, conversation_context: str) -> str:
+    """Pravi hash od konteksta koji utiče na odgovor."""
+    return hashlib.sha256(
+        f"{context_str}\n{conversation_context}".encode('utf-8')
+    ).hexdigest()
+
 
 if __name__ == "__main__":
     import uvicorn

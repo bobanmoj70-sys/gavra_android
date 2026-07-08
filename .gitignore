@@ -147,3 +147,4 @@ __pycache__/
 *.db
 ml-service/gavra_ai.db
 ml-service/__pycache__/
+ml-service/server.pid
