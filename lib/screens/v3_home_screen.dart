@@ -688,7 +688,17 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   // ─── Dialog: Račun za postojeću firmu (B2B) ──────────────────────
   void _showRacunZaFirmeDialog() {
-    final firme = V3MasterRealtimeManager.instance.racuniCache.values.toList()
+    // v3_racuni sadrži jedan red po računu, pa se ista firma ponavlja.
+    // Deduplikujemo po nazivu firme da dropdown prikaže samo jedinstvene firme.
+    final seenFirme = <String>{};
+    final firme = V3MasterRealtimeManager.instance.racuniCache.values.where((r) {
+      final naziv = (r['firma_naziv'] ?? '').toString().trim();
+      if (naziv.isEmpty) return false;
+      final key = naziv.toLowerCase();
+      if (seenFirme.contains(key)) return false;
+      seenFirme.add(key);
+      return true;
+    }).toList()
       ..sort((a, b) => (a['firma_naziv'] ?? '').toString().compareTo((b['firma_naziv'] ?? '').toString()));
 
     if (firme.isEmpty) {
@@ -839,7 +849,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
                       );
-                      if (d != null) setS(() => datumIzdavanja = d);
+                      if (d != null) setState(() => datumIzdavanja = d);
                     },
                     text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
                     foregroundColor: Colors.amber,
