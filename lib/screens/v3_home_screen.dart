@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 import '../globals.dart';
 import '../models/v3_adresa.dart';
@@ -44,6 +45,27 @@ import '../widgets/v3_update_banner.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
+
+// ─── Helpers za izbor meseca u dijalozima za račune ─────────────────────────
+
+/// Generiše listu meseci za račun (prošlih 11 + tekući + naredna 3).
+List<DateTime> _racunMesecOptions() {
+  final now = DateTime.now();
+  final start = DateTime(now.year, now.month - 11, 1);
+  return List.generate(15, (i) => DateTime(start.year, start.month + i, 1));
+}
+
+/// Formatira mesec za prikaz u dijalogu (npr. "Januar 2026.").
+String _formatMesecRacuna(DateTime mesec) {
+  final raw = DateFormat('MMMM yyyy.', 'sr').format(mesec);
+  if (raw.isEmpty) return '';
+  return '${raw[0].toUpperCase()}${raw.substring(1)}';
+}
+
+/// Vraća poslednji dan u mesecu (koristi se kao datum prometa na računu).
+DateTime _lastDayOfMonth(DateTime mesec) {
+  return DateTime(mesec.year, mesec.month + 1, 0);
+}
 
 class V3HomeScreen extends StatefulWidget {
   const V3HomeScreen({super.key});
@@ -695,7 +717,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final iznosCtrl = TextEditingController();
     final kolicinaCtrl = TextEditingController(text: '1');
     String jedMera = 'usluga';
-    DateTime datumPrometa = DateTime.now();
+    DateTime selectedMesec = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    DateTime datumIzdavanja = DateTime.now();
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
@@ -741,21 +764,84 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   onChanged: (v) => setS(() => jedMera = v ?? 'usluga'),
                 ),
                 const SizedBox(height: 8),
-                // Datum prometa
+                // Mesec izdavanja
                 Row(children: [
-                  const Text('Datum prometa:', style: TextStyle(color: Colors.white70)),
+                  const Text('Mesec izdavanja:', style: TextStyle(color: Colors.white70)),
+                  const SizedBox(width: 8),
+                  V3ButtonUtils.textButton(
+                    onPressed: () async {
+                      final meseci = _racunMesecOptions();
+                      final initialDate = selectedMesec;
+                      final currentYear = DateTime.now().year;
+                      final currentMonth = DateTime.now().month;
+
+                      // Prikazivanje dijaloga za izbor meseca
+                      final izabraniMesec = await showDialog<DateTime>(
+                        context: ctx,
+                        builder: (dialogCtx) {
+                          DateTime? privremeniIzbor = initialDate;
+                          return AlertDialog(
+                            backgroundColor: const Color(0xFF1A2035),
+                            title: const Text('Izaberi mesec', style: TextStyle(color: Colors.white)),
+                            content: SizedBox(
+                              width: double.maxFinite,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    for (final mesec in meseci)
+                                      ListTile(
+                                        title: Text(
+                                          _formatMesecRacuna(mesec),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        trailing: privremeniIzbor != null &&
+                                                mesec.year == privremeniIzbor!.year &&
+                                                mesec.month == privremeniIzbor!.month
+                                            ? const Icon(Icons.check, color: Colors.green, size: 20)
+                                            : null,
+                                        onTap: () {
+                                          privremeniIzbor = mesec;
+                                          Navigator.pop(dialogCtx, mesec);
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+
+                      if (izabraniMesec != null) {
+                        setS(() {
+                          selectedMesec = izabraniMesec;
+                        });
+                      }
+                    },
+                    text: _formatMesecRacuna(selectedMesec),
+                    foregroundColor: Colors.amber,
+                  ),
+                ]),
+                const SizedBox(height: 8),
+                // Datum izdavanja
+                Row(children: [
+                  const Text('Datum izdavanja:', style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
                   V3ButtonUtils.textButton(
                     onPressed: () async {
                       final d = await showDatePicker(
                         context: ctx,
-                        initialDate: datumPrometa,
+                        initialDate: datumIzdavanja,
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
                       );
-                      if (d != null) setS(() => datumPrometa = d);
+                      if (d != null) setS(() => datumIzdavanja = d);
                     },
-                    text: '${datumPrometa.day}.${datumPrometa.month}.${datumPrometa.year}',
+                    text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
                     foregroundColor: Colors.amber,
                   ),
                 ]),
@@ -791,7 +877,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   cena: cena,
                   kolicina: kolicina,
                   jedinicaMere: jedMera,
-                  datumPrometa: datumPrometa,
+                  datumPrometa: _lastDayOfMonth(selectedMesec),
+                  datumIzdavanja: datumIzdavanja,
                   context: ctx,
                 );
 
@@ -1414,7 +1501,9 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
   late final TextEditingController pretragaCtrl;
   late final TextEditingController cenaCtrl;
   late final TextEditingController danaCtrl;
-  DateTime datumPrometa = DateTime.now();
+  DateTime selectedMesec = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime datumPrometa = _lastDayOfMonth(DateTime(DateTime.now().year, DateTime.now().month, 1));
+  DateTime datumIzdavanja = DateTime.now();
 
   static const bg = Color(0xFF1A2035);
   static const sectionBg = Color(0xFF232D45);
@@ -1622,6 +1711,131 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
 
               _divider(),
 
+              // ── MESEC I DATUMI ──
+              _sectionLabel('MESEC I DATUMI'),
+              InkWell(
+                onTap: () async {
+                  final meseci = _racunMesecOptions();
+                  final initialDate = selectedMesec;
+                  final izabraniMesec = await showDialog<DateTime>(
+                    context: context,
+                    builder: (dialogCtx) {
+                      return AlertDialog(
+                        backgroundColor: bg,
+                        title: const Text('Izaberi mesec', style: TextStyle(color: Colors.white)),
+                        content: SizedBox(
+                          width: double.maxFinite,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (final mesec in meseci)
+                                  ListTile(
+                                    title: Text(
+                                      _formatMesecRacuna(mesec),
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                                    ),
+                                    trailing: mesec.year == initialDate.year && mesec.month == initialDate.month
+                                        ? const Icon(Icons.check, color: Colors.green, size: 20)
+                                        : null,
+                                    onTap: () => Navigator.pop(dialogCtx, mesec),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                  if (izabraniMesec != null) {
+                    setState(() {
+                      selectedMesec = izabraniMesec;
+                      datumPrometa = _lastDayOfMonth(izabraniMesec);
+                    });
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: sectionBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_month, color: Colors.amber, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Mesec: ${_formatMesecRacuna(selectedMesec)}',
+                      style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600),
+                    ),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: datumIzdavanja,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (d != null) setState(() => datumIzdavanja = d);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: sectionBg,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.edit_calendar, color: Colors.amber, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Izdavanje: ${datumIzdavanja.day.toString().padLeft(2, '0')}.${datumIzdavanja.month.toString().padLeft(2, '0')}.${datumIzdavanja.year}.',
+                          style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: datumPrometa,
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2030),
+                      );
+                      if (d != null) setState(() => datumPrometa = d);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: sectionBg,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.calendar_today, color: Colors.amber, size: 16),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Promet: ${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
+                          style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              ]),
+
+              _divider(),
+
               // ── IZNOS ──
               _sectionLabel('IZNOS'),
               Row(children: [
@@ -1639,38 +1853,6 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                   onChanged: (_) => setState(() {}),
                 )),
               ]),
-
-              _divider(),
-
-              // ── DATUM ──
-              _sectionLabel('DATUM PROMETA'),
-              InkWell(
-                onTap: () async {
-                  final d = await showDatePicker(
-                    context: context,
-                    initialDate: datumPrometa,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (d != null) setState(() => datumPrometa = d);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: sectionBg,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: borderColor),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.calendar_today, color: Colors.amber, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
-                      style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600),
-                    ),
-                  ]),
-                ),
-              ),
 
               // ── SUMMARY ──
               if (selectedPutnik != null && ukupno > 0) ...[
@@ -1750,6 +1932,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               ],
               context: widget.parentContext,
               datumPrometa: datumPrometa,
+              datumIzdavanja: datumIzdavanja,
             );
 
             if (ctx.mounted) {

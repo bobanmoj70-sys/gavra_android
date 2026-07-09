@@ -84,6 +84,7 @@ class V3RacunService {
     required double kolicina,
     required String jedinicaMere,
     required DateTime datumPrometa,
+    required DateTime datumIzdavanja,
     required BuildContext context,
   }) async {
     try {
@@ -106,7 +107,7 @@ class V3RacunService {
         kolicina: kolicina,
         jedinicaMere: jedinicaMere,
         datumPrometa: datumPrometa,
-        datumIzdavanja: DateTime.now(),
+        datumIzdavanja: datumIzdavanja,
       );
       await _openPDF(pdfBytes, 'Racun_$brojRacuna'.replaceAll('/', '_'));
 
@@ -136,6 +137,7 @@ class V3RacunService {
     required List<Map<String, dynamic>> racuniPodaci,
     required BuildContext context,
     required DateTime datumPrometa,
+    required DateTime datumIzdavanja,
   }) async {
     if (racuniPodaci.isEmpty) {
       if (context.mounted) {
@@ -173,7 +175,7 @@ class V3RacunService {
           _buildEFakturaStranica(
             theme: theme,
             brojRacuna: brojRacuna,
-            datumIzdavanja: DateTime.now(),
+            datumIzdavanja: datumIzdavanja,
             datumPrometa: datumPrometa,
             kupacNaziv: firmaNaziv,
             kupacAdresa: firmaAdresa,
