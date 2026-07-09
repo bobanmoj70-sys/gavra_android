@@ -727,6 +727,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final kolicinaCtrl = TextEditingController(text: '1');
     String jedMera = 'usluga';
     DateTime selectedMesec = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    DateTime datumPrometa = _lastDayOfMonth(selectedMesec);
     DateTime datumIzdavanja = DateTime.now();
 
     V3DialogHelper.showDialogBuilder<void>(
@@ -777,62 +778,65 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 Row(children: [
                   const Text('Mesec izdavanja:', style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
-                  V3ButtonUtils.textButton(
-                    onPressed: () async {
-                      final meseci = _racunMesecOptions();
-                      final initialDate = selectedMesec;
-                      final currentYear = DateTime.now().year;
-                      final currentMonth = DateTime.now().month;
+                  Expanded(
+                    child: V3ButtonUtils.textButton(
+                      onPressed: () async {
+                        final meseci = _racunMesecOptions();
+                        final initialDate = selectedMesec;
+                        final currentYear = DateTime.now().year;
+                        final currentMonth = DateTime.now().month;
 
-                      // Prikazivanje dijaloga za izbor meseca
-                      final izabraniMesec = await showDialog<DateTime>(
-                        context: ctx,
-                        builder: (dialogCtx) {
-                          DateTime? privremeniIzbor = initialDate;
-                          return AlertDialog(
-                            backgroundColor: const Color(0xFF1A2035),
-                            title: const Text('Izaberi mesec', style: TextStyle(color: Colors.white)),
-                            content: SizedBox(
-                              width: double.maxFinite,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    for (final mesec in meseci)
-                                      ListTile(
-                                        title: Text(
-                                          _formatMesecRacuna(mesec),
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w500,
+                        // Prikazivanje dijaloga za izbor meseca
+                        final izabraniMesec = await showDialog<DateTime>(
+                          context: ctx,
+                          builder: (dialogCtx) {
+                            DateTime? privremeniIzbor = initialDate;
+                            return AlertDialog(
+                              backgroundColor: const Color(0xFF1A2035),
+                              title: const Text('Izaberi mesec', style: TextStyle(color: Colors.white)),
+                              content: SizedBox(
+                                width: double.maxFinite,
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (final mesec in meseci)
+                                        ListTile(
+                                          title: Text(
+                                            _formatMesecRacuna(mesec),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
+                                          trailing: privremeniIzbor != null &&
+                                                  mesec.year == privremeniIzbor!.year &&
+                                                  mesec.month == privremeniIzbor!.month
+                                              ? const Icon(Icons.check, color: Colors.green, size: 20)
+                                              : null,
+                                          onTap: () {
+                                            privremeniIzbor = mesec;
+                                            Navigator.pop(dialogCtx, mesec);
+                                          },
                                         ),
-                                        trailing: privremeniIzbor != null &&
-                                                mesec.year == privremeniIzbor!.year &&
-                                                mesec.month == privremeniIzbor!.month
-                                            ? const Icon(Icons.check, color: Colors.green, size: 20)
-                                            : null,
-                                        onTap: () {
-                                          privremeniIzbor = mesec;
-                                          Navigator.pop(dialogCtx, mesec);
-                                        },
-                                      ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      );
+                            );
+                          },
+                        );
 
-                      if (izabraniMesec != null) {
-                        setState(() {
-                          selectedMesec = izabraniMesec;
-                        });
-                      }
-                    },
-                    text: _formatMesecRacuna(selectedMesec),
-                    foregroundColor: Colors.amber,
+                        if (izabraniMesec != null) {
+                          setState(() {
+                            selectedMesec = izabraniMesec;
+                            datumPrometa = _lastDayOfMonth(izabraniMesec);
+                          });
+                        }
+                      },
+                      text: _formatMesecRacuna(selectedMesec),
+                      foregroundColor: Colors.amber,
+                    ),
                   ),
                 ]),
                 const SizedBox(height: 8),
@@ -840,18 +844,20 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 Row(children: [
                   const Text('Datum izdavanja:', style: TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
-                  V3ButtonUtils.textButton(
-                    onPressed: () async {
-                      final d = await showDatePicker(
-                        context: ctx,
-                        initialDate: datumIzdavanja,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (d != null) setState(() => datumIzdavanja = d);
-                    },
-                    text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
-                    foregroundColor: Colors.amber,
+                  Expanded(
+                    child: V3ButtonUtils.textButton(
+                      onPressed: () async {
+                        final d = await showDatePicker(
+                          context: ctx,
+                          initialDate: datumIzdavanja,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (d != null) setState(() => datumIzdavanja = d);
+                      },
+                      text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
+                      foregroundColor: Colors.amber,
+                    ),
                   ),
                 ]),
               ],
@@ -886,7 +892,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   cena: cena,
                   kolicina: kolicina,
                   jedinicaMere: jedMera,
-                  datumPrometa: _lastDayOfMonth(selectedMesec),
+                  datumPrometa: datumPrometa,
                   datumIzdavanja: datumIzdavanja,
                   context: ctx,
                 );
@@ -1561,7 +1567,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
       title: const Row(children: [
         Icon(Icons.receipt_long, color: Colors.green, size: 22),
         SizedBox(width: 8),
-        Text('Račun — firma', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+        Expanded(
+          child:
+              Text('Račun — firma', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+        ),
       ]),
       content: SizedBox(
         width: double.maxFinite,
@@ -1803,9 +1812,12 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                       child: Row(children: [
                         const Icon(Icons.edit_calendar, color: Colors.amber, size: 16),
                         const SizedBox(width: 8),
-                        Text(
-                          'Izdavanje: ${datumIzdavanja.day.toString().padLeft(2, '0')}.${datumIzdavanja.month.toString().padLeft(2, '0')}.${datumIzdavanja.year}.',
-                          style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            'Izdavanje: ${datumIzdavanja.day.toString().padLeft(2, '0')}.${datumIzdavanja.month.toString().padLeft(2, '0')}.${datumIzdavanja.year}.',
+                            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ]),
                     ),
@@ -1833,9 +1845,12 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                       child: Row(children: [
                         const Icon(Icons.calendar_today, color: Colors.amber, size: 16),
                         const SizedBox(width: 8),
-                        Text(
-                          'Promet: ${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
-                          style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            'Promet: ${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
+                            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ]),
                     ),
