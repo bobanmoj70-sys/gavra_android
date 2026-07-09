@@ -48,11 +48,10 @@ import 'v3_welcome_screen.dart';
 
 // ─── Helpers za izbor meseca u dijalozima za račune ─────────────────────────
 
-/// Generiše listu meseci za račun (prošlih 11 + tekući + naredna 3).
+/// Generiše listu meseci za račun (januar–decembar tekuće godine).
 List<DateTime> _racunMesecOptions() {
   final now = DateTime.now();
-  final start = DateTime(now.year, now.month - 11, 1);
-  return List.generate(15, (i) => DateTime(start.year, start.month + i, 1));
+  return List.generate(12, (i) => DateTime(now.year, i + 1, 1));
 }
 
 /// Formatira mesec za prikaz u dijalogu (npr. "Januar 2026.").
@@ -827,7 +826,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       );
 
                       if (izabraniMesec != null) {
-                        setS(() {
+                        setState(() {
                           selectedMesec = izabraniMesec;
                         });
                       }
@@ -1936,7 +1935,6 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                   'firma_naziv': selectedFirma?['firma_naziv'],
                   'firma_adresa': selectedFirma?['firma_adresa'],
                   'firma_pib': selectedFirma?['firma_pib'],
-                  'firma_mb': selectedFirma?['firma_mb'],
                   'firma_ziro': selectedFirma?['firma_ziro'],
                 }
               ],
