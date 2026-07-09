@@ -13,6 +13,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_dodela_resolver_service.dart';
+import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_printing_service.dart';
 import '../services/v3/v3_putnik_service.dart';
@@ -64,6 +65,31 @@ String _formatMesecRacuna(DateTime mesec) {
 /// Vraća poslednji dan u mesecu (koristi se kao datum prometa na računu).
 DateTime _lastDayOfMonth(DateTime mesec) {
   return DateTime(mesec.year, mesec.month + 1, 0);
+}
+
+/// Računa predlog broja radnih dana/vožnji i cene za račun na osnovu putnika i meseca.
+({int brojDana, double cenaPoDanu}) _racunPredlogZaPutnik(
+  Map<String, dynamic>? putnik,
+  DateTime mesec,
+) {
+  if (putnik == null) return (brojDana: 0, cenaPoDanu: 0.0);
+
+  final putnikId = putnik['id']?.toString() ?? '';
+  final tip = (putnik['tip_putnika']?.toString() ?? '').trim().toLowerCase();
+  final isPoDanu = tip == 'radnik' || tip == 'ucenik';
+  final cenaPoDanu = (putnik['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+  final cenaPoPokupljenju = (putnik['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+  final cena = isPoDanu ? cenaPoDanu : cenaPoPokupljenju;
+
+  if (putnikId.isEmpty) return (brojDana: 0, cenaPoDanu: cena);
+
+  final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+    putnikId: putnikId,
+    mesec: mesec.month,
+    godina: mesec.year,
+  );
+
+  return (brojDana: summary.brojVoznji, cenaPoDanu: cena);
 }
 
 class V3HomeScreen extends StatefulWidget {
@@ -1519,10 +1545,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
   DateTime selectedMesec = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime datumPrometa = _lastDayOfMonth(DateTime(DateTime.now().year, DateTime.now().month, 1));
   DateTime datumIzdavanja = DateTime.now();
-
-  static const bg = Color(0xFF1A2035);
-  static const sectionBg = Color(0xFF232D45);
-  static const borderColor = Color(0xFF3A4A6B);
+  bool _autoPredlogEnabled = true;
 
   @override
   void initState() {
@@ -1530,8 +1553,22 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
     selectedFirma = widget.firme.first;
     selectedPutnik = widget.putnici.isNotEmpty ? widget.putnici.first : null;
     pretragaCtrl = TextEditingController();
-    cenaCtrl = TextEditingController(text: '1500');
-    danaCtrl = TextEditingController(text: '22');
+    cenaCtrl = TextEditingController();
+    danaCtrl = TextEditingController();
+    _applyPredlog();
+
+    cenaCtrl.addListener(_onRucnaIzmena);
+    danaCtrl.addListener(_onRucnaIzmena);
+  }
+
+  void _onRucnaIzmena() {
+    _autoPredlogEnabled = false;
+  }
+
+  void _applyPredlog() {
+    final predlog = _racunPredlogZaPutnik(selectedPutnik, selectedMesec);
+    danaCtrl.text = predlog.brojDana > 0 ? predlog.brojDana.toString() : '';
+    cenaCtrl.text = predlog.cenaPoDanu > 0 ? predlog.cenaPoDanu.toStringAsFixed(0) : '';
   }
 
   @override
@@ -1547,10 +1584,15 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
         child: Text(text, style: const TextStyle(color: Colors.white54, fontSize: 11, letterSpacing: 0.5)),
       );
 
-  Widget _divider() => const Divider(color: borderColor, height: 20);
+  Widget _divider() => const Divider(color: Color(0xFF666666), height: 20);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bg = const Color(0xFF1A1A1A);
+    final sectionBg = const Color(0xFF2A2A2A);
+    final borderColor = Colors.grey.withOpacity(0.4);
+
     final filtrirani = pretragaCtrl.text.trim().isEmpty
         ? widget.putnici
         : widget.putnici
@@ -1559,6 +1601,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
             .toList();
 
     final ukupno = (double.tryParse(cenaCtrl.text) ?? 0) * (double.tryParse(danaCtrl.text) ?? 0);
+    final predlog = _racunPredlogZaPutnik(selectedPutnik, selectedMesec);
 
     return AlertDialog(
       backgroundColor: bg,
@@ -1665,7 +1708,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: borderColor),
+                    borderSide: BorderSide(color: borderColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -1695,7 +1738,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                           final p = filtrirani[i];
                           final isSelected = p['id']?.toString() == selectedPutnik?['id']?.toString();
                           return InkWell(
-                            onTap: () => setState(() => selectedPutnik = p),
+                            onTap: () => setState(() {
+                              selectedPutnik = p;
+                              if (_autoPredlogEnabled) _applyPredlog();
+                            }),
                             child: Container(
                               color: isSelected ? Colors.green.withOpacity(0.15) : Colors.transparent,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1979,7 +2025,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: bg,
+        backgroundColor: const Color(0xFF1A1A1A),
         title: const Text('Dodaj novu firmu',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
         content: SingleChildScrollView(
