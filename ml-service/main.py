@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
-import ollama
+import requests
 from supabase._async.client import create_client as create_async_client, AsyncClient
 import os
 import sys
@@ -13,7 +13,6 @@ from datetime import datetime
 import numpy as np
 from dotenv import load_dotenv
 from collections import deque
-import concurrent.futures
 import sqlite_vec
 import re
 from contextlib import asynccontextmanager
@@ -983,6 +982,12 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         usr_msg = request.message
         log_event(f"Korisnički upit (sesija: {session_id or 'default'}): '{usr_msg}'")
         
+        # Uzmi konverzacijsku istoriju za sesiju
+        history = _get_or_create_session_history(session_id)
+        conversation_context = "\n".join(
+            [f"{msg['role']}: {msg['content']}" for msg in history]
+        )
+        
         # Direktna sinhrona pretraga (FastAPI sync endpoint već radi u thread pool-u)
         matched = _search_knowledge_base_sync(usr_msg)
         matched_content = [content for content, _ in matched]
@@ -1038,25 +1043,36 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         
         log_event(f"Šaljem upit lokalnom {OLLAMA_MODEL} modelu na Ollama server...")
         
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(
-                ollama.chat,
-                model=OLLAMA_MODEL,
-                messages=messages,
-                options={
-                    'temperature': OLLAMA_TEMPERATURE,
-                    'num_predict': OLLAMA_MAX_TOKENS,
+        try:
+            ollama_resp = requests.post(
+                'http://127.0.0.1:11434/api/chat',
+                json={
+                    'model': OLLAMA_MODEL,
+                    'messages': messages,
+                    'stream': False,
+                    'options': {
+                        'temperature': OLLAMA_TEMPERATURE,
+                        'num_predict': OLLAMA_MAX_TOKENS,
+                    },
+                    'keep_alive': '5m',
                 },
-                keep_alive='5m'
+                headers={'Connection': 'close'},
+                timeout=OLLAMA_TIMEOUT_SECONDS,
             )
-            try:
-                response = future.result(timeout=OLLAMA_TIMEOUT_SECONDS)
-            except concurrent.futures.TimeoutError:
-                log_event(f"Ollama model nije odgovorio u {OLLAMA_TIMEOUT_SECONDS}s.")
-                raise HTTPException(
-                    status_code=504,
-                    detail=f"AI modelu je potrebno previše vremena za odgovor. Pokušaj ponovo za trenutak."
-                )
+            ollama_resp.raise_for_status()
+            response = ollama_resp.json()
+        except requests.exceptions.Timeout:
+            log_event(f"Ollama model nije odgovorio u {OLLAMA_TIMEOUT_SECONDS}s.")
+            raise HTTPException(
+                status_code=504,
+                detail=f"AI modelu je potrebno previše vremena za odgovor. Pokušaj ponovo za trenutak."
+            )
+        except requests.exceptions.RequestException as e:
+            log_event(f"Greška u komunikaciji sa Ollama serverom: {e}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Greška u komunikaciji sa AI serverom: {e}"
+            )
         
         ai_resp = response['message']['content']
         log_event("Odgovor od LLM modela uspešno generisan i vraćen.")

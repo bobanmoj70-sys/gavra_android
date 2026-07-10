@@ -196,7 +196,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             headers: MlConfig.headers(),
             body: json.encode({'message': text}),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -293,7 +293,10 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           children: [
             const Icon(Icons.psychology_outlined, color: Colors.blueAccent, size: 28),
             const SizedBox(width: 8),
-            const Text('🧠 Gavra AI Brain', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            Expanded(
+              child:
+                  const Text('🧠 Gavra AI Brain', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
             const SizedBox(width: 8),
             if (!_serverReachable)
               Container(
