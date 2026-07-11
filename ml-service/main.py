@@ -169,7 +169,9 @@ SRPSKE_STOP_RECI = {
     "gdje", "kuda", "odakle", "koliko", "kolika", "mnogo", "malo", "više", "manje",
     "najviše", "najmanje", "tako", "ovako", "onako", "ovde", "onde", "tamo",
     "ovamo", "onamo", "gore", "dole", "levo", "desno", "blizu", "daleko",
-    "spreman", "spremna", "spremno", "molim", "hvala", "izvoli", "izvolite"
+    "spreman", "spremna", "spremno", "molim", "hvala", "izvoli", "izvolite",
+    "ima", "imaju", "imam", "imaš", "imamo", "imate", "imao", "imala", "imalo",
+    "nema", "nemaju", "nemam", "nemaš", "nemamo", "nemate"
 }
 
 # Ollama parametri za kontrolisanije i brže odgovore
@@ -494,8 +496,9 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
         return f"Greška pri parsiranju reda iz tabele {table_name}: {e}"
 
 # --- FUNKCIJA ZA ANALIZU I DETEKCIJU ANOMALIJA (SAM ZAKLJUČUJE ŠTA JE BITNO) ---
-def _upsert_insight(cursor, title: str, description: str, source_table: str, source_id: str, severity: str):
-    """Ažurira postojeći zaključak po (title, source_table, source_id) ili ubacuje novi."""
+def _upsert_insight(conn, cursor, title: str, description: str, source_table: str, source_id: str, severity: str):
+    """Ažurira postojeći zaključak po (title, source_table, source_id) ili ubacuje novi,
+    i sinhronizuje ga u knowledge base radi chat pretrage."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
         SELECT id FROM ai_insights
@@ -513,6 +516,33 @@ def _upsert_insight(cursor, title: str, description: str, source_table: str, sou
             INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (title, description, source_table, source_id, severity, now))
+    
+    # Sinhronizuj u knowledge base
+    unique_id = f"ai_insights:{source_table}:{source_id or 'global'}:{hashlib.sha256(title.encode('utf-8')).hexdigest()[:16]}"
+    content_text = f"{title}: {description}"
+    embedding_str = ""
+    
+    global embedder
+    if embedder:
+        try:
+            emb = embedder.encode(content_text).tolist()
+            embedding_str = json.dumps(emb)
+            _upsert_vector(conn, unique_id, emb)
+        except Exception:
+            pass
+    
+    cursor.execute("""
+        INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, metadata, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        unique_id,
+        "ai_insights",
+        source_id or "global",
+        content_text,
+        embedding_str,
+        json.dumps({"source_table": source_table, "source_id": source_id or "global"}, ensure_ascii=False),
+        now
+    ))
 
 
 def _analyze_and_detect_insights_sync():
@@ -557,6 +587,7 @@ def _analyze_and_detect_insights_sync():
                     iznos = float(metadata.get("iznos", 0))
                     if iznos > avg_fuel * 1.5:
                         _upsert_insight(
+                            conn,
                             cursor,
                             "Uočena anomalija u trošku za gorivo",
                             f"Registrovan je izuzetno visok trošak goriva u iznosu od {iznos} RSD, što drastično odudara od prosečnog sipanja koje iznosi {avg_fuel:.1f} RSD.",
@@ -594,20 +625,22 @@ def _analyze_and_detect_insights_sync():
                 
         if rashodi > prihodi and rashodi > 0:
             _upsert_insight(
+                conn,
                 cursor,
                 "Rashodi premašili prihode",
                 f"Ukupni zabeleženi rashodi u bazi iznose {rashodi:.1f} RSD kroz {n_rashod} transakcija, dok su prihodi {prihodi:.1f} RSD. Kompanija posluje sa deficitom u ovom posmatranom periodu.",
                 "v3_finansije",
-                "",
+                hashlib.sha256("Rashodi premašili prihode".encode('utf-8')).hexdigest()[:16],
                 "significant"
             )
         elif prihodi > 0:
             _upsert_insight(
+                conn,
                 cursor,
                 "Stabilan finansijski bilans",
                 f"Prihodi iznose ukupno {prihodi:.1f} RSD, dok su rashodi uspešno zadržani na {rashodi:.1f} RSD. Neto profit iznosi {(prihodi-rashodi):.1f} RSD.",
                 "v3_finansije",
-                "",
+                hashlib.sha256("Stabilan finansijski bilans".encode('utf-8')).hexdigest()[:16],
                 "nominal"
             )
 
@@ -630,15 +663,69 @@ def _analyze_and_detect_insights_sync():
             ukupno_zahteva = sum(gradovi.values())
             procenat = (gradovi[omiljeni_grad] / ukupno_zahteva) * 100
             
+            title = f"Dominantno gradsko tržište: {omiljeni_grad}"
             _upsert_insight(
+                conn,
                 cursor,
-                f"Dominantno gradsko tržište: {omiljeni_grad}",
+                title,
                 f"Grad sa ubedljivo najvećim brojem zahteva za transport je {omiljeni_grad} sa ukupno {gradovi[omiljeni_grad]} vožnji, što predstavlja {procenat:.1f}% od ukupnih zahteva u aplikaciji.",
                 "v3_zahtevi",
-                "",
+                hashlib.sha256(title.encode('utf-8')).hexdigest()[:16],
                 "nominal"
             )
 
+        # 4. AGREGATNI PREGLED KORISNIKA I VOZILA (za tačne odgovore na "koliko" pitanja)
+        cursor.execute("SELECT content, metadata FROM ai_knowledge_base WHERE source_table='v3_auth'")
+        auth_rows = cursor.fetchall()
+        tipovi = {}
+        for content, metadata_json in auth_rows:
+            try:
+                metadata = json.loads(metadata_json or '{}')
+                tip = (metadata.get("tip") or "").upper()
+                if not tip and content:
+                    # Fallback: izvuci tip iz teksta oblika (TIP)
+                    m = re.search(r'\(([A-Z]+)\)', content)
+                    tip = m.group(1).upper() if m else "NEPOZNATO"
+                tipovi[tip] = tipovi.get(tip, 0) + 1
+            except:
+                continue
+        
+        ukupno_korisnika = sum(tipovi.values())
+        if ukupno_korisnika > 0:
+            _upsert_insight(
+                conn,
+                cursor,
+                "Ukupan broj korisnika u sistemu",
+                f"U sistemu je registrovano ukupno {ukupno_korisnika} korisnika. Raspodela po tipovima: {', '.join(f'{k}: {v}' for k, v in sorted(tipovi.items()))}.",
+                "v3_auth",
+                hashlib.sha256("Ukupan broj korisnika u sistemu".encode('utf-8')).hexdigest()[:16],
+                "nominal"
+            )
+        
+        if tipovi.get("VOZAC", 0) > 0:
+            _upsert_insight(
+                conn,
+                cursor,
+                "Ukupan broj vozača",
+                f"U sistemu je registrovano ukupno {tipovi['VOZAC']} vozača.",
+                "v3_auth",
+                hashlib.sha256("Ukupan broj vozača".encode('utf-8')).hexdigest()[:16],
+                "nominal"
+            )
+        
+        cursor.execute("SELECT content FROM ai_knowledge_base WHERE source_table='v3_vozila'")
+        vozila_count = len(cursor.fetchall())
+        if vozila_count > 0:
+            _upsert_insight(
+                conn,
+                cursor,
+                "Ukupan broj vozila",
+                f"U voznom parku se nalazi ukupno {vozila_count} vozila.",
+                "v3_vozila",
+                hashlib.sha256("Ukupan broj vozila".encode('utf-8')).hexdigest()[:16],
+                "nominal"
+            )
+        
         conn.commit()
         conn.close()
         log_event("Analiza baze uspešno izvršena. Generisani/ažurirani samostalni zaključci.")
@@ -950,17 +1037,44 @@ def _search_knowledge_base_sync(usr_msg: str):
     keywords = [w for w in words if len(w) > 2 and w not in SRPSKE_STOP_RECI]
     
     if keywords:
-        placeholders = ' OR '.join(["LOWER(content) LIKE ?" for _ in keywords])
-        params = [f'%{kw}%' for kw in keywords]
-        cursor.execute(f"SELECT id, source_table, source_id, content FROM ai_knowledge_base WHERE {placeholders} LIMIT 200", params)
+        # Prvo pokušaj AND pretragu (sve ključne reči moraju biti prisutne) - najtačniji rezultati
+        and_placeholders = ' AND '.join(["LOWER(content) LIKE ?" for _ in keywords])
+        and_params = [f'%{kw}%' for kw in keywords]
+        try:
+            cursor.execute(f"SELECT id, source_table, source_id, content FROM ai_knowledge_base WHERE {and_placeholders} LIMIT 500", and_params)
+            and_rows = cursor.fetchall()
+        except Exception as e:
+            log_event(f"AND tekstualna pretraga nije uspela: {e}")
+            and_rows = []
         
-        for unique_id, source_table, source_id, content in cursor.fetchall():
+        # Zatim OR pretragu za šire poklapanje
+        or_placeholders = ' OR '.join(["LOWER(content) LIKE ?" for _ in keywords])
+        or_params = [f'%{kw}%' for kw in keywords]
+        try:
+            cursor.execute(f"SELECT id, source_table, source_id, content FROM ai_knowledge_base WHERE {or_placeholders} LIMIT 500", or_params)
+            or_rows = cursor.fetchall()
+        except Exception as e:
+            log_event(f"OR tekstualna pretraga nije uspela: {e}")
+            or_rows = []
+        
+        # Kombinuj AND i OR rezultate, bez duplikata
+        seen_ids = set()
+        text_rows = []
+        for row in and_rows + or_rows:
+            unique_id = row[0]
+            if unique_id not in seen_ids:
+                seen_ids.add(unique_id)
+                text_rows.append(row)
+        
+        for unique_id, source_table, source_id, content in text_rows:
             content_lower = content.lower()
             match_count = sum(1 for kw in keywords if kw in content_lower)
             if match_count == 0:
                 continue
-            # Normalizovan tekstualni score: procenat poklopljenih reči
-            text_score = min(1.0, match_count / len(keywords)) * 0.8
+            # AND poklapanja dobijaju bonus
+            is_and_match = unique_id in {r[0] for r in and_rows}
+            base_text_score = min(1.0, match_count / len(keywords)) * 0.8
+            text_score = base_text_score + (0.2 if is_and_match else 0.0)
             
             if unique_id in matched_scores:
                 content, source, sem_score = matched_scores[unique_id]
@@ -1017,30 +1131,21 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
             )
         
         system_prompt = (
-            "Ti si Gavra AI, visoko strucni i pouzdan analiticki sistem za logistiku i transport, razvijen iskljucivo za vlasnika aplikacije.\n"
-            "Tvoj zadatak je da odgovaras na pitanja iskljucivo na osnovu sledecih sirovih podataka dobijenih iz tabela u realnom vremenu.\n"
-            "Svaki podatak je oznacen identifikatorom oblika [tabela:id] koji predstavlja njegov izvor u bazi.\n"
+            "Ti si Gavra AI, asistent za logistiku i transport. Odgovaraj iskljucivo na osnovu podataka ispod.\n"
+            "Svaki podatak ima izvor u formatu [tabela:id].\n"
             "-------------------\n"
-            f"{context_str if context_str else 'U bazi trenutno nema zabeleženih relevantnih podataka za ovo pitanje.'}\n"
+            f"{context_str if context_str else 'Nema relevantnih podataka u bazi za ovo pitanje.'}\n"
             "-------------------\n"
-            "STROGA PRAVILA ZA ODGOVARANJE:\n"
-            "1. Odgovaraj ISKLJUCIVO na osnovu gore navedenih podataka o finansijama, voznjama, putnicima, vozacima i gorivu.\n"
-            "2. Ukoliko odgovor na pitanje ne moze da se izvuce iz dostavljenih sirovih podataka, tvoj jedini odgovor MORA biti: \n"
-            "   'Oprostite, nemam te podatke u svojoj bazi podataka.'\n"
-            "3. Nemoj izmisljati, pretpostavljati niti dopunjavati podatke opstim znanjem sa interneta! Ako ne vidis tacne brojeve ili imena u kontekstu, za tebe oni ne postoje.\n"
-            "4. Nakon svake tvrdnje koja se oslanja na konkretan podatak, obavezno navedi izvor u formatu [tabela:id]. Na primer: 'Ukupni rashodi su 150.000 RSD [v3_finansije:abc-123].'\n"
-            "5. Pisi odgovore tecnim, prijatnim i profesionalnim srpskim jezikom, sa uvazavanjem i bez suvisnog filozofiranja.\n"
-            "6. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj iskljucivo na poslovne podatke iz baze.\n"
+            "PRAVILA:\n"
+            "1. Koristi SAMO podatke iz gornjeg konteksta.\n"
+            "2. Ako pitanje trazi broj (npr. 'koliko'), prebroj odgovarajuce redove u kontekstu.\n"
+            "3. Ako odgovor nije u podacima, reci tacno: 'Oprostite, nemam te podatke u svojoj bazi podataka.'\n"
+            "4. Nemoj izmisljati. Navedi izvor u formatu [tabela:id] za svaku tvrdnju.\n"
+            "5. Odgovaraj na srpskom jeziku, kratko i jasno.\n"
             "\n"
-            "PRIMERI ODGOVARANJA:\n"
-            "Pitanje: Koliko je ukupno rashoda ovog meseca?\n"
-            "Odgovor: Ukupni rashodi u tekucem mesecu iznose 125.000 RSD [v3_finansije:xyz-789]. Najveci trosak je gorivo od 45.000 RSD [v3_gorivo:abc-123].\n"
-            "\n"
-            "Pitanje: Koji grad ima najvise zahteva za voznju?\n"
-            "Odgovor: Grad sa najvise zahteva je Beograd sa 42 vožnje [v3_zahtevi:def-456], što cini 58% od ukupnog broja zahteva.\n"
-            "\n"
-            "Pitanje: Sta je kvantna fizika?\n"
-            "Odgovor: Oprostite, nemam te podatke u svojoj bazi podataka."
+            "Primer:\n"
+            "Pitanje: Koliko vozaca ima?\n"
+            "Odgovor: Na osnovu podataka, ukupno ima 3 vozaca [v3_auth:abc], [v3_auth:def], [v3_auth:ghi]."
         )
         
         log_event(f"Saljem upit ka Gemini ({GEMINI_MODEL})...")
