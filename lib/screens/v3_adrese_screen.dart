@@ -30,6 +30,7 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        centerTitle: true,
       ),
       body: V3ContainerUtils.backgroundContainer(
         gradient: Theme.of(context).backgroundGradient,
