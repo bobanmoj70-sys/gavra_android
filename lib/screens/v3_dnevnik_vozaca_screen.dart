@@ -429,7 +429,9 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Dnevnik vozača', style: TextStyle(fontWeight: FontWeight.bold)),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+        title: const Text('Dnevnik vozača', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
           if (_naplate.isNotEmpty) ...[
             IconButton(

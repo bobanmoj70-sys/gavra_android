@@ -713,12 +713,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             centerTitle: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
             title: const Text(
-              '🚗 Raspored vozača',
+              'Raspored vozača',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),

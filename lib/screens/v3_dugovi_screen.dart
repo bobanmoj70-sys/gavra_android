@@ -35,18 +35,11 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '💳 Dugovanja',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                ),
-                Text(
-                  'Neplaćeni putnici · ${allDugovi.length} dugova',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                ),
-              ],
+            automaticallyImplyLeading: false,
+            centerTitle: true,
+            title: const Text(
+              'Dugovanja',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
             ),
           ),
           body: Container(

@@ -169,7 +169,8 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text('🎫 Kapacitet Polazaka', style: TextStyle(color: Colors.white)),
+          title: const Text('Kapacitet Polazaka', style: TextStyle(color: Colors.white)),
+          centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
           automaticallyImplyLeading: false,
