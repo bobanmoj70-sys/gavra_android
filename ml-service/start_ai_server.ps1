@@ -98,9 +98,6 @@ if (-not (Test-Path $LogDir)) {
 
 Write-Log "=== Gavra AI Server watchdog pokrenut ==="
 
-# Provera Ollama vise nije potrebna jer koristimo Gemini API
-Write-Log "Koristi se Gemini API. Lokalna Ollama nije potrebna."
-
 # Provera da li je server već pokrenut
 if (Test-ServerRunning) {
     Write-Log "Server je već pokrenut na portu $Port. Zaustavljam ga i pokrećem ponovo..."
