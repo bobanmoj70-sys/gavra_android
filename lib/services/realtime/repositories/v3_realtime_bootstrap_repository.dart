@@ -40,6 +40,10 @@ class V3RealtimeBootstrapRepository {
         requiredTable: true,
       ),
       _fetchTableRows(
+        table: 'v3_krediti',
+        query: () => supabase.from('v3_krediti').select(),
+      ),
+      _fetchTableRows(
         table: 'v3_racuni',
         query: () => supabase.from('v3_racuni').select(),
       ),

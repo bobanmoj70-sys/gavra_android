@@ -37,6 +37,7 @@ class V3KreditService {
     required String naziv,
     required double ukupanIznos,
     String? napomena,
+    DateTime? krajKredita,
   }) async {
     final safeNaziv = naziv.trim();
     if (safeNaziv.isEmpty) {
@@ -52,6 +53,7 @@ class V3KreditService {
       'uplaceno': 0.0,
       'uplate_json': <Map<String, dynamic>>[],
       if (napomena != null && napomena.trim().isNotEmpty) 'napomena': napomena.trim(),
+      if (krajKredita != null) 'kraj_kredita': krajKredita.toIso8601String().substring(0, 10),
     });
 
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_krediti', row);
@@ -64,6 +66,7 @@ class V3KreditService {
     required String naziv,
     required double ukupanIznos,
     String? napomena,
+    DateTime? krajKredita,
   }) async {
     final safeId = id.trim();
     if (safeId.isEmpty) throw ArgumentError('ID kredita je obavezan.');
@@ -76,6 +79,7 @@ class V3KreditService {
       'naziv': safeNaziv,
       'ukupan_iznos': ukupanIznos,
       if (napomena != null && napomena.trim().isNotEmpty) 'napomena': napomena.trim(),
+      if (krajKredita != null) 'kraj_kredita': krajKredita.toIso8601String().substring(0, 10) else 'kraj_kredita': null,
       'updated_at': DateTime.now().toIso8601String(),
     });
 

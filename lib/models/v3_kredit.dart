@@ -12,6 +12,7 @@ class V3Kredit {
   final double ukupanIznos;
   final double uplaceno;
   final String? napomena;
+  final DateTime? krajKredita;
   final List<V3KreditUplata> uplate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -22,6 +23,7 @@ class V3Kredit {
     required this.ukupanIznos,
     required this.uplaceno,
     this.napomena,
+    this.krajKredita,
     this.uplate = const [],
     this.createdAt,
     this.updatedAt,
@@ -79,6 +81,7 @@ class V3Kredit {
       ukupanIznos: (json['ukupan_iznos'] as num?)?.toDouble() ?? 0.0,
       uplaceno: (json['uplaceno'] as num?)?.toDouble() ?? 0.0,
       napomena: json['napomena']?.toString(),
+      krajKredita: V3DateUtils.parseDatum(json['kraj_kredita']?.toString()),
       uplate: _parseUplate(json['uplate_json']),
       createdAt: V3DateUtils.parseTs(json['created_at']?.toString()),
       updatedAt: V3DateUtils.parseTs(json['updated_at']?.toString()),
@@ -91,6 +94,7 @@ class V3Kredit {
         'ukupan_iznos': ukupanIznos,
         'uplaceno': uplaceno,
         if (napomena != null && napomena!.isNotEmpty) 'napomena': napomena,
+        if (krajKredita != null) 'kraj_kredita': V3DateUtils.parseIsoDatePart(krajKredita!.toIso8601String()),
         'uplate_json': uplate.map((u) => u.toJson()).toList(),
       };
 
@@ -100,6 +104,7 @@ class V3Kredit {
     double? ukupanIznos,
     double? uplaceno,
     String? napomena,
+    DateTime? krajKredita,
     List<V3KreditUplata>? uplate,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -110,6 +115,7 @@ class V3Kredit {
       ukupanIznos: ukupanIznos ?? this.ukupanIznos,
       uplaceno: uplaceno ?? this.uplaceno,
       napomena: napomena ?? this.napomena,
+      krajKredita: krajKredita ?? this.krajKredita,
       uplate: uplate ?? this.uplate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

@@ -38,6 +38,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             centerTitle: true,
+            automaticallyImplyLeading: false,
             title: const Text('Moji krediti', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
@@ -140,6 +141,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
           naziv: result.naziv,
           ukupanIznos: result.ukupanIznos,
           napomena: result.napomena,
+          krajKredita: result.krajKredita,
         );
         if (mounted) V3AppSnackBar.success(context, '✅ Kredit dodat');
       } else {
@@ -148,6 +150,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
           naziv: result.naziv,
           ukupanIznos: result.ukupanIznos,
           napomena: result.napomena,
+          krajKredita: result.krajKredita,
         );
         if (mounted) V3AppSnackBar.success(context, '✅ Kredit izmenjen');
       }
@@ -381,6 +384,19 @@ class _KreditCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(kredit.napomena!, style: const TextStyle(fontSize: 12, color: Colors.white54)),
               ],
+              if (kredit.krajKredita != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 12, color: Colors.white38),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Kraj: ${kredit.krajKredita!.day.toString().padLeft(2, '0')}.${kredit.krajKredita!.month.toString().padLeft(2, '0')}.${kredit.krajKredita!.year}',
+                      style: const TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               _buildRow('Ukupan iznos', kredit.ukupanIznos, Colors.white70),
               _buildRow('Uplaćeno', kredit.uplaceno, const Color(0xFF4ADE80)),
@@ -597,7 +613,13 @@ class _KreditFormResult {
   final String naziv;
   final double ukupanIznos;
   final String? napomena;
-  const _KreditFormResult({required this.naziv, required this.ukupanIznos, this.napomena});
+  final DateTime? krajKredita;
+  const _KreditFormResult({
+    required this.naziv,
+    required this.ukupanIznos,
+    this.napomena,
+    this.krajKredita,
+  });
 }
 
 class _KreditDialog extends StatefulWidget {
@@ -612,6 +634,7 @@ class _KreditDialogState extends State<_KreditDialog> {
   late final TextEditingController _nazivCtrl;
   late final TextEditingController _iznosCtrl;
   late final TextEditingController _napomenaCtrl;
+  DateTime? _krajKredita;
   bool _saving = false;
 
   @override
@@ -622,6 +645,7 @@ class _KreditDialogState extends State<_KreditDialog> {
       text: widget.kredit != null ? widget.kredit!.ukupanIznos.toStringAsFixed(0) : '',
     );
     _napomenaCtrl = TextEditingController(text: widget.kredit?.napomena ?? '');
+    _krajKredita = widget.kredit?.krajKredita;
   }
 
   @override
@@ -630,6 +654,19 @@ class _KreditDialogState extends State<_KreditDialog> {
     _iznosCtrl.dispose();
     _napomenaCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _krajKredita ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Kraj kredita / zadnja rata',
+    );
+    if (picked != null) {
+      V3StateUtils.safeSetState(this, () => _krajKredita = picked);
+    }
   }
 
   Future<void> _save() async {
@@ -654,6 +691,7 @@ class _KreditDialogState extends State<_KreditDialog> {
           naziv: naziv,
           ukupanIznos: iznos,
           napomena: _napomenaCtrl.text.trim().isEmpty ? null : _napomenaCtrl.text.trim(),
+          krajKredita: _krajKredita,
         ),
       );
     }
@@ -696,6 +734,45 @@ class _KreditDialogState extends State<_KreditDialog> {
               V3InputUtils.textField(
                 controller: _napomenaCtrl,
                 label: 'Napomena (opciono)',
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(12),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Kraj kredita (opciono)',
+                    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white30),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                    ),
+                    suffixIcon: _krajKredita != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.white54, size: 20),
+                            onPressed: () => V3StateUtils.safeSetState(this, () => _krajKredita = null),
+                          )
+                        : const Icon(Icons.calendar_today, color: Colors.amber, size: 20),
+                  ),
+                  child: Text(
+                    _krajKredita != null
+                        ? '${_krajKredita!.day.toString().padLeft(2, '0')}.${_krajKredita!.month.toString().padLeft(2, '0')}.${_krajKredita!.year}'
+                        : 'Izaberi datum',
+                    style: TextStyle(
+                      color: _krajKredita != null ? Colors.white : Colors.white54,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
               Row(
