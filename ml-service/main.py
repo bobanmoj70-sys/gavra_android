@@ -174,11 +174,6 @@ SRPSKE_STOP_RECI = {
     "nema", "nemaju", "nemam", "nemaš", "nemamo", "nemate"
 }
 
-# Ollama parametri za kontrolisanije i brže odgovore
-# OLLAMA_TEMPERATURE = float(os.environ.get('OLLAMA_TEMPERATURE', '0.3'))
-# OLLAMA_MAX_TOKENS = int(os.environ.get('OLLAMA_MAX_TOKENS', '800'))
-# OLLAMA_TIMEOUT_SECONDS = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '30'))
-
 # Gemini API konfiguracija
 GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
 GEMINI_TIMEOUT_SECONDS = int(os.environ.get('GEMINI_TIMEOUT_SECONDS', '30'))
@@ -1093,7 +1088,7 @@ def _search_knowledge_base_sync(usr_msg: str):
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, session_id: str = Header(None)):
-    """Glavni pretraživač i generator pametnih odgovora koristeći Ollama i lokalnu pretragu"""
+    """Glavni pretraživač i generator pametnih odgovora koristeći Gemini API i lokalnu pretragu"""
     try:
         if not _check_chat_rate_limit(session_id):
             log_event(f"Rate limit premašen za sesiju: {session_id or 'default'}")
