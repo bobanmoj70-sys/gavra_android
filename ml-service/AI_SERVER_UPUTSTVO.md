@@ -4,7 +4,7 @@
 
 - Laptop sa Windows 10/11
 - Python 3.12+ sa instaliranim paketima iz `requirements.txt`
-- Ollama aplikacija pokrenuta na laptopu (`http://localhost:11434`)
+- Besplatan Gemini API kljuc sa https://aistudio.google.com/app/apikey
 - Tailscale (opciono) za pristup sa telefona van kuće
 
 ## Brzo pokretanje
@@ -18,16 +18,16 @@ Set-Location -Path 'c:\Users\Bojan\gavra_android\ml-service'
 Remove-Item -Path 'gavra_ai.db' -ErrorAction SilentlyContinue
 ```
 
-### 2. Proveri da li je Ollama pokrenuta
+### 2. Podesi .env fajl
 
-```powershell
-ollama list
-```
+Kopiraj `.env.example` u `.env` i popuni:
 
-Ako nije, pokreni Ollama aplikaciju ili:
-
-```powershell
-ollama serve
+```dotenv
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key
+ML_API_KEY=your-secure-random-key-here
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ### 3. Pokreni server ručno

@@ -1,12 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MlConfig {
   static String get baseUrl {
     final url = dotenv.maybeGet('ML_BASE_URL')?.trim();
     if (url == null || url.isEmpty) {
-      debugPrint('[MlConfig] ⚠️ ML_BASE_URL nije definisan u .env');
-      return 'http://100.79.160.71:8000';
+      throw StateError(
+        '[MlConfig] ML_BASE_URL nije definisan u .env fajlu. '
+        'Postavi ga na adresu AI servera, npr. http://IP_ADRESA:8000',
+      );
     }
     return url;
   }

@@ -38,7 +38,6 @@ SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
 ML_API_KEY = os.environ.get('ML_API_KEY')
-OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'llama3.2')
 PORT = int(os.environ.get('PORT', '8000'))
 
 # Backend mora čitati sve tabele, pa preferiramo SERVICE_ROLE_KEY (zaobilazi RLS).
@@ -50,6 +49,10 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 if not ML_API_KEY:
     raise RuntimeError('ML_API_KEY mora biti definisan u .env fajlu radi zaštite endpointa')
+
+# Gemini API ključ se proverava ovde, ali greška se baca tek pri prvom chat pozivu
+# da bi server mogao da se pokrene i uči podatke čak i ako ključ nije podešen.
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # Lokalne SQLite baze
 DB_FILE = os.path.join(os.path.dirname(__file__), "gavra_ai.db")
@@ -170,16 +173,22 @@ SRPSKE_STOP_RECI = {
 }
 
 # Ollama parametri za kontrolisanije i brže odgovore
-OLLAMA_TEMPERATURE = float(os.environ.get('OLLAMA_TEMPERATURE', '0.3'))
-OLLAMA_MAX_TOKENS = int(os.environ.get('OLLAMA_MAX_TOKENS', '800'))
-OLLAMA_TIMEOUT_SECONDS = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '30'))
+# OLLAMA_TEMPERATURE = float(os.environ.get('OLLAMA_TEMPERATURE', '0.3'))
+# OLLAMA_MAX_TOKENS = int(os.environ.get('OLLAMA_MAX_TOKENS', '800'))
+# OLLAMA_TIMEOUT_SECONDS = int(os.environ.get('OLLAMA_TIMEOUT_SECONDS', '30'))
+
+# Gemini API konfiguracija
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+GEMINI_TIMEOUT_SECONDS = int(os.environ.get('GEMINI_TIMEOUT_SECONDS', '30'))
+GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', '0.3'))
+GEMINI_MAX_OUTPUT_TOKENS = int(os.environ.get('GEMINI_MAX_OUTPUT_TOKENS', '800'))
 
 # Parametri vektorske pretrage
 VECTOR_DIMENSION = 384  # all-MiniLM-L6-v2
 VECTOR_TOP_K = 15
 VECTOR_MIN_SIMILARITY = 0.30
 
-# Keširanje čestih chat upita (smanjuje pozive ka Ollama)
+# Keširanje cestih chat upita (smanjuje pozive ka AI modelu)
 CHAT_CACHE_MAXSIZE = int(os.environ.get('CHAT_CACHE_MAXSIZE', '100'))
 CHAT_CACHE_ENABLED = os.environ.get('CHAT_CACHE_ENABLED', 'true').lower() in ('true', '1', 'yes')
 
@@ -980,7 +989,7 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
             )
         
         usr_msg = request.message
-        log_event(f"Korisnički upit (sesija: {session_id or 'default'}): '{usr_msg}'")
+        log_event(f"Korisnicki upit (sesija: {session_id or 'default'}): '{usr_msg}'")
         
         # Uzmi konverzacijsku istoriju za sesiju
         history = _get_or_create_session_history(session_id)
@@ -988,7 +997,7 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
             [f"{msg['role']}: {msg['content']}" for msg in history]
         )
         
-        # Direktna sinhrona pretraga (FastAPI sync endpoint već radi u thread pool-u)
+        # Direktna sinhrona pretraga (FastAPI sync endpoint vec radi u thread pool-u)
         matched = _search_knowledge_base_sync(usr_msg)
         matched_content = [content for content, _ in matched]
         matched_sources = [source_id for _, source_id in matched]
@@ -996,10 +1005,10 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         context_str = "\n".join([f"[{source_id}] {content}" for content, source_id in matched])
         context_hash = _hash_context(context_str, conversation_context)
         
-        # Proveri keš pre poziva Ollama
+        # Proveri kes pre poziva Gemini
         cached_response = _chat_cache.get(usr_msg, context_hash)
         if cached_response is not None:
-            log_event("Odgovor pronađen u kešu, preskačem poziv ka Ollama.")
+            log_event("Odgovor pronadjen u kesu, preskacem poziv ka Gemini.")
             history.append({'role': 'user', 'content': usr_msg})
             history.append({'role': 'assistant', 'content': cached_response})
             return ChatResponse(
@@ -1008,79 +1017,100 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
             )
         
         system_prompt = (
-            "Ti si Gavra AI, visoko stručni i pouzdani analitički sistem za logistiku i transport, razvijen isključivo za vlasnika aplikacije.\n"
-            "Tvoj zadatak je da odgovaraš na pitanja isključivo na osnovu sledećih sirovih podataka dobijenih iz tabela u realnom vremenu.\n"
-            "Svaki podatak je označen identifikatorom oblika [tabela:id] koji predstavlja njegov izvor u bazi.\n"
+            "Ti si Gavra AI, visoko strucni i pouzdan analiticki sistem za logistiku i transport, razvijen iskljucivo za vlasnika aplikacije.\n"
+            "Tvoj zadatak je da odgovaras na pitanja iskljucivo na osnovu sledecih sirovih podataka dobijenih iz tabela u realnom vremenu.\n"
+            "Svaki podatak je oznacen identifikatorom oblika [tabela:id] koji predstavlja njegov izvor u bazi.\n"
             "-------------------\n"
             f"{context_str if context_str else 'U bazi trenutno nema zabeleženih relevantnih podataka za ovo pitanje.'}\n"
             "-------------------\n"
             "STROGA PRAVILA ZA ODGOVARANJE:\n"
-            "1. Odgovaraj ISKLJUČIVO na osnovu gore navedenih podataka o finansijama, vožnjama, putnicima, vozačima i gorivu.\n"
-            "2. Ukoliko odgovor na pitanje ne može da se izvuče iz dostavljenih sirovih podataka, tvoj jedini odgovor MORA biti: \n"
+            "1. Odgovaraj ISKLJUCIVO na osnovu gore navedenih podataka o finansijama, voznjama, putnicima, vozacima i gorivu.\n"
+            "2. Ukoliko odgovor na pitanje ne moze da se izvuce iz dostavljenih sirovih podataka, tvoj jedini odgovor MORA biti: \n"
             "   'Oprostite, nemam te podatke u svojoj bazi podataka.'\n"
-            "3. Nemoj izmišljati, pretpostavljati niti dopunjavati podatke opštim znanjem sa interneta! Ako ne vidiš tačne brojeve ili imena u kontekstu, za tebe oni ne postoje.\n"
+            "3. Nemoj izmisljati, pretpostavljati niti dopunjavati podatke opstim znanjem sa interneta! Ako ne vidis tacne brojeve ili imena u kontekstu, za tebe oni ne postoje.\n"
             "4. Nakon svake tvrdnje koja se oslanja na konkretan podatak, obavezno navedi izvor u formatu [tabela:id]. Na primer: 'Ukupni rashodi su 150.000 RSD [v3_finansije:abc-123].'\n"
-            "5. Piši odgovore tečnim, prijatnim i profesionalnim srpskim jezikom, sa uvažavanjem i bez suvišnog filozofiranja.\n"
-            "6. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj isključivo na poslovne podatke iz baze.\n"
+            "5. Pisi odgovore tecnim, prijatnim i profesionalnim srpskim jezikom, sa uvazavanjem i bez suvisnog filozofiranja.\n"
+            "6. Ako korisnik nastavlja prethodni razgovor, koristi prethodne poruke kao kontekst, ali se i dalje oslanjaj iskljucivo na poslovne podatke iz baze.\n"
             "\n"
             "PRIMERI ODGOVARANJA:\n"
             "Pitanje: Koliko je ukupno rashoda ovog meseca?\n"
-            "Odgovor: Ukupni rashodi u tekućem mesecu iznose 125.000 RSD [v3_finansije:xyz-789]. Najveći trošak je gorivo od 45.000 RSD [v3_gorivo:abc-123].\n"
+            "Odgovor: Ukupni rashodi u tekucem mesecu iznose 125.000 RSD [v3_finansije:xyz-789]. Najveci trosak je gorivo od 45.000 RSD [v3_gorivo:abc-123].\n"
             "\n"
-            "Pitanje: Koji grad ima najviše zahteva za vožnju?\n"
-            "Odgovor: Grad sa najviše zahteva je Beograd sa 42 vožnje [v3_zahtevi:def-456], što čini 58% od ukupnog broja zahteva.\n"
+            "Pitanje: Koji grad ima najvise zahteva za voznju?\n"
+            "Odgovor: Grad sa najvise zahteva je Beograd sa 42 vožnje [v3_zahtevi:def-456], što cini 58% od ukupnog broja zahteva.\n"
             "\n"
-            "Pitanje: Šta je kvantna fizika?\n"
+            "Pitanje: Sta je kvantna fizika?\n"
             "Odgovor: Oprostite, nemam te podatke u svojoj bazi podataka."
         )
         
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-        ]
-        if conversation_context:
-            messages.append({'role': 'system', 'content': f"Prethodni razgovor:\n{conversation_context}"})
-        messages.append({'role': 'user', 'content': usr_msg})
+        log_event(f"Saljem upit ka Gemini ({GEMINI_MODEL})...")
         
-        log_event(f"Šaljem upit lokalnom {OLLAMA_MODEL} modelu na Ollama server...")
+        if not GEMINI_API_KEY:
+            log_event("GEMINI_API_KEY nije definisan u .env fajlu.")
+            raise HTTPException(
+                status_code=503,
+                detail="AI chat trenutno nije dostupan jer GEMINI_API_KEY nije konfigurisan na serveru."
+            )
         
         try:
-            ollama_resp = requests.post(
-                'http://127.0.0.1:11434/api/chat',
-                json={
-                    'model': OLLAMA_MODEL,
-                    'messages': messages,
-                    'stream': False,
-                    'options': {
-                        'temperature': OLLAMA_TEMPERATURE,
-                        'num_predict': OLLAMA_MAX_TOKENS,
+            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+            
+            gemini_body = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": system_prompt}]
                     },
-                    'keep_alive': '5m',
-                },
-                headers={'Connection': 'close'},
-                timeout=OLLAMA_TIMEOUT_SECONDS,
+                    {
+                        "role": "model",
+                        "parts": [{"text": "Razumem. Odgovaram iskljucivo na osnovu dostavljenih podataka."}]
+                    },
+                    {
+                        "role": "user",
+                        "parts": [{"text": usr_msg}]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": GEMINI_TEMPERATURE,
+                    "maxOutputTokens": GEMINI_MAX_OUTPUT_TOKENS,
+                }
+            }
+            
+            gemini_resp = requests.post(
+                gemini_url,
+                json=gemini_body,
+                headers={'Content-Type': 'application/json'},
+                timeout=GEMINI_TIMEOUT_SECONDS,
             )
-            ollama_resp.raise_for_status()
-            response = ollama_resp.json()
+            gemini_resp.raise_for_status()
+            response = gemini_resp.json()
+            
+            ai_resp = response['candidates'][0]['content']['parts'][0]['text']
+            log_event("Odgovor od Gemini uspesno generisan i vracen.")
+            
         except requests.exceptions.Timeout:
-            log_event(f"Ollama model nije odgovorio u {OLLAMA_TIMEOUT_SECONDS}s.")
+            log_event(f"Gemini nije odgovorio u {GEMINI_TIMEOUT_SECONDS}s.")
             raise HTTPException(
                 status_code=504,
-                detail=f"AI modelu je potrebno previše vremena za odgovor. Pokušaj ponovo za trenutak."
+                detail="AI modelu je potrebno previse vremena za odgovor. Pokusaj ponovo za trenutak."
             )
         except requests.exceptions.RequestException as e:
-            log_event(f"Greška u komunikaciji sa Ollama serverom: {e}")
+            log_event(f"Greska u komunikaciji sa Gemini API-jem: {e}")
             raise HTTPException(
                 status_code=502,
-                detail=f"Greška u komunikaciji sa AI serverom: {e}"
+                detail=f"Greska u komunikaciji sa AI serverom: {e}"
+            )
+        except (KeyError, IndexError) as e:
+            log_event(f"Neocekivan odgovor od Gemini API-ja: {e}")
+            raise HTTPException(
+                status_code=502,
+                detail="Neocekivan odgovor od AI modela."
             )
         
-        ai_resp = response['message']['content']
-        log_event("Odgovor od LLM modela uspešno generisan i vraćen.")
-        
-        # Sačuvaj u keš za buduće identične upite
+        # Sacuvaj u kes za buduce identicne upite
         _chat_cache.set(usr_msg, context_hash, ai_resp)
         
-        # Ažuriramo konverzacijsku memoriju za konkretnu sesiju
+        # Azuriramo konverzacijsku memoriju za konkretnu sesiju
         history.append({'role': 'user', 'content': usr_msg})
         history.append({'role': 'assistant', 'content': ai_resp})
         
@@ -1090,7 +1120,7 @@ def chat(request: ChatRequest, session_id: str = Header(None)):
         )
         
     except Exception as e:
-        log_event(f"Greška tokom izvršavanja chat upita: {e}")
+        log_event(f"Greska tokom izvrsavanja chat upita: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

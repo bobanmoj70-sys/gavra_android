@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/ml_config.dart';
 
-/// Ekran koji realizuje kompletno AI Znanje, Chat sa modelom Llama 3.2,
+/// Ekran koji realizuje kompletno AI Znanje, Chat sa Gemini modelom,
 /// praćenje samostalnih zaključaka i live logova učenja u realnom vremenu.
 class V3AiZnanjeScreen extends StatefulWidget {
   const V3AiZnanjeScreen({super.key});
@@ -217,7 +217,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           _messages.add({
             'role': 'ai',
             'content':
-                'Došlo je do greške na mom lokalnom serveru učenja. Proveri da li je laptop upaljen i server ispravno pokrenut.'
+                'Došlo je do greške na AI serveru. Proveri da li je server pokrenut i da li je ML_BASE_URL ispravno podešen.'
           });
           _serverReachable = false;
         });
@@ -226,8 +226,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       setState(() {
         _messages.add({
           'role': 'ai',
-          'content':
-              'Nije uspela komunikacija sa mojim analitičkim serverom kod kuće. Proveri Tailscale konekciju i internet vezu.'
+          'content': 'Nije uspela komunikacija sa AI serverom. Proveri mrežnu konekciju i podešavanja u .env fajlu.'
         });
         _serverReachable = false;
         _lastError = 'AI server nije dostupan';

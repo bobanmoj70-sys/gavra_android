@@ -148,3 +148,7 @@ __pycache__/
 ml-service/gavra_ai.db
 ml-service/__pycache__/
 ml-service/server.pid
+
+# AI server generated reports
+ml-service/diagnose_ai_report.txt
+ml-service/*.log

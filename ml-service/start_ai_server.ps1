@@ -3,6 +3,22 @@
 
 $ErrorActionPreference = "Stop"
 
+# --- ZAŠTITA OD DVOSTRUKOG POKRETANJA ---
+# Ako se skripta pokrene dva puta (ručno + autostart), druga instanca odmah izlazi.
+$MutexName = "Global\GavraAI_Server_Watchdog_Mutex"
+$script:Mutex = $null
+try {
+    $script:Mutex = [System.Threading.Mutex]::OpenExisting($MutexName)
+    Write-Host "[Gavra AI] Watchdog je već aktivan. Izlazim."
+    exit 0
+} catch {
+    $script:Mutex = New-Object System.Threading.Mutex($false, $MutexName)
+}
+if (-not $script:Mutex.WaitOne(0, $false)) {
+    Write-Host "[Gavra AI] Watchdog je već aktivan. Izlazim."
+    exit 0
+}
+
 # Putanje
 $ProjectRoot = 'c:\Users\Bojan\gavra_android'
 $ServiceDir = Join-Path $ProjectRoot 'ml-service'
@@ -36,15 +52,6 @@ function Test-ServerRunning {
     return $false
 }
 
-function Test-OllamaAvailable {
-    try {
-        $resp = Invoke-WebRequest -Uri 'http://localhost:11434' -Method GET -TimeoutSec 5 -UseBasicParsing -ErrorAction SilentlyContinue
-        return $resp.StatusCode -eq 200
-    } catch {
-        return $false
-    }
-}
-
 function Stop-ExistingServer {
     # Zaustavi proces sa PID fajla ako postoji
     if (Test-Path $PidFile) {
@@ -70,7 +77,17 @@ function Stop-ExistingServer {
                 Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
                 Start-Sleep -Seconds 2
             }
-        } catch {}
+        } catch {
+            # Ako Stop-Process ne radi zbog prava pristupa, probaj taskkill
+            try {
+                $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
+                if ($proc -and ($proc.ProcessName -like "*python*")) {
+                    Write-Log "Pokušavam taskkill za PID: $($proc.Id)..."
+                    Start-Process -FilePath 'taskkill.exe' -ArgumentList "/F /PID $($proc.Id)" -Wait -NoNewWindow -ErrorAction SilentlyContinue
+                    Start-Sleep -Seconds 2
+                }
+            } catch {}
+        }
     }
 }
 
@@ -81,12 +98,8 @@ if (-not (Test-Path $LogDir)) {
 
 Write-Log "=== Gavra AI Server watchdog pokrenut ==="
 
-# Provera da li je Ollama dostupna
-if (-not (Test-OllamaAvailable)) {
-    Write-Log "UPOZORENJE: Ollama nije dostupna na http://localhost:11434. Server će se pokrenuti, ali chat možda neće raditi dok se Ollama ne pokrene."
-} else {
-    Write-Log "Ollama je dostupna."
-}
+# Provera Ollama vise nije potrebna jer koristimo Gemini API
+Write-Log "Koristi se Gemini API. Lokalna Ollama nije potrebna."
 
 # Provera da li je server već pokrenut
 if (Test-ServerRunning) {
@@ -156,6 +169,12 @@ while ($restartCount -lt $MaxRestarts) {
 # Očisti PID fajl
 if (Test-Path $PidFile) {
     Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
+}
+
+# Oslobodi mutex da bi buduće instance mogle da se pokrenu
+if ($script:Mutex) {
+    try { $script:Mutex.ReleaseMutex() } catch {}
+    try { $script:Mutex.Dispose() } catch {}
 }
 
 if ($normalShutdown) {
