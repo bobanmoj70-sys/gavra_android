@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/v3_finansije.dart';
+import '../screens/v3_krediti_screen.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
+import '../services/v3/v3_kredit_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -31,6 +33,7 @@ class V3FinansijeScreen extends StatefulWidget {
 
 class _V3IzvestajData {
   final double potrazivanjaIznos;
+  final double kreditiIznos;
   final double prihodDanas;
   final double trosakDanas;
   final int voznjiDanas;
@@ -50,6 +53,7 @@ class _V3IzvestajData {
 
   const _V3IzvestajData({
     required this.potrazivanjaIznos,
+    required this.kreditiIznos,
     required this.prihodDanas,
     required this.trosakDanas,
     required this.voznjiDanas,
@@ -161,12 +165,16 @@ _V3IzvestajData _buildIzvestaj() {
   final dugovi = V3FinansijeService.getDugovi();
   final potr = dugovi.fold(0.0, (s, d) => s + d.iznos);
 
+  // Krediti / lična dugovanja
+  final kreditiIznos = V3KreditService.getUkupnoPreostalo();
+
   // Period stringovi
   final danPeriod = V3DanHelper.formatDanMesec(danas);
   final nedeljaPeriod = '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}';
 
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
+    kreditiIznos: kreditiIznos,
     prihodDanas: prihodDan,
     trosakDanas: trosakDan,
     voznjiDanas: voznjiDan,
@@ -232,6 +240,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildPotrazivanjaCard(iz.potrazivanjaIznos),
+                    const SizedBox(height: 16),
+                    _buildKreditiCard(iz.kreditiIznos),
                     const SizedBox(height: 16),
                     _buildPeriodCard(
                       icon: '📅',
@@ -331,6 +341,57 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
           Text(_fmtIznos(iznos),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildKreditiCard(double iznos) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const V3KreditiScreen()),
+      ),
+      child: V3ContainerUtils.gradientContainer(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade800, Colors.blue.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))],
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        child: Row(
+          children: [
+            V3ContainerUtils.iconContainer(
+              width: 52,
+              height: V3ContainerUtils.responsiveHeight(context, 52),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              borderRadiusGeometry: BorderRadius.circular(14),
+              child: const Center(child: Text('🏦', style: TextStyle(fontSize: 26))),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Krediti',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text('Preostali dug za kredite',
+                      style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                Text(_fmtIznos(iznos),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, color: Colors.white70),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
