@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
+import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
@@ -15,12 +16,15 @@ import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
+import '../theme.dart';
 import '../utils/v3_app_messages.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
+import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
@@ -28,7 +32,6 @@ import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_info_banner.dart';
-import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_update_banner.dart';
 import '../widgets/v3_vreme_dolaska_widget.dart';
 import 'v3_help_screen.dart';
@@ -715,6 +718,18 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     );
   }
 
+  Future<void> _showEditProfilDialog() async {
+    await V3DialogHelper.showDialogBuilder<void>(
+      context: context,
+      builder: (ctx) => _EditProfilDialog(
+        putnikData: _putnikData,
+        onSaved: (updated) {
+          V3StateUtils.safeSetState(this, () => _putnikData = updated);
+        },
+      ),
+    );
+  }
+
   // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
   // ─── STATUS WIDGET ───────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────────
@@ -860,32 +875,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         children: [
           Row(
             children: [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _WeatherMiniCell(snapshot: _weatherByGrad['BC']),
-                ),
-              ),
-              V3LiveClockText(
-                style: TextStyle(
-                  color: V3StyleHelper.whiteAlpha75,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.3,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: _WeatherMiniCell(snapshot: _weatherByGrad['VS']),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
               IconButton(
                 icon: const Text('🎨', style: TextStyle(fontSize: 18)),
                 tooltip: 'Tema',
@@ -896,6 +885,39 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   V3AppSnackBar.info(context, V3PutnikProfilMessages.themeChanged);
                 },
               ),
+              const Spacer(),
+              IconButton(
+                icon: const Text('✏️', style: TextStyle(fontSize: 18)),
+                tooltip: 'Izmeni profil',
+                onPressed: _showEditProfilDialog,
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.red),
+                tooltip: 'Odjava',
+                onPressed: _logout,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _WeatherMiniCell(snapshot: _weatherByGrad['BC']),
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: _WeatherMiniCell(snapshot: _weatherByGrad['VS']),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
               Expanded(
                 child: Text(
                   imePrezime,
@@ -908,11 +930,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout, color: Colors.red),
-                tooltip: 'Odjava',
-                onPressed: _logout,
               ),
             ],
           ),
@@ -1447,18 +1464,18 @@ class _WeatherMiniCell extends StatelessWidget {
         Text(
           data.icon,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(width: 3),
+        const SizedBox(width: 4),
         Text(
           '$temp$rain',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1542,4 +1559,174 @@ class _ZahtevCell extends StatelessWidget {
     );
   }
 }
-// _AltOptionBtn obrisan jer se više ne koristi u ovom fajlu.
+
+// ─── EDIT PROFIL DIALOG ─────────────────────────────────────────────────────
+class _EditProfilDialog extends StatefulWidget {
+  final Map<String, dynamic> putnikData;
+  final ValueChanged<Map<String, dynamic>> onSaved;
+
+  const _EditProfilDialog({required this.putnikData, required this.onSaved});
+
+  @override
+  State<_EditProfilDialog> createState() => _EditProfilDialogState();
+}
+
+class _EditProfilDialogState extends State<_EditProfilDialog> {
+  late final TextEditingController _ime = TextEditingController(
+    text: widget.putnikData['ime_prezime']?.toString() ?? '',
+  );
+  late final TextEditingController _tel1 = TextEditingController(
+    text: widget.putnikData['telefon_1']?.toString() ?? '',
+  );
+  late final TextEditingController _tel2 = TextEditingController(
+    text: widget.putnikData['telefon_2']?.toString() ?? '',
+  );
+
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _ime.dispose();
+    _tel1.dispose();
+    _tel2.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sacuvaj() async {
+    final imeVal = _ime.text.trim();
+    final tel1Val = V3PhoneUtils.normalizeOrNull(_tel1.text);
+    final tel2Val = V3PhoneUtils.normalizeOrNull(_tel2.text);
+
+    if (imeVal.isEmpty && tel1Val == null && tel2Val == null) {
+      V3AppSnackBar.error(context, '⚠️ Unesite makar ime ili broj telefona');
+      return;
+    }
+
+    V3StateUtils.safeSetState(this, () => _saving = true);
+    try {
+      final updated = Map<String, dynamic>.from(widget.putnikData)
+        ..['ime_prezime'] = imeVal
+        ..['telefon_1'] = tel1Val
+        ..['telefon_2'] = tel2Val;
+
+      final putnik = V3Putnik.fromJson(updated);
+      await V3PutnikService.addUpdatePutnik(
+        putnik,
+        updatedBy: putnik.id,
+      );
+
+      if (!mounted) return;
+      V3AppSnackBar.success(context, '✅ Profil sačuvan');
+      widget.onSaved(updated);
+      Navigator.pop(context);
+    } catch (e) {
+      V3AppSnackBar.error(context, 'Greška: $e');
+    } finally {
+      V3StateUtils.safeSetState(this, () => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gradient = theme.backgroundGradient;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(gradient: gradient),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Izmeni profil',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            'Ažuriraj ime i broj telefona',
+                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      V3InputUtils.textField(
+                        controller: _ime,
+                        label: 'Ime i prezime',
+                        icon: Icons.person_outline,
+                        keyboardType: TextInputType.name,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _tel1,
+                        label: 'Telefon 1',
+                        icon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _tel2,
+                        label: 'Telefon 2',
+                        icon: Icons.phone_iphone_outlined,
+                        keyboardType: TextInputType.phone,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: V3ButtonUtils.outlinedButton(
+                              onPressed: _saving ? null : () => Navigator.pop(context),
+                              text: 'Otkaži',
+                              borderColor: Colors.white54,
+                              foregroundColor: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: V3ButtonUtils.primaryButton(
+                              onPressed: _saving ? null : _sacuvaj,
+                              text: 'Sačuvaj',
+                              icon: Icons.check,
+                              isLoading: _saving,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

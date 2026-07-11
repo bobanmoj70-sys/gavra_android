@@ -535,7 +535,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       }
 
       if (putnik == null) {
-        _showSafeSnackBar('❌ UUID nije mapiran ni na vozača ni na putnika.');
+        _showSafeSnackBar(
+          'Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+        );
         return;
       }
 
