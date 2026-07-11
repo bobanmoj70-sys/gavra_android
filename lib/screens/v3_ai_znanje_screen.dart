@@ -105,7 +105,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final List<dynamic> logList = data['logs'] ?? [];
-        final newLogs = logList.map((e) => e.toString()).toList();
+        final newLogs = logList.map((e) => e.toString()).toList().reversed.toList();
         final hasChanges = newLogs.length != _logs.length || !newLogs.every((log) => _logs.contains(log));
         setState(() {
           _logs = newLogs;
@@ -239,40 +239,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     }
   }
 
-  Future<void> _triggerResync() async {
-    try {
-      final response = await http
-          .post(
-            Uri.parse('${MlConfig.baseUrl}/resync'),
-            headers: MlConfig.headers(),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Resync pokrenut. AI ponovo uči sve podatke.')),
-          );
-        }
-      } else if (response.statusCode == 401) {
-        setState(() {
-          _serverReachable = false;
-          _lastError = 'Nevažeći API ključ za AI server';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _serverReachable = false;
-        _lastError = 'AI server nije dostupan';
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI server nije dostupan. Proveri konekciju.')),
-        );
-      }
-    }
-  }
-
   void _scrollToBottom(ScrollController controller) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (controller.hasClients) {
@@ -288,13 +254,15 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     return Scaffold(
       backgroundColor: const Color(0xFF1E1E2C),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        centerTitle: true,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.psychology_outlined, color: Colors.blueAccent, size: 28),
-            const SizedBox(width: 8),
-            Expanded(
-              child:
-                  const Text('🧠 Gavra AI Brain', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            const Text(
+              '🧠 Gavra AI Brain',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(width: 8),
             if (!_serverReachable)
@@ -315,13 +283,6 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
               ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sync, color: Colors.white),
-            tooltip: 'Ponovo uči sve podatke',
-            onPressed: _triggerResync,
-          ),
-        ],
         backgroundColor: const Color(0xFF11111B),
         elevation: 4,
         bottom: TabBar(
@@ -614,16 +575,27 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           Container(
             padding: const EdgeInsets.all(10),
             color: const Color(0xFF161622),
-            child: const Row(
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.online_prediction, color: Colors.green, size: 18),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Aktivno mrežno nadgledanje učenja (Realtime log)',
-                    style: TextStyle(
-                        color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-                  ),
+                Text(
+                  'Aktivno mrežno nadgledanje učenja',
+                  style: TextStyle(
+                      color: Colors.green, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                ),
+                SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.online_prediction, color: Colors.green, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      'Realtime log',
+                      style: TextStyle(
+                          color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    ),
+                  ],
                 ),
               ],
             ),

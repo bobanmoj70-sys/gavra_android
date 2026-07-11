@@ -189,6 +189,10 @@ VECTOR_MIN_SIMILARITY = 0.30
 CHAT_CACHE_MAXSIZE = int(os.environ.get('CHAT_CACHE_MAXSIZE', '100'))
 CHAT_CACHE_ENABLED = os.environ.get('CHAT_CACHE_ENABLED', 'true').lower() in ('true', '1', 'yes')
 
+# Paginacija i inkrementalno učenje iz Supabase
+HISTORY_SYNC_PAGE_SIZE = int(os.environ.get('HISTORY_SYNC_PAGE_SIZE', '1000'))
+HISTORY_SYNC_MAX_ROWS_PER_TABLE = int(os.environ.get('HISTORY_SYNC_MAX_ROWS_PER_TABLE', '50000'))
+
 # Tabele koje AI prati i uči u realnom vremenu
 TABLES_TO_SYNC = [
     "v3_adrese", "v3_auth", "v3_vozila", "v3_zahtevi",
@@ -397,8 +401,49 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
             isplata_iz = row.get("isplata_iz", "pazar")
             mesec = row.get("mesec", "")
             godina = row.get("godina", "")
-            return f"Finansije ({tip}): Transakcija '{naziv}' iznosi {iznos} RSD. Kategorija: {kategorija}. Isplata izvršena iz: '{isplata_iz}'. Period: obuhvata mesec {mesec}/{godina}."
+            putnik_id = row.get("putnik_v3_auth_id", "")
+            broj_voznji = row.get("broj_voznji", 0)
+            naplatio = row.get("naplatio_ime", "")
+            naplaceno_by = row.get("naplaceno_by", "")
+            ime = row.get("ime", "")
+            poslednja_dopuna = row.get("poslednja_dopuna", 0)
+            dogadjaj_id = row.get("dogadjaj_id", "")
 
+            json_summary = []
+            for key in ["nenaplacene_voznje_json", "realizovane_voznje_json", "otkazane_voznje_json", "uplate_json"]:
+                val = row.get(key)
+                if val and isinstance(val, list) and len(val) > 0:
+                    # Napravi sažetak sa ključnim podacima
+                    items = []
+                    for i, item in enumerate(val[:5], 1):
+                        if isinstance(item, dict):
+                            parts = []
+                            if "datum" in item:
+                                parts.append(f"datum {item['datum']}")
+                            if "cena" in item:
+                                parts.append(f"cena {item['cena']}")
+                            if "iznos" in item:
+                                parts.append(f"iznos {item['iznos']}")
+                            if "grad" in item:
+                                parts.append(f"grad {item['grad']}")
+                            if "vreme" in item:
+                                parts.append(f"vreme {item['vreme']}")
+                            if "operativna_id" in item:
+                                parts.append(f"operativna_id {item['operativna_id']}")
+                            if "uplata_id" in item:
+                                parts.append(f"uplata_id {item['uplata_id']}")
+                            if "otkazao_by" in item:
+                                parts.append(f"otkazao_by {item['otkazao_by']}")
+                            if "naplatio_by" in item:
+                                parts.append(f"naplatio_by {item['naplatio_by']}")
+                            items.append(f"stavka {i}: " + ", ".join(parts))
+                        else:
+                            items.append(f"stavka {i}: {item}")
+                    more = f" (i još {len(val) - 5} stavki)" if len(val) > 5 else ""
+                    json_summary.append(f"{key} ({len(val)} stavki){more}: " + "; ".join(items))
+            json_text = " Dodatni podaci: " + "; ".join(json_summary) + "." if json_summary else ""
+
+            return f"Finansije ({tip}): Transakcija '{naziv}' iznosi {iznos} RSD. Kategorija: {kategorija}. Isplata izvršena iz: '{isplata_iz}'. Period: obuhvata mesec {mesec}/{godina}. Putnik ID: {putnik_id}, ime: {ime}, broj vožnji: {broj_voznji}, naplatio: {naplatio}, naplaćeno od strane ID: {naplaceno_by}. Poslednja dopuna: {poslednja_dopuna} RSD. Događaj ID: {dogadjaj_id}.{json_text}"
         # 2. Zahtevi vožnji
         elif table_name == "v3_zahtevi":
             putnik_id = row.get("created_by") or row.get("putnik_id", "nepoznato")
@@ -407,36 +452,52 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
             vreme = row.get("trazeni_polazak_at", "")
             status = row.get("status", "obrada").upper()
             polazak_at = row.get("polazak_at") or "nije dodeljen"
-            return f"Zahtev za vožnju: Putnik sa ID {putnik_id} je podneo zahtev za datum {datum}. Relacija/Grad: {grad}. Traženo vreme polaska: u {vreme}. Trenutni status zahteva: {status}. Konačno dodeljeno vreme polaska: {polazak_at}."
+            alt_pre = row.get("alternativa_pre_at") or "nema"
+            alt_posle = row.get("alternativa_posle_at") or "nema"
+            updated_by = row.get("updated_by") or "nepoznat"
+            koristi_sekundarnu = "da" if row.get("koristi_sekundarnu") else "ne"
+            adresa_override_id = row.get("adresa_override_id") or "nema"
+            scheduled_at = row.get("scheduled_at") or "nije zakazano"
+            return f"Zahtev za vožnju: Putnik sa ID {putnik_id} je podneo zahtev za datum {datum}. Relacija/Grad: {grad}. Traženo vreme polaska: u {vreme}. Trenutni status zahteva: {status}. Konačno dodeljeno vreme polaska: {polazak_at}. Alternativa pre: {alt_pre}, posle: {alt_posle}. Ažurirao: {updated_by}. Koristi sekundarnu adresu: {koristi_sekundarnu}. Adresa override ID: {adresa_override_id}. Zakazano u: {scheduled_at}."
 
         # 3. Gorivo
         elif table_name == "v3_gorivo":
-            vozilo_id = row.get("vozilo_id", "nepoznato")
-            iznos = row.get("iznos", 0)
-            litara = row.get("litara", 0)
-            km_sat = row.get("km_sat", 0)
-            kartica = "da" if row.get("kartica") else "ne"
-            by = row.get("kreirano_by", "uneto od strane vozača")
-            return f"Sipanje goriva: U vozilo ID {vozilo_id} je sipano {litara} litara goriva u vrednosti od {iznos} RSD. Stanje kilometar sata pri sipanju: {km_sat} km. Plaćeno karticom: {kartica}. Evidentirao: {by}."
+            kapacitet = row.get("kapacitet_litri", 0)
+            trenutno = row.get("trenutno_stanje_litri", 0)
+            alarm = row.get("alarm_nivo_litri", 0)
+            pistolj = row.get("brojac_pistolj_litri", 0)
+            cena = row.get("cena_po_litru", 0)
+            dug = row.get("dug_iznos", 0)
+            return f"Stanje goriva: Rezervoar kapaciteta {kapacitet} litara, trenutno stanje {trenutno} litara. Alarmni nivo: {alarm} litara. Brojač pištolja: {pistolj} litara. Cena po litru: {cena} RSD. Dug: {dug} RSD."
 
         # 4. Adrese
         elif table_name == "v3_adrese":
             naziv = row.get("naziv", "Bez naziva")
-            ulica = row.get("ulica", "")
-            broj = row.get("broj", "")
             grad = row.get("grad", "")
-            lat = row.get("lat", "")
-            lng = row.get("lng", "")
-            return f"Adresa u sistemu: Naziv '{naziv}', ulica i broj: {ulica} {broj}, grad: {grad}. Geografske koordinate su Latitudu {lat} i Longitudu {lng}."
+            lat = row.get("gps_lat", "")
+            lng = row.get("gps_lng", "")
+            return f"Adresa u sistemu: Naziv '{naziv}', grad: {grad}. Geografske koordinate su Latitudu {lat} i Longitudu {lng}."
 
         # 5. Korisnici (Auth)
         elif table_name == "v3_auth":
             ime = row.get("ime", "Neznano ime")
             telefon = row.get("telefon", "")
+            telefon2 = row.get("telefon_2", "")
             tip = row.get("tip", "korisnik").upper()
             cena_dan = row.get("cena_po_danu", 0)
-            telefon2 = row.get("telefon_2", "")
-            return f"Korisnički profil/Nalog ({tip}): Ime: {ime}, Primarni telefon: {telefon}, Rezervni telefon: {telefon2}. Cena po danu ugovorena: {cena_dan} RSD."
+            cena_pokupljenju = row.get("cena_po_pokupljenju", 0)
+            adresa_bc = row.get("adresa_primary_bc_id", "")
+            adresa_vs = row.get("adresa_primary_vs_id", "")
+            adresa_sec_bc = row.get("adresa_secondary_bc_id", "")
+            adresa_sec_vs = row.get("adresa_secondary_vs_id", "")
+            boja = row.get("boja", "")
+            platform = row.get("platform", "")
+            app_version = row.get("app_version", "")
+            last_seen = row.get("last_seen_at", "")
+            platform_2 = row.get("platform_2", "")
+            app_version_2 = row.get("app_version_2", "")
+            last_seen_2 = row.get("last_seen_at_2", "")
+            return f"Korisnički profil/Nalog ({tip}): Ime: {ime}, telefon: {telefon}, telefon 2: {telefon2}, boja: {boja}. Cena po danu: {cena_dan} RSD, cena po pokupljenju: {cena_pokupljenju} RSD. Primarna adresa BC: {adresa_bc}, primarna adresa VS: {adresa_vs}. Sekundarna adresa BC: {adresa_sec_bc}, sekundarna adresa VS: {adresa_sec_vs}. Platforma: {platform}, verzija aplikacije: {app_version}, poslednja aktivnost: {last_seen}. Drugi uređaj - platforma: {platform_2}, verzija: {app_version_2}, poslednja aktivnost: {last_seen_2}."
 
         # 6. Vozila
         elif table_name == "v3_vozila":
@@ -445,6 +506,10 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
             naziv = f"{marka} {model}".strip() or "Neznato vozilo"
             tablica = row.get("registracija", "Bez tablica")
             trenutna_km = row.get("trenutna_km", 0) or 0
+            godina = row.get("godina_proizvodnje", "")
+            broj_sasije = row.get("broj_sasije", "")
+            registracija_vazi_do = row.get("registracija_vazi_do", "")
+            napomena = row.get("napomena", "")
             
             servisni_podaci = []
             if row.get("mali_servis_datum"):
@@ -459,31 +524,50 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
                 servisni_podaci.append(f"akumulator: {row['akumulator_datum']} na {row.get('akumulator_km', 0)} km")
             if row.get("alternator_datum"):
                 servisni_podaci.append(f"alternator: {row['alternator_datum']} na {row.get('alternator_km', 0)} km")
+            if row.get("trap_datum"):
+                servisni_podaci.append(f"trap: {row['trap_datum']} na {row.get('trap_km', 0)} km")
             if row.get("gume_prednje_datum"):
-                servisni_podaci.append(f"prednje gume: {row['gume_prednje_datum']} na {row.get('gume_prednje_km', 0)} km")
+                opis = row.get("gume_prednje_opis", "")
+                opis_text = f" ({opis})" if opis else ""
+                servisni_podaci.append(f"prednje gume{opis_text}: {row['gume_prednje_datum']} na {row.get('gume_prednje_km', 0)} km")
             if row.get("gume_zadnje_datum"):
-                servisni_podaci.append(f"zadnje gume: {row['gume_zadnje_datum']} na {row.get('gume_zadnje_km', 0)} km")
+                opis = row.get("gume_zadnje_opis", "")
+                opis_text = f" ({opis})" if opis else ""
+                servisni_podaci.append(f"zadnje gume{opis_text}: {row['gume_zadnje_datum']} na {row.get('gume_zadnje_km', 0)} km")
+            
+            radio = row.get("radio", "")
+            radio_text = f" Radio: {radio}." if radio else ""
             
             servisni_deo = "; ".join(servisni_podaci) if servisni_podaci else "nema evidentiranih servisnih podataka"
             
-            return f"Vozilo u voznom parku: {naziv}, registarska oznaka: {tablica}. Trenutna kilometraža: {trenutna_km} km. Servisni podaci: {servisni_deo}."
+            return f"Vozilo u voznom parku: {naziv}, registarska oznaka: {tablica}, godina proizvodnje: {godina}, broj šasije: {broj_sasije}. Registracija važi do: {registracija_vazi_do}. Trenutna kilometraža: {trenutna_km} km. Napomena: {napomena}. Servisni podaci: {servisni_deo}.{radio_text}"
 
         # 7. Računi
         elif table_name == "v3_racuni":
-            naziv = row.get("naziv", "Bez naziva")
-            stanje = row.get("stanje", 0)
-            tip = row.get("tip", "neoznačeno")
-            return f"Bankovni/Zvanični račun: Naziv računa '{naziv}', trenutno zabeleženo stanje na računu: {stanje} RSD. Tip računa: {tip}."
+            firma = row.get("firma_naziv", "Bez naziva")
+            pib = row.get("firma_pib", "")
+            mb = row.get("firma_mb", "")
+            ziro = row.get("firma_ziro", "")
+            adresa = row.get("firma_adresa", "")
+            redni_broj = row.get("redni_broj", "")
+            godina = row.get("godina", "")
+            status = row.get("status", "")
+            return f"Račun izdat od strane firme '{firma}' (PIB: {pib}, MB: {mb}). Žiro račun: {ziro}, adresa: {adresa}. Redni broj računa: {redni_broj}/{godina}. Status: {status}."
 
         # 8. Operativna nedelja (Plan vožnji)
         elif table_name == "v3_operativna_nedelja":
-            dan = row.get("dan", "Neznatni dan")
-            vreme = row.get("vreme") or row.get("polazak_at", "")
-            putnik_id = row.get("putnik_id") or "nepoznat"
-            vozac_id = row.get("vozac_id") or "nedodeljen"
-            vozilo_id = row.get("vozilo_id") or "nedodeljeno"
-            pravac = row.get("pravac", "polazak")
-            return f"Operativni plan i raspored: Dan u nedelji: {dan}, Smer/Pravac: {pravac}, Vreme rasporeda: {vreme}. Putnik ID: {putnik_id}, Vozač ID: {vozac_id}, Korišćeno vozilo ID: {vozilo_id}."
+            datum = row.get("datum", "")
+            grad = row.get("grad", "")
+            polazak_at = row.get("polazak_at") or "nije dodeljen"
+            pokupljen_at = row.get("pokupljen_at") or "nije pokupljen"
+            created_by = row.get("created_by") or "nepoznat"
+            updated_by = row.get("updated_by") or "nepoznat"
+            koristi_sekundarnu = "da" if row.get("koristi_sekundarnu") else "ne"
+            adresa_override_id = row.get("adresa_override_id") or "nema"
+            otkazano = ""
+            if row.get("otkazano_by"):
+                otkazano = f" OTKAZANO od strane {row['otkazano_by']} u {row.get('otkazano_at', '')}."
+            return f"Operativni plan i raspored: Datum {datum}, grad: {grad}, planirano vreme polaska: {polazak_at}, vreme pokupljanja: {pokupljen_at}. Kreirao: {created_by}, ažurirao: {updated_by}. Koristi sekundarnu adresu: {koristi_sekundarnu}. Adresa override ID: {adresa_override_id}.{otkazano}"
 
         # 9. Trenutna dodela (aktivna dodela putnika na termin)
         elif table_name == "v3_trenutna_dodela":
@@ -766,23 +850,72 @@ async def analyze_and_detect_insights():
         await loop.run_in_executor(None, _analyze_and_detect_insights_sync)
 
 # --- UČENJE PROŠLOSTI (ISTORIJSKA SINHRONIZACIJA) ---
+
+def _get_table_last_sync(cursor: sqlite3.Cursor, table_name: str) -> str | None:
+    """Vraća poslednji zapamćeni updated_at za datu tabelu, ili None ako nije sinhronizovana."""
+    cursor.execute(
+        "SELECT val FROM sync_status WHERE key=?",
+        (f"last_sync_at:{table_name}",)
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def _set_table_last_sync(cursor: sqlite3.Cursor, table_name: str, last_sync_at: str):
+    """Čuva poslednji updated_at za datu tabelu."""
+    cursor.execute(
+        "INSERT OR REPLACE INTO sync_status (key, val) VALUES (?, ?)",
+        (f"last_sync_at:{table_name}", last_sync_at)
+    )
+
+
+async def _fetch_all_rows_incremental(table_name: str, last_sync_at: str | None):
+    """Dohvata sve redove iz tabele, inkrementalno ako je poznato poslednje sync vreme."""
+    all_rows = []
+    start = 0
+    page_size = HISTORY_SYNC_PAGE_SIZE
+    max_rows = HISTORY_SYNC_MAX_ROWS_PER_TABLE
+    
+    while len(all_rows) < max_rows:
+        query = supabase.table(table_name).select("*").order("updated_at", desc=False)
+        
+        if last_sync_at:
+            query = query.gt("updated_at", last_sync_at)
+        
+        response = await query.range(start, start + page_size - 1).execute()
+        page = response.data or []
+        
+        if not page:
+            break
+        
+        all_rows.extend(page)
+        
+        if len(page) < page_size:
+            break
+        
+        start += page_size
+        
+        # Bezbednosna kapa da ne bismo beskonačno učitali
+        if len(all_rows) >= max_rows:
+            log_event(f"⚠️ Tabela {table_name} dostigla maksimalni limit od {max_rows} redova. Prekidam učenje.")
+            break
+    
+    return all_rows
+
+
 async def _learn_past_data_async(force: bool = False):
     """Asinhrona verzija istorijskog učenja — direktno koristi Supabase klijent"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    if not force:
-        cursor.execute("SELECT val FROM sync_status WHERE key='history_synced'")
-        synced = cursor.fetchone()
-        
-        if synced and synced[0] == "true":
-            log_event("Istorijski podaci su već sinhronizovani. Preskačem istorijsko učenje.")
-            conn.close()
-            return
-    else:
-        log_event(" Forsiran resync: brišem status sinhronizacije...")
-        cursor.execute("DELETE FROM sync_status WHERE key='history_synced'")
+    if force:
+        log_event("🔄 Forsiran resync: brišem per-table sync statuse i lokalnu bazu znanja...")
+        cursor.execute("DELETE FROM sync_status WHERE key LIKE 'last_sync_at:%'")
         cursor.execute("DELETE FROM ai_knowledge_base")
+        try:
+            cursor.execute("DROP TABLE IF EXISTS vec_knowledge_base")
+        except Exception as e:
+            log_event(f"Upozorenje: Nije moguće obrisati vec_knowledge_base: {e}")
         conn.commit()
     
     log_event("Pokrećem učenje prošlosti (Istorijska sinhronizacija svih tabela)...")
@@ -791,46 +924,63 @@ async def _learn_past_data_async(force: bool = False):
     
     for table_name in TABLES_TO_SYNC:
         try:
-            log_event(f"Preuzimam podatke za tabelu: {table_name}...")
-            # Povlačimo do 500 najsvežijih slogova po tabeli za offline analizu
-            response = await supabase.table(table_name).select("*").limit(500).execute()
+            last_sync_at = None if force else _get_table_last_sync(cursor, table_name)
+            mode = "sve redove" if (force or not last_sync_at) else f"redove novije od {last_sync_at}"
+            log_event(f"Preuzimam podatke za tabelu: {table_name} ({mode})...")
             
-            if response.data:
-                rows_synced = 0
-                for row_data in response.data:
-                    rid = str(row_data.get("id", ""))
-                    if not rid:
-                        continue
-                        
-                    content_text = parse_row_to_text(table_name, row_data)
-                    metadata = _extract_metadata(table_name, row_data)
-                    unique_id = f"{table_name}:{rid}"
-                    embedding_str = ""
-                    
-                    if embedder:
-                        emb = embedder.encode(content_text).tolist()
-                        embedding_str = json.dumps(emb)
-                        _upsert_vector(conn, unique_id, emb)
-                    
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, metadata, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        unique_id,
-                        table_name,
-                        rid,
-                        content_text,
-                        embedding_str,
-                        json.dumps(metadata, ensure_ascii=False),
-                        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    ))
-                    rows_synced += 1
+            rows = await _fetch_all_rows_incremental(table_name, last_sync_at)
+            
+            if not rows:
+                log_event(f"Nema novih redova za tabelu {table_name}.")
+                continue
+            
+            rows_synced = 0
+            newest_updated_at = last_sync_at or ""
+            
+            for row_data in rows:
+                rid = str(row_data.get("id", ""))
+                if not rid:
+                    continue
                 
-                total_rows += rows_synced
-                log_event(f"Sinhronizovano {rows_synced} slogova iz tabele {table_name}.")
+                row_updated_at = row_data.get("updated_at", "")
+                if row_updated_at and (not newest_updated_at or row_updated_at > newest_updated_at):
+                    newest_updated_at = row_updated_at
+                
+                content_text = parse_row_to_text(table_name, row_data)
+                metadata = _extract_metadata(table_name, row_data)
+                unique_id = f"{table_name}:{rid}"
+                embedding_str = ""
+                
+                if embedder:
+                    emb = embedder.encode(content_text).tolist()
+                    embedding_str = json.dumps(emb)
+                    _upsert_vector(conn, unique_id, emb)
+                
+                cursor.execute("""
+                    INSERT OR REPLACE INTO ai_knowledge_base (id, source_table, source_id, content, embedding, metadata, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    unique_id,
+                    table_name,
+                    rid,
+                    content_text,
+                    embedding_str,
+                    json.dumps(metadata, ensure_ascii=False),
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                ))
+                rows_synced += 1
+            
+            if newest_updated_at:
+                _set_table_last_sync(cursor, table_name, newest_updated_at)
+            
+            total_rows += rows_synced
+            conn.commit()
+            log_event(f"Sinhronizovano {rows_synced} slogova iz tabele {table_name}.")
+            
         except Exception as e:
             log_event(f"Upozorenje: Sinhronizacija tabele {table_name} nije uspela: {e}")
-            
+    
+    # Zadržavamo i stari globalni flag radi kompatibilnosti
     cursor.execute("INSERT OR REPLACE INTO sync_status (key, val) VALUES ('history_synced', 'true')")
     conn.commit()
     conn.close()
@@ -1260,11 +1410,16 @@ def _extract_metadata(table_name: str, row: dict) -> dict:
             metadata["kategorija"] = row.get("kategorija", "")
             metadata["mesec"] = row.get("mesec", "")
             metadata["godina"] = row.get("godina", "")
+            metadata["naziv"] = row.get("naziv", "")
+            metadata["ime"] = row.get("ime", "")
+            metadata["putnik_v3_auth_id"] = row.get("putnik_v3_auth_id", "")
+            metadata["naplaceno_by"] = row.get("naplaceno_by", "")
+            metadata["poslednja_dopuna"] = float(row.get("poslednja_dopuna", 0) or 0)
         elif table_name == "v3_gorivo":
-            metadata["vozilo_id"] = row.get("vozilo_id", "")
-            metadata["iznos"] = float(row.get("iznos", 0) or 0)
-            metadata["litara"] = float(row.get("litara", 0) or 0)
-            metadata["km_sat"] = float(row.get("km_sat", 0) or 0)
+            metadata["kapacitet_litri"] = float(row.get("kapacitet_litri", 0) or 0)
+            metadata["trenutno_stanje_litri"] = float(row.get("trenutno_stanje_litri", 0) or 0)
+            metadata["cena_po_litru"] = float(row.get("cena_po_litru", 0) or 0)
+            metadata["dug_iznos"] = float(row.get("dug_iznos", 0) or 0)
         elif table_name == "v3_zahtevi":
             metadata["grad"] = row.get("grad", "")
             metadata["status"] = row.get("status", "")
@@ -1274,8 +1429,11 @@ def _extract_metadata(table_name: str, row: dict) -> dict:
             metadata["ime"] = row.get("ime", "")
             metadata["cena_po_danu"] = float(row.get("cena_po_danu", 0) or 0)
         elif table_name == "v3_racuni":
-            metadata["stanje"] = float(row.get("stanje", 0) or 0)
-            metadata["tip"] = row.get("tip", "")
+            metadata["firma_naziv"] = row.get("firma_naziv", "")
+            metadata["firma_pib"] = row.get("firma_pib", "")
+            metadata["redni_broj"] = row.get("redni_broj", "")
+            metadata["godina"] = row.get("godina", "")
+            metadata["status"] = row.get("status", "")
         elif table_name == "v3_vozila":
             metadata["marka"] = row.get("marka", "")
             metadata["model"] = row.get("model", "")
@@ -1286,10 +1444,13 @@ def _extract_metadata(table_name: str, row: dict) -> dict:
             metadata["plocice_prednje_km"] = float(row.get("plocice_prednje_km", 0) or 0)
             metadata["plocice_zadnje_km"] = float(row.get("plocice_zadnje_km", 0) or 0)
         elif table_name == "v3_operativna_nedelja":
-            metadata["dan"] = row.get("dan", "")
-            metadata["pravac"] = row.get("pravac", "")
-            metadata["putnik_id"] = row.get("putnik_id", "")
-            metadata["vozac_id"] = row.get("vozac_id", "")
+            metadata["datum"] = row.get("datum", "")
+            metadata["grad"] = row.get("grad", "")
+            metadata["polazak_at"] = row.get("polazak_at", "")
+            metadata["pokupljen_at"] = row.get("pokupljen_at", "")
+            metadata["created_by"] = row.get("created_by", "")
+            metadata["koristi_sekundarnu"] = bool(row.get("koristi_sekundarnu"))
+            metadata["otkazano"] = bool(row.get("otkazano_by"))
     except Exception:
         pass
     
