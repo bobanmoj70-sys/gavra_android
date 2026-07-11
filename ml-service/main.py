@@ -440,10 +440,33 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
 
         # 6. Vozila
         elif table_name == "v3_vozila":
-            naziv = row.get("naziv", "Neznato vozilo")
+            marka = row.get("marka", "Nepoznata marka")
+            model = row.get("model", "")
+            naziv = f"{marka} {model}".strip() or "Neznato vozilo"
             tablica = row.get("registracija", "Bez tablica")
-            opis = row.get("opis", "Nema opisa")
-            return f"Vozilo u voznom parku: Naziv modela '{naziv}', registarska oznaka: {tablica}. Opisne beleške o vozilu: {opis}."
+            trenutna_km = row.get("trenutna_km", 0) or 0
+            
+            servisni_podaci = []
+            if row.get("mali_servis_datum"):
+                servisni_podaci.append(f"mali servis: {row['mali_servis_datum']} na {row.get('mali_servis_km', 0)} km")
+            if row.get("veliki_servis_datum"):
+                servisni_podaci.append(f"veliki servis: {row['veliki_servis_datum']} na {row.get('veliki_servis_km', 0)} km")
+            if row.get("plocice_prednje_datum"):
+                servisni_podaci.append(f"prednje pločice: {row['plocice_prednje_datum']} na {row.get('plocice_prednje_km', 0)} km")
+            if row.get("plocice_zadnje_datum"):
+                servisni_podaci.append(f"zadnje pločice: {row['plocice_zadnje_datum']} na {row.get('plocice_zadnje_km', 0)} km")
+            if row.get("akumulator_datum"):
+                servisni_podaci.append(f"akumulator: {row['akumulator_datum']} na {row.get('akumulator_km', 0)} km")
+            if row.get("alternator_datum"):
+                servisni_podaci.append(f"alternator: {row['alternator_datum']} na {row.get('alternator_km', 0)} km")
+            if row.get("gume_prednje_datum"):
+                servisni_podaci.append(f"prednje gume: {row['gume_prednje_datum']} na {row.get('gume_prednje_km', 0)} km")
+            if row.get("gume_zadnje_datum"):
+                servisni_podaci.append(f"zadnje gume: {row['gume_zadnje_datum']} na {row.get('gume_zadnje_km', 0)} km")
+            
+            servisni_deo = "; ".join(servisni_podaci) if servisni_podaci else "nema evidentiranih servisnih podataka"
+            
+            return f"Vozilo u voznom parku: {naziv}, registarska oznaka: {tablica}. Trenutna kilometraža: {trenutna_km} km. Servisni podaci: {servisni_deo}."
 
         # 7. Računi
         elif table_name == "v3_racuni":
@@ -1253,6 +1276,15 @@ def _extract_metadata(table_name: str, row: dict) -> dict:
         elif table_name == "v3_racuni":
             metadata["stanje"] = float(row.get("stanje", 0) or 0)
             metadata["tip"] = row.get("tip", "")
+        elif table_name == "v3_vozila":
+            metadata["marka"] = row.get("marka", "")
+            metadata["model"] = row.get("model", "")
+            metadata["registracija"] = row.get("registracija", "")
+            metadata["trenutna_km"] = float(row.get("trenutna_km", 0) or 0)
+            metadata["mali_servis_km"] = float(row.get("mali_servis_km", 0) or 0)
+            metadata["veliki_servis_km"] = float(row.get("veliki_servis_km", 0) or 0)
+            metadata["plocice_prednje_km"] = float(row.get("plocice_prednje_km", 0) or 0)
+            metadata["plocice_zadnje_km"] = float(row.get("plocice_zadnje_km", 0) or 0)
         elif table_name == "v3_operativna_nedelja":
             metadata["dan"] = row.get("dan", "")
             metadata["pravac"] = row.get("pravac", "")
