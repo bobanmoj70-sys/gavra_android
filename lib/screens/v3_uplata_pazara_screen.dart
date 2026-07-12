@@ -116,6 +116,35 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
     }
   }
 
+  Future<void> _zatraziUnosOdVozaca() async {
+    final vozac = _selectedVozac;
+    if (vozac == null) {
+      debugPrint('[Admin] _zatraziUnosOdVozaca: nije izabran vozač');
+      return;
+    }
+
+    debugPrint('[Admin] _zatraziUnosOdVozaca: vozacId=${vozac.id}, datum=$_selectedDate, ukupno=$_ukupnoNaplaceno');
+
+    setState(() => _isSaving = true);
+    try {
+      await V3UplataPazaraService.sacuvajDnevnuUplatu(
+        vozacId: vozac.id,
+        datum: _selectedDate,
+        predao: 0,
+        ukupno: _ukupnoNaplaceno,
+        zahtevanUnos: true,
+      );
+      if (!mounted) return;
+      V3AppSnackBar.success(context, 'Zahtev prosleđen vozaču!');
+      debugPrint('[Admin] _zatraziUnosOdVozaca: uspešno sačuvano');
+    } catch (e) {
+      debugPrint('[Admin] _zatraziUnosOdVozaca: greška $e');
+      V3ErrorUtils.safeError(this, context, 'Greška pri slanju zahteva: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final predaoVal = double.tryParse(_iznosController.text.replaceAll(',', '.'));
@@ -222,8 +251,27 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                     width: double.infinity,
                     child: V3ButtonUtils.primaryButton(
                       onPressed: _isSaving ? null : _save,
-                      text: _isSaving ? 'Čuvanje...' : 'Sačuvaj',
+                      text: _isSaving ? 'ÄŒuvanje...' : 'SaÄuvaj',
                       isLoading: _isSaving,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Dugme Zatraži unos
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent.withValues(alpha: 0.2),
+                        foregroundColor: Colors.orangeAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: _isSaving ? null : _zatraziUnosOdVozaca,
+                      icon: const Icon(Icons.send_to_mobile),
+                      label: const Text('Zatraži unos od vozača',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

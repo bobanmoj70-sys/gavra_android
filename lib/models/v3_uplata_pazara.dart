@@ -6,12 +6,14 @@ class V3DnevnaUplataPazara {
   final double predao;
   final double ukupno;
   final double razlika;
+  final bool zahtevanUnos;
 
   V3DnevnaUplataPazara({
     required this.dan,
     required this.predao,
     required this.ukupno,
     required this.razlika,
+    this.zahtevanUnos = false,
   });
 
   factory V3DnevnaUplataPazara.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class V3DnevnaUplataPazara {
       predao: (json['predao'] as num?)?.toDouble() ?? 0,
       ukupno: (json['ukupno'] as num?)?.toDouble() ?? 0,
       razlika: (json['razlika'] as num?)?.toDouble() ?? 0,
+      zahtevanUnos: json['zahtevan_unos'] == true,
     );
   }
 
@@ -28,6 +31,7 @@ class V3DnevnaUplataPazara {
         'predao': predao,
         'ukupno': ukupno,
         'razlika': razlika,
+        'zahtevan_unos': zahtevanUnos,
       };
 }
 

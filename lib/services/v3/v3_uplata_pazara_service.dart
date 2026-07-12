@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../models/v3_uplata_pazara.dart';
-import '../../utils/v3_dan_helper.dart';
 
 /// Servis za rad sa mesecnom uplatom pazara (`v3_uplata_pazara`).
 class V3UplataPazaraService {
@@ -39,6 +38,7 @@ class V3UplataPazaraService {
     required DateTime datum,
     required double predao,
     required double ukupno,
+    bool zahtevanUnos = false,
   }) async {
     final id = vozacId.trim();
     if (id.isEmpty) return;
@@ -46,6 +46,9 @@ class V3UplataPazaraService {
     final mesec = datum.month;
     final godina = datum.year;
     final dan = datum.day;
+
+    debugPrint(
+        '[V3UplataPazaraService] sacuvajDnevnuUplatu: vozacId=$id, dan=$dan.$mesec.$godina, predao=$predao, ukupno=$ukupno, zahtevanUnos=$zahtevanUnos');
 
     try {
       final existing = await supabase
@@ -61,17 +64,20 @@ class V3UplataPazaraService {
         predao: predao,
         ukupno: ukupno,
         razlika: predao - ukupno,
+        zahtevanUnos: zahtevanUnos,
       );
 
       if (existing != null) {
         final uplata = V3UplataPazara.fromJson(existing);
         final updated = uplata.withUplata(novaUplata);
 
+        debugPrint('[V3UplataPazaraService] ažuriram postojeći zapis id=${uplata.id}');
         await supabase.from('v3_uplata_pazara').update({
           'dnevne_uplate_json': updated.dnevneUplate.map((e) => e.toJson()).toList(),
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('id', uplata.id);
       } else {
+        debugPrint('[V3UplataPazaraService] kreiram novi zapis');
         await supabase.from('v3_uplata_pazara').insert({
           'vozac_id': id,
           'mesec': mesec,
@@ -79,6 +85,7 @@ class V3UplataPazaraService {
           'dnevne_uplate_json': [novaUplata.toJson()],
         });
       }
+      debugPrint('[V3UplataPazaraService] sacuvajDnevnuUplatu: uspešno');
     } catch (e) {
       debugPrint('[V3UplataPazaraService] sacuvajDnevnuUplatu error: $e');
       rethrow;

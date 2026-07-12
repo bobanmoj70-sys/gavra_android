@@ -28,6 +28,7 @@ import 'services/v3/v3_role_permission_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3_theme_manager.dart';
 import 'utils/v3_time_utils.dart';
+import 'widgets/v3_pazar_listener.dart';
 
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -1368,6 +1369,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           ],
           locale: const Locale('sr'),
           theme: themeData,
+          builder: (context, child) => V3PazarListener(child: child ?? const SizedBox.shrink()),
           // home: const V3WelcomeScreen(),
           home: const V3WelcomeScreen(),
         );

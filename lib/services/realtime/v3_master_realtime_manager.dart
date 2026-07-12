@@ -54,6 +54,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> finansijeCache = {};
   final Map<String, Map<String, dynamic>> kreditiCache = {};
   final Map<String, Map<String, dynamic>> racuniCache = {};
+  final Map<String, Map<String, dynamic>> uplataPazaraCache = {};
   final Map<String, Map<String, dynamic>> trenutnaDodelaCache = {};
   final Map<String, Map<String, dynamic>> trenutnaDodelaSlotCache = {};
   final Map<String, Map<String, dynamic>> operativnaNedeljaCache = {};
@@ -180,6 +181,7 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_gorivo', gorivoCache);
     _cacheStore.registerTable('v3_finansije', finansijeCache);
     _cacheStore.registerTable('v3_krediti', kreditiCache);
+    _cacheStore.registerTable('v3_uplata_pazara', uplataPazaraCache);
     _cacheStore.registerTable('v3_racuni', racuniCache);
     _cacheStore.registerTable('v3_trenutna_dodela', trenutnaDodelaCache);
     _cacheStore.registerTable('v3_trenutna_dodela_slot', trenutnaDodelaSlotCache);

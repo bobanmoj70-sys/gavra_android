@@ -24,6 +24,7 @@ class V3RealtimeTableRegistry {
     V3RealtimeTableConfig(name: 'v3_gorivo'),
     V3RealtimeTableConfig(name: 'v3_finansije'),
     V3RealtimeTableConfig(name: 'v3_krediti'),
+    V3RealtimeTableConfig(name: 'v3_uplata_pazara'),
     V3RealtimeTableConfig(name: 'v3_racuni'),
     V3RealtimeTableConfig(name: 'v3_trenutna_dodela'),
     V3RealtimeTableConfig(name: 'v3_trenutna_dodela_slot'),
