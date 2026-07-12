@@ -171,24 +171,42 @@ bool isNeradanDan({
 
 /// INFO BANNER - jedna admin-kontrolisana poruka prikazana kroz V3InfoBanner.
 /// Očekivani format iz v3_app_settings.info_banner:
-/// {"enabled": true, "title": "Obaveštenje", "message": "...", "color": "amber|blue|red|green"}
+/// {
+///   "enabled": true,
+///   "title": "Obaveštenje",
+///   "message": "...",
+///   "color": "amber|blue|red|green",
+///   "audience": ["svi"] | ["putnici"] | ["vozaci"] | ["radnici"] | ["ucenici"] | kombinacija
+/// }
 class V3InfoBannerData {
   final bool enabled;
   final String title;
   final String message;
   final String color;
+  final List<String> audience;
 
   const V3InfoBannerData({
     this.enabled = false,
     this.title = '',
     this.message = '',
     this.color = 'amber',
+    this.audience = const ['svi'],
   });
 
   bool get isVisible => enabled && title.trim().isNotEmpty && message.trim().isNotEmpty;
 }
 
 final ValueNotifier<V3InfoBannerData> infoBannerNotifier = ValueNotifier<V3InfoBannerData>(const V3InfoBannerData());
+
+List<String> _parseInfoBannerAudience(dynamic raw) {
+  if (raw == null) return const ['svi'];
+  if (raw is List) {
+    final list = raw.map((e) => e.toString().trim().toLowerCase()).where((s) => s.isNotEmpty).toList();
+    return list.isEmpty ? const ['svi'] : List.unmodifiable(list);
+  }
+  final single = raw.toString().trim().toLowerCase();
+  return single.isEmpty ? const ['svi'] : List.unmodifiable([single]);
+}
 
 V3InfoBannerData _parseInfoBanner(dynamic raw) {
   if (raw is! Map) return const V3InfoBannerData();
@@ -203,6 +221,7 @@ V3InfoBannerData _parseInfoBanner(dynamic raw) {
     title: title,
     message: message,
     color: color.isEmpty ? 'amber' : color,
+    audience: _parseInfoBannerAudience(raw['audience']),
   );
 }
 

@@ -583,6 +583,34 @@ class V3FinansijeService {
     return result;
   }
 
+  /// Vraća sve vožnje koje je vozač otkazao na zadati dan iz arhive v3_finansije.
+  static List<Map<String, dynamic>> getOtkazaneVoznjeZaVozacaDan({
+    required String vozacId,
+    required DateTime dan,
+  }) {
+    final id = vozacId.trim();
+    if (id.isEmpty) return <Map<String, dynamic>>[];
+
+    final datumIso = V3DateUtils.parseIsoDatePart(dan.toIso8601String());
+    final result = <Map<String, dynamic>>[];
+
+    for (final row in _naplataRows()) {
+      final otkazane = _readOtkazaneVoznje(row);
+      for (final voznja in otkazane) {
+        final voznjaDatumIso = V3DateUtils.parseIsoDatePart(voznja['datum']?.toString() ?? '');
+        if (voznjaDatumIso != datumIso) continue;
+        if ((voznja['otkazao_by']?.toString() ?? '').trim() != id) continue;
+        result.add({
+          ...voznja,
+          'putnik_v3_auth_id': row['putnik_v3_auth_id']?.toString(),
+          'finansije_id': row['id']?.toString(),
+        });
+      }
+    }
+
+    return result;
+  }
+
   static Set<(int, int)> getNaplataMeseciForPutnik(String putnikId) {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return <(int, int)>{};

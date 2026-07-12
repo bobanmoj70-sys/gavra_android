@@ -891,6 +891,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 tooltip: 'Izmeni profil',
                 onPressed: _showEditProfilDialog,
               ),
+              const Spacer(),
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.red),
                 tooltip: 'Odjava',

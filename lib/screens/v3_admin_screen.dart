@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -7,7 +6,6 @@ import '../services/v3/v3_app_settings_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_theme_manager.dart';
-import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -24,9 +22,9 @@ import 'v3_gorivo_screen.dart';
 import 'v3_kapacitet_screen.dart';
 import 'v3_odrzavanje_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
-import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
+import 'v3_uplata_pazara_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
 
 class V3AdminScreen extends StatefulWidget {
@@ -494,8 +492,17 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       var enabled = initial['enabled'] == true;
       var color = (initial['color'] ?? 'amber').toString().trim().toLowerCase();
       if (color.isEmpty) color = 'amber';
+      var audience = _parseInfoBannerAudienceForEditor(initial['audience']);
 
       const colors = ['amber', 'blue', 'red', 'green'];
+      const audiences = ['svi', 'putnici', 'vozaci', 'radnici', 'ucenici'];
+      const audienceLabels = {
+        'svi': 'Svi',
+        'putnici': 'Putnici',
+        'vozaci': 'Vozači',
+        'radnici': 'Radnici',
+        'ucenici': 'Učenici',
+      };
 
       await V3DialogHelper.showDialogBuilder<void>(
         context: context,
@@ -513,7 +520,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Jedna poruka prikazana svim korisnicima. Isključi kada ne treba da se prikazuje.',
+                        'Jedna poruka prikazana odabranoj grupi korisnika. Isključi kada ne treba da se prikazuje.',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                       const SizedBox(height: 12),
@@ -574,6 +581,38 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             )
                             .toList(),
                       ),
+                      const SizedBox(height: 12),
+                      const Text('Prikaži korisnicima', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: audiences
+                            .map(
+                              (a) => ChoiceChip(
+                                label: Text(
+                                  audienceLabels[a]!,
+                                  style: TextStyle(
+                                    color: audience.contains(a) ? Colors.black : Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                selected: audience.contains(a),
+                                selectedColor: Colors.amber,
+                                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                onSelected: (selected) => setModalState(() {
+                                  if (a == 'svi') {
+                                    audience = selected ? ['svi'] : [];
+                                  } else {
+                                    audience = [
+                                      ...audience.where((x) => x != 'svi'),
+                                      if (selected) a,
+                                    ];
+                                  }
+                                }),
+                              ),
+                            )
+                            .toList(),
+                      ),
                     ],
                   ),
                 ),
@@ -603,6 +642,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 'title': title,
                                 'message': message,
                                 'color': color,
+                                'audience': audience,
                               },
                             });
                             if (!mounted) return;
@@ -627,6 +667,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }
   }
 
+  List<String> _parseInfoBannerAudienceForEditor(dynamic raw) {
+    if (raw == null) return const ['svi'];
+    if (raw is List) {
+      final list = raw.map((e) => e.toString().trim().toLowerCase()).where((s) => s.isNotEmpty).toList();
+      return list.isEmpty ? const ['svi'] : list;
+    }
+    final single = raw.toString().trim().toLowerCase();
+    return single.isEmpty ? const ['svi'] : [single];
+  }
+
   Color _chipColor(String color) {
     switch (color) {
       case 'blue':
@@ -647,321 +697,128 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
     final latestAndroidCtrl = TextEditingController(text: (row['latest_version_android'] ?? '').toString());
     final minAndroidCtrl = TextEditingController(text: (row['min_supported_version_android'] ?? '').toString());
-    final maintenanceTitleAndroidCtrl =
-        TextEditingController(text: (row['maintenance_title_android'] ?? '').toString());
-    final maintenanceMessageAndroidCtrl =
-        TextEditingController(text: (row['maintenance_message_android'] ?? '').toString());
-
     final latestIosCtrl = TextEditingController(text: (row['latest_version_ios'] ?? '').toString());
     final minIosCtrl = TextEditingController(text: (row['min_supported_version_ios'] ?? '').toString());
-    final maintenanceTitleIosCtrl = TextEditingController(text: (row['maintenance_title_ios'] ?? '').toString());
-    final maintenanceMessageIosCtrl = TextEditingController(text: (row['maintenance_message_ios'] ?? '').toString());
 
     var forceAndroid = row['force_update_android'] == true;
     var forceIos = row['force_update_ios'] == true;
     var maintenanceAndroid = row['maintenance_mode_android'] == true;
     var maintenanceIos = row['maintenance_mode_ios'] == true;
     var isSaving = false;
-    final quickVersionCtrl = TextEditingController();
 
-    try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final installedVersion = packageInfo.version.trim();
-      if (installedVersion.isNotEmpty) {
-        quickVersionCtrl.text = installedVersion;
-        if (latestAndroidCtrl.text.trim().isEmpty) {
-          latestAndroidCtrl.text = installedVersion;
-        }
-        if (latestIosCtrl.text.trim().isEmpty) {
-          latestIosCtrl.text = installedVersion;
-        }
-        if (minAndroidCtrl.text.trim().isEmpty) {
-          minAndroidCtrl.text = installedVersion;
-        }
-      }
-    } catch (_) {
-      // ignore
-    }
-
-    Future<void> save(StateSetter setModalState, BuildContext modalContext) async {
+    Future<void> save(StateSetter setModalState, BuildContext dialogContext) async {
       final latestAndroid = latestAndroidCtrl.text.trim();
-      final minAndroidRaw = minAndroidCtrl.text.trim();
-
-      final latestIosRaw = latestIosCtrl.text.trim();
-      final minIosRaw = minIosCtrl.text.trim();
-
-      final latestIos = latestIosRaw.isEmpty ? latestAndroid : latestIosRaw;
-
-      final minAndroid = minAndroidRaw.isEmpty ? latestAndroid : minAndroidRaw;
-      final minIos = minIosRaw.isEmpty ? latestIos : minIosRaw;
-
-      String? error;
+      final latestIos = latestIosCtrl.text.trim();
+      final minAndroid = minAndroidCtrl.text.trim().isEmpty ? latestAndroid : minAndroidCtrl.text.trim();
+      final minIos = minIosCtrl.text.trim().isEmpty ? latestIos : minIosCtrl.text.trim();
 
       if (!_isValidVersion(latestAndroid) || !_isValidVersion(minAndroid)) {
-        error = 'Android verzija mora biti u formatu npr. 6.0.192';
-      } else if (!_isValidVersion(latestIos) || !_isValidVersion(minIos)) {
-        error = 'iOS verzija mora biti u formatu npr. 6.0.192';
+        V3AppSnackBar.warning(dialogContext, 'Android verzija mora biti u formatu npr. 6.0.192');
+        return;
       }
 
-      if (error != null) {
-        V3AppSnackBar.warning(modalContext, error);
+      if (!_isValidVersion(latestIos) || !_isValidVersion(minIos)) {
+        V3AppSnackBar.warning(dialogContext, 'iOS verzija mora biti u formatu npr. 6.0.192');
         return;
       }
 
       setModalState(() => isSaving = true);
-      var keepModalOpen = true;
       try {
         await V3AppSettingsService.upsertGlobal({
           'latest_version_android': latestAndroid,
           'min_supported_version_android': minAndroid,
           'force_update_android': forceAndroid,
           'maintenance_mode_android': maintenanceAndroid,
-          'maintenance_title_android': maintenanceTitleAndroidCtrl.text.trim(),
-          'maintenance_message_android': maintenanceMessageAndroidCtrl.text.trim(),
           'latest_version_ios': latestIos,
           'min_supported_version_ios': minIos,
           'force_update_ios': forceIos,
           'maintenance_mode_ios': maintenanceIos,
-          'maintenance_title_ios': maintenanceTitleIosCtrl.text.trim(),
-          'maintenance_message_ios': maintenanceMessageIosCtrl.text.trim(),
         });
 
         if (!mounted) return;
-        keepModalOpen = false;
-        Navigator.of(modalContext).pop();
+        Navigator.of(dialogContext).pop();
         V3AppSnackBar.success(context, '✅ Update verzije sačuvane');
       } catch (e) {
         if (!mounted) return;
-        V3AppSnackBar.error(modalContext, 'Greška pri čuvanju: $e');
+        V3AppSnackBar.error(dialogContext, 'Greška pri čuvanju: $e');
       } finally {
-        if (mounted && keepModalOpen) {
+        if (mounted) {
           setModalState(() => isSaving = false);
         }
       }
     }
 
-    await V3DialogHelper.showBottomSheetBuilder<void>(
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (modalContext) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
-            Widget section({
-              required String title,
-              required IconData icon,
-              required Color accent,
-              required TextEditingController latest,
-              required TextEditingController min,
-              required TextEditingController maintenanceTitle,
-              required TextEditingController maintenanceMessage,
-              required bool force,
-              required bool maintenance,
-              required ValueChanged<bool> onForceChanged,
-              required ValueChanged<bool> onMaintenanceChanged,
-            }) {
-              const inputFill = Color(0x33FFFFFF);
-              const inputBorder = Color(0x4DFFFFFF);
-              const labelColor = Color(0xB3FFFFFF);
-              InputDecoration fieldDeco(String label, IconData prefixIcon) => InputDecoration(
-                    labelText: label,
-                    labelStyle: const TextStyle(color: labelColor),
-                    prefixIcon: Icon(prefixIcon, color: labelColor),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: inputBorder)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: inputBorder)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.white)),
-                    filled: true,
-                    fillColor: inputFill,
-                  );
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(icon, size: 17, color: accent),
-                        const SizedBox(width: 6),
-                        Text(
-                          title,
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: accent),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: latest,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: fieldDeco('Najnovija verzija (npr. 6.0.192)', Icons.new_releases_outlined),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: min,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: fieldDeco('Min. verzija (prazno = ista)', Icons.security_update_good_outlined),
-                    ),
-                    const SizedBox(height: 4),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      activeColor: accent,
-                      title: const Text('Force update',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
-                      value: force,
-                      onChanged: onForceChanged,
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: maintenanceTitle,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: fieldDeco('Maintenance naslov', Icons.build_circle_outlined),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: maintenanceMessage,
-                      minLines: 2,
-                      maxLines: 3,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: fieldDeco('Maintenance poruka', Icons.warning_amber_outlined),
-                    ),
-                    const SizedBox(height: 4),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      activeColor: Colors.amber,
-                      title: const Text('Maintenance mode',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
-                      value: maintenance,
-                      onChanged: onMaintenanceChanged,
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return SafeArea(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 12,
-                  right: 12,
-                  top: 12,
-                  bottom: MediaQuery.of(modalContext).viewInsets.bottom + 12,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: Theme.of(context).backgroundGradient,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: SizedBox(
-                      height: MediaQuery.of(modalContext).size.height * 0.88,
-                      child: Column(
-                        children: [
-                          V3ContainerUtils.styledContainer(
-                            width: 42,
-                            height: 4,
-                            backgroundColor: Colors.white.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(999),
-                            child: const SizedBox(),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text(
-                            '🔄 Update verzije aplikacije',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Upravljanje release i force update pravilima',
-                            style: TextStyle(fontSize: 12, color: Colors.white70),
-                          ),
-                          if (quickVersionCtrl.text.isNotEmpty)
-                            Text(
-                              'Lokalna verzija: v${quickVersionCtrl.text}',
-                              style: const TextStyle(fontSize: 12, color: Colors.lightBlueAccent),
-                            ),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Column(
-                                children: [
-                                  section(
-                                    title: 'Android (Play Store)',
-                                    icon: Icons.android,
-                                    accent: Colors.lightGreenAccent,
-                                    latest: latestAndroidCtrl,
-                                    min: minAndroidCtrl,
-                                    maintenanceTitle: maintenanceTitleAndroidCtrl,
-                                    maintenanceMessage: maintenanceMessageAndroidCtrl,
-                                    force: forceAndroid,
-                                    maintenance: maintenanceAndroid,
-                                    onForceChanged: (v) => setModalState(() => forceAndroid = v),
-                                    onMaintenanceChanged: (v) => setModalState(() => maintenanceAndroid = v),
-                                  ),
-                                  section(
-                                    title: 'iOS (App Store)',
-                                    icon: Icons.apple,
-                                    accent: Colors.lightBlueAccent,
-                                    latest: latestIosCtrl,
-                                    min: minIosCtrl,
-                                    maintenanceTitle: maintenanceTitleIosCtrl,
-                                    maintenanceMessage: maintenanceMessageIosCtrl,
-                                    force: forceIos,
-                                    maintenance: maintenanceIos,
-                                    onForceChanged: (v) => setModalState(() => forceIos = v),
-                                    onMaintenanceChanged: (v) => setModalState(() => maintenanceIos = v),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: isSaving ? null : () => Navigator.of(modalContext).pop(),
-                                  child: const Text('Otkaži'),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: isSaving ? null : () => save(setModalState, modalContext),
-                                  icon: isSaving
-                                      ? const SizedBox(
-                                          height: 16,
-                                          width: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                        )
-                                      : const Icon(Icons.save_outlined, size: 18),
-                                  label: Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(context).colorScheme.primary,
-                                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+          builder: (builderContext, setModalState) {
+            return AlertDialog(
+              title: const Text('Update verzije'),
+              content: SizedBox(
+                width: 420,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: latestAndroidCtrl,
+                        decoration: const InputDecoration(labelText: 'Android latest'),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: minAndroidCtrl,
+                        decoration: const InputDecoration(labelText: 'Android min'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: latestIosCtrl,
+                        decoration: const InputDecoration(labelText: 'iOS latest'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: minIosCtrl,
+                        decoration: const InputDecoration(labelText: 'iOS min'),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Force Android'),
+                        value: forceAndroid,
+                        onChanged: (value) => setModalState(() => forceAndroid = value),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Force iOS'),
+                        value: forceIos,
+                        onChanged: (value) => setModalState(() => forceIos = value),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Maintenance Android'),
+                        value: maintenanceAndroid,
+                        onChanged: (value) => setModalState(() => maintenanceAndroid = value),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Maintenance iOS'),
+                        value: maintenanceIos,
+                        onChanged: (value) => setModalState(() => maintenanceIos = value),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Otkaži'),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving ? null : () => save(setModalState, dialogContext),
+                  child: Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
+                ),
+              ],
             );
           },
         );
@@ -969,7 +826,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     );
   }
 
-  /// Računa pazar po vozaču iz v3_finansije — samo danas, akter = naplaceno_by
   Map<String, double> _getPazarPoVozacu() {
     return V3FinansijeService.getPazarPoVozacuZaDan(DateTime.now());
   }
@@ -1427,20 +1283,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // 👥 Putnici
+                    // Uplata pazara
                     Expanded(
                       flex: 1,
                       child: _NavBtn(
-                        color: Colors.blueGrey,
+                        color: Colors.teal,
                         height: V3ContainerUtils.responsiveHeight(context, 50),
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          const V3PutniciScreen(),
+                          const V3UplataPazaraScreen(),
                         ),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            '👥',
+                            '💰',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
