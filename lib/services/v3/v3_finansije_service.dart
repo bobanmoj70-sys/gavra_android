@@ -387,8 +387,11 @@ class V3FinansijeService {
     final isPoDanu = _isPoDanuTip(tip);
     final safeOperativnaId = (operativnaId ?? '').trim();
 
-    final lockKey = _getLockKey(safePutnikId, datum.month, datum.year);
-    if (_mesecnaNaplataLocks.contains(lockKey)) return;
+    final lockKey = '${_getLockKey(safePutnikId, datum.month, datum.year)}:pokupljanje';
+    if (_mesecnaNaplataLocks.contains(lockKey)) {
+      debugPrint('[V3FinansijeService] evidentirajRealizacijuPriPokupljanju skipped (lock): $lockKey');
+      throw StateError('Evidencija pokupljanja je već u toku, sačekajte trenutak.');
+    }
     _mesecnaNaplataLocks.add(lockKey);
 
     final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
@@ -819,10 +822,10 @@ class V3FinansijeService {
       throw ArgumentError('Iznos naplate mora biti veći od nule.');
     }
 
-    final lockKey = _getLockKey(safePutnikId, mesec, godina);
+    final lockKey = '${_getLockKey(safePutnikId, mesec, godina)}:naplata';
     if (_mesecnaNaplataLocks.contains(lockKey)) {
       debugPrint('[V3FinansijeService] sacuvajMesecnuNaplatu skipped (lock): $lockKey');
-      return;
+      throw StateError('Naplata za ovog putnika je već u toku, sačekajte trenutak i pokušajte ponovo.');
     }
     _mesecnaNaplataLocks.add(lockKey);
 

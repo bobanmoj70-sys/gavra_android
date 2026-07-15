@@ -19,6 +19,7 @@ class V3DugoviScreen extends StatefulWidget {
 
 class _V3DugoviScreenState extends State<V3DugoviScreen> {
   String _filter = '';
+  final Set<String> _processingDugIds = <String>{};
 
   @override
   Widget build(BuildContext context) {
@@ -119,23 +120,29 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                   dug: dugovi[i],
                                   onNaplati: () async {
                                     final dug = dugovi[i];
-                                    final rezultat = await V3PlacanjeDialogHelper.naplati(
-                                      context: context,
-                                      putnikId: dug.putnikId,
-                                      imePrezime: dug.imePrezime,
-                                      defaultCena: dug.iznos,
-                                      snimiMesecnuUplatu: true,
-                                      brojVoznji: dug.brojVoznji,
-                                      mesec: dug.mesec,
-                                      godina: dug.godina,
-                                    );
-                                    if (rezultat == null) return;
-
-                                    if (context.mounted) {
-                                      V3AppSnackBar.success(
-                                        context,
-                                        '✅ Naplaćeno ${rezultat.iznos.toStringAsFixed(0)} RSD za ${dug.imePrezime}',
+                                    if (_processingDugIds.contains(dug.id)) return;
+                                    _processingDugIds.add(dug.id);
+                                    try {
+                                      final rezultat = await V3PlacanjeDialogHelper.naplati(
+                                        context: context,
+                                        putnikId: dug.putnikId,
+                                        imePrezime: dug.imePrezime,
+                                        defaultCena: dug.iznos,
+                                        snimiMesecnuUplatu: true,
+                                        brojVoznji: dug.brojVoznji,
+                                        mesec: dug.mesec,
+                                        godina: dug.godina,
                                       );
+                                      if (rezultat == null) return;
+
+                                      if (context.mounted) {
+                                        V3AppSnackBar.success(
+                                          context,
+                                          '✅ Naplaćeno ${rezultat.iznos.toStringAsFixed(0)} RSD za ${dug.imePrezime}',
+                                        );
+                                      }
+                                    } finally {
+                                      _processingDugIds.remove(dug.id);
                                     }
                                   },
                                 ),
