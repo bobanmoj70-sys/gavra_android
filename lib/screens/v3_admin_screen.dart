@@ -22,6 +22,7 @@ import 'v3_gorivo_screen.dart';
 import 'v3_kapacitet_screen.dart';
 import 'v3_odrzavanje_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
+import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
 import 'v3_uplata_pazara_screen.dart';
@@ -1222,10 +1223,36 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               ),
               const SizedBox(height: 6),
 
-              // ─── RED 2: Brojač učenika bez VS ───
+              // ─── RED 2: Brojač učenika bez VS + Putnici ───
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                child: _buildSaVsWidget(context),
+                child: Row(
+                  children: [
+                    Expanded(child: _buildSaVsWidget(context)),
+                    const SizedBox(width: 6),
+                    _NavBtn(
+                      color: Colors.green,
+                      height: V3ContainerUtils.responsiveHeight(context, 50),
+                      width: V3ContainerUtils.responsiveHeight(context, 50),
+                      onTap: () => V3NavigationUtils.pushScreen<void>(
+                        context,
+                        const V3PutniciScreen(),
+                      ),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '🧑‍🤝‍🧑',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Colors.white,
+                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
               // ─── RED 3: Kalendar, Dnevnik vozača, Putnici, Gorivo ───
@@ -1614,12 +1641,14 @@ class _NavBtn extends StatelessWidget {
     required this.child,
     this.color = Colors.blueGrey,
     this.height,
+    this.width,
   });
 
   final VoidCallback onTap;
   final Widget child;
   final Color color;
   final double? height;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
@@ -1628,6 +1657,7 @@ class _NavBtn extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         height: height ?? V3ContainerUtils.responsiveHeight(context, 50),
+        width: width,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),

@@ -52,18 +52,22 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
     _startPolling();
 
     _lifecycleListener = AppLifecycleListener(
-      onHide: () => setState(() => _pollingPaused = true),
-      onInactive: () => setState(() => _pollingPaused = true),
-      onShow: () => setState(() {
-        _pollingPaused = false;
+      onHide: () {
+        if (mounted) setState(() => _pollingPaused = true);
+      },
+      onInactive: () {
+        if (mounted) setState(() => _pollingPaused = true);
+      },
+      onShow: () {
+        if (mounted) setState(() => _pollingPaused = false);
         _fetchLogs();
         _fetchInsights();
-      }),
-      onResume: () => setState(() {
-        _pollingPaused = false;
+      },
+      onResume: () {
+        if (mounted) setState(() => _pollingPaused = false);
         _fetchLogs();
         _fetchInsights();
-      }),
+      },
     );
   }
 
@@ -91,7 +95,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   // --- API METODE ---
 
   Future<void> _fetchLogs() async {
-    if (_isLoadingLogs) return;
+    if (_isLoadingLogs || !mounted) return;
     setState(() => _isLoadingLogs = true);
 
     try {
@@ -101,6 +105,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             headers: MlConfig.headers(),
           )
           .timeout(const Duration(seconds: 4));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -122,6 +128,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _serverReachable = false;
         _lastError = 'AI server nije dostupan';
@@ -132,7 +139,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
   }
 
   Future<void> _fetchInsights() async {
-    if (_isLoadingInsights) return;
+    if (_isLoadingInsights || !mounted) return;
     setState(() => _isLoadingInsights = true);
 
     try {
@@ -142,6 +149,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
             headers: MlConfig.headers(),
           )
           .timeout(const Duration(seconds: 4));
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -158,6 +167,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _serverReachable = false;
         _lastError = 'AI server nije dostupan';
@@ -169,7 +179,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
 
   Future<void> _sendMessage() async {
     final text = _chatController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || !mounted) return;
     if (text.length > 2000) {
       setState(() {
         _messages.add({
@@ -198,6 +208,8 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
           )
           .timeout(const Duration(seconds: 90));
 
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
         final replyText = data['response'] ?? 'Došlo je do greške u interpretaciji odgovora.';
@@ -223,6 +235,7 @@ class _V3AiZnanjeScreenState extends State<V3AiZnanjeScreen> with SingleTickerPr
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _messages.add({
           'role': 'ai',
