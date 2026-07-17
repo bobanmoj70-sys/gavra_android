@@ -905,13 +905,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               Expanded(
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: _WeatherMiniCell(snapshot: _weatherByGrad['BC']),
+                  child: _WeatherMiniCell(snapshot: _weatherByGrad['BC'], grad: 'BC'),
                 ),
               ),
               Expanded(
                 child: Align(
                   alignment: Alignment.centerRight,
-                  child: _WeatherMiniCell(snapshot: _weatherByGrad['VS']),
+                  child: _WeatherMiniCell(snapshot: _weatherByGrad['VS'], grad: 'VS'),
                 ),
               ),
             ],
@@ -1439,20 +1439,35 @@ class _ZahtevInfo {
 // ─────────────────────────────────────────────────────────────────────
 class _WeatherMiniCell extends StatelessWidget {
   final V3WeatherSnapshot? snapshot;
+  final String grad;
 
-  const _WeatherMiniCell({required this.snapshot});
+  const _WeatherMiniCell({required this.snapshot, required this.grad});
 
   @override
   Widget build(BuildContext context) {
     final data = snapshot;
+    final labelStyle = TextStyle(
+      color: V3StyleHelper.whiteAlpha5,
+      fontSize: 18,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5,
+    );
+
     if (data == null) {
-      return Text(
-        '—',
-        style: TextStyle(
-          color: V3StyleHelper.whiteAlpha5,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(grad, style: labelStyle),
+          const SizedBox(width: 4),
+          Text(
+            '—',
+            style: TextStyle(
+              color: V3StyleHelper.whiteAlpha5,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       );
     }
 
@@ -1462,6 +1477,8 @@ class _WeatherMiniCell extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Text(grad, style: labelStyle),
+        const SizedBox(width: 4),
         Text(
           data.icon,
           style: const TextStyle(
