@@ -27,6 +27,25 @@ async function hashPin(pin: string, salt: string): Promise<string> {
     .join("");
 }
 
+// Constant-time poredjenje hex stringova jednake duzine (SHA-256 hex je uvek 64 karaktera).
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+const MAX_PIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
+function isLocked(lockedUntil: unknown): boolean {
+  if (!lockedUntil) return false;
+  const ts = new Date(String(lockedUntil)).getTime();
+  return Number.isFinite(ts) && ts > Date.now();
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, reason: "method_not_allowed" });
@@ -65,7 +84,7 @@ Deno.serve(async (req) => {
 
     const { data: account, error: lookupError } = await client
       .from("v3_auth")
-      .select("id, pin_hash")
+      .select("id, pin_hash, pin_attempts, pin_locked_until")
       .eq("id", userId)
       .maybeSingle();
 
@@ -77,6 +96,42 @@ Deno.serve(async (req) => {
     }
 
     const existingHash = String(account.pin_hash ?? "").trim();
+
+    // Lockout se odnosi samo na akcije koje poredе PIN sa sacuvanim hash-om (verify, change).
+    if (action !== "set" && isLocked(account.pin_locked_until)) {
+      return json(200, {
+        ok: false,
+        reason: "pin_locked",
+        locked_until: account.pin_locked_until,
+      });
+    }
+
+    // Registruje neuspeo pokusaj: uvecava brojac, a po dostizanju praga zakljucava nalog.
+    async function registerFailedAttempt(): Promise<{ reason: string; lockedUntil?: string }> {
+      const attempts = Number(account.pin_attempts ?? 0) + 1;
+      if (attempts >= MAX_PIN_ATTEMPTS) {
+        const lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60_000).toISOString();
+        await client
+          .from("v3_auth")
+          .update({ pin_attempts: 0, pin_locked_until: lockedUntil })
+          .eq("id", userId);
+        return { reason: "pin_locked", lockedUntil };
+      }
+      await client
+        .from("v3_auth")
+        .update({ pin_attempts: attempts })
+        .eq("id", userId);
+      return { reason: action === "change" ? "old_pin_mismatch" : "pin_mismatch" };
+    }
+
+    async function resetAttempts(): Promise<void> {
+      if (Number(account.pin_attempts ?? 0) > 0 || account.pin_locked_until) {
+        await client
+          .from("v3_auth")
+          .update({ pin_attempts: 0, pin_locked_until: null })
+          .eq("id", userId);
+      }
+    }
 
     if (action === "set") {
       if (existingHash) {
@@ -102,9 +157,12 @@ Deno.serve(async (req) => {
       }
 
       const oldHash = await hashPin(oldPin, userId);
-      if (oldHash !== existingHash) {
-        return json(200, { ok: false, reason: "old_pin_mismatch" });
+      if (!constantTimeEquals(oldHash, existingHash)) {
+        const failure = await registerFailedAttempt();
+        return json(200, { ok: false, reason: failure.reason, locked_until: failure.lockedUntil });
       }
+
+      await resetAttempts();
 
       const newHash = await hashPin(pin, userId);
       const { error: updateError } = await client
@@ -125,13 +183,25 @@ Deno.serve(async (req) => {
     }
 
     const candidateHash = await hashPin(pin, userId);
-    const matched = candidateHash === existingHash;
+    const matched = constantTimeEquals(candidateHash, existingHash);
+
+    if (!matched) {
+      const failure = await registerFailedAttempt();
+      return json(200, {
+        ok: false,
+        v3_auth_id: userId,
+        action: "verify",
+        reason: failure.reason,
+        locked_until: failure.lockedUntil,
+      });
+    }
+
+    await resetAttempts();
 
     return json(200, {
-      ok: matched,
+      ok: true,
       v3_auth_id: userId,
       action: "verify",
-      reason: matched ? undefined : "pin_mismatch",
     });
   } catch (error) {
     return json(200, {

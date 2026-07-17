@@ -209,6 +209,7 @@ class V3MasterRealtimeManager {
                 'boja': row['boja'],
                 'push_token': row['push_token'],
                 'push_token_2': row['push_token_2'],
+                'pin_hash': row['pin_hash'],
                 'created_at': row['created_at'],
                 'updated_at': row['updated_at'],
               }
@@ -236,6 +237,7 @@ class V3MasterRealtimeManager {
                 'cena_po_pokupljenju': row['cena_po_pokupljenju'],
                 'push_token': row['push_token'],
                 'push_token_2': row['push_token_2'],
+                'pin_hash': row['pin_hash'],
                 'created_at': row['created_at'],
                 'updated_at': row['updated_at'],
                 'last_seen_at': row['last_seen_at'],

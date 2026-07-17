@@ -78,6 +78,16 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   static const _maxDevicePinAttempts = 5;
   bool _isBackendReady = false;
 
+  int? _minutesUntil(String? isoTimestamp) {
+    if (isoTimestamp == null || isoTimestamp.isEmpty) return null;
+    final target = DateTime.tryParse(isoTimestamp);
+    if (target == null) return null;
+    final diff = target.difference(DateTime.now());
+    if (diff.isNegative) return null;
+    final minutes = diff.inSeconds / 60;
+    return minutes.ceil();
+  }
+
   // Biometrija
   bool _biometricChecked = false;
   bool _biometricDeviceSupported = false;
@@ -315,7 +325,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           _vozacPinOnlyOnboarding = false;
           _devicePinVerificationOnly = true;
           _devicePinAttempts = 0;
-          _missingProfileMessage = 'Prijava sa novog uređaja zahteva potvrdu PIN kodom (6 cifara).';
+          _missingProfileMessage = 'Za potvrdu identiteta unesite Vaš PIN kod (6 cifara).';
           _step = _SmsStep.unosProfila;
         });
         return;
@@ -507,14 +517,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     required String authId,
   }) async {
     final pin = _pinController.text.trim();
-    final pinConfirm = _pinConfirmController.text.trim();
 
     if (!V3ClosedAuthService.isValidPin(pin)) {
       V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
-      return;
-    }
-    if (pin != pinConfirm) {
-      V3AppSnackBar.warning(context, 'PIN-ovi se ne poklapaju.');
       return;
     }
     if (phone.isEmpty || authId.isEmpty) {
@@ -537,12 +542,23 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     });
 
     try {
-      final ok = await V3ClosedAuthService.verifyPin(v3AuthId: authId, pin: pin);
-      if (!ok) {
+      final result = await V3ClosedAuthService.verifyPin(v3AuthId: authId, pin: pin);
+      if (!result.ok) {
         if (!mounted) return;
-        _devicePinAttempts++;
         _pinController.clear();
         _pinConfirmController.clear();
+
+        if (result.reason == 'pin_locked') {
+          final minutes = _minutesUntil(result.lockedUntil);
+          V3AppSnackBar.error(
+            context,
+            '❌ Previše pogrešnih pokušaja. Pokušajte ponovo za${minutes != null ? ' $minutes min' : ''}.',
+          );
+          _resetToStep1();
+          return;
+        }
+
+        _devicePinAttempts++;
         final remaining = _maxDevicePinAttempts - _devicePinAttempts;
         if (remaining <= 0) {
           V3AppSnackBar.error(
@@ -1216,7 +1232,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             ],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'Novi PIN kod (6 cifara) *',
+              labelText: _devicePinVerificationOnly ? 'Unesite PIN kod (6 cifara) *' : 'Novi PIN kod (6 cifara) *',
               labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
@@ -1236,37 +1252,39 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _pinConfirmController,
-            enabled: !_isLoading,
-            obscureText: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(6),
-            ],
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Ponovi PIN kod *',
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.lock_reset_outlined, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
+          if (!_devicePinVerificationOnly) ...[
+            TextField(
+              controller: _pinConfirmController,
+              enabled: !_isLoading,
+              obscureText: true,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(6),
+              ],
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Ponovi PIN kod *',
+                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.1),
+                prefixIcon: const Icon(Icons.lock_reset_outlined, color: Colors.amber),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white30),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white30),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.amber, width: 2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
+          ],
         ],
         if (_statusMessage.isNotEmpty) ...[
           const SizedBox(height: 12),

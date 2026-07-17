@@ -141,6 +141,15 @@ Deno.serve(async (req) => {
       updated_at: now,
     };
 
+    // Ako se slot prepisuje zbog PIN potvrde (oba slota su bila puna), zabelezi audit
+    // dogadjaj i pokusaj da obavestis izbaceni uredjaj push notifikacijom (best effort).
+    let replacedPushToken = "";
+    let replacedInstallationId = "";
+    if (reason === "slot_replaced_pin_verified") {
+      replacedPushToken = slot === 1 ? slot1Token : slot2Token;
+      replacedInstallationId = slot === 1 ? slot1Installation : slot2Installation;
+    }
+
     if (slot === 1) {
       if (incomingPushToken) patch.push_token = incomingPushToken;
       patch.installation_id = incomingInstallationIdResolved;
@@ -165,6 +174,36 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       return json(200, { ok: false, updated: false, reason: "v3_auth_update_error", warning: updateError.message });
+    }
+
+    if (reason === "slot_replaced_pin_verified") {
+      // Audit log - ne blokira odgovor ako upis ne uspe.
+      client
+        .from("v3_device_events")
+        .insert({
+          v3_auth_id: userId,
+          event_type: "slot_replaced_pin_verified",
+          replaced_slot: slot,
+          replaced_installation_id: replacedInstallationId || null,
+          replaced_push_token: replacedPushToken || null,
+          new_installation_id: incomingInstallationIdResolved,
+        })
+        .then(() => {})
+        .catch((e: unknown) => console.error("v3_device_events insert failed", e));
+
+      // Best-effort push obaveštenje izbačenom uređaju.
+      if (replacedPushToken) {
+        fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+          body: JSON.stringify({
+            tokens: [{ token: replacedPushToken, provider: "fcm" }],
+            title: "Bezbednosno obaveštenje",
+            body: "Vaš uređaj je odjavljen jer je prijavljen novi uređaj potvrđen PIN kodom.",
+            data: { type: "v3_device_replaced" },
+          }),
+        }).catch((e: unknown) => console.error("send-push-notification failed", e));
+      }
     }
 
     return json(200, {

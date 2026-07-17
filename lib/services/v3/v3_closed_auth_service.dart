@@ -178,16 +178,20 @@ class V3ClosedAuthService {
   }
 
   /// Proverava uneti PIN nasuprot sačuvanom hash-u na serveru.
-  static Future<bool> verifyPin({
+  /// Vraća reason ('pin_mismatch', 'pin_locked', 'pin_not_set', ...) i lockedUntil
+  /// (ISO timestamp) kada je nalog privremeno zaključan zbog previše pogrešnih pokušaja.
+  static Future<({bool ok, String? reason, String? lockedUntil})> verifyPin({
     required String v3AuthId,
     required String pin,
   }) async {
     final ready = await ensureClientReady();
-    if (!ready) return false;
+    if (!ready) return (ok: false, reason: 'not_ready', lockedUntil: null);
 
     final authId = v3AuthId.trim();
     final cleanPin = pin.trim();
-    if (authId.isEmpty || !isValidPin(cleanPin)) return false;
+    if (authId.isEmpty || !isValidPin(cleanPin)) {
+      return (ok: false, reason: 'invalid_pin_format', lockedUntil: null);
+    }
 
     try {
       final response = await _client.functions.invoke(
@@ -196,11 +200,17 @@ class V3ClosedAuthService {
       );
       final status = response.status;
       final data = response.data;
-      if (status < 200 || status >= 300 || data is! Map) return false;
-      return data['ok'] == true;
+      if (status < 200 || status >= 300 || data is! Map) {
+        return (ok: false, reason: 'edge_error', lockedUntil: null);
+      }
+      return (
+        ok: data['ok'] == true,
+        reason: data['reason']?.toString(),
+        lockedUntil: data['locked_until']?.toString(),
+      );
     } catch (e) {
       debugPrint('[V3ClosedAuthService] verifyPin error: $e');
-      return false;
+      return (ok: false, reason: 'unexpected_error', lockedUntil: null);
     }
   }
 
