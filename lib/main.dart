@@ -788,6 +788,16 @@ Future<void> _initIosFcmHandlers() async {
         return;
       }
 
+      if (type == 'vozac_auto_start_tracking') {
+        // Vozač je već u aplikaciji (foreground/background sa aktivnim engine-om) —
+        // NEMA potrebe za tap-om na notifikaciju. Tracking se pokreće sam.
+        unawaited(
+          _autoStartVozacTrackingFromPush(data)
+              .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] auto-start tracking greška: $e')),
+        );
+        return;
+      }
+
       // Uvek prikaži lokalnu notifikaciju dok je app u foregroundu.
       // Na Androidu FCM ne prikazuje notification automatski — app mora sama.
       // Prethodni uslov `if (message.notification == null)` preskakao je sve
@@ -879,6 +889,18 @@ Future<void> _initFcmChannel() async {
               data,
               title: title,
               body: body,
+            );
+            return;
+          }
+
+          if (type == 'vozac_auto_start_tracking') {
+            // Vozač je već u aplikaciji (ili je engine aktivan u pozadini) —
+            // NEMA potrebe za tap-om na notifikaciju. Tracking se pokreće sam,
+            // a Android sam prikazuje trajnu "GPS Tracking" notifikaciju
+            // (foreground service, već konfigurisano u main()).
+            unawaited(
+              _autoStartVozacTrackingFromPush(data)
+                  .catchError((Object e) => debugPrint('⚠️ [FCM] auto-start tracking greška: $e')),
             );
             return;
           }
@@ -1001,6 +1023,49 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
       debugPrint('[FCM launch] Nepoznat type=$type, ignoriši');
       return;
   }
+}
+
+/// Pokreće GPS tracking direktno iz push podataka — BEZ tap-a, bez otvaranja
+/// bilo kakvog ekrana. Poziva se čim stigne `vozac_auto_start_tracking` push
+/// dok je Flutter engine aktivan (foreground ili background sa keširanim
+/// engine-om — što je slučaj sve dok vozač drži aplikaciju otvorenu/pokrenutu).
+///
+/// Android sam prikazuje trajnu "GPS Tracking" notifikaciju preko foreground
+/// service-a (već konfigurisano u main()) — to je jedina notifikacija koju
+/// vozač vidi, bez potrebe da bilo šta klikne.
+Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
+  final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
+  final grad = (data['grad'] ?? '').trim().toUpperCase();
+  final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
+  final datumIso = (data['datum'] ?? '').trim();
+
+  if (vozacId.isEmpty || grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
+    debugPrint('[AUTO-START] Nedostaju podaci u push-u: vozacId=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+    return;
+  }
+
+  if (!isSupabaseReady) {
+    try {
+      await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
+    } catch (e) {
+      debugPrint('⚠️ [AUTO-START] Supabase init nije uspeo: $e');
+      return;
+    }
+  }
+
+  if (V3VozacLocationTrackingService.instance.isRunning &&
+      V3VozacLocationTrackingService.instance.activeVozacId == vozacId) {
+    debugPrint('[AUTO-START] Tracking već aktivan za ovog vozača, preskačem.');
+    return;
+  }
+
+  debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+  V3VozacLocationTrackingService.instance.setActiveTermin(
+    datumIso: datumIso,
+    grad: grad,
+    vreme: vreme,
+  );
+  await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
 }
 
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)

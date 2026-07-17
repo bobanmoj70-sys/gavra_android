@@ -1157,7 +1157,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
         // Obriši sve prethodne slotove za ovog vozača
-        await V3TrenutnaDodelaSlotService.deleteAllSlotsForVozaca(
+        await V3TrenutnaDodelaSlotService.deleteAllSlotsForVozac(
           vozacId: vozacId,
         );
         // Aktiviraj selektovani slot
