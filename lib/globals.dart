@@ -317,4 +317,4 @@ const Duration etaStaleThreshold = Duration(seconds: 130);
 /// notifikaciju putnicima da je vozač krenuo. Koristi se za lično testiranje
 /// OSRM/ETA logike bez lažnog obaveštavanja putnika.
 /// VAŽNO: Vrati na `false` pre puštanja u produkciju!
-const bool kDisableDriverStartPushForTesting = true;
+const bool kDisableDriverStartPushForTesting = false;
