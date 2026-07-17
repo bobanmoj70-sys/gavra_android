@@ -26,6 +26,7 @@ import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
+import 'services/v3/v3_trenutna_dodela_slot_service.dart';
 import 'services/v3/v3_vozac_location_tracking_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3_theme_manager.dart';
@@ -1060,6 +1061,23 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
   }
 
   debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+
+  // Osiguraj da slot red postoji (idempotentan upsert, ne diraj waypoints_json
+  // ako ga je kron već popunio) — sprečava 'no_active_slot' race ako push
+  // stigne pre nego što je kron-ova transakcija vidljiva, ili ako je
+  // prethodni ručni start obrisao slot.
+  try {
+    await V3TrenutnaDodelaSlotService.activateSlot(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+      vozacId: vozacId,
+      updatedBy: vozacId,
+    );
+  } catch (e) {
+    debugPrint('⚠️ [AUTO-START] activateSlot greška (nastavljam): $e');
+  }
+
   V3VozacLocationTrackingService.instance.setActiveTermin(
     datumIso: datumIso,
     grad: grad,
