@@ -11,7 +11,7 @@ import '../../utils/v3_time_utils.dart';
 const String _kVozacId = 'vozac_id';
 const String _kSetSupabaseConfig = 'set_supabase_config';
 const String _kActionStop = 'stop';
-const Duration _kInterval = Duration(seconds: 30);
+const Duration _kInterval = Duration(seconds: 20);
 
 /// Globalni mutable state za background isolate — Dart dozvoljava top-level promenljive u entry-point fajlu.
 String? _bgVozacId;
