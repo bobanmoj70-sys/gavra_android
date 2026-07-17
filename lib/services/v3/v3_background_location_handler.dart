@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,7 +12,20 @@ import '../../utils/v3_time_utils.dart';
 const String _kVozacId = 'vozac_id';
 const String _kSetSupabaseConfig = 'set_supabase_config';
 const String _kActionStop = 'stop';
+const String _kReady = 'ready';
+const String _kRequestState = 'request_state';
 const Duration _kInterval = Duration(seconds: 20);
+
+/// Ključevi za perzistentno čuvanje aktivnog stanja (koristi se ako se
+/// background isolate restartuje dok main isolate nije dostupan).
+const String _kStorageVozacId = 'bg_tracking_vozac_id';
+const String _kStorageDatumIso = 'bg_tracking_datum_iso';
+const String _kStorageGrad = 'bg_tracking_grad';
+const String _kStorageVreme = 'bg_tracking_vreme';
+
+const _secureStorage = FlutterSecureStorage(
+  aOptions: AndroidOptions(encryptedSharedPreferences: true),
+);
 
 /// Globalni mutable state za background isolate — Dart dozvoljava top-level promenljive u entry-point fajlu.
 String? _bgVozacId;
@@ -24,6 +38,37 @@ SupabaseClient? _bgSupabaseClient;
 String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
 bool _bgConfigReady = false;
+
+bool get _bgCanSendLocation =>
+    _bgVozacId != null && _bgVozacId!.isNotEmpty && _bgDatumIso.isNotEmpty && _bgGrad.isNotEmpty && _bgVreme.isNotEmpty;
+
+Future<void> _bgLoadPersistedState() async {
+  try {
+    final values = await _secureStorage.readAll();
+    final vozacId = (values[_kStorageVozacId] ?? '').trim();
+    final datumIso = (values[_kStorageDatumIso] ?? '').trim();
+    final grad = (values[_kStorageGrad] ?? '').trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(values[_kStorageVreme] ?? '');
+    if (vozacId.isNotEmpty) _bgVozacId = vozacId;
+    if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
+    if (grad.isNotEmpty) _bgGrad = grad;
+    if (vreme.isNotEmpty) _bgVreme = vreme;
+    debugPrint('[BG] Učitano perzistentno stanje: vozacId=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
+  } catch (e) {
+    debugPrint('[BG] Greška pri učitavanju perzistentnog stanja: $e');
+  }
+}
+
+Future<void> _bgClearPersistedState() async {
+  try {
+    await _secureStorage.delete(key: _kStorageVozacId);
+    await _secureStorage.delete(key: _kStorageDatumIso);
+    await _secureStorage.delete(key: _kStorageGrad);
+    await _secureStorage.delete(key: _kStorageVreme);
+  } catch (e) {
+    debugPrint('[BG] Greška pri brisanju perzistentnog stanja: $e');
+  }
+}
 
 Future<void> _bgClearEtaForVozac(String vozacId) async {
   final normalized = vozacId.trim();
@@ -76,6 +121,9 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     _bgTimer = null;
     _bgVozacId = null;
     _bgDatumIso = '';
+    _bgGrad = '';
+    _bgVreme = '';
+    await _bgClearPersistedState();
     // ETA cleanup mora biti pre brisanja Supabase kredencijala
     if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
       await _bgClearEtaForVozac(vozacIdToClean);
@@ -99,7 +147,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
       if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
       if (grad.isNotEmpty) _bgGrad = grad;
       if (vreme.isNotEmpty) _bgVreme = vreme;
-      _bgStartTimer();
+      _bgStartTimerIfReady();
     }
   });
 
@@ -112,7 +160,33 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     if (grad.isNotEmpty) _bgGrad = grad;
     if (vreme.isNotEmpty) _bgVreme = vreme;
     debugPrint('[BG] Termin ažuriran: datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme');
+    _bgStartTimerIfReady();
   });
+
+  // Glavni isolate traži ponovno slanje stanja (npr. nakon resume)
+  service.on(_kRequestState).listen((event) async {
+    await _bgLoadPersistedState();
+    _bgStartTimerIfReady();
+    debugPrint('[BG] Stanje osveženo na zahtev: datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme');
+  });
+
+  // Obavesti main isolate da su listener-i registrovani i da je stanje učitano
+  await _bgLoadPersistedState();
+  _bgStartTimerIfReady();
+  service.invoke(_kReady, {});
+  debugPrint('[BG] Background servis spreman');
+}
+
+void _bgStartTimerIfReady() {
+  if (_bgCanSendLocation) {
+    if (_bgTimer == null || !_bgTimer!.isActive) {
+      _bgStartTimer();
+    }
+  } else {
+    _bgTimer?.cancel();
+    _bgTimer = null;
+    debugPrint('[BG] Timer zaustavljen: nedostaju podaci za slanje lokacije');
+  }
 }
 
 void _bgStartTimer() {
@@ -120,17 +194,22 @@ void _bgStartTimer() {
   _bgTimer = Timer.periodic(_kInterval, (_) {
     unawaited(_bgSendLocation());
   });
-  // Prvo slanje odmah, ali samo ako je config spreman
-  if (_bgConfigReady) {
+  // Prvo slanje odmah, ali samo ako su svi uslovi ispunjeni
+  if (_bgCanSendLocation && _bgConfigReady) {
     unawaited(_bgSendLocation());
   } else {
-    debugPrint('[BG] Odlažem prvo slanje dok Supabase config nije spreman');
+    debugPrint('[BG] Odlažem prvo slanje: canSend=$_bgCanSendLocation configReady=$_bgConfigReady');
   }
 }
 
 Future<void> _bgSendLocation() async {
   final vozacId = _bgVozacId;
   if (vozacId == null || vozacId.isEmpty || _bgInFlight) return;
+
+  if (!_bgCanSendLocation) {
+    // Očekivano stanje dok se termin ne postavi — ne logujemo kao grešku
+    return;
+  }
 
   if (!_bgConfigReady) {
     _bgTryInitSupabaseClient();
@@ -140,13 +219,6 @@ Future<void> _bgSendLocation() async {
       debugPrint('[BG] Supabase config još nije spreman, preskačem slanje');
       return;
     }
-  }
-
-  if (_bgDatumIso.isEmpty || _bgGrad.isEmpty || _bgVreme.isEmpty) {
-    debugPrint(
-        '[BG] Preskačem upis lokacije: termin nije postavljen (datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme)');
-    debugPrint('[BG] Stack trace: ${StackTrace.current}');
-    return;
   }
 
   final client = _bgSupabaseClient;

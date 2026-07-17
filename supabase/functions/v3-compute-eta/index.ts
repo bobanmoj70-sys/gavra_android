@@ -87,11 +87,13 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
-    const osrmBaseUrl =
-      Deno.env.get("OSRM_BASE_URL")?.trim() || "https://router.project-osrm.org";
+    const osrmBaseUrl = Deno.env.get("OSRM_BASE_URL")?.trim() ?? "";
 
     if (!supabaseUrl || !serviceRoleKey) {
       return json(200, { ok: false, reason: "missing_supabase_credentials" });
+    }
+    if (!osrmBaseUrl) {
+      return json(200, { ok: false, reason: "missing_osrm_config" });
     }
 
     const payload = (await req.json()) as ComputeEtaPayload;

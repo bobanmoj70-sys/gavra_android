@@ -312,3 +312,9 @@ ValueNotifier<DateTime?> get appSettingsActiveWeekEndNotifier => V3AppSettingsSt
 /// - V3VremeDolaskaWidget - za prikaz "sledeća vožnja" umesto zastarelog ETA
 /// - v3-compute-eta edge funkciji - za brisanje zastarelih redova
 const Duration etaStaleThreshold = Duration(seconds: 130);
+
+/// PRIVREMENI TEST FLAG - kada je true, klik na "Start" NEĆE poslati push
+/// notifikaciju putnicima da je vozač krenuo. Koristi se za lično testiranje
+/// OSRM/ETA logike bez lažnog obaveštavanja putnika.
+/// VAŽNO: Vrati na `false` pre puštanja u produkciju!
+const bool kDisableDriverStartPushForTesting = true;

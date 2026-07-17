@@ -162,44 +162,6 @@ class V3TrenutnaDodelaSlotService {
     }
   }
 
-  static Future<void> updateCurrentLocation({
-    required String datumIso,
-    required String grad,
-    required String vreme,
-    required String vozacId,
-    required double lat,
-    required double lng,
-  }) async {
-    final datum = _normalizeDatumIso(datumIso);
-    final gradNorm = _normalizeGrad(grad);
-    final vremeNorm = _normalizeVreme(vreme);
-    final vozacIdNorm = vozacId.trim();
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozacIdNorm.isEmpty) return;
-
-    // Samo čuvaj trenutnu lokaciju, ne istoriju
-    final currentLocation = <Map<String, dynamic>>[
-      {
-        'lat': lat,
-        'lng': lng,
-        'timestamp': DateTime.now().toIso8601String(),
-      }
-    ];
-
-    final updatedRows = await supabase
-        .from(tableName)
-        .update({colWaypointsJson: currentLocation})
-        .eq(colDatum, datum)
-        .eq(colGrad, gradNorm)
-        .eq(colVreme, vremeNorm)
-        .eq(colVozacId, vozacIdNorm)
-        .select('datum');
-
-    if (updatedRows.isEmpty) {
-      debugPrint(
-          '[V3TrenutnaDodelaSlotService] updateCurrentLocation: 0 rows updated for slot=$datum|$gradNorm|$vremeNorm vozac=$vozacIdNorm');
-    }
-  }
-
   static Future<void> mergePassengersIntoWaypointsJson({
     required String datumIso,
     required String grad,

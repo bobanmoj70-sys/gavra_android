@@ -25,6 +25,7 @@ import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
+import 'services/v3/v3_vozac_location_tracking_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3_theme_manager.dart';
 import 'utils/v3_time_utils.dart';
@@ -348,7 +349,7 @@ void main() async {
       androidConfiguration: AndroidConfiguration(
         onStart: onBackgroundServiceStart,
         autoStart: false,
-        isForegroundMode: false,
+        isForegroundMode: true,
         notificationChannelId: 'gavra_gps_tracking',
         initialNotificationTitle: 'GPS Tracking',
         initialNotificationContent: 'Praćenje lokacije aktivno',
@@ -377,6 +378,9 @@ void main() async {
     timeout: const Duration(seconds: 20),
     retries: 0,
   );
+
+  // Aktiviraj lifecycle observer za background tracking servis
+  V3VozacLocationTrackingService.instance.initialize();
 }
 
 /// Pokretanje servisa u pozadini kako UI ne bi čekao i pravio deadlock

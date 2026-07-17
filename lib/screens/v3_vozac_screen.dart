@@ -627,6 +627,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (_isNavigating) {
       _refreshPutniciOrderFromEtaCache();
       unawaited(_syncPassengersToSlotIfNeeded());
+      unawaited(_syncMapRouteIfNeeded(reason: 'realtime_refresh'));
     }
 
     _maybeAutoStopTrackingForCompletedTermin(putniciZaPrikaz);
@@ -876,7 +877,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   String _passengersSignature() {
     final preostali = _mojiPutnici.where((p) => !_isPutnikEntryCompleted(p));
-    return preostali.map((p) => '${p.putnik.id}|${p.entry?.id ?? ""}').join(',');
+    return preostali
+        .map((p) =>
+            '${p.putnik.id}|${p.entry?.id ?? ""}|${p.entry?.koristiSekundarnu ?? false}|${p.entry?.adresaIdOverride ?? ""}')
+        .join(',');
   }
 
   Future<void> _syncPassengersToSlotIfNeeded() async {
@@ -1117,7 +1121,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return;
     }
 
-    if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
+    if (kDisableDriverStartPushForTesting) {
+      debugPrint('[START] Push notifikacija PRESKOČENA (test mode - kDisableDriverStartPushForTesting=true)');
+    } else if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
         await V3DriverPushNotificationService.notifyPassengersDriverStarted(
           vozacId: vozacId,

@@ -1,14 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_time_utils.dart';
-import 'v3_trenutna_dodela_service.dart';
-import 'v3_trenutna_dodela_slot_service.dart';
 
 enum V3LocationPrereqStatus {
   ok,
@@ -17,7 +15,7 @@ enum V3LocationPrereqStatus {
   deniedForever,
 }
 
-class V3VozacLocationTrackingService {
+class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
 
   static final V3VozacLocationTrackingService instance = V3VozacLocationTrackingService._();
@@ -116,11 +114,37 @@ class V3VozacLocationTrackingService {
     final normalizedVozacId = vozacId.trim();
     if (normalizedVozacId.isEmpty) return;
 
-    if (_activeVozacId == normalizedVozacId && _isRunning) return;
+    if (_activeVozacId == normalizedVozacId && _isRunning) {
+      // Servis je već aktivan za ovog vozača — ipak ponovo pošalji svež
+      // termin background isolate-u, jer je prethodni invoke mogao propasti
+      // (npr. poslat pre nego što je isolate registrovao listener).
+      final service = FlutterBackgroundService();
+      if (await service.isRunning()) {
+        debugPrint(
+            '[V3VozacLocationTrackingService] Već aktivno — ponovo šaljem termin: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
+        service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
+        service.invoke('set_vozac_id', {
+          'vozac_id': normalizedVozacId,
+          'datum_iso': _activeDatumIso,
+          'grad': _activeGrad,
+          'vreme': _activeVreme,
+        });
+      }
+      return;
+    }
 
-    // Ako je drugi vozač — stop pre nego što pokrenemo novi
+    // Ako je drugi vozač — stop pre nego što pokrenemo novi.
+    // NAPOMENA: stop() briše _activeDatumIso/_activeGrad/_activeVreme, pa moramo
+    // sačuvati termin postavljen kroz setActiveTermin() i vratiti ga posle stop()-a,
+    // inače background servis i computeEta() dobijaju prazan termin.
     if (_activeVozacId != normalizedVozacId) {
+      final preservedDatumIso = _activeDatumIso;
+      final preservedGrad = _activeGrad;
+      final preservedVreme = _activeVreme;
       await stop();
+      _activeDatumIso = preservedDatumIso;
+      _activeGrad = preservedGrad;
+      _activeVreme = preservedVreme;
     }
     _activeVozacId = normalizedVozacId;
 
@@ -186,34 +210,6 @@ class V3VozacLocationTrackingService {
 
     if (vozacIdToClean.isNotEmpty) {
       await clearEtaForVozac(vozacId: vozacIdToClean);
-      if (datumIsoToClean.isNotEmpty && gradToClean.isNotEmpty && vremeToClean.isNotEmpty) {
-        try {
-          final slotId = await V3TrenutnaDodelaSlotService.fetchSlotId(
-            datumIso: datumIsoToClean,
-            grad: gradToClean,
-            vreme: vremeToClean,
-            vozacId: vozacIdToClean,
-          );
-          if (slotId != null) {
-            await V3TrenutnaDodelaService.deleteBySlotId(slotId);
-          }
-        } catch (e) {
-          debugPrint('[V3VozacLocationTrackingService] deleteBySlotId error: $e');
-        }
-      }
-    }
-
-    if (datumIsoToClean.isNotEmpty && gradToClean.isNotEmpty && vremeToClean.isNotEmpty) {
-      try {
-        await V3TrenutnaDodelaSlotService.deleteSlot(
-          datumIso: datumIsoToClean,
-          grad: gradToClean,
-          vreme: vremeToClean,
-          vozacId: vozacIdToClean,
-        );
-      } catch (e) {
-        debugPrint('[V3VozacLocationTrackingService] deleteSlot error: $e');
-      }
     }
   }
 
@@ -323,5 +319,16 @@ class V3VozacLocationTrackingService {
         ..addAll(etaMap);
     }
     return (etaMap: etaMap, order: order);
+  }
+
+  /// Registruje lifecycle observer za background tracking servis.
+  void initialize() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Background servis radi nezavisno od lifecycle stanja.
+    // Po potrebi ovde možemo da pauziramo/ponovo pokrećemo foreground taskove.
   }
 }
