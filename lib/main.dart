@@ -29,6 +29,7 @@ import 'services/v3/v3_role_permission_service.dart';
 import 'services/v3/v3_trenutna_dodela_slot_service.dart';
 import 'services/v3/v3_vozac_location_tracking_service.dart';
 import 'services/v3/v3_vozac_service.dart';
+import 'services/v3_locale_manager.dart';
 import 'services/v3_theme_manager.dart';
 import 'utils/v3_time_utils.dart';
 import 'widgets/v3_pazar_listener.dart';
@@ -437,6 +438,13 @@ Future<void> _postRunAppInitialization() async {
     debugPrint('🚀 [main] 8. loadThemeFromStorage completed');
   } catch (e) {
     debugPrint('⚠️ [main] Theme load timeout/greška: $e');
+  }
+
+  // 3b. 🌐 Jezik - učitaj sačuvani izbor SR/EN iz secure storage
+  try {
+    await V3LocaleManager().loadLocaleFromStorage().timeout(const Duration(seconds: 3));
+  } catch (e) {
+    debugPrint('⚠️ [main] Locale load timeout/greška: $e');
   }
 
   // 4. Pokreni sve ostale servise sa malom pauzom
@@ -1460,24 +1468,30 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return ValueListenableBuilder<ThemeData>(
       valueListenable: V3ThemeManager().themeNotifier,
       builder: (context, themeData, _) {
-        return MaterialApp(
-          navigatorKey: navigatorKey,
-          title: 'Gavra 013',
-          debugShowCheckedModeBanner: false,
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: const [
-            Locale('en', 'US'),
-            Locale('sr'),
-          ],
-          locale: const Locale('sr'),
-          theme: themeData,
-          builder: (context, child) => V3PazarListener(child: child ?? const SizedBox.shrink()),
-          // home: const V3WelcomeScreen(),
-          home: const V3WelcomeScreen(),
+        return ValueListenableBuilder<Locale>(
+          valueListenable: V3LocaleManager().localeNotifier,
+          builder: (context, locale, __) {
+            return MaterialApp(
+              navigatorKey: navigatorKey,
+              title: 'Gavra 013',
+              debugShowCheckedModeBanner: false,
+              localizationsDelegates: const [
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: const [
+                Locale('en', 'US'),
+                Locale('sr'),
+                Locale('ru'),
+                Locale('de'),
+              ],
+              locale: locale,
+              theme: themeData,
+              builder: (context, child) => V3PazarListener(child: child ?? const SizedBox.shrink()),
+              home: const V3WelcomeScreen(),
+            );
+          },
         );
       },
     );

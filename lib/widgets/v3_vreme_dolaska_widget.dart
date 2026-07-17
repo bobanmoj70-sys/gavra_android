@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_string_utils.dart';
 
@@ -41,6 +42,33 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   static const String _colVozacId = 'vozac_id';
   static const String _colEtaSeconds = 'eta_seconds';
   static const String _colComputedAt = 'computed_at';
+
+  // Prevodi za ETA widget (SR/EN/RU/DE).
+  static const Map<String, Map<String, String>> _t = {
+    'procenjenoVreme': {
+      'sr': 'Procenjeno vreme dolaska',
+      'en': 'Estimated arrival time',
+      'ru': 'Ориентировочное время прибытия',
+      'de': 'Geschätzte Ankunftszeit',
+    },
+    'zaMin': {'sr': 'za', 'en': 'in', 'ru': 'через', 'de': 'in'},
+    'min': {'sr': 'min', 'en': 'min', 'ru': 'мин', 'de': 'Min'},
+    'sledecaVoznja': {'sr': 'Sledeća vožnja', 'en': 'Next ride', 'ru': 'Следующая поездка', 'de': 'Nächste Fahrt'},
+    'nemaZakazaneVoznje': {
+      'sr': 'Nema zakazane vožnje',
+      'en': 'No scheduled ride',
+      'ru': 'Нет запланированной поездки',
+      'de': 'Keine geplante Fahrt',
+    },
+    'cekaNa': {'sr': 'Čeka na', 'en': 'Waiting at', 'ru': 'Ожидает у', 'de': 'Wartet bei'},
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
+    'u': {'sr': 'u', 'en': 'at', 'ru': 'в', 'de': 'um'},
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
 
   ({int? etaSeconds, bool isStale, String? vozacId, String? terminId}) _readEtaState(Map<String, dynamic>? row) {
     if (row == null) {
@@ -213,161 +241,164 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     final hour = departure.hour.toString().padLeft(2, '0');
     final minute = departure.minute.toString().padLeft(2, '0');
     final gradPart = (grad == null || grad.trim().isEmpty) ? '' : ' • ${grad.trim().toUpperCase()}';
-    return '$day.$month. u $hour:$minute$gradPart';
+    return '$day.$month. ${_tr('u')} $hour:$minute$gradPart';
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const [
-        'v3_eta_results',
-        'v3_auth',
-        'v3_operativna_nedelja',
-        'v3_trenutna_dodela_slot',
-        'v3_trenutna_dodela'
-      ]),
-      builder: (context, _) {
-        final nextRide = _findNextPutnikRide();
-        final nextTerminId = nextRide?.row['id']?.toString();
-        final assignedVozacId = nextRide?.vozacId;
+    return ValueListenableBuilder<Locale>(
+      valueListenable: V3LocaleManager().localeNotifier,
+      builder: (context, __, ___) => StreamBuilder<int>(
+        stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+          'v3_eta_results',
+          'v3_auth',
+          'v3_operativna_nedelja',
+          'v3_trenutna_dodela_slot',
+          'v3_trenutna_dodela'
+        ]),
+        builder: (context, _) {
+          final nextRide = _findNextPutnikRide();
+          final nextTerminId = nextRide?.row['id']?.toString();
+          final assignedVozacId = nextRide?.vozacId;
 
-        final cacheKey = nextTerminId != null ? '$nextTerminId:$putnikId' : null;
-        final row = cacheKey != null ? V3MasterRealtimeManager.instance.etaResultsCache[cacheKey] : null;
-        final etaState = _readEtaState(row);
-        final eta = etaState.etaSeconds;
-        final isStale = etaState.isStale;
-        final etaVozacId = etaState.vozacId;
-        final etaTerminId = etaState.terminId;
+          final cacheKey = nextTerminId != null ? '$nextTerminId:$putnikId' : null;
+          final row = cacheKey != null ? V3MasterRealtimeManager.instance.etaResultsCache[cacheKey] : null;
+          final etaState = _readEtaState(row);
+          final eta = etaState.etaSeconds;
+          final isStale = etaState.isStale;
+          final etaVozacId = etaState.vozacId;
+          final etaTerminId = etaState.terminId;
 
-        final hasFreshEta =
-            eta != null && !isStale && etaTerminId != null && nextTerminId != null && etaTerminId == nextTerminId;
-        final minutes = hasFreshEta ? _buildEtaMinutes(eta) : null;
-        final nextRideLabel =
-            nextRide == null ? 'Nema zakazane vožnje' : _formatNextRide(nextRide.departure, nextRide.grad);
-        final waitingAddress = nextRide == null ? null : _resolveWaitingAddressForRide(nextRide.row);
+          final hasFreshEta =
+              eta != null && !isStale && etaTerminId != null && nextTerminId != null && etaTerminId == nextTerminId;
+          final minutes = hasFreshEta ? _buildEtaMinutes(eta) : null;
+          final nextRideLabel =
+              nextRide == null ? _tr('nemaZakazaneVoznje') : _formatNextRide(nextRide.departure, nextRide.grad);
+          final waitingAddress = nextRide == null ? null : _resolveWaitingAddressForRide(nextRide.row);
 
-        return V3ContainerUtils.styledContainer(
-          padding: const EdgeInsets.all(12),
-          backgroundColor: Colors.green.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.8), width: 1.2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (hasFreshEta)
-                Column(
-                  children: [
-                    const Text(
-                      'Procenjeno vreme dolaska',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.3,
+          return V3ContainerUtils.styledContainer(
+            padding: const EdgeInsets.all(12),
+            backgroundColor: Colors.green.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.8), width: 1.2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (hasFreshEta)
+                  Column(
+                    children: [
+                      Text(
+                        _tr('procenjenoVreme'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'za $minutes min',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                )
-              else
-                Column(
-                  children: [
-                    const Text(
-                      'Sledeća vožnja',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      nextRideLabel,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (waitingAddress != null) ...[
-                      const SizedBox(height: 8),
-                      V3ContainerUtils.styledContainer(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        backgroundColor: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white24),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.location_on_outlined,
-                              color: Colors.white70,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Čeka na: $waitingAddress',
-                                textAlign: TextAlign.center,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                      const SizedBox(height: 6),
+                      Text(
+                        '${_tr('zaMin')} $minutes ${_tr('min')}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ],
-                  ],
-                ),
-              if (hasFreshEta && etaVozacId != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Vozač: ${V3MasterRealtimeManager.instance.vozaciCache[etaVozacId]?['ime_prezime'] ?? etaVozacId}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ] else if (nextRide != null && assignedVozacId != null) ...[
-                const SizedBox(height: 4),
-                Builder(
-                  builder: (context) {
-                    final vozacIme = V3MasterRealtimeManager.instance.vozaciCache[assignedVozacId]?['ime_prezime'];
-                    if (vozacIme == null || vozacIme.isEmpty) return const SizedBox.shrink();
-                    return Text(
-                      'Vozač: $vozacIme',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white60,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                  )
+                else
+                  Column(
+                    children: [
+                      Text(
+                        _tr('sledecaVoznja'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    );
-                  },
-                ),
+                      const SizedBox(height: 4),
+                      Text(
+                        nextRideLabel,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      if (waitingAddress != null) ...[
+                        const SizedBox(height: 8),
+                        V3ContainerUtils.styledContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          backgroundColor: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white24),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                color: Colors.white70,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  '${_tr('cekaNa')}: $waitingAddress',
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                if (hasFreshEta && etaVozacId != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_tr('vozac')}: ${V3MasterRealtimeManager.instance.vozaciCache[etaVozacId]?['ime_prezime'] ?? etaVozacId}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ] else if (nextRide != null && assignedVozacId != null) ...[
+                  const SizedBox(height: 4),
+                  Builder(
+                    builder: (context) {
+                      final vozacIme = V3MasterRealtimeManager.instance.vozaciCache[assignedVozacId]?['ime_prezime'];
+                      if (vozacIme == null || vozacIme.isEmpty) return const SizedBox.shrink();
+                      return Text(
+                        '${_tr('vozac')}: $vozacIme',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
-            ],
-          ),
-        );
-      },
+            ),
+          );
+        },
+      ),
     );
   }
 }

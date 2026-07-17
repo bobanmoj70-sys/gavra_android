@@ -15,6 +15,7 @@ import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_messages.dart';
@@ -38,6 +39,110 @@ import 'v3_help_screen.dart';
 import 'v3_putnik_statistika_screen.dart';
 import 'v3_welcome_screen.dart';
 
+// Prevodi za dijaloge izmene profila / promene PIN-a (SR/EN/RU/DE).
+const Map<String, Map<String, String>> _profileDialogT = {
+  'izmeniProfilTitle': {
+    'sr': 'Izmeni profil',
+    'en': 'Edit profile',
+    'ru': 'Изменить профиль',
+    'de': 'Profil bearbeiten',
+  },
+  'azurirajImeTel': {
+    'sr': 'Ažuriraj ime i broj telefona',
+    'en': 'Update name and phone number',
+    'ru': 'Обновите имя и номер телефона',
+    'de': 'Name und Telefonnummer aktualisieren',
+  },
+  'imePrezime': {'sr': 'Ime i prezime', 'en': 'Full name', 'ru': 'Имя и фамилия', 'de': 'Vor- und Nachname'},
+  'telefon1': {'sr': 'Telefon 1', 'en': 'Phone 1', 'ru': 'Телефон 1', 'de': 'Telefon 1'},
+  'telefon2': {'sr': 'Telefon 2', 'en': 'Phone 2', 'ru': 'Телефон 2', 'de': 'Telefon 2'},
+  'promeniPin': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern'},
+  'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+  'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+  'dodaj': {'sr': '➕ dodaj', 'en': '➕ add', 'ru': '➕ добавить', 'de': '➕ hinzufügen'},
+  'imeNeSmeBitiPrazno': {
+    'sr': '⚠️ Ime i prezime ne sme biti prazno',
+    'en': '⚠️ Full name must not be empty',
+    'ru': '⚠️ Имя и фамилия не должны быть пустыми',
+    'de': '⚠️ Vor- und Nachname dürfen nicht leer sein',
+  },
+  'profilSacuvan': {
+    'sr': '✅ Profil sačuvan',
+    'en': '✅ Profile saved',
+    'ru': '✅ Профиль сохранён',
+    'de': '✅ Profil gespeichert',
+  },
+  'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
+  'promeniPinTitle': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern'},
+  'unesiPinSubtitle': {
+    'sr': 'Unesi trenutni i novi PIN (6 cifara)',
+    'en': 'Enter current and new PIN (6 digits)',
+    'ru': 'Введите текущий и новый PIN (6 цифр)',
+    'de': 'Aktuelle und neue PIN eingeben (6 Ziffern)',
+  },
+  'trenutniPin': {'sr': 'Trenutni PIN', 'en': 'Current PIN', 'ru': 'Текущий PIN', 'de': 'Aktuelle PIN'},
+  'noviPin': {'sr': 'Novi PIN', 'en': 'New PIN', 'ru': 'Новый PIN', 'de': 'Neue PIN'},
+  'ponoviNoviPin': {
+    'sr': 'Ponovi novi PIN',
+    'en': 'Repeat new PIN',
+    'ru': 'Повторите новый PIN',
+    'de': 'Neue PIN wiederholen',
+  },
+  'trenutniPinMora6Cifara': {
+    'sr': 'Trenutni PIN mora imati tačno 6 cifara.',
+    'en': 'Current PIN must have exactly 6 digits.',
+    'ru': 'Текущий PIN должен содержать ровно 6 цифр.',
+    'de': 'Die aktuelle PIN muss genau 6 Ziffern haben.',
+  },
+  'noviPinMora6Cifara': {
+    'sr': 'Novi PIN mora imati tačno 6 cifara.',
+    'en': 'New PIN must have exactly 6 digits.',
+    'ru': 'Новый PIN должен содержать ровно 6 цифр.',
+    'de': 'Die neue PIN muss genau 6 Ziffern haben.',
+  },
+  'noviPinoviSeNePoklapaju': {
+    'sr': 'Novi PIN-ovi se ne poklapaju.',
+    'en': 'New PINs do not match.',
+    'ru': 'Новые PIN-коды не совпадают.',
+    'de': 'Die neuen PINs stimmen nicht überein.',
+  },
+  'noviPinMoraBitiRazlicit': {
+    'sr': 'Novi PIN mora biti različit od trenutnog.',
+    'en': 'New PIN must be different from the current one.',
+    'ru': 'Новый PIN должен отличаться от текущего.',
+    'de': 'Die neue PIN muss sich von der aktuellen unterscheiden.',
+  },
+  'trenutniPinNijeIspravan': {
+    'sr': 'Trenutni PIN nije ispravan.',
+    'en': 'Current PIN is incorrect.',
+    'ru': 'Текущий PIN неверен.',
+    'de': 'Die aktuelle PIN ist falsch.',
+  },
+  'nalogNemaPin': {
+    'sr': 'Nalog nema podešen PIN.',
+    'en': 'Account has no PIN set.',
+    'ru': 'У аккаунта не установлен PIN.',
+    'de': 'Für das Konto ist keine PIN festgelegt.',
+  },
+  'greskaPromenaPin': {
+    'sr': 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+    'en': 'Error changing PIN. Please try again.',
+    'ru': 'Ошибка при смене PIN. Попробуйте снова.',
+    'de': 'Fehler beim Ändern der PIN. Bitte versuche es erneut.',
+  },
+  'pinPromenjen': {
+    'sr': '✅ PIN je uspešno promenjen.',
+    'en': '✅ PIN has been changed successfully.',
+    'ru': '✅ PIN успешно изменён.',
+    'de': '✅ PIN wurde erfolgreich geändert.',
+  },
+};
+
+String _trProfileDialog(String key) {
+  final code = V3LocaleManager().currentLocale.languageCode;
+  return _profileDialogT[key]?[code] ?? _profileDialogT[key]?['sr'] ?? key;
+}
+
 class V3PutnikProfilScreen extends StatefulWidget {
   final Map<String, dynamic> putnikData;
   const V3PutnikProfilScreen({super.key, required this.putnikData});
@@ -57,6 +162,138 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   Timer? _weatherTimer;
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
+
+  // Prevodi za profil ekran (SR/EN/RU) — isti obrazac kao welcome screen.
+  static const Map<String, Map<String, String>> _t = {
+    'tema': {'sr': 'Tema', 'en': 'Theme', 'ru': 'Тема', 'de': 'Thema'},
+    'izmeniProfil': {'sr': 'Izmeni profil', 'en': 'Edit profile', 'ru': 'Изменить профиль', 'de': 'Profil bearbeiten'},
+    'odjava': {'sr': 'Odjava', 'en': 'Log out', 'ru': 'Выйти', 'de': 'Abmelden'},
+    'tipUcenik': {'sr': '🎓 Učenik', 'en': '🎓 Student', 'ru': '🎓 Ученик', 'de': '🎓 Schüler'},
+    'tipPosiljka': {'sr': '📦 Pošiljka', 'en': '📦 Parcel', 'ru': '📦 Посылка', 'de': '📦 Paket'},
+    'tipDnevni': {'sr': '📅 Dnevni', 'en': '📅 Daily', 'ru': '📅 Ежедневно', 'de': '📅 Täglich'},
+    'tipRadnik': {'sr': '💼 Radnik', 'en': '💼 Worker', 'ru': '💼 Рабочий', 'de': '💼 Arbeiter'},
+    'tipPutnik': {'sr': '👤 Putnik', 'en': '👤 Passenger', 'ru': '👤 Пассажир', 'de': '👤 Fahrgast'},
+    'uputstvo': {
+      'sr': 'Uputstvo za korišćenje',
+      'en': 'Usage instructions',
+      'ru': 'Инструкция по использованию',
+      'de': 'Gebrauchsanweisung'
+    },
+    'cenaPoVoznji': {'sr': 'Cena po vožnji', 'en': 'Price per ride', 'ru': 'Цена за поездку', 'de': 'Preis pro Fahrt'},
+    'cenaPoDanu': {'sr': 'Cena po danu', 'en': 'Price per day', 'ru': 'Цена за день', 'de': 'Preis pro Tag'},
+    'operativnaNedelja': {
+      'sr': 'Operativna nedelja',
+      'en': 'Operating week',
+      'ru': 'Рабочая неделя',
+      'de': 'Betriebswoche'
+    },
+    'stanjeVoznji': {
+      'sr': 'Stanje vožnji i naplate',
+      'en': 'Ride and payment status',
+      'ru': 'Состояние поездок и оплаты',
+      'de': 'Status der Fahrten und Zahlungen',
+    },
+    'voznji': {'sr': 'Vožnji', 'en': 'Rides', 'ru': 'Поездок', 'de': 'Fahrten'},
+    'otkazano': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert'},
+    'placeno': {'sr': 'Plaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
+    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schuld'},
+    'ukupanDug': {'sr': 'Ukupan dug', 'en': 'Total debt', 'ru': 'Общий долг', 'de': 'Gesamtschuld'},
+    'poslednjaUplata': {
+      'sr': 'Poslednja uplata',
+      'en': 'Last payment',
+      'ru': 'Последний платеж',
+      'de': 'Letzte Zahlung'
+    },
+    'modelCenaPoDanu': {
+      'sr': 'Model: cena po danu (jedna cena za jednu ili vise voznji u toku dana).',
+      'en': 'Model: price per day (one price for one or more rides per day).',
+      'ru': 'Модель: цена за день (одна цена за одну или несколько поездок в течение дня).',
+      'de': 'Modell: Preis pro Tag (ein Preis für eine oder mehrere Fahrten pro Tag).',
+    },
+    'modelCenaPoVoznji': {
+      'sr': 'Model: cena po voznji (svaka voznja se naplaćuje).',
+      'en': 'Model: price per ride (every ride is charged).',
+      'ru': 'Модель: цена за поездку (каждая поездка оплачивается).',
+      'de': 'Modell: Preis pro Fahrt (jede Fahrt wird berechnet).',
+    },
+    'detaljneStatistike': {
+      'sr': 'Detaljne statistike',
+      'en': 'Detailed statistics',
+      'ru': 'Подробная статистика',
+      'de': 'Detaillierte Statistiken'
+    },
+    'pregledPoMesecima': {
+      'sr': 'Pregled po mesecima',
+      'en': 'Monthly overview',
+      'ru': 'Обзор по месяцам',
+      'de': 'Monatsübersicht'
+    },
+    'otvoriDetaljneStatistike': {
+      'sr': 'Otvori detaljne statistike',
+      'en': 'Open detailed statistics',
+      'ru': 'Открыть подробную статистику',
+      'de': 'Detaillierte Statistiken öffnen',
+    },
+    'rasporedTermina': {'sr': '🕐 Raspored termina', 'en': '🕐 Schedule', 'ru': '🕐 Расписание', 'de': '🕐 Zeitplan'},
+    'belaCrkva': {'sr': 'Bela Crkva', 'en': 'Bela Crkva', 'ru': 'Бела Црква', 'de': 'Bela Crkva'},
+    'vrsac': {'sr': 'Vrsac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac'},
+    'glavnaAdresa': {'sr': 'Glavna adresa', 'en': 'Main address', 'ru': 'Основной адрес', 'de': 'Hauptadresse'},
+    'drugaAdresa': {'sr': 'Druga adresa', 'en': 'Second address', 'ru': 'Второй адрес', 'de': 'Zweite Adresse'},
+    'primarnaAdresa': {
+      'sr': 'Primarna adresa',
+      'en': 'Primary address',
+      'ru': 'Основной адрес',
+      'de': 'Primäre Adresse'
+    },
+    'bcPolazak': {'sr': '🏙️ BC polazak', 'en': '🏙️ BC departure', 'ru': '🏙️ Отправление БC', 'de': '🏙️ BC Abfahrt'},
+    'vsPolazak': {'sr': '🌆 VS polazak', 'en': '🌆 VS departure', 'ru': '🌆 Отправление VS', 'de': '🌆 VS Abfahrt'},
+    'otkaziTermin': {
+      'sr': 'Otkaži termin',
+      'en': 'Cancel appointment',
+      'ru': 'Отменить запись',
+      'de': 'Termin stornieren'
+    },
+    'zatvori': {'sr': 'Zatvori', 'en': 'Close', 'ru': 'Закрыть', 'de': 'Schließen'},
+    'odjavaTitle': {'sr': 'Odjava', 'en': 'Log out', 'ru': 'Выход', 'de': 'Abmelden'},
+    'odjavaMessage': {
+      'sr': 'Da li ste sigurni da želite da se odjavite?',
+      'en': 'Are you sure you want to log out?',
+      'ru': 'Вы уверены, что хотите выйти?',
+      'de': 'Möchten Sie sich wirklich abmelden?',
+    },
+    'odjaviSe': {'sr': 'Odjavi se', 'en': 'Log out', 'ru': 'Выйти', 'de': 'Abmelden'},
+    'otkaziBtn': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'danas': {'sr': 'danas', 'en': 'today', 'ru': 'сегодня', 'de': 'heute'},
+    'sutra': {'sr': 'sutra', 'en': 'tomorrow', 'ru': 'завтра', 'de': 'morgen'},
+    'danPonedeljak': {'sr': 'Ponedeljak', 'en': 'Monday', 'ru': 'Понедельник', 'de': 'Montag'},
+    'danUtorak': {'sr': 'Utorak', 'en': 'Tuesday', 'ru': 'Вторник', 'de': 'Dienstag'},
+    'danSreda': {'sr': 'Sreda', 'en': 'Wednesday', 'ru': 'Среда', 'de': 'Mittwoch'},
+    'danCetvrtak': {'sr': 'Cetvrtak', 'en': 'Thursday', 'ru': 'Четверг', 'de': 'Donnerstag'},
+    'danPetak': {'sr': 'Petak', 'en': 'Friday', 'ru': 'Пятница', 'de': 'Freitag'},
+    'danSubota': {'sr': 'Subota', 'en': 'Saturday', 'ru': 'Суббота', 'de': 'Samstag'},
+    'danNedelja': {'sr': 'Nedelja', 'en': 'Sunday', 'ru': 'Воскресенье', 'de': 'Sonntag'},
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+
+  /// Prevodi puni srpski naziv dana (npr. 'Ponedeljak') u naziv na trenutnom jeziku, samo za prikaz.
+  /// Interna logika (matchovanje rasporeda) i dalje koristi V3DanHelper.fullName na srpskom.
+  String _trDanFullName(String srDanFullName) {
+    const map = {
+      'Ponedeljak': 'danPonedeljak',
+      'Utorak': 'danUtorak',
+      'Sreda': 'danSreda',
+      'Cetvrtak': 'danCetvrtak',
+      'Petak': 'danPetak',
+      'Subota': 'danSubota',
+      'Nedelja': 'danNedelja',
+    };
+    final key = map[srDanFullName];
+    return key != null ? _tr(key) : srDanFullName;
+  }
 
   String? _normalizeValidTime(String? value) {
     if (value == null) return null;
@@ -386,7 +623,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     } else {
       secondaryId = putnikCache?['adresa_vs_id_2'] as String?;
     }
-    final secondaryNaziv = V3AdresaService.getAdresaById(secondaryId)?.naziv ?? 'Druga adresa';
+    final secondaryNaziv = V3AdresaService.getAdresaById(secondaryId)?.naziv ?? _tr('drugaAdresa');
     bool koristiSekundarnu = info?.koristiSekundarnu ?? false;
     await V3DialogHelper.showDialogBuilder<void>(
       context: ctx,
@@ -410,7 +647,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         child: Column(
                           children: [
                             Text(
-                              grad == 'BC' ? '🏙️ BC polazak' : '🌆 VS polazak',
+                              grad == 'BC' ? _tr('bcPolazak') : _tr('vsPolazak'),
                               style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 2),
@@ -449,7 +686,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          koristiSekundarnu ? 'Druga adresa' : 'Primarna adresa',
+                                          koristiSekundarnu ? _tr('drugaAdresa') : _tr('primarnaAdresa'),
                                           style: TextStyle(
                                             color: Colors.white70,
                                             fontSize: 11,
@@ -462,11 +699,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                                   ? (V3AdresaService.getAdresaById(
                                                               putnikCache?['adresa_bc_id'] as String?)
                                                           ?.naziv ??
-                                                      'Glavna adresa')
+                                                      _tr('glavnaAdresa'))
                                                   : (V3AdresaService.getAdresaById(
                                                               putnikCache?['adresa_vs_id'] as String?)
                                                           ?.naziv ??
-                                                      'Glavna adresa')),
+                                                      _tr('glavnaAdresa'))),
                                           style: TextStyle(
                                             color: koristiSekundarnu ? Colors.greenAccent : Colors.white,
                                             fontSize: 13,
@@ -504,7 +741,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                                     Navigator.of(dialogCtx).pop();
                                     await _updatePolazak(dan, grad, null, trenutniInfo: info);
                                   },
-                                  text: 'Otkaži termin',
+                                  text: _tr('otkaziTermin'),
                                   icon: Icons.cancel_outlined,
                                   borderColor: Colors.redAccent,
                                   foregroundColor: Colors.redAccent,
@@ -596,7 +833,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         padding: const EdgeInsets.only(bottom: 8),
                         child: V3ButtonUtils.textButton(
                           onPressed: () => Navigator.of(dialogCtx).pop(),
-                          text: 'Zatvori',
+                          text: _tr('zatvori'),
                           foregroundColor: Colors.white54,
                         ),
                       ),
@@ -651,13 +888,13 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final dateLabel = V3DanHelper.formatDatumPuni(allowedDate);
 
     if (allowedDate == today) {
-      return 'danas ($dateLabel)';
+      return '${_tr('danas')} ($dateLabel)';
     }
     if (allowedDate == tomorrow) {
-      return 'sutra ($dateLabel)';
+      return '${_tr('sutra')} ($dateLabel)';
     }
 
-    return '${V3DanHelper.fullName(allowedDate)}, $dateLabel';
+    return '${_trDanFullName(V3DanHelper.fullName(allowedDate))}, $dateLabel';
   }
 
   /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.
@@ -667,20 +904,99 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         danAbbr,
         anchor: V3DanHelper.schedulingWeekAnchor(),
       );
-      return V3DanHelper.fullName(datum);
+      return _trDanFullName(V3DanHelper.fullName(datum));
     } catch (e) {
       // Fallback ako kratica nije validna
       return danAbbr;
     }
   }
 
+  Widget _buildLanguageFlag() {
+    return ValueListenableBuilder<Locale>(
+      valueListenable: V3LocaleManager().localeNotifier,
+      builder: (context, locale, _) {
+        final code = locale.languageCode;
+        final currentFlag = code == 'en'
+            ? '🇬🇧'
+            : code == 'ru'
+                ? '🇷🇺'
+                : code == 'de'
+                    ? '🇩🇪'
+                    : '🇷🇸';
+        return PopupMenuButton<String>(
+          tooltip: 'Jezik',
+          offset: const Offset(0, 44),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: Colors.black.withValues(alpha: 0.85),
+          onSelected: (newCode) => V3LocaleManager().changeLocale(Locale(newCode)),
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              value: 'sr',
+              child: Row(
+                children: [
+                  const Text('🇷🇸', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Srpski',
+                    style: TextStyle(color: Colors.white.withValues(alpha: code == 'sr' ? 1 : 0.6)),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'en',
+              child: Row(
+                children: [
+                  const Text('🇬🇧', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'English',
+                    style: TextStyle(color: Colors.white.withValues(alpha: code == 'en' ? 1 : 0.6)),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'ru',
+              child: Row(
+                children: [
+                  const Text('🇷🇺', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Русский',
+                    style: TextStyle(color: Colors.white.withValues(alpha: code == 'ru' ? 1 : 0.6)),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'de',
+              child: Row(
+                children: [
+                  const Text('🇩🇪', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Deutsch',
+                    style: TextStyle(color: Colors.white.withValues(alpha: code == 'de' ? 1 : 0.6)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          child: Text(currentFlag, style: const TextStyle(fontSize: 18)),
+        );
+      },
+    );
+  }
+
   Future<void> _logout() async {
     final ok = await V3DialogHelper.showConfirmDialog(
       context,
-      title: 'Odjava',
-      message: 'Da li ste sigurni da želite da se odjavite?',
-      confirmText: 'Odjavi se',
-      cancelText: 'Otkaži',
+      title: _tr('odjavaTitle'),
+      message: _tr('odjavaMessage'),
+      confirmText: _tr('odjaviSe'),
+      cancelText: _tr('otkaziBtn'),
       isDangerous: true,
     );
     if (ok != true || !mounted) return;
@@ -744,7 +1060,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final koristiCenuPoPokupljenju = tip == 'dnevni' || tip == 'posiljka';
     final efektivnaCena = koristiCenuPoPokupljenju ? cenaPoPokupljenju : cenaPoDanu;
     final cenaInfo = efektivnaCena > 0
-        ? '${koristiCenuPoPokupljenju ? 'Cena po vožnji' : 'Cena po danu'}: ${efektivnaCena.toStringAsFixed(0)} RSD'
+        ? '${koristiCenuPoPokupljenju ? _tr('cenaPoVoznji') : _tr('cenaPoDanu')}: ${efektivnaCena.toStringAsFixed(0)} RSD'
         : null;
     final imePrezime = _putnikData['ime_prezime'] as String? ?? '';
     final telefon = _putnikData['telefon_1'] as String? ?? '';
@@ -760,90 +1076,93 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final stats = V3PutnikStatistikaService.getTekuciMesec(putnikId ?? '');
     final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
-    final nedeljaInfo = 'Operativna nedelja: $nedeljaOpseg';
-    return ValueListenableBuilder<ThemeData>(
-      valueListenable: V3ThemeManager().themeNotifier,
-      builder: (context, _, __) => V3ContainerUtils.backgroundContainer(
-        gradient: V3ThemeManager().currentGradient,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SafeArea(
-            child: Stack(
-              children: [
-                SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Forced update gate
-                      const V3UpdateBanner(),
-                      // ── HEADER CARD ──────────────────────────────────────
-                      _buildHeaderCard(
-                        tip: tip,
-                        imePrezime: imePrezime,
-                        telefon: telefon,
-                        telefon2: telefon2,
-                        adresaBcNaziv: adresaBcNaziv,
-                        adresaVsNaziv: adresaVsNaziv,
-                        adresaBcNaziv2: adresaBcNaziv2,
-                        adresaVsNaziv2: adresaVsNaziv2,
-                      ),
-                      if (putnikId != null && putnikId.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        V3VremeDolaskaWidget(putnikId: putnikId),
-                      ],
-                      const SizedBox(height: 16),
-                      _buildStatistikaCard(
-                        tip: tip,
-                        stats: stats,
-                        cenaInfo: cenaInfo,
-                        ukupanDug: ukupanDug,
-                      ),
-                      const SizedBox(height: 10),
-                      _buildDetaljneStatistikeSection(
-                        putnikId: putnikId,
-                        imePrezime: imePrezime,
-                        tipPutnika: tip,
-                      ),
-                      const SizedBox(height: 16),
-                      // ── RASPORED TERMINA ─────────────────────────────────
-                      _buildRasporedCard(nedeljaInfo: nedeljaInfo),
-                      const SizedBox(height: 16),
-                      // ── UPUTSTVO ZA KORIŠĆENJE ───────────────────────────
-                      GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const V3HelpScreen()),
+    final nedeljaInfo = '${_tr('operativnaNedelja')}: $nedeljaOpseg';
+    return ValueListenableBuilder<Locale>(
+      valueListenable: V3LocaleManager().localeNotifier,
+      builder: (context, __, ___) => ValueListenableBuilder<ThemeData>(
+        valueListenable: V3ThemeManager().themeNotifier,
+        builder: (context, _, __) => V3ContainerUtils.backgroundContainer(
+          gradient: V3ThemeManager().currentGradient,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Forced update gate
+                        const V3UpdateBanner(),
+                        // ── HEADER CARD ──────────────────────────────────────
+                        _buildHeaderCard(
+                          tip: tip,
+                          imePrezime: imePrezime,
+                          telefon: telefon,
+                          telefon2: telefon2,
+                          adresaBcNaziv: adresaBcNaziv,
+                          adresaVsNaziv: adresaVsNaziv,
+                          adresaBcNaziv2: adresaBcNaziv2,
+                          adresaVsNaziv2: adresaVsNaziv2,
                         ),
-                        child: V3ContainerUtils.styledContainer(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                          backgroundColor: V3StyleHelper.whiteAlpha06,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: V3StyleHelper.whiteAlpha13),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.help_outline, color: Colors.white70, size: 16),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Uputstvo za korišćenje',
-                                style: TextStyle(color: Colors.white70, fontSize: 13),
-                              ),
-                            ],
+                        if (putnikId != null && putnikId.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          V3VremeDolaskaWidget(putnikId: putnikId),
+                        ],
+                        const SizedBox(height: 16),
+                        _buildStatistikaCard(
+                          tip: tip,
+                          stats: stats,
+                          cenaInfo: cenaInfo,
+                          ukupanDug: ukupanDug,
+                        ),
+                        const SizedBox(height: 10),
+                        _buildDetaljneStatistikeSection(
+                          putnikId: putnikId,
+                          imePrezime: imePrezime,
+                          tipPutnika: tip,
+                        ),
+                        const SizedBox(height: 16),
+                        // ── RASPORED TERMINA ─────────────────────────────────
+                        _buildRasporedCard(nedeljaInfo: nedeljaInfo),
+                        const SizedBox(height: 16),
+                        // ── UPUTSTVO ZA KORIŠĆENJE ───────────────────────────
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const V3HelpScreen()),
+                          ),
+                          child: V3ContainerUtils.styledContainer(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            backgroundColor: V3StyleHelper.whiteAlpha06,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: V3StyleHelper.whiteAlpha13),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.help_outline, color: Colors.white70, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _tr('uputstvo'),
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
-                ),
-                Positioned(
-                  top: 8,
-                  left: 16,
-                  right: 16,
-                  child: const V3InfoBanner(),
-                ),
-              ],
+                  Positioned(
+                    top: 8,
+                    left: 16,
+                    right: 16,
+                    child: const V3InfoBanner(),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -877,7 +1196,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             children: [
               IconButton(
                 icon: const Text('🎨', style: TextStyle(fontSize: 18)),
-                tooltip: 'Tema',
+                tooltip: _tr('tema'),
                 onPressed: () async {
                   await V3ThemeManager().nextTheme();
                   V3StateUtils.safeSetState(this, () {});
@@ -886,15 +1205,17 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 },
               ),
               const Spacer(),
+              _buildLanguageFlag(),
+              const Spacer(),
               IconButton(
                 icon: const Text('✏️', style: TextStyle(fontSize: 18)),
-                tooltip: 'Izmeni profil',
+                tooltip: _tr('izmeniProfil'),
                 onPressed: _showEditProfilDialog,
               ),
               const Spacer(),
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.red),
-                tooltip: 'Odjava',
+                tooltip: _tr('odjava'),
                 onPressed: _logout,
               ),
             ],
@@ -974,7 +1295,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         Row(children: [
                           const Icon(Icons.location_city, color: Colors.white38, size: 12),
                           const SizedBox(width: 4),
-                          Text('Bela Crkva',
+                          Text(_tr('belaCrkva'),
                               style: TextStyle(
                                   color: V3StyleHelper.whiteAlpha45, fontSize: 14, fontWeight: FontWeight.bold)),
                         ]),
@@ -1016,7 +1337,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         Row(children: [
                           const Icon(Icons.location_city, color: Colors.white38, size: 12),
                           const SizedBox(width: 4),
-                          Text('Vrsac',
+                          Text(_tr('vrsac'),
                               style: TextStyle(
                                   color: V3StyleHelper.whiteAlpha45, fontSize: 14, fontWeight: FontWeight.bold)),
                         ]),
@@ -1072,10 +1393,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             ),
           ),
           const SizedBox(height: 8),
-          const Center(
+          Center(
             child: Text(
-              'Stanje vožnji i naplate',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              _tr('stanjeVoznji'),
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ),
@@ -1099,9 +1420,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _kpiTile('Vožnji', '${stats.ukupnoVoznji}', Colors.greenAccent),
+                _kpiTile(_tr('voznji'), '${stats.ukupnoVoznji}', Colors.greenAccent),
                 const SizedBox(width: 12),
-                _kpiTile('Otkazano', '${stats.otkazano}', Colors.redAccent),
+                _kpiTile(_tr('otkazano'), '${stats.otkazano}', Colors.redAccent),
               ],
             ),
           ),
@@ -1111,7 +1432,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Plaćeno', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(_tr('placeno'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.naplacenoIznos.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -1122,7 +1443,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Dug', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(_tr('dug'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.dugIznos.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -1133,7 +1454,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ukupan dug', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(_tr('ukupanDug'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${ukupanDug.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -1145,7 +1466,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Poslednja uplata', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(_tr('poslednjaUplata'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
                   '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
                   style: const TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -1158,7 +1479,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Otkazano', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(_tr('otkazano'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
                   '${stats.otkazano}',
                   style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -1195,9 +1516,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   String _modelNaplataLabel(String tip) {
     final normalized = tip.toLowerCase();
     if (normalized == 'radnik' || normalized == 'ucenik') {
-      return 'Model: cena po danu (jedna cena za jednu ili vise voznji u toku dana).';
+      return _tr('modelCenaPoDanu');
     }
-    return 'Model: cena po voznji (svaka voznja se naplaćuje).';
+    return _tr('modelCenaPoVoznji');
   }
 
   Widget _buildDetaljneStatistikeSection({
@@ -1213,14 +1534,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Detaljne statistike',
+          Text(
+            _tr('detaljneStatistike'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            'Pregled po mesecima',
+            _tr('pregledPoMesecima'),
             textAlign: TextAlign.center,
             style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12),
           ),
@@ -1239,7 +1560,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                       ),
                     );
                   },
-            text: 'Otvori detaljne statistike',
+            text: _tr('otvoriDetaljneStatistike'),
             icon: Icons.analytics_outlined,
             borderColor: Colors.white30,
             foregroundColor: Colors.white,
@@ -1273,10 +1594,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
             ),
           ),
           const SizedBox(height: 6),
-          const Center(
+          Center(
             child: Text(
-              '🕐 Raspored termina',
-              style: TextStyle(
+              _tr('rasporedTermina'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -1302,7 +1623,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         ),
                       ),
                       Text(
-                        '(Bela Crkva)',
+                        '(${_tr('belaCrkva')})',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -1328,7 +1649,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         ),
                       ),
                       Text(
-                        '(Vrsac)',
+                        '(${_tr('vrsac')})',
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -1403,15 +1724,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   String _tipLabel(String tip) {
     switch (tip.toLowerCase()) {
       case 'ucenik':
-        return '🎓 Učenik';
+        return _tr('tipUcenik');
       case 'posiljka':
-        return '📦 Pošiljka';
+        return _tr('tipPosiljka');
       case 'dnevni':
-        return '📅 Dnevni';
+        return _tr('tipDnevni');
       case 'radnik':
-        return '💼 Radnik';
+        return _tr('tipRadnik');
       default:
-        return '👤 Putnik';
+        return _tr('tipPutnik');
     }
   }
 }
@@ -1521,7 +1842,7 @@ class _ZahtevCell extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '➕ dodaj',
+                  _trProfileDialog('dodaj'),
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1616,7 +1937,7 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
     final tel2Val = V3PhoneUtils.normalizeOrNull(_tel2.text);
 
     if (imeVal.isEmpty) {
-      V3AppSnackBar.error(context, '⚠️ Ime i prezime ne sme biti prazno');
+      V3AppSnackBar.error(context, _trProfileDialog('imeNeSmeBitiPrazno'));
       return;
     }
 
@@ -1634,11 +1955,11 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
       );
 
       if (!mounted) return;
-      V3AppSnackBar.success(context, '✅ Profil sačuvan');
+      V3AppSnackBar.success(context, _trProfileDialog('profilSacuvan'));
       widget.onSaved(updated);
       Navigator.pop(context);
     } catch (e) {
-      V3AppSnackBar.error(context, 'Greška: $e');
+      V3AppSnackBar.error(context, '${_trProfileDialog('greska')}: $e');
     } finally {
       V3StateUtils.safeSetState(this, () => _saving = false);
     }
@@ -1667,21 +1988,21 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                   color: Colors.black.withValues(alpha: 0.18),
                   border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
-                    SizedBox(width: 10),
+                    const Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Izmeni profil',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                            _trProfileDialog('izmeniProfilTitle'),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            'Ažuriraj ime i broj telefona',
-                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                            _trProfileDialog('azurirajImeTel'),
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -1697,21 +2018,21 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                     children: [
                       V3InputUtils.textField(
                         controller: _ime,
-                        label: 'Ime i prezime',
+                        label: _trProfileDialog('imePrezime'),
                         icon: Icons.person_outline,
                         keyboardType: TextInputType.name,
                       ),
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
                         controller: _tel1,
-                        label: 'Telefon 1',
+                        label: _trProfileDialog('telefon1'),
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
                         controller: _tel2,
-                        label: 'Telefon 2',
+                        label: _trProfileDialog('telefon2'),
                         icon: Icons.phone_iphone_outlined,
                         keyboardType: TextInputType.phone,
                       ),
@@ -1730,7 +2051,7 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                                   );
                                 },
                           icon: const Icon(Icons.lock_reset_outlined, color: Colors.white),
-                          label: const Text('Promeni PIN', style: TextStyle(color: Colors.white)),
+                          label: Text(_trProfileDialog('promeniPin'), style: const TextStyle(color: Colors.white)),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: Colors.white54),
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1743,7 +2064,7 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                           Expanded(
                             child: V3ButtonUtils.outlinedButton(
                               onPressed: _saving ? null : () => Navigator.pop(context),
-                              text: 'Otkaži',
+                              text: _trProfileDialog('otkazi'),
                               borderColor: Colors.white54,
                               foregroundColor: Colors.white70,
                             ),
@@ -1752,7 +2073,7 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                           Expanded(
                             child: V3ButtonUtils.primaryButton(
                               onPressed: _saving ? null : _sacuvaj,
-                              text: 'Sačuvaj',
+                              text: _trProfileDialog('sacuvaj'),
                               icon: Icons.check,
                               isLoading: _saving,
                             ),
@@ -1803,19 +2124,19 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
     final newPinConfirm = _newPinConfirmController.text.trim();
 
     if (!V3ClosedAuthService.isValidPin(oldPin)) {
-      setState(() => _error = 'Trenutni PIN mora imati tačno 6 cifara.');
+      setState(() => _error = _trProfileDialog('trenutniPinMora6Cifara'));
       return;
     }
     if (!V3ClosedAuthService.isValidPin(newPin)) {
-      setState(() => _error = 'Novi PIN mora imati tačno 6 cifara.');
+      setState(() => _error = _trProfileDialog('noviPinMora6Cifara'));
       return;
     }
     if (newPin != newPinConfirm) {
-      setState(() => _error = 'Novi PIN-ovi se ne poklapaju.');
+      setState(() => _error = _trProfileDialog('noviPinoviSeNePoklapaju'));
       return;
     }
     if (newPin == oldPin) {
-      setState(() => _error = 'Novi PIN mora biti različit od trenutnog.');
+      setState(() => _error = _trProfileDialog('noviPinMoraBitiRazlicit'));
       return;
     }
 
@@ -1834,9 +2155,9 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
 
     if (!result.ok) {
       final message = switch (result.reason) {
-        'old_pin_mismatch' => 'Trenutni PIN nije ispravan.',
-        'pin_not_set' => 'Nalog nema podešen PIN.',
-        _ => 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+        'old_pin_mismatch' => _trProfileDialog('trenutniPinNijeIspravan'),
+        'pin_not_set' => _trProfileDialog('nalogNemaPin'),
+        _ => _trProfileDialog('greskaPromenaPin'),
       };
       setState(() {
         _saving = false;
@@ -1845,7 +2166,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
       return;
     }
 
-    V3AppSnackBar.success(context, '✅ PIN je uspešno promenjen.');
+    V3AppSnackBar.success(context, _trProfileDialog('pinPromenjen'));
     Navigator.of(context, rootNavigator: true).pop();
     Navigator.of(context, rootNavigator: true).pop();
   }
@@ -1873,21 +2194,21 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                   color: Colors.black.withValues(alpha: 0.18),
                   border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.lock_reset_outlined, color: Colors.white, size: 22),
-                    SizedBox(width: 10),
+                    const Icon(Icons.lock_reset_outlined, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Promeni PIN',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                            _trProfileDialog('promeniPinTitle'),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            'Unesi trenutni i novi PIN (6 cifara)',
-                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                            _trProfileDialog('unesiPinSubtitle'),
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -1903,7 +2224,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                     children: [
                       V3InputUtils.textField(
                         controller: _oldPinController,
-                        label: 'Trenutni PIN',
+                        label: _trProfileDialog('trenutniPin'),
                         icon: Icons.lock_outline,
                         keyboardType: TextInputType.number,
                         obscureText: true,
@@ -1911,7 +2232,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
                         controller: _newPinController,
-                        label: 'Novi PIN',
+                        label: _trProfileDialog('noviPin'),
                         icon: Icons.lock_open_outlined,
                         keyboardType: TextInputType.number,
                         obscureText: true,
@@ -1919,7 +2240,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
                         controller: _newPinConfirmController,
-                        label: 'Ponovi novi PIN',
+                        label: _trProfileDialog('ponoviNoviPin'),
                         icon: Icons.lock_open_outlined,
                         keyboardType: TextInputType.number,
                         obscureText: true,
@@ -1934,7 +2255,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                           Expanded(
                             child: V3ButtonUtils.outlinedButton(
                               onPressed: _saving ? null : () => Navigator.of(context, rootNavigator: true).pop(),
-                              text: 'Otkaži',
+                              text: _trProfileDialog('otkazi'),
                               borderColor: Colors.white54,
                               foregroundColor: Colors.white70,
                             ),
@@ -1943,7 +2264,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                           Expanded(
                             child: V3ButtonUtils.primaryButton(
                               onPressed: _saving ? null : _sacuvaj,
-                              text: 'Sačuvaj',
+                              text: _trProfileDialog('sacuvaj'),
                               icon: Icons.check,
                               isLoading: _saving,
                             ),
