@@ -343,7 +343,18 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       var vozac = V3VozacService.getVozacById(authId);
       vozac ??= await V3VozacService.getVozacByIdDirect(authId);
 
-      if (vozac != null && (vozac.pinHash ?? '').trim().isEmpty) {
+      if (vozac == null) {
+        debugPrint('[V3SmsLogin] vozac also null - user not in system');
+        if (!mounted) return;
+        V3AppSnackBar.error(
+          context,
+          '❌ Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+        );
+        _resetToStep1();
+        return;
+      }
+
+      if ((vozac.pinHash ?? '').trim().isEmpty) {
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -359,7 +370,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         return;
       }
 
-      debugPrint('[V3SmsLogin] calling onVerified for vozac (or unknown)');
+      debugPrint('[V3SmsLogin] calling onVerified for vozac');
       await widget.onVerified(phone, authId);
       return;
     }
