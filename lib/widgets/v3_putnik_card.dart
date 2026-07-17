@@ -724,7 +724,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       runSpacing: 2,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        // 1. BIJELA: plaćeno ali nije pokupljen — cyan
+                        // 1. BELA: plaćeno ali nije pokupljen — cyan
                         if (isPlacen && !isPokupljen) ...[
                           Text(
                             () {

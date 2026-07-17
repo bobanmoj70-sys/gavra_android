@@ -334,7 +334,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     return boje;
   }
 
-  // ─── Dodjela vozača putniku (admin only) ──────────────────────
+  // ─── Dodela vozača putniku (admin only) ──────────────────────
 
   V3Vozac? _getVozacZaPutnika(String putnikId, String grad, String vreme, String datum) {
     final rm = V3MasterRealtimeManager.instance;

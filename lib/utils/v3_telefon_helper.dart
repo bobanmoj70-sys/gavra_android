@@ -21,7 +21,7 @@ class V3TelefonHelper {
 
   /// Pozovi telefon broj sa automatskim permission check-om i error handling-om
   ///
-  /// **Koristi umjesto:** 15+ duplikata tel: launch koda
+  /// **Koristi umesto:** 15+ duplikata tel: launch koda
   /// **Primjer:** V3TelefonHelper.pozovi(this, context, '0641162560');
   static Future<void> pozovi(State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
@@ -85,7 +85,7 @@ class V3TelefonHelper {
 
   /// Pošalji SMS sa custom porukom
   ///
-  /// **Koristi umjesto:** duplikata smsUri launch koda
+  /// **Koristi umesto:** duplikata smsUri launch koda
   /// **Primjer:** V3TelefonHelper.posaljiSms(this, context, '064123456', 'Poruka');
   static Future<void> otvoriSms({
     required BuildContext context,

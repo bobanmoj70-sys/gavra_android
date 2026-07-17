@@ -181,7 +181,7 @@ class V3StyleHelper {
       );
     }
 
-    // Default - bijela kartica sa opcional vozac bojom
+    // Default - bela kartica sa opcional vozac bojom
     if (vozacBoja != null) {
       final blendedColor = V3CardColorPolicy.tintedCardBackground(vozacBoja);
       return BoxDecoration(

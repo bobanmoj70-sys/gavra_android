@@ -341,7 +341,7 @@ class V3ZahtevService {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
       } else {
-        // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovdje
+        // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovde
         final safeZahtevId = id.trim();
         if (safeZahtevId.isEmpty) {
           throw Exception('id zahteva je obavezan kada putnik otkazuje');

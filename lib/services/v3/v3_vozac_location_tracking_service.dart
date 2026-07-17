@@ -33,7 +33,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// ETA vrednosti (deljene između ekrana)
   final Map<String, int> _etaSecondsCache = {};
 
-  /// Poziva se nakon svakog uspješnog slanja GPS pozicije (foreground).
+  /// Poziva se nakon svakog uspešnog slanja GPS pozicije (foreground).
   void Function(Position position)? onLocationSent;
 
   bool get isRunning => _isRunning;

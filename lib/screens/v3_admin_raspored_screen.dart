@@ -417,7 +417,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       await _reloadTrenutnaDodelaMap();
       if (mounted) setState(() {});
 
-      if (mounted) V3AppSnackBar.success(context, '🗑️ Dodjela uklonjena: $grad $vreme ($_selectedDatumIso)');
+      if (mounted) V3AppSnackBar.success(context, '🗑️ Dodela uklonjena: $grad $vreme ($_selectedDatumIso)');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -459,7 +459,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     }
   }
 
-  Future<void> _ukloniPutnikDodjelu(String putnikId, String grad, String vreme) async {
+  Future<void> _ukloniPutnikDodelu(String putnikId, String grad, String vreme) async {
     try {
       await V3DodelaOrchestratorService.clearPutnikOverride(
         operativnaRows: V3MasterRealtimeManager.instance.operativnaNedeljaCache.values,
@@ -477,7 +477,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       await _reloadTrenutnaDodelaMap();
       if (mounted) setState(() {});
 
-      if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodjela uklonjena');
+      if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodela uklonjena');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -538,7 +538,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     await _ukloniTermin(grad, vreme);
                   },
                   icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
-                  label: const Text('Ukloni dodjelu termina', style: TextStyle(color: Colors.redAccent)),
+                  label: const Text('Ukloni dodelu termina', style: TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
               SizedBox(
@@ -616,10 +616,10 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 TextButton.icon(
                   onPressed: () async {
                     Navigator.pop(ctx);
-                    await _ukloniPutnikDodjelu(termin.putnikId, _selectedGrad, _selectedVreme);
+                    await _ukloniPutnikDodelu(termin.putnikId, _selectedGrad, _selectedVreme);
                   },
                   icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
-                  label: const Text('Ukloni individualnu dodjelu', style: TextStyle(color: Colors.redAccent)),
+                  label: const Text('Ukloni individualnu dodelu', style: TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
               SizedBox(
@@ -929,7 +929,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                vozac != null ? 'Vozač: ${vozac.imePrezime}' : 'Nema dodjele — tap za dodjelu vozača',
+                vozac != null ? 'Vozač: ${vozac.imePrezime}' : 'Nema dodele — tap za dodelu vozača',
                 style: TextStyle(
                   color: vozac != null ? Colors.white : Colors.white54,
                   fontWeight: FontWeight.w600,

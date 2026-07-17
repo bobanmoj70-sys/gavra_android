@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 // ==========================================
 // APP SNACK BAR - CENTRALIZOVANE PORUKE
 // ==========================================
-// NE MIJENJATI - ZACEMENTIRANI STILOVI
+// NE MENJATI - ZACEMENTIRANI STILOVI
 // Sve SnackBar poruke u aplikaciji moraju koristiti ovu klasu.
 // Zabranjeno je direktno kreiranje SnackBar(...) ili pozivanje
 // ScaffoldMessenger.of(context).showSnackBar(...) van ove klase.
 // Potvrđeno i zacementirano 21.02.2026.
 // TIPOVI PORUKA:
-// success  → zelena  (#4CAF50) — uspješna akcija
-// error    → crvena  (#F44336) — greška / neuspjeh
+// success  → zelena  (#4CAF50) — uspešna akcija
+// error    → crvena  (#F44336) — greška / neuspeh
 // warning  → narandžasta (#FF9800) — upozorenje / blokada
 // info     → plava   (#2196F3) — informacija / neutralna poruka
 // TRAJANJE:
@@ -73,7 +73,7 @@ class V3AppSnackBar {
 
   // ─── Javne metode ──────────────────────────────────────────────
 
-  /// Uspješna akcija (zelena, 5s)
+  /// Uspešna akcija (zelena, 5s)
   static void success(BuildContext context, String message) =>
       _show(context, message, backgroundColor: _colorSuccess, duration: _long);
 
@@ -97,7 +97,7 @@ class V3AppSnackBar {
   static void blocked(BuildContext context, String message) =>
       _show(context, message, backgroundColor: _colorWarning, duration: _long);
 
-  /// Plaćanje uspješno (zelena, 5s)
+  /// Plaćanje uspešno (zelena, 5s)
   static void payment(BuildContext context, String message) =>
       _show(context, message, backgroundColor: _colorSuccess, duration: _long);
 }

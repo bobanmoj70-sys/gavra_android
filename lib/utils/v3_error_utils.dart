@@ -26,7 +26,7 @@ class V3ErrorUtils {
 
   /// Safely show error message with mounted check
   ///
-  /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, 'message');
+  /// **Koristi umesto:** if (mounted) V3AppSnackBar.error(context, 'message');
   /// **Primjer:** V3ErrorUtils.safeError(this, context, 'Greška: $e');
   static void safeError(State state, BuildContext context, String message) {
     if (state.mounted) {
@@ -43,7 +43,7 @@ class V3ErrorUtils {
 
   /// Show standard async operation error
   ///
-  /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
+  /// **Koristi umesto:** if (mounted) V3AppSnackBar.error(context, '❌ Greška: $e');
   /// **Primjer:** V3ErrorUtils.asyncError(this, context, e);
   static void asyncError(State state, BuildContext context, dynamic error) {
     safeError(state, context, '❌ Greška: $error');
@@ -51,7 +51,7 @@ class V3ErrorUtils {
 
   /// Show validation error message
   ///
-  /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, '❌ Validation message');
+  /// **Koristi umesto:** if (mounted) V3AppSnackBar.error(context, '❌ Validation message');
   /// **Primjer:** V3ErrorUtils.validationError(this, context, 'Pogrešan unos');
   static void validationError(State state, BuildContext context, String message) {
     safeError(state, context, '❌ $message');
@@ -59,7 +59,7 @@ class V3ErrorUtils {
 
   /// Show permission error message
   ///
-  /// **Koristi umjesto:** if (mounted) V3AppSnackBar.error(context, 'Permission message');
+  /// **Koristi umesto:** if (mounted) V3AppSnackBar.error(context, 'Permission message');
   /// **Primjer:** V3ErrorUtils.permissionError(this, context, 'Dozvola je potrebna');
   static void permissionError(State state, BuildContext context, String message) {
     safeError(state, context, message);

@@ -46,7 +46,7 @@ import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_welcome_screen.dart';
 
-/// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
+/// V3 Vozač Screen - prikazuje dodeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
 class V3VozacScreen extends StatefulWidget {
   final String? vozacId;

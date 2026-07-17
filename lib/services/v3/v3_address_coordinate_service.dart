@@ -13,7 +13,7 @@ class V3AddressCoordinateService {
   V3AddressCoordinateService({http.Client? client}) : _client = client ?? http.Client();
 
   /// Globalna singleton instanca sa dijeljenim cache-om koordinata.
-  /// Koristi se u svim servisima i screenovima umjesto kreiranja novih instanci.
+  /// Koristi se u svim servisima i screenovima umesto kreiranja novih instanci.
   static final V3AddressCoordinateService instance = V3AddressCoordinateService();
 
   final http.Client _client;

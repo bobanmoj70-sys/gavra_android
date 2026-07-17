@@ -684,7 +684,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       isDangerous: true,
     );
     if (ok != true || !mounted) return;
-    // Otkaži stream subscription prije brisanja sesije
+    // Otkaži stream subscription pre brisanja sesije
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;

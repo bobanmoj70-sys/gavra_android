@@ -7,7 +7,7 @@ class V3PhoneUtils {
   /// Prihvata: 0641234567, +381641234567, 381641234567, 064 123 4567, itd.
   /// Vraća: +381641234567
   static String normalize(String phone) {
-    // Zadrži samo cifre i '+' zbog robusnijeg čišćenja ulaza.
+    // Zadrži samo cifre i '+' zbog robusneg čišćenja ulaza.
     var p = phone.trim().replaceAll(RegExp(r'[^0-9+]'), '');
     if (p.isEmpty) return p;
 

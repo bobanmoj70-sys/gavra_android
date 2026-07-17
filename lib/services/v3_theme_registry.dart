@@ -46,7 +46,7 @@ class V3ThemeRegistry {
     ),
   };
 
-  // Keširane vrijednosti — izracunavaju se jednom
+  // Keširane vrednosti — izracunavaju se jednom
   static final V3ThemeDefinition _defaultTheme = _themes.values.firstWhere(
     (t) => t.isDefault,
     orElse: () => _themes.values.first,

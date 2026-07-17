@@ -12,7 +12,7 @@ class V2ConfigService {
     try {
       await dotenv.load(fileName: '.env');
       _initialized = true;
-      debugPrint('[V2ConfigService] .env učitan uspješno');
+      debugPrint('[V2ConfigService] .env učitan uspešno');
     } catch (e) {
       debugPrint('[V2ConfigService] Greška pri učitavanju .env: $e');
       // Nastavljamo i sa praznim env — Supabase će prijaviti grešku pri init
@@ -32,8 +32,7 @@ class V2ConfigService {
   String getSupabaseAnonKey() {
     final key = dotenv.maybeGet('SUPABASE_ANON_KEY') ?? '';
     if (key.isEmpty) {
-      debugPrint(
-          '[V2ConfigService] ⚠️ SUPABASE_ANON_KEY nije definisan u .env');
+      debugPrint('[V2ConfigService] ⚠️ SUPABASE_ANON_KEY nije definisan u .env');
     }
     return key;
   }

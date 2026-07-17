@@ -43,7 +43,7 @@ class V3DateUtils {
     return tz.TZDateTime.from(dt.toUtc(), _belgradeLocation!);
   }
 
-  /// Parsira timestamptz string iz baze → Europe/Belgrade vrijeme.
+  /// Parsira timestamptz string iz baze → Europe/Belgrade vreme.
   /// Koristiti za: created_at, updated_at, pokupljen_at, placeno_at, itd.
   static DateTime? parseTs(String? s) {
     if (s == null || s.isEmpty) return null;
@@ -52,7 +52,7 @@ class V3DateUtils {
     return _toBelgrade(parsed);
   }
 
-  /// Parsira timestamptz string ili vraća fallback vrijednost.
+  /// Parsira timestamptz string ili vraća fallback vrednost.
   static DateTime parseTsOr(String? s, DateTime fallback) {
     return parseTs(s) ?? fallback;
   }
@@ -64,7 +64,7 @@ class V3DateUtils {
     return DateTime.tryParse(s);
   }
 
-  /// Parsira date string ili vraća fallback vrijednost.
+  /// Parsira date string ili vraća fallback vrednost.
   static DateTime parseDatumOr(String? s, DateTime fallback) {
     return parseDatum(s) ?? fallback;
   }

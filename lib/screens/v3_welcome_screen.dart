@@ -676,7 +676,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
                   const SizedBox(height: 16),
 
-                  // DOBRODOŠLI tekst — klik mijenja temu
+                  // DOBRODOŠLI tekst — klik menja temu
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: GestureDetector(
