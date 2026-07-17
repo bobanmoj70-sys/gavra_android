@@ -1846,7 +1846,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
     }
 
     V3AppSnackBar.success(context, '✅ PIN je uspešno promenjen.');
-    Navigator.pop(context);
+    Navigator.of(context, rootNavigator: true).pop();
   }
 
   @override
@@ -1932,7 +1932,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                         children: [
                           Expanded(
                             child: V3ButtonUtils.outlinedButton(
-                              onPressed: _saving ? null : () => Navigator.pop(context),
+                              onPressed: _saving ? null : () => Navigator.of(context, rootNavigator: true).pop(),
                               text: 'Otkaži',
                               borderColor: Colors.white54,
                               foregroundColor: Colors.white70,
