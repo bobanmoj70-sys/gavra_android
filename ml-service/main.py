@@ -1837,17 +1837,20 @@ def _hash_context(context_str: str, conversation_context: str) -> str:
 
 
 def _content_signature(content: str) -> str:
-    """Normalizovan potpis sadržaja za near-duplicate poređenje."""
+    """Normalizovan potpis sadržaja za near-duplicate poređenje.
+    Maskiramo SAMO UUID-ove (koji su stabilni identifikatori i ne nose informaciju
+    o promeni podataka), dok brojeve i datume NAMERNO ostavljamo netaknute — oni su
+    upravo ono što se najčešće menja (iznosi, kilometraža, vreme polaska, itd.) i
+    moraju uticati na signaturu, inače se stvarne izmene pogrešno tretiraju kao
+    'neizmenjen red' i AI ostaje sa zastarelim podacima."""
     if not content:
         return ""
     normalized = content.lower()
     normalized = _UUID_LIKE_RE.sub("<uuid>", normalized)
-    normalized = _DATE_LIKE_RE.sub("<date>", normalized)
-    normalized = _NUMBER_LIKE_RE.sub("<num>", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
-    if len(normalized) > 500:
-        normalized = normalized[:500]
-    return normalized
+    # Koristimo hash umesto sečenja na 500 karaktera da bismo obuhvatili CEO sadržaj
+    # (uključujući AllColumnsSnapshot na kraju), a ne samo prvih 500 znakova.
+    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
 
 
 def _is_signature_unchanged(cursor: sqlite3.Cursor, unique_id: str, new_signature: str) -> bool:
