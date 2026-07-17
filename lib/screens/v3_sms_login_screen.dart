@@ -68,7 +68,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   String _selectedTip = '';
   V3Adresa? _selectedBcAdresa;
   V3Adresa? _selectedVsAdresa;
-  String _missingProfileMessage = '';
+  String? _missingProfileStaticMessageKey;
+  List<String> _missingProfileFieldKeys = <String>[];
+  bool _missingProfileUseRequiredTemplate = false;
   bool _addressOnlyOnboarding = false;
   bool _requireBcAddress = false;
   bool _requireVsAddress = false;
@@ -247,6 +249,20 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;
     return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+
+  String _buildMissingProfileMessage() {
+    if (_missingProfileStaticMessageKey != null) {
+      return _tr(_missingProfileStaticMessageKey!);
+    }
+    if (_missingProfileFieldKeys.isEmpty) {
+      return '';
+    }
+    final translatedFields = _missingProfileFieldKeys.map(_tr).join(', ');
+    if (_missingProfileUseRequiredTemplate) {
+      return '${_tr('dopuniteObavezna')}: $translatedFields.';
+    }
+    return '${_tr('dopunitePolja')}: $translatedFields ${_tr('daNastavite')}';
   }
 
   // Biometrija
@@ -486,7 +502,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           _vozacPinOnlyOnboarding = false;
           _devicePinVerificationOnly = true;
           _devicePinAttempts = 0;
-          _missingProfileMessage = _tr('potvrdaIdentiteta');
+          _missingProfileStaticMessageKey = 'potvrdaIdentiteta';
+          _missingProfileFieldKeys = <String>[];
+          _missingProfileUseRequiredTemplate = false;
           _step = _SmsStep.unosProfila;
         });
         return;
@@ -535,7 +553,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           _requirePin = true;
           _vozacPinOnlyOnboarding = true;
           _devicePinVerificationOnly = false;
-          _missingProfileMessage = _tr('podesitePin');
+          _missingProfileStaticMessageKey = 'podesitePin';
+          _missingProfileFieldKeys = <String>[];
+          _missingProfileUseRequiredTemplate = false;
           _step = _SmsStep.unosProfila;
         });
         return;
@@ -580,13 +600,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _selectedVsAdresa = vsId.isEmpty ? null : V3AdresaService.getAdresaById(vsId);
 
         // Poruka na osnovu šta nedostaje
-        final missingFields = <String>[];
-        if (missingIme) missingFields.add(_tr('imeKratko'));
-        if (missingTip) missingFields.add(_tr('kategorijuKratko'));
-        if (missingBc) missingFields.add(_tr('adresaBcKratko'));
-        if (missingVs) missingFields.add(_tr('adresaVsKratko'));
-        if (missingPin) missingFields.add(_tr('pinKod'));
-        _missingProfileMessage = '${_tr('dopunitePolja')}: ${missingFields.join(', ')} ${_tr('daNastavite')}';
+        final missingFieldKeys = <String>[];
+        if (missingIme) missingFieldKeys.add('imeKratko');
+        if (missingTip) missingFieldKeys.add('kategorijuKratko');
+        if (missingBc) missingFieldKeys.add('adresaBcKratko');
+        if (missingVs) missingFieldKeys.add('adresaVsKratko');
+        if (missingPin) missingFieldKeys.add('pinKod');
+        _missingProfileStaticMessageKey = null;
+        _missingProfileFieldKeys = missingFieldKeys;
+        _missingProfileUseRequiredTemplate = false;
         _step = _SmsStep.unosProfila;
       });
       return;
@@ -903,9 +925,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       );
       if (missingAfterSave.isNotEmpty) {
         if (!mounted) return;
-        V3AppSnackBar.error(context, '${_tr('unosNijeKompletan')} ${missingAfterSave.join(', ')}.');
+        final translatedMissing = missingAfterSave.map(_tr).join(', ');
+        V3AppSnackBar.error(context, '${_tr('unosNijeKompletan')} $translatedMissing.');
         setState(() {
-          _missingProfileMessage = '${_tr('dopuniteObavezna')}: ${missingAfterSave.join(', ')}.';
+          _missingProfileStaticMessageKey = null;
+          _missingProfileFieldKeys = missingAfterSave;
+          _missingProfileUseRequiredTemplate = true;
           _statusMessage = '';
         });
         return;
@@ -979,7 +1004,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _selectedTip = '';
       _selectedBcAdresa = null;
       _selectedVsAdresa = null;
-      _missingProfileMessage = '';
+      _missingProfileStaticMessageKey = null;
+      _missingProfileFieldKeys = <String>[];
+      _missingProfileUseRequiredTemplate = false;
       _addressOnlyOnboarding = false;
       _requireBcAddress = false;
       _requireVsAddress = false;
@@ -997,8 +1024,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   }) {
     if (putnik == null) {
       return includeIdentityFields
-          ? [_tr('imeKratko'), _tr('tip'), _tr('adresaBcKratko'), _tr('adresaVsKratko'), _tr('pinKod')]
-          : [_tr('adresaBcKratko'), _tr('adresaVsKratko'), _tr('pinKod')];
+          ? ['imeKratko', 'tip', 'adresaBcKratko', 'adresaVsKratko', 'pinKod']
+          : ['adresaBcKratko', 'adresaVsKratko', 'pinKod'];
     }
 
     final missing = <String>[];
@@ -1009,12 +1036,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final pinHash = putnik['pin_hash']?.toString().trim() ?? '';
 
     if (includeIdentityFields) {
-      if (ime.isEmpty) missing.add(_tr('imeKratko'));
-      if (tip.isEmpty) missing.add(_tr('tip'));
+      if (ime.isEmpty) missing.add('imeKratko');
+      if (tip.isEmpty) missing.add('tip');
     }
-    if (bc.isEmpty) missing.add(_tr('adresaBcKratko'));
-    if (vs.isEmpty) missing.add(_tr('adresaVsKratko'));
-    if (pinHash.isEmpty) missing.add(_tr('pinKod'));
+    if (bc.isEmpty) missing.add('adresaBcKratko');
+    if (vs.isEmpty) missing.add('adresaVsKratko');
+    if (pinHash.isEmpty) missing.add('pinKod');
     return missing;
   }
 
@@ -1190,14 +1217,15 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           .firstWhere((a) => a != null, orElse: () => null);
     }
 
+    final missingProfileMessage = _buildMissingProfileMessage();
+
     return Column(
       key: const ValueKey('profile'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildInfoBox(
           icon: Icons.person_outline,
-          text:
-              _missingProfileMessage.isEmpty ? '${_tr('unesitePodatke')} ($_normalizedPhone).' : _missingProfileMessage,
+          text: missingProfileMessage.isEmpty ? '${_tr('unesitePodatke')} ($_normalizedPhone).' : missingProfileMessage,
         ),
         const SizedBox(height: 24),
         if (showIdentityFields) ...[
