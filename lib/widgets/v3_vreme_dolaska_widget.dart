@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -207,10 +208,10 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return naziv;
   }
 
-  String? _resolveWaitingAddressForRide(Map<String, dynamic> rideRow) {
+  /// Rešava ID adrese na kojoj putnik čeka za datu vožnju.
+  String? _resolveWaitingAddressId(Map<String, dynamic> rideRow) {
     final overrideId = rideRow['adresa_override_id']?.toString();
-    final overrideNaziv = _getAdresaNazivById(overrideId);
-    if (overrideNaziv != null) return overrideNaziv;
+    if (overrideId != null && overrideId.trim().isNotEmpty) return overrideId.trim();
 
     final putnik = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     if (putnik == null) return null;
@@ -222,17 +223,72 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       final primaryId = putnik['adresa_bc_id']?.toString();
       final secondaryId = putnik['adresa_bc_id_2']?.toString();
       final preferredId = koristiSekundarnu ? (secondaryId ?? primaryId) : primaryId;
-      return _getAdresaNazivById(preferredId) ?? _getAdresaNazivById(secondaryId);
+      return preferredId ?? secondaryId;
     }
 
     if (grad == 'VS') {
       final primaryId = putnik['adresa_vs_id']?.toString();
       final secondaryId = putnik['adresa_vs_id_2']?.toString();
       final preferredId = koristiSekundarnu ? (secondaryId ?? primaryId) : primaryId;
-      return _getAdresaNazivById(preferredId) ?? _getAdresaNazivById(secondaryId);
+      return preferredId ?? secondaryId;
     }
 
     return null;
+  }
+
+  String? _resolveWaitingAddressForRide(Map<String, dynamic> rideRow) {
+    final adresaId = _resolveWaitingAddressId(rideRow);
+    return _getAdresaNazivById(adresaId);
+  }
+
+  double? _toDoubleOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  ({double lat, double lng})? _resolveWaitingAddressCoords(Map<String, dynamic> rideRow) {
+    final adresaId = _resolveWaitingAddressId(rideRow);
+    if (adresaId == null || adresaId.isEmpty) return null;
+    final row = V3MasterRealtimeManager.instance.adreseCache[adresaId];
+    if (row == null) return null;
+    final lat = _toDoubleOrNull(row['gps_lat']);
+    final lng = _toDoubleOrNull(row['gps_lng']);
+    if (lat == null || lng == null) return null;
+    return (lat: lat, lng: lng);
+  }
+
+  Future<void> _openGoogleMapsForRide(Map<String, dynamic> rideRow) async {
+    final coords = _resolveWaitingAddressCoords(rideRow);
+    if (coords == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nema GPS koordinata za ovu adresu')),
+        );
+      }
+      return;
+    }
+
+    final lat = coords.lat.toStringAsFixed(6);
+    final lng = coords.lng.toStringAsFixed(6);
+    final appUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+    final webUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+
+    if (await canLaunchUrl(appUri)) {
+      await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (await canLaunchUrl(webUri)) {
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ne mogu da otvorim Google Maps')),
+      );
+    }
   }
 
   String _formatNextRide(DateTime departure, String? grad) {
@@ -331,35 +387,40 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      if (waitingAddress != null) ...[
+                      if (waitingAddress != null && nextRide != null) ...[
                         const SizedBox(height: 8),
-                        V3ContainerUtils.styledContainer(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          backgroundColor: Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white24),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                color: Colors.white70,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  '${_tr('cekaNa')}: $waitingAddress',
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                        GestureDetector(
+                          onTap: () => _openGoogleMapsForRide(nextRide.row),
+                          child: V3ContainerUtils.styledContainer(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            backgroundColor: Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white24),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  color: Colors.greenAccent,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    '${_tr('cekaNa')}: $waitingAddress',
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Colors.white38,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ],
