@@ -846,13 +846,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final grouped = _getUceniciSaDodeljenimVremenomDanasPoGradu();
     final bcIds = grouped['BC'] ?? const <String>[];
     final vsSet = (grouped['VS'] ?? const <String>[]).toSet();
-    // vsTotal = samo oni koji imaju i BC i VS (presek po ID-u)
-    final vsTotal = bcIds.where((id) => vsSet.contains(id)).length;
+    // bcSaVs = učenici koji imaju i BC i VS zakazano danas
+    final bcSaVs = bcIds.where((id) => vsSet.contains(id)).length;
 
     return {
       'bcTotal': bcIds.length,
-      'vsTotal': vsTotal,
-      'preostalo': bcIds.length - vsTotal,
+      'bcSaVs': bcSaVs,
+      'preostalo': bcIds.length - bcSaVs,
     };
   }
 
@@ -860,7 +860,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   Map<String, List<String>> _getUceniciSaDodeljenimVremenomDanasPoGradu() {
     final rm = V3MasterRealtimeManager.instance;
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
 
     final uceniciIds = rm.putniciCache.values
         .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
@@ -873,37 +872,27 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     for (final r in rm.operativnaNedeljaCache.values) {
       final putnikId = r['created_by']?.toString();
       if (putnikId == null || !uceniciIds.contains(putnikId)) continue;
-      if (r['otkazano_at'] != null) continue;
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
       final datum = DateTime.tryParse(datumRaw);
       if (datum == null) continue;
-      final datumOnly = DateTime(datum.year, datum.month, datum.day);
-      if (datumOnly != today) continue;
+      if (datum.year != now.year || datum.month != now.month || datum.day != now.day) continue;
+
+      final status = V3StatusPolicy.deriveOperativnaStatus(
+        otkazanoAt: r['otkazano_at'],
+        polazakAt: r['polazak_at'],
+      );
+      if (!V3StatusPolicy.isApproved(status)) continue;
+
+      final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
+      if (polazakAt.isEmpty) continue;
 
       final grad = (r['grad']?.toString() ?? '').toUpperCase();
-      if (grad == 'VS') {
-        final status = V3StatusPolicy.deriveOperativnaStatus(
-          otkazanoAt: r['otkazano_at'],
-          polazakAt: r['polazak_at'],
-        );
-        if (!V3StatusPolicy.isApproved(status)) continue;
-        final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
-        if (polazakAt.isEmpty) continue;
-        vsIds.add(putnikId);
-        continue;
-      }
-
       if (grad == 'BC') {
-        final status = V3StatusPolicy.deriveOperativnaStatus(
-          otkazanoAt: r['otkazano_at'],
-          polazakAt: r['polazak_at'],
-        );
-        if (!V3StatusPolicy.isApproved(status)) continue;
-        final polazakAt = (r['polazak_at']?.toString() ?? '').trim();
-        if (polazakAt.isEmpty) continue;
         bcIds.add(putnikId);
+      } else if (grad == 'VS') {
+        vsIds.add(putnikId);
       }
     }
 
@@ -1046,11 +1035,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     }).length;
   }
 
-  /// Učenici brojač: broj učenika bez VS termina danas.
+  /// Učenici brojač: BC učenika danas / preostalo bez VS termina.
   Widget _buildSaVsWidget(BuildContext context) {
     final stats = _getUceniciBcVsSummary();
     final bcTotal = stats['bcTotal'] ?? 0;
-    final vsTotal = stats['vsTotal'] ?? 0;
+    final preostalo = stats['preostalo'] ?? 0;
 
     return GestureDetector(
       onTap: () => _showUceniciDanasPopup(context),
@@ -1066,7 +1055,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '$bcTotal/$vsTotal',
+              '$bcTotal/$preostalo',
               style: const TextStyle(
                 color: Colors.orange,
                 fontSize: 15,
