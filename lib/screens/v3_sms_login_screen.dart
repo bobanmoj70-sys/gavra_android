@@ -14,6 +14,7 @@ import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -86,6 +87,166 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     if (diff.isNegative) return null;
     final minutes = diff.inSeconds / 60;
     return minutes.ceil();
+  }
+
+  // ─── Lokalizacija ───────────────────────────────────────────────
+
+  static const Map<String, Map<String, String>> _t = {
+    'prijava': {'sr': 'Prijava', 'en': 'Login'},
+    'unesitePhone': {'sr': 'Unesite broj telefona za prijavu.', 'en': 'Enter your phone number to log in.'},
+    'povezivanje': {
+      'sr': 'Povezivanje sa serverom u toku, sačekajte...',
+      'en': 'Connecting to server, please wait...',
+    },
+    'brojTelefona': {'sr': 'Broj telefona', 'en': 'Phone number'},
+    'nalepi': {'sr': 'Nalepi', 'en': 'Paste'},
+    'nastavi': {'sr': 'Nastavi', 'en': 'Continue'},
+    'ucitavanje': {'sr': 'Učitavanje...', 'en': 'Loading...'},
+    'prijavaBiometrijom': {'sr': 'Prijava biometrijom', 'en': 'Log in with biometrics'},
+    'biometrijaNijePodesena': {
+      'sr': 'Biometrija nije podešena na uređaju. Uključite je u podešavanjima telefona.',
+      'en': 'Biometrics is not set up on this device. Enable it in your phone settings.',
+    },
+    'sigurnosnaObavestenja': {
+      'sr': 'Poštovani korisnici, zbog dodatnih bezbednosnih usklađivanja sa zahtevima platformi (Google Play i '
+          'iOS), kao i završetka sertifikacionih procedura radi veće zaštite vaših podataka, produžen je period '
+          'ograničene dostupnosti aplikacije. Ove mere su uvedene kako bi se smanjio rizik od zloupotreba, '
+          'uključujući pokušaje phishing napada, krađe vaših podataka i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
+      'en': 'Dear users, due to additional security alignment with platform requirements (Google Play and iOS), '
+          'as well as the completion of certification procedures for stronger data protection, the period of '
+          'limited app availability has been extended. These measures were introduced to reduce the risk of '
+          'misuse, including phishing attempts, data theft and unauthorized advertising. Thank you for your '
+          'patience and understanding.',
+    },
+    'unesitePodatke': {'sr': 'Unesite podatke za nalog', 'en': 'Enter account details for'},
+    'ime': {'sr': 'Ime', 'en': 'First name'},
+    'prezime': {'sr': 'Prezime', 'en': 'Last name'},
+    'kategorija': {'sr': 'Kategorija', 'en': 'Category'},
+    'izaberiteKategoriju': {'sr': 'Izaberite kategoriju', 'en': 'Select category'},
+    'radnik': {'sr': '👷 Radnik', 'en': '👷 Worker'},
+    'ucenik': {'sr': '🎒 Učenik', 'en': '🎒 Student'},
+    'dnevni': {'sr': '📅 Dnevni', 'en': '📅 Daily'},
+    'posiljka': {'sr': '📦 Pošiljka', 'en': '📦 Parcel'},
+    'adresaBc': {'sr': 'Adresa BC *', 'en': 'BC address *'},
+    'adresaVs': {'sr': 'Adresa VS *', 'en': 'VS address *'},
+    'noviPin': {'sr': 'Novi PIN kod (6 cifara) *', 'en': 'New PIN code (6 digits) *'},
+    'unesitePin': {'sr': 'Unesite PIN kod (6 cifara) *', 'en': 'Enter PIN code (6 digits) *'},
+    'ponoviPin': {'sr': 'Ponovi PIN kod *', 'en': 'Repeat PIN code *'},
+    'sacuvajNastavi': {'sr': 'Sačuvaj i nastavi', 'en': 'Save and continue'},
+    'adresaBcKratko': {'sr': 'adresa BC', 'en': 'BC address'},
+    'adresaVsKratko': {'sr': 'adresa VS', 'en': 'VS address'},
+    'pinKod': {'sr': 'PIN kod', 'en': 'PIN code'},
+    'tip': {'sr': 'tip', 'en': 'category'},
+    'dopunitePolja': {'sr': 'Dopunite', 'en': 'Please complete'},
+    'daNastavite': {'sr': 'da nastavite.', 'en': 'to continue.'},
+    'dopuniteObavezna': {'sr': 'Dopunite obavezna polja', 'en': 'Please complete required fields'},
+    'potvrdaIdentiteta': {
+      'sr': 'Za potvrdu identiteta unesite Vaš PIN kod (6 cifara).',
+      'en': 'To confirm your identity, enter your PIN code (6 digits).',
+    },
+    'podesitePin': {
+      'sr': 'Iz sigurnosnih razloga potrebno je da podesite PIN kod (6 cifara).',
+      'en': 'For security reasons you need to set up a PIN code (6 digits).',
+    },
+    'imeKratko': {'sr': 'ime', 'en': 'name'},
+    'kategorijuKratko': {'sr': 'kategoriju', 'en': 'category'},
+    'deviceLimitReached': {
+      'sr': '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
+      'en': '❌ Device limit of 2 per account reached. Contact admin.',
+    },
+    'telefonNijeUparen': {
+      'sr': '❌ Telefon nije uparen sa UUID nalogom.',
+      'en': '❌ Phone is not paired with the account.',
+    },
+    'nisteUSistemu': {
+      'sr': '❌ Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+      'en': '❌ This is a closed application and you are not in the system. Contact admin.',
+    },
+    'unosNijeKompletan': {
+      'sr': '❌ Upis nije kompletan. Nedostaje:',
+      'en': '❌ Entry is incomplete. Missing:',
+    },
+    'greskaCuvanjePin': {
+      'sr': '❌ Greška pri čuvanju PIN koda. Pokušaj ponovo.',
+      'en': '❌ Error saving PIN code. Please try again.',
+    },
+    'profilSacuvan': {'sr': '✅ Profil sačuvan.', 'en': '✅ Profile saved.'},
+    'cuvanjeProfilaGreska': {
+      'sr': '❌ Čuvanje profila trenutno nije moguće. Pokušajte ponovo.',
+      'en': '❌ Saving profile is currently not possible. Please try again.',
+    },
+    'sesijaIstekla': {
+      'sr': '❌ Sesija je istekla. Počni ponovo.',
+      'en': '❌ Session expired. Please start again.',
+    },
+    'uuidNedostaje': {
+      'sr': '❌ UUID naloga nedostaje. Prijavi se ponovo.',
+      'en': '❌ Account UUID is missing. Please log in again.',
+    },
+    'prijavaNijeMoguca': {
+      'sr': '❌ Prijava trenutno nije moguća. Pokušajte ponovo.',
+      'en': '❌ Login is currently not possible. Please try again.',
+    },
+    'biometrijaNijeUspela': {
+      'sr': '❌ Biometrijska autentifikacija nije uspela',
+      'en': '❌ Biometric authentication failed',
+    },
+    'sacuvanTelefonNijeIspravan': {
+      'sr': '❌ Sačuvan telefon nije ispravan. Prijavi se brojem telefona.',
+      'en': '❌ Saved phone number is invalid. Please log in using your phone number.',
+    },
+    'brojNijePronadjen': {
+      'sr': '❌ Broj telefona i UUID reda nisu pronađeni.',
+      'en': '❌ Phone number and account UUID were not found.',
+    },
+    'uneseiteBrojTelefona': {'sr': 'Unesite broj telefona.', 'en': 'Enter your phone number.'},
+    'proveravamBroj': {'sr': '🔍 Proveravam broj...', 'en': '🔍 Checking number...'},
+    'zahtevGreska': {
+      'sr': '❌ Trenutno ne možemo da obradimo zahtev. Pokušajte ponovo.',
+      'en': '❌ We cannot process your request right now. Please try again.',
+    },
+    'pinNisuIsti': {'sr': 'PIN-ovi se ne poklapaju.', 'en': 'PIN codes do not match.'},
+    'cuvamPin': {'sr': '💾 Čuvam PIN...', 'en': '💾 Saving PIN...'},
+    'pinPodesen': {'sr': '✅ PIN je uspešno podešen.', 'en': '✅ PIN successfully set.'},
+    'pinMora6Cifara': {'sr': 'PIN mora imati tačno 6 cifara.', 'en': 'PIN must be exactly 6 digits.'},
+    'previseGreskihPokusaja': {
+      'sr': '❌ Previše pogrešnih pokušaja. Kontaktirajte admina.',
+      'en': '❌ Too many failed attempts. Please contact admin.',
+    },
+    'proveravamPin': {'sr': '🔐 Proveravam PIN...', 'en': '🔐 Verifying PIN...'},
+    'previseGreskihPokusajaZa': {
+      'sr': '❌ Previše pogrešnih pokušaja. Pokušajte ponovo za',
+      'en': '❌ Too many failed attempts. Please try again in',
+    },
+    'pinNijeIspravanPreostalo': {
+      'sr': '❌ PIN nije ispravan. Preostalo pokušaja:',
+      'en': '❌ Incorrect PIN. Attempts remaining:',
+    },
+    'identitetUredjajaNedostupan': {
+      'sr': '❌ Identitet uređaja nije dostupan.',
+      'en': '❌ Device identity is not available.',
+    },
+    'pinPotvrdjenUredjaj': {
+      'sr': '✅ PIN potvrđen. Uređaj je verifikovan.',
+      'en': '✅ PIN confirmed. Device verified.',
+    },
+    'pinPotvrdaGreska': {
+      'sr': '❌ PIN potvrda trenutno nije moguća. Pokušajte ponovo.',
+      'en': '❌ PIN confirmation is currently not possible. Please try again.',
+    },
+    'uneseiteImePrezime': {'sr': 'Unesite ime i prezime.', 'en': 'Enter first and last name.'},
+    'izaberiteTipPutnika': {'sr': 'Izaberite tip putnika.', 'en': 'Select passenger category.'},
+    'izaberiteAdreseBcVs': {
+      'sr': 'Izaberite po jednu adresu za BC i VS.',
+      'en': 'Select one address each for BC and VS.',
+    },
+    'izaberiBcAdresu': {'sr': 'Izaberi BC adresu.', 'en': 'Select BC address.'},
+    'izaberiVsAdresu': {'sr': 'Izaberi VS adresu.', 'en': 'Select VS address.'},
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
   }
 
   // Biometrija
@@ -196,7 +357,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     if (!authenticated) {
       if (!silentFailure && mounted) {
-        V3AppSnackBar.error(context, '❌ Biometrijska autentifikacija nije uspela');
+        V3AppSnackBar.error(context, _tr('biometrijaNijeUspela'));
       }
       return;
     }
@@ -204,7 +365,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final normalized = V3ClosedAuthService.normalizePhone(raw);
     if (normalized.isEmpty) {
       if (!silentFailure && mounted) {
-        V3AppSnackBar.error(context, '❌ Sačuvan telefon nije ispravan. Prijavi se brojem telefona.');
+        V3AppSnackBar.error(context, _tr('sacuvanTelefonNijeIspravan'));
       }
       return;
     }
@@ -216,7 +377,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final authId = (await V3ClosedAuthService.findAuthIdByPhone(normalized) ?? '').trim();
     if (authId.isEmpty) {
       if (!silentFailure && mounted) {
-        V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
+        V3AppSnackBar.error(context, _tr('brojNijePronadjen'));
       }
       return;
     }
@@ -241,26 +402,26 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     final input = _phoneController.text.trim();
     if (input.isEmpty) {
-      V3AppSnackBar.warning(context, 'Unesite broj telefona.');
+      V3AppSnackBar.warning(context, _tr('uneseiteBrojTelefona'));
       return;
     }
 
     final phone = V3ClosedAuthService.normalizePhone(input);
     if (phone.isEmpty) {
-      V3AppSnackBar.warning(context, 'Unesite broj telefona.');
+      V3AppSnackBar.warning(context, _tr('uneseiteBrojTelefona'));
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '🔍 Proveravam broj...';
+      _statusMessage = _tr('proveravamBroj');
     });
 
     try {
       final authId = (await V3ClosedAuthService.findAuthIdByPhone(phone) ?? '').trim();
       if (authId.isEmpty) {
         if (!mounted) return;
-        V3AppSnackBar.error(context, '❌ Broj telefona i UUID reda nisu pronađeni.');
+        V3AppSnackBar.error(context, _tr('brojNijePronadjen'));
         setState(() => _statusMessage = '');
         return;
       }
@@ -277,7 +438,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _sendSms error: $e');
-      V3AppSnackBar.error(context, '❌ Trenutno ne možemo da obradimo zahtev. Pokušajte ponovo.');
+      V3AppSnackBar.error(context, _tr('zahtevGreska'));
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -291,14 +452,14 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     debugPrint('[V3SmsLogin] phone empty: ${phone.isEmpty}, authId empty: ${authId.isEmpty}');
     if (phone.isEmpty) {
       if (mounted) {
-        V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+        V3AppSnackBar.error(context, _tr('sesijaIstekla'));
         _resetToStep1();
       }
       return;
     }
     if (authId.isEmpty) {
       if (mounted) {
-        V3AppSnackBar.error(context, '❌ UUID naloga nedostaje. Prijavi se ponovo.');
+        V3AppSnackBar.error(context, _tr('uuidNedostaje'));
         _resetToStep1();
       }
       return;
@@ -325,7 +486,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           _vozacPinOnlyOnboarding = false;
           _devicePinVerificationOnly = true;
           _devicePinAttempts = 0;
-          _missingProfileMessage = 'Za potvrdu identiteta unesite Vaš PIN kod (6 cifara).';
+          _missingProfileMessage = _tr('potvrdaIdentiteta');
           _step = _SmsStep.unosProfila;
         });
         return;
@@ -333,10 +494,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       if (verification.reason == 'device_limit_reached') {
         V3AppSnackBar.error(
           context,
-          '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
+          _tr('deviceLimitReached'),
         );
       } else {
-        V3AppSnackBar.error(context, '❌ Telefon nije uparen sa UUID nalogom.');
+        V3AppSnackBar.error(context, _tr('telefonNijeUparen'));
       }
       _resetToStep1();
       return;
@@ -358,7 +519,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         if (!mounted) return;
         V3AppSnackBar.error(
           context,
-          '❌ Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+          _tr('nisteUSistemu'),
         );
         _resetToStep1();
         return;
@@ -374,7 +535,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           _requirePin = true;
           _vozacPinOnlyOnboarding = true;
           _devicePinVerificationOnly = false;
-          _missingProfileMessage = 'Iz sigurnosnih razloga potrebno je da podesite PIN kod (6 cifara).';
+          _missingProfileMessage = _tr('podesitePin');
           _step = _SmsStep.unosProfila;
         });
         return;
@@ -420,12 +581,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
         // Poruka na osnovu šta nedostaje
         final missingFields = <String>[];
-        if (missingIme) missingFields.add('ime');
-        if (missingTip) missingFields.add('kategoriju');
-        if (missingBc) missingFields.add('adresu BC');
-        if (missingVs) missingFields.add('adresu VS');
-        if (missingPin) missingFields.add('PIN kod');
-        _missingProfileMessage = 'Dopunite: ${missingFields.join(', ')} da nastavite.';
+        if (missingIme) missingFields.add(_tr('imeKratko'));
+        if (missingTip) missingFields.add(_tr('kategorijuKratko'));
+        if (missingBc) missingFields.add(_tr('adresaBcKratko'));
+        if (missingVs) missingFields.add(_tr('adresaVsKratko'));
+        if (missingPin) missingFields.add(_tr('pinKod'));
+        _missingProfileMessage = '${_tr('dopunitePolja')}: ${missingFields.join(', ')} ${_tr('daNastavite')}';
         _step = _SmsStep.unosProfila;
       });
       return;
@@ -478,29 +639,29 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final pinConfirm = _pinConfirmController.text.trim();
 
     if (!V3ClosedAuthService.isValidPin(pin)) {
-      V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
+      V3AppSnackBar.warning(context, _tr('pinMora6Cifara'));
       return;
     }
     if (pin != pinConfirm) {
-      V3AppSnackBar.warning(context, 'PIN-ovi se ne poklapaju.');
+      V3AppSnackBar.warning(context, _tr('pinNisuIsti'));
       return;
     }
     if (phone.isEmpty || authId.isEmpty) {
-      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      V3AppSnackBar.error(context, _tr('sesijaIstekla'));
       _resetToStep1();
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '💾 Čuvam PIN...';
+      _statusMessage = _tr('cuvamPin');
     });
 
     final saved = await V3ClosedAuthService.setPin(v3AuthId: authId, pin: pin);
     if (!mounted) return;
 
     if (!saved) {
-      V3AppSnackBar.error(context, '❌ Greška pri čuvanju PIN koda. Pokušaj ponovo.');
+      V3AppSnackBar.error(context, _tr('greskaCuvanjePin'));
       setState(() {
         _isLoading = false;
         _statusMessage = '';
@@ -508,7 +669,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    V3AppSnackBar.success(context, '✅ PIN je uspešno podešen.');
+    V3AppSnackBar.success(context, _tr('pinPodesen'));
     await widget.onVerified(phone, authId);
   }
 
@@ -519,18 +680,18 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final pin = _pinController.text.trim();
 
     if (!V3ClosedAuthService.isValidPin(pin)) {
-      V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
+      V3AppSnackBar.warning(context, _tr('pinMora6Cifara'));
       return;
     }
     if (phone.isEmpty || authId.isEmpty) {
-      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      V3AppSnackBar.error(context, _tr('sesijaIstekla'));
       _resetToStep1();
       return;
     }
     if (_devicePinAttempts >= _maxDevicePinAttempts) {
       V3AppSnackBar.error(
         context,
-        '❌ Previše pogrešnih pokušaja. Kontaktirajte admina.',
+        _tr('previseGreskihPokusaja'),
       );
       _resetToStep1();
       return;
@@ -538,7 +699,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     setState(() {
       _isLoading = true;
-      _statusMessage = '🔐 Proveravam PIN...';
+      _statusMessage = _tr('proveravamPin');
     });
 
     try {
@@ -552,7 +713,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           final minutes = _minutesUntil(result.lockedUntil);
           V3AppSnackBar.error(
             context,
-            '❌ Previše pogrešnih pokušaja. Pokušajte ponovo za${minutes != null ? ' $minutes min' : ''}.',
+            '${_tr('previseGreskihPokusajaZa')}${minutes != null ? ' $minutes min' : ''}.',
           );
           _resetToStep1();
           return;
@@ -563,12 +724,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         if (remaining <= 0) {
           V3AppSnackBar.error(
             context,
-            '❌ Previše pogrešnih pokušaja. Kontaktirajte admina.',
+            _tr('previseGreskihPokusaja'),
           );
           _resetToStep1();
           return;
         }
-        V3AppSnackBar.error(context, '❌ PIN nije ispravan. Preostalo pokušaja: $remaining.');
+        V3AppSnackBar.error(context, '${_tr('pinNijeIspravanPreostalo')} $remaining.');
         setState(() {
           _statusMessage = '';
           _isLoading = false;
@@ -587,7 +748,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       if (resolvedInstallationId.isEmpty) {
         if (!mounted) return;
-        V3AppSnackBar.error(context, '❌ Identitet uređaja nije dostupan.');
+        V3AppSnackBar.error(context, _tr('identitetUredjajaNedostupan'));
         setState(() {
           _statusMessage = '';
           _isLoading = false;
@@ -604,12 +765,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       );
 
       if (!mounted) return;
-      V3AppSnackBar.success(context, '✅ PIN potvrđen. Uređaj je verifikovan.');
+      V3AppSnackBar.success(context, _tr('pinPotvrdjenUredjaj'));
       await widget.onVerified(phone, authId);
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _saveDevicePinVerification error: $e');
-      V3AppSnackBar.error(context, '❌ PIN potvrda trenutno nije moguća. Pokušajte ponovo.');
+      V3AppSnackBar.error(context, _tr('pinPotvrdaGreska'));
       setState(() {
         _statusMessage = '';
         _isLoading = false;
@@ -637,26 +798,26 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
     if (!_addressOnlyOnboarding) {
       if (ime.isEmpty || prezime.isEmpty) {
-        V3AppSnackBar.warning(context, 'Unesite ime i prezime.');
+        V3AppSnackBar.warning(context, _tr('uneseiteImePrezime'));
         return;
       }
 
       if (_selectedTip.isEmpty) {
-        V3AppSnackBar.warning(context, 'Izaberite tip putnika.');
+        V3AppSnackBar.warning(context, _tr('izaberiteTipPutnika'));
         return;
       }
 
       if (_selectedBcAdresa == null || _selectedVsAdresa == null) {
-        V3AppSnackBar.warning(context, 'Izaberite po jednu adresu za BC i VS.');
+        V3AppSnackBar.warning(context, _tr('izaberiteAdreseBcVs'));
         return;
       }
     } else {
       if (_requireBcAddress && _selectedBcAdresa == null) {
-        V3AppSnackBar.warning(context, 'Izaberi BC adresu.');
+        V3AppSnackBar.warning(context, _tr('izaberiBcAdresu'));
         return;
       }
       if (_requireVsAddress && _selectedVsAdresa == null) {
-        V3AppSnackBar.warning(context, 'Izaberi VS adresu.');
+        V3AppSnackBar.warning(context, _tr('izaberiVsAdresu'));
         return;
       }
     }
@@ -665,23 +826,23 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       final pin = _pinController.text.trim();
       final pinConfirm = _pinConfirmController.text.trim();
       if (!V3ClosedAuthService.isValidPin(pin)) {
-        V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
+        V3AppSnackBar.warning(context, _tr('pinMora6Cifara'));
         return;
       }
       if (pin != pinConfirm) {
-        V3AppSnackBar.warning(context, 'PIN-ovi se ne poklapaju.');
+        V3AppSnackBar.warning(context, _tr('pinNisuIsti'));
         return;
       }
     }
 
     if (phone.isEmpty) {
-      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      V3AppSnackBar.error(context, _tr('sesijaIstekla'));
       _resetToStep1();
       return;
     }
 
     if (authId.isEmpty) {
-      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      V3AppSnackBar.error(context, _tr('sesijaIstekla'));
       _resetToStep1();
       return;
     }
@@ -729,7 +890,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         );
         if (!pinSaved) {
           if (!mounted) return;
-          V3AppSnackBar.error(context, '❌ Greška pri čuvanju PIN koda. Pokušaj ponovo.');
+          V3AppSnackBar.error(context, _tr('greskaCuvanjePin'));
           setState(() => _statusMessage = '');
           return;
         }
@@ -742,9 +903,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       );
       if (missingAfterSave.isNotEmpty) {
         if (!mounted) return;
-        V3AppSnackBar.error(context, '❌ Upis nije kompletan. Nedostaje: ${missingAfterSave.join(', ')}.');
+        V3AppSnackBar.error(context, '${_tr('unosNijeKompletan')} ${missingAfterSave.join(', ')}.');
         setState(() {
-          _missingProfileMessage = 'Dopunite obavezna polja: ${missingAfterSave.join(', ')}.';
+          _missingProfileMessage = '${_tr('dopuniteObavezna')}: ${missingAfterSave.join(', ')}.';
           _statusMessage = '';
         });
         return;
@@ -752,7 +913,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       if (!mounted) return;
 
-      V3AppSnackBar.success(context, '✅ Profil sačuvan.');
+      V3AppSnackBar.success(context, _tr('profilSacuvan'));
       await _finalize();
       if (mounted) {
         setState(() => _statusMessage = '');
@@ -760,7 +921,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _saveOnboarding error: $e');
-      V3AppSnackBar.error(context, '❌ Čuvanje profila trenutno nije moguće. Pokušajte ponovo.');
+      V3AppSnackBar.error(context, _tr('cuvanjeProfilaGreska'));
       setState(() => _statusMessage = '');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -774,13 +935,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
       final authId = (_targetAuthId ?? '').trim();
       if (phone.isEmpty) {
-        V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+        V3AppSnackBar.error(context, _tr('sesijaIstekla'));
         _resetToStep1();
         return;
       }
 
       if (authId.isEmpty) {
-        V3AppSnackBar.error(context, '❌ UUID naloga nedostaje. Prijavi se ponovo.');
+        V3AppSnackBar.error(context, _tr('uuidNedostaje'));
         _resetToStep1();
         return;
       }
@@ -803,7 +964,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('[V3SmsLogin] _finalize error: $e');
-      V3AppSnackBar.error(context, '❌ Prijava trenutno nije moguća. Pokušajte ponovo.');
+      V3AppSnackBar.error(context, _tr('prijavaNijeMoguca'));
       setState(() => _statusMessage = '');
     }
   }
@@ -836,8 +997,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   }) {
     if (putnik == null) {
       return includeIdentityFields
-          ? const ['ime', 'tip', 'adresa BC', 'adresa VS', 'PIN kod']
-          : const ['adresa BC', 'adresa VS', 'PIN kod'];
+          ? [_tr('imeKratko'), _tr('tip'), _tr('adresaBcKratko'), _tr('adresaVsKratko'), _tr('pinKod')]
+          : [_tr('adresaBcKratko'), _tr('adresaVsKratko'), _tr('pinKod')];
     }
 
     final missing = <String>[];
@@ -848,12 +1009,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final pinHash = putnik['pin_hash']?.toString().trim() ?? '';
 
     if (includeIdentityFields) {
-      if (ime.isEmpty) missing.add('ime');
-      if (tip.isEmpty) missing.add('tip');
+      if (ime.isEmpty) missing.add(_tr('imeKratko'));
+      if (tip.isEmpty) missing.add(_tr('tip'));
     }
-    if (bc.isEmpty) missing.add('adresa BC');
-    if (vs.isEmpty) missing.add('adresa VS');
-    if (pinHash.isEmpty) missing.add('PIN kod');
+    if (bc.isEmpty) missing.add(_tr('adresaBcKratko'));
+    if (vs.isEmpty) missing.add(_tr('adresaVsKratko'));
+    if (pinHash.isEmpty) missing.add(_tr('pinKod'));
     return missing;
   }
 
@@ -872,7 +1033,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           title: Text(
-            widget.title,
+            widget.title.trim().toLowerCase() == 'prijava' ? _tr('prijava') : widget.title,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           iconTheme: const IconThemeData(color: Colors.white),
@@ -901,9 +1062,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               ),
               if (_biometricEnabled && _biometricChecked && _biometricDeviceSupported && !_biometricAvailable) ...[
                 const SizedBox(height: 16),
-                const Text(
-                  'Biometrija nije podešena na uređaju. Uključite je u podešavanjima telefona.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                Text(
+                  _tr('biometrijaNijePodesena'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -923,7 +1084,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       children: [
         _buildInfoBox(
           icon: _isBackendReady ? Icons.sms_outlined : Icons.hourglass_top,
-          text: _isBackendReady ? 'Unesite broj telefona za prijavu.' : 'Povezivanje sa serverom u toku, sačekajte...',
+          text: _isBackendReady ? _tr('unesitePhone') : _tr('povezivanje'),
         ),
         const SizedBox(height: 24),
         TextField(
@@ -932,7 +1093,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           enabled: !_isLoading,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
-            labelText: 'Broj telefona',
+            labelText: _tr('brojTelefona'),
             hintText: '06x xxx xxxx',
             labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
             hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
@@ -940,7 +1101,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             fillColor: Colors.white.withValues(alpha: 0.1),
             prefixIcon: const Icon(Icons.phone, color: Colors.amber),
             suffixIcon: IconButton(
-              tooltip: 'Nalepi',
+              tooltip: _tr('nalepi'),
               icon: const Icon(Icons.content_paste_rounded, color: Colors.amber),
               onPressed: _isLoading ? null : () => V3InputUtils.pasteFromClipboardIntoController(_phoneController),
             ),
@@ -967,7 +1128,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: _isBackendReady ? 'Nastavi' : 'Učitavanje...',
+          text: _isBackendReady ? _tr('nastavi') : _tr('ucitavanje'),
           icon: _isBackendReady ? Icons.send : Icons.hourglass_empty,
           isLoading: !_isBackendReady || _isLoading,
           onPressed: _canSubmitPhoneStep ? _sendSms : null,
@@ -975,7 +1136,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[
           const SizedBox(height: 10),
           V3ButtonUtils.amberButton(
-            text: 'Prijava biometrijom',
+            text: _tr('prijavaBiometrijom'),
             icon: _biometricIcon,
             isLoading: _isLoading,
             onPressed: _isLoading ? null : () => _loginWithBiometric(),
@@ -993,10 +1154,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Poštovani korisnici, zbog dodatnih bezbednosnih usklađivanja sa zahtevima platformi (Google Play i '
-                'iOS), kao i završetka sertifikacionih procedura radi veće zaštite vaših podataka, produžen je period '
-                'ograničene dostupnosti aplikacije. Ove mere su uvedene kako bi se smanjio rizik od zloupotreba, '
-                'uključujući pokušaje phishing napada, krađe vaših podataka i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
+                _tr('sigurnosnaObavestenja'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.92),
@@ -1039,7 +1197,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _buildInfoBox(
           icon: Icons.person_outline,
           text:
-              _missingProfileMessage.isEmpty ? 'Unesite podatke za nalog ($_normalizedPhone).' : _missingProfileMessage,
+              _missingProfileMessage.isEmpty ? '${_tr('unesitePodatke')} ($_normalizedPhone).' : _missingProfileMessage,
         ),
         const SizedBox(height: 24),
         if (showIdentityFields) ...[
@@ -1049,7 +1207,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'Ime',
+              labelText: _tr('ime'),
               labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
@@ -1075,7 +1233,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'Prezime',
+              labelText: _tr('prezime'),
               labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
@@ -1100,7 +1258,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             dropdownColor: const Color(0xFF1E1E1E),
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: 'Kategorija',
+              labelText: _tr('kategorija'),
               labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
@@ -1118,12 +1276,12 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                 borderSide: const BorderSide(color: Colors.amber, width: 2),
               ),
             ),
-            items: const [
-              DropdownMenuItem(value: '', child: Text('Izaberite kategoriju')),
-              DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
-              DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
-              DropdownMenuItem(value: 'dnevni', child: Text('📅 Dnevni')),
-              DropdownMenuItem(value: 'posiljka', child: Text('📦 Pošiljka')),
+            items: [
+              DropdownMenuItem(value: '', child: Text(_tr('izaberiteKategoriju'))),
+              DropdownMenuItem(value: 'radnik', child: Text(_tr('radnik'))),
+              DropdownMenuItem(value: 'ucenik', child: Text(_tr('ucenik'))),
+              DropdownMenuItem(value: 'dnevni', child: Text(_tr('dnevni'))),
+              DropdownMenuItem(value: 'posiljka', child: Text(_tr('posiljka'))),
             ],
             onChanged: _isLoading
                 ? null
@@ -1144,7 +1302,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               dropdownColor: const Color(0xFF1E1E1E),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'Adresa BC *',
+                labelText: _tr('adresaBc'),
                 labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
                 filled: true,
                 fillColor: Colors.transparent,
@@ -1187,7 +1345,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               dropdownColor: const Color(0xFF1E1E1E),
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'Adresa VS *',
+                labelText: _tr('adresaVs'),
                 labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
                 filled: true,
                 fillColor: Colors.transparent,
@@ -1232,7 +1390,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             ],
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              labelText: _devicePinVerificationOnly ? 'Unesite PIN kod (6 cifara) *' : 'Novi PIN kod (6 cifara) *',
+              labelText: _devicePinVerificationOnly ? _tr('unesitePin') : _tr('noviPin'),
               labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.1),
@@ -1264,7 +1422,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
               ],
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                labelText: 'Ponovi PIN kod *',
+                labelText: _tr('ponoviPin'),
                 labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.1),
@@ -1292,7 +1450,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         ],
         const SizedBox(height: 24),
         V3ButtonUtils.primaryButton(
-          text: 'Sačuvaj i nastavi',
+          text: _tr('sacuvajNastavi'),
           icon: Icons.check_circle_outline,
           isLoading: _isLoading,
           onPressed: _saveOnboarding,
