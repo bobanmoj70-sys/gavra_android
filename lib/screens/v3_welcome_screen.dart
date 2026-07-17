@@ -529,11 +529,15 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       }
 
       vozac = V3VozacService.getVozacById(resolvedId);
-      if (vozac == null) {
+      debugPrint(
+          '[V3WelcomeScreen] cached vozac: ${vozac != null}, pinHash empty: ${(vozac?.pinHash ?? '').trim().isEmpty}');
+      if (vozac == null || (vozac.pinHash ?? '').trim().isEmpty) {
         final vozacDirect = await V3VozacService.getVozacByIdDirect(resolvedId).timeout(
           _startupTimeout,
           onTimeout: () => null,
         );
+        debugPrint(
+            '[V3WelcomeScreen] direct vozac: ${vozacDirect != null}, pinHash empty: ${(vozacDirect?.pinHash ?? '').trim().isEmpty}');
         if (vozacDirect != null && vozacDirect.id.trim() == resolvedId) {
           vozac = vozacDirect;
         }
