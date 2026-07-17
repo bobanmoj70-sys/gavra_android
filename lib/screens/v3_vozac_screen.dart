@@ -27,11 +27,13 @@ import '../services/v3_biometric_service.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_geo_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
@@ -1411,6 +1413,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, '🎨 Tema promenjena');
+                                  } else if (val == 'promeni_pin') {
+                                    final vozac = _efektivniVozac;
+                                    final vozacAuthId = (vozac?.id?.toString() ?? '').trim();
+                                    if (vozacAuthId.isEmpty) {
+                                      V3AppSnackBar.error(context, 'Nije moguće identifikovati vozača.');
+                                      return;
+                                    }
+                                    await V3DialogHelper.showDialogBuilder<void>(
+                                      context: context,
+                                      builder: (ctx) => _ChangePinDialog(v3AuthId: vozacAuthId),
+                                    );
                                   } else if (val == 'logout') {
                                     _logout();
                                   }
@@ -1422,6 +1435,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                       Icon(Icons.palette, color: Colors.purpleAccent),
                                       SizedBox(width: 8),
                                       Text('Promeni temu'),
+                                    ]),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'promeni_pin',
+                                    child: Row(children: [
+                                      Icon(Icons.lock_reset_outlined, color: Colors.orangeAccent),
+                                      SizedBox(width: 8),
+                                      Text('Promeni PIN'),
                                     ]),
                                   ),
                                   PopupMenuDivider(),
@@ -1714,4 +1735,195 @@ class _PutnikEntry {
   final V3Putnik putnik;
   final V3OperativnaNedeljaEntry? entry;
   const _PutnikEntry({required this.putnik, this.entry});
+}
+
+// ─── CHANGE PIN DIALOG ──────────────────────────────────────────────────────
+class _ChangePinDialog extends StatefulWidget {
+  final String v3AuthId;
+
+  const _ChangePinDialog({required this.v3AuthId});
+
+  @override
+  State<_ChangePinDialog> createState() => _ChangePinDialogState();
+}
+
+class _ChangePinDialogState extends State<_ChangePinDialog> {
+  final _oldPinController = TextEditingController();
+  final _newPinController = TextEditingController();
+  final _newPinConfirmController = TextEditingController();
+
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _oldPinController.dispose();
+    _newPinController.dispose();
+    _newPinConfirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sacuvaj() async {
+    final oldPin = _oldPinController.text.trim();
+    final newPin = _newPinController.text.trim();
+    final newPinConfirm = _newPinConfirmController.text.trim();
+
+    if (!V3ClosedAuthService.isValidPin(oldPin)) {
+      setState(() => _error = 'Trenutni PIN mora imati tačno 6 cifara.');
+      return;
+    }
+    if (!V3ClosedAuthService.isValidPin(newPin)) {
+      setState(() => _error = 'Novi PIN mora imati tačno 6 cifara.');
+      return;
+    }
+
+    if (newPin != newPinConfirm) {
+      setState(() => _error = 'Novi PIN-ovi se ne poklapaju.');
+      return;
+    }
+    if (newPin == oldPin) {
+      setState(() => _error = 'Novi PIN mora biti različit od trenutnog.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    final result = await V3ClosedAuthService.changePin(
+      v3AuthId: widget.v3AuthId,
+      oldPin: oldPin,
+      newPin: newPin,
+    );
+
+    if (!mounted) return;
+
+    if (!result.ok) {
+      final message = switch (result.reason) {
+        'old_pin_mismatch' => 'Trenutni PIN nije ispravan.',
+        'pin_not_set' => 'Nalog nema podešen PIN.',
+        _ => 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+      };
+      setState(() {
+        _saving = false;
+        _error = message;
+      });
+      return;
+    }
+
+    V3AppSnackBar.success(context, '✅ PIN je uspešno promenjen.');
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gradient = theme.backgroundGradient;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(gradient: gradient),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lock_reset_outlined, color: Colors.white, size: 22),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Promeni PIN',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            'Unesi trenutni i novi PIN (6 cifara)',
+                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      V3InputUtils.textField(
+                        controller: _oldPinController,
+                        label: 'Trenutni PIN',
+                        icon: Icons.lock_outline,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _newPinController,
+                        label: 'Novi PIN',
+                        icon: Icons.lock_open_outlined,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _newPinConfirmController,
+                        label: 'Ponovi novi PIN',
+                        icon: Icons.lock_open_outlined,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                      ],
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: V3ButtonUtils.outlinedButton(
+                              onPressed: _saving ? null : () => Navigator.of(context, rootNavigator: true).pop(),
+                              text: 'Otkaži',
+                              borderColor: Colors.white54,
+                              foregroundColor: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: V3ButtonUtils.primaryButton(
+                              onPressed: _saving ? null : _sacuvaj,
+                              text: 'Sačuvaj',
+                              icon: Icons.check,
+                              isLoading: _saving,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
