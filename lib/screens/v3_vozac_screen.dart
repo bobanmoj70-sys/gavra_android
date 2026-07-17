@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -46,7 +47,20 @@ import 'v3_welcome_screen.dart';
 /// V3 Vozač Screen - prikazuje dodjeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
 class V3VozacScreen extends StatefulWidget {
-  const V3VozacScreen({super.key});
+  final String? vozacId;
+  final bool autoStartTracking;
+  final String? autoStartDatumIso;
+  final String? autoStartGrad;
+  final String? autoStartVreme;
+
+  const V3VozacScreen({
+    super.key,
+    this.vozacId,
+    this.autoStartTracking = false,
+    this.autoStartDatumIso,
+    this.autoStartGrad,
+    this.autoStartVreme,
+  });
 
   @override
   State<V3VozacScreen> createState() => _V3VozacScreenState();
@@ -406,7 +420,67 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         if (_isNavigating) {
           unawaited(_restoreEtaFromLastKnownPosition());
         }
+        // Auto-start tracking ako je ekran otvoren preko push notifikacije
+        if (widget.autoStartTracking && !_isNavigating) {
+          unawaited(_autoStartTrackingFromPush());
+        }
       });
+    }
+  }
+
+  Future<void> _autoStartTrackingFromPush() async {
+    final vozacId = (widget.vozacId ?? V3VozacService.currentVozac?.id ?? '').toString().trim();
+    if (vozacId.isEmpty) return;
+
+    String grad = (widget.autoStartGrad ?? _selectedGrad).trim().toUpperCase();
+    String vreme = V3TimeUtils.normalizeToHHmm(widget.autoStartVreme ?? _selectedVreme);
+    String datumIso = (widget.autoStartDatumIso ?? _selectedDatumIso).trim();
+
+    // Ako nije prosledjen termin, pokusaj da nadjes prvi aktivni termin vozaca
+    if (grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
+      final firstTerm = _mojiTermini.firstWhereOrNull((t) {
+        final tGrad = (t['grad']?.toString() ?? '').toUpperCase();
+        final tVreme = V3TimeUtils.normalizeToHHmm(t['vreme']?.toString() ?? '');
+        final tDatum = (t['datum']?.toString() ?? '').trim();
+        return tGrad.isNotEmpty && tVreme.isNotEmpty && tDatum.isNotEmpty;
+      });
+      if (firstTerm != null) {
+        grad = (firstTerm['grad']?.toString() ?? '').toUpperCase();
+        vreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme']?.toString() ?? '');
+        datumIso = (firstTerm['datum']?.toString() ?? '').trim();
+      }
+    }
+
+    if (grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
+      debugPrint('[V3VozacScreen] Auto-start: nema validnog termina');
+      return;
+    }
+
+    // Postavi selektovani termin
+    V3StateUtils.safeSetState(this, () {
+      _selectedGrad = grad;
+      _selectedVreme = vreme;
+      try {
+        _selectedDate = DateTime.parse(datumIso);
+      } catch (_) {}
+    });
+
+    final gpsOk = await _ensureGpsPermissionForStart();
+    if (!gpsOk) {
+      debugPrint('[V3VozacScreen] Auto-start: GPS dozvola nije odobrena');
+      return;
+    }
+
+    V3VozacLocationTrackingService.instance.setActiveTermin(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+    );
+
+    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
+
+    if (mounted) {
+      V3StateUtils.safeSetState(this, () => _isNavigating = true);
     }
   }
 
@@ -1083,7 +1157,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
         // Obriši sve prethodne slotove za ovog vozača
-        await V3TrenutnaDodelaSlotService.deleteAllSlotsForVozac(
+        await V3TrenutnaDodelaSlotService.deleteAllSlotsForVozaca(
           vozacId: vozacId,
         );
         // Aktiviraj selektovani slot

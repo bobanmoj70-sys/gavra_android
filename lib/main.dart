@@ -16,6 +16,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
 import 'screens/v3_putnik_profil_screen.dart';
+import 'screens/v3_vozac_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
@@ -976,6 +977,24 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
       final putnikId = (data['v3_auth_id'] ?? data['recipient_id'] ?? '').trim();
       final payload = putnikId.isNotEmpty ? 'zahtev_status:$putnikId' : 'zahtev_status';
       await _openPutnikProfilFromNotification(payload);
+      return;
+
+    case 'vozac_auto_start_tracking':
+      final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
+      if (vozacId.isNotEmpty) {
+        // Navigiraj na V3VozacScreen i pokreni auto tracking
+        final nav = navigatorKey.currentState;
+        if (nav != null) {
+          nav.push(
+            MaterialPageRoute<void>(
+              builder: (_) => V3VozacScreen(
+                vozacId: vozacId,
+                autoStartTracking: true,
+              ),
+            ),
+          );
+        }
+      }
       return;
 
     default:

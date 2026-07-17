@@ -389,7 +389,47 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Send push notification if not already sent
+      // Send push notification to driver to auto-start tracking
+      if (!autoNotifiedAt) {
+        try {
+          const { data: vozacAuth, error: vozacError } = await client
+            .from("v3_auth")
+            .select("push_token, push_token_2")
+            .eq("id", vozacId)
+            .single();
+
+          if (!vozacError && vozacAuth) {
+            const vozacTokens: Record<string, string>[] = [];
+            const t1 = String(vozacAuth.push_token ?? "").trim();
+            const t2 = String(vozacAuth.push_token_2 ?? "").trim();
+            if (t1) vozacTokens.push({ token: t1, provider: "fcm" });
+            if (t2) vozacTokens.push({ token: t2, provider: "fcm" });
+
+            if (vozacTokens.length > 0) {
+              const eventId = `vozac_auto_start:${vozacId}:${datumIso}:${grad}:${vreme}`;
+              await client.rpc("notify_push", {
+                tokens: vozacTokens,
+                title: "Termin za 10 minuta",
+                body: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
+                data: {
+                  type: "vozac_auto_start_tracking",
+                  event_id: eventId,
+                  vozac_id: vozacId,
+                  datum: datumIso,
+                  grad: grad,
+                  vreme: vreme,
+                  screen: "v3_vozac",
+                },
+              });
+              console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);
+            }
+          }
+        } catch (e) {
+          console.error(`[v3-auto-prepare-termins] Driver notify error: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      // Send push notification to passengers if not already sent
       if (!autoNotifiedAt) {
         try {
           const notifyResult = await client.rpc("v3_notify_passengers_driver_started", {
