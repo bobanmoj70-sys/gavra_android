@@ -1615,8 +1615,8 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
     final tel1Val = V3PhoneUtils.normalizeOrNull(_tel1.text);
     final tel2Val = V3PhoneUtils.normalizeOrNull(_tel2.text);
 
-    if (imeVal.isEmpty && tel1Val == null && tel2Val == null) {
-      V3AppSnackBar.error(context, '⚠️ Unesite makar ime ili broj telefona');
+    if (imeVal.isEmpty) {
+      V3AppSnackBar.error(context, '⚠️ Ime i prezime ne sme biti prazno');
       return;
     }
 
@@ -1846,6 +1846,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
     }
 
     V3AppSnackBar.success(context, '✅ PIN je uspešno promenjen.');
+    Navigator.of(context, rootNavigator: true).pop();
     Navigator.of(context, rootNavigator: true).pop();
   }
 
