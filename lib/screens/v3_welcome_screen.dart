@@ -168,7 +168,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     final tip = putnik['tip_putnika']?.toString().trim() ?? '';
     final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
     final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
-    return ime.isEmpty || tip.isEmpty || bc.isEmpty || vs.isEmpty;
+    final pinHash = putnik['pin_hash']?.toString().trim() ?? '';
+    return ime.isEmpty || tip.isEmpty || bc.isEmpty || vs.isEmpty || pinHash.isEmpty;
   }
 
   Future<Map<String, dynamic>?> _getPutnikWithAddressRefresh(String authId) async {
@@ -198,6 +199,22 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   }
 
   void _openPassengerAddressCompletionFlow(String initialPhone) {
+    _safePushScreen(
+      V3SmsLoginScreen(
+        title: 'Prijava',
+        initialPhone: initialPhone,
+        biometricKey: _biometricPhoneKey,
+        onVerified: _onLoginVerified,
+      ),
+    );
+  }
+
+  String _extractDriverPhone(V3Vozac vozac) {
+    final phone = (vozac.telefon1 ?? vozac.telefon2 ?? '').trim();
+    return V3ClosedAuthService.normalizePhone(phone);
+  }
+
+  void _openDriverPinCompletionFlow(String initialPhone) {
     _safePushScreen(
       V3SmsLoginScreen(
         title: 'Prijava',
@@ -264,6 +281,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       final restoredVozac = V3VozacService.currentVozac;
 
       if (!mounted || restoredVozac == null) return false;
+
+      if ((restoredVozac.pinHash ?? '').trim().isEmpty) {
+        await _stopAudio();
+        if (!mounted) return false;
+        _openDriverPinCompletionFlow(_extractDriverPhone(restoredVozac));
+        return true;
+      }
 
       await _stopAudio();
       if (!mounted) return false;
@@ -520,6 +544,11 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (!mounted) return;
 
       if (vozac != null) {
+        if ((vozac.pinHash ?? '').trim().isEmpty) {
+          _openDriverPinCompletionFlow(phone);
+          return;
+        }
+
         V3VozacService.currentVozac = vozac;
         await V3ClosedAuthService.saveManualSmsVozacSession(
           normalizedPhone: phone,

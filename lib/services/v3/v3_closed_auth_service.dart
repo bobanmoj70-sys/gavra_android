@@ -14,6 +14,7 @@ class V3LoginVerification {
   final bool deviceRecognized;
   final bool deviceAllowed;
   final bool deviceSlotsFull;
+  final bool pinRequired;
   final String? reason;
 
   const V3LoginVerification({
@@ -22,6 +23,7 @@ class V3LoginVerification {
     this.deviceRecognized = false,
     this.deviceAllowed = true,
     this.deviceSlotsFull = false,
+    this.pinRequired = false,
     this.reason,
   });
 }
@@ -96,6 +98,7 @@ class V3ClosedAuthService {
         deviceRecognized: data['device_recognized'] == true,
         deviceAllowed: ok,
         deviceSlotsFull: data['device_slots_full'] == true,
+        pinRequired: data['pin_required'] == true,
         reason: reason,
       );
     } catch (_) {
@@ -140,6 +143,106 @@ class V3ClosedAuthService {
     );
     if (!verification.ok || !verification.deviceAllowed) return null;
     return verification.authId;
+  }
+
+  // ─── PIN (obavezan po nalogu, 6 cifara) ────────────────────────
+
+  static bool isValidPin(String pin) => RegExp(r'^\d{6}$').hasMatch(pin.trim());
+
+  /// Prvi put postavlja PIN za nalog. Vraća true ako je uspešno sačuvan.
+  /// Ne radi ništa ako nalog već ima podešen PIN (server to odbija).
+  static Future<bool> setPin({
+    required String v3AuthId,
+    required String pin,
+  }) async {
+    final ready = await ensureClientReady();
+    if (!ready) return false;
+
+    final authId = v3AuthId.trim();
+    final cleanPin = pin.trim();
+    if (authId.isEmpty || !isValidPin(cleanPin)) return false;
+
+    try {
+      final response = await _client.functions.invoke(
+        'v3-pin-auth',
+        body: {'action': 'set', 'v3_auth_id': authId, 'pin': cleanPin},
+      );
+      final status = response.status;
+      final data = response.data;
+      if (status < 200 || status >= 300 || data is! Map) return false;
+      return data['ok'] == true;
+    } catch (e) {
+      debugPrint('[V3ClosedAuthService] setPin error: $e');
+      return false;
+    }
+  }
+
+  /// Proverava uneti PIN nasuprot sačuvanom hash-u na serveru.
+  static Future<bool> verifyPin({
+    required String v3AuthId,
+    required String pin,
+  }) async {
+    final ready = await ensureClientReady();
+    if (!ready) return false;
+
+    final authId = v3AuthId.trim();
+    final cleanPin = pin.trim();
+    if (authId.isEmpty || !isValidPin(cleanPin)) return false;
+
+    try {
+      final response = await _client.functions.invoke(
+        'v3-pin-auth',
+        body: {'action': 'verify', 'v3_auth_id': authId, 'pin': cleanPin},
+      );
+      final status = response.status;
+      final data = response.data;
+      if (status < 200 || status >= 300 || data is! Map) return false;
+      return data['ok'] == true;
+    } catch (e) {
+      debugPrint('[V3ClosedAuthService] verifyPin error: $e');
+      return false;
+    }
+  }
+
+  /// Menja postojeći PIN. Zahteva ispravan stari PIN.
+  /// Vraća reason ('old_pin_mismatch', 'pin_not_set', ...) kada nije uspešno.
+  static Future<({bool ok, String? reason})> changePin({
+    required String v3AuthId,
+    required String oldPin,
+    required String newPin,
+  }) async {
+    final ready = await ensureClientReady();
+    if (!ready) return (ok: false, reason: 'not_ready');
+
+    final authId = v3AuthId.trim();
+    final cleanOldPin = oldPin.trim();
+    final cleanNewPin = newPin.trim();
+    if (authId.isEmpty || !isValidPin(cleanOldPin) || !isValidPin(cleanNewPin)) {
+      return (ok: false, reason: 'invalid_pin_format');
+    }
+
+    try {
+      final response = await _client.functions.invoke(
+        'v3-pin-auth',
+        body: {
+          'action': 'change',
+          'v3_auth_id': authId,
+          'old_pin': cleanOldPin,
+          'pin': cleanNewPin,
+        },
+      );
+      final status = response.status;
+      final data = response.data;
+      if (status < 200 || status >= 300 || data is! Map) {
+        return (ok: false, reason: 'edge_error');
+      }
+      final ok = data['ok'] == true;
+      final reason = data['reason']?.toString();
+      return (ok: ok, reason: reason);
+    } catch (e) {
+      debugPrint('[V3ClosedAuthService] changePin error: $e');
+      return (ok: false, reason: 'unexpected_error');
+    }
   }
 
   // ─── Manual SMS sesija ──────────────────────────────────────────

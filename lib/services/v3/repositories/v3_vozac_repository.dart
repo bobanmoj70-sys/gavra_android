@@ -4,7 +4,7 @@ import '../../../globals.dart';
 
 class V3VozacRepository {
   static const String _authVozacSelect =
-      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, created_at, updated_at';
+      'id, ime, telefon, telefon_2, boja, push_token, push_token_2, pin_hash, created_at, updated_at';
 
   Future<void> deleteById(String id) {
     return Future.value();
@@ -88,6 +88,7 @@ class V3VozacRepository {
       'boja': row['boja'],
       'push_token': row['push_token'],
       'push_token_2': row['push_token_2'],
+      'pin_hash': row['pin_hash'],
       'created_at': row['created_at'],
       'updated_at': row['updated_at'],
     };

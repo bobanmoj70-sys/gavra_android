@@ -1716,6 +1716,218 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                         keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _saving
+                              ? null
+                              : () async {
+                                  final authId = widget.putnikData['id']?.toString().trim() ?? '';
+                                  if (authId.isEmpty) return;
+                                  await V3DialogHelper.showDialogBuilder<void>(
+                                    context: context,
+                                    builder: (ctx) => _ChangePinDialog(v3AuthId: authId),
+                                  );
+                                },
+                          icon: const Icon(Icons.lock_reset_outlined, color: Colors.white),
+                          label: const Text('Promeni PIN', style: TextStyle(color: Colors.white)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white54),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: V3ButtonUtils.outlinedButton(
+                              onPressed: _saving ? null : () => Navigator.pop(context),
+                              text: 'Otkaži',
+                              borderColor: Colors.white54,
+                              foregroundColor: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: V3ButtonUtils.primaryButton(
+                              onPressed: _saving ? null : _sacuvaj,
+                              text: 'Sačuvaj',
+                              icon: Icons.check,
+                              isLoading: _saving,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── CHANGE PIN DIALOG ──────────────────────────────────────────────────────
+class _ChangePinDialog extends StatefulWidget {
+  final String v3AuthId;
+
+  const _ChangePinDialog({required this.v3AuthId});
+
+  @override
+  State<_ChangePinDialog> createState() => _ChangePinDialogState();
+}
+
+class _ChangePinDialogState extends State<_ChangePinDialog> {
+  final _oldPinController = TextEditingController();
+  final _newPinController = TextEditingController();
+  final _newPinConfirmController = TextEditingController();
+
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _oldPinController.dispose();
+    _newPinController.dispose();
+    _newPinConfirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sacuvaj() async {
+    final oldPin = _oldPinController.text.trim();
+    final newPin = _newPinController.text.trim();
+    final newPinConfirm = _newPinConfirmController.text.trim();
+
+    if (!V3ClosedAuthService.isValidPin(oldPin)) {
+      setState(() => _error = 'Trenutni PIN mora imati tačno 6 cifara.');
+      return;
+    }
+    if (!V3ClosedAuthService.isValidPin(newPin)) {
+      setState(() => _error = 'Novi PIN mora imati tačno 6 cifara.');
+      return;
+    }
+    if (newPin != newPinConfirm) {
+      setState(() => _error = 'Novi PIN-ovi se ne poklapaju.');
+      return;
+    }
+    if (newPin == oldPin) {
+      setState(() => _error = 'Novi PIN mora biti različit od trenutnog.');
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    final result = await V3ClosedAuthService.changePin(
+      v3AuthId: widget.v3AuthId,
+      oldPin: oldPin,
+      newPin: newPin,
+    );
+
+    if (!mounted) return;
+
+    if (!result.ok) {
+      final message = switch (result.reason) {
+        'old_pin_mismatch' => 'Trenutni PIN nije ispravan.',
+        'pin_not_set' => 'Nalog nema podešen PIN.',
+        _ => 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+      };
+      setState(() {
+        _saving = false;
+        _error = message;
+      });
+      return;
+    }
+
+    V3AppSnackBar.success(context, '✅ PIN je uspešno promenjen.');
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gradient = theme.backgroundGradient;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(gradient: gradient),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lock_reset_outlined, color: Colors.white, size: 22),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Promeni PIN',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            'Unesi trenutni i novi PIN (6 cifara)',
+                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      V3InputUtils.textField(
+                        controller: _oldPinController,
+                        label: 'Trenutni PIN',
+                        icon: Icons.lock_outline,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _newPinController,
+                        label: 'Novi PIN',
+                        icon: Icons.lock_open_outlined,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _newPinConfirmController,
+                        label: 'Ponovi novi PIN',
+                        icon: Icons.lock_open_outlined,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                      ],
+                      const SizedBox(height: 20),
                       Row(
                         children: [
                           Expanded(

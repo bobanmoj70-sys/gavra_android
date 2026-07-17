@@ -52,9 +52,11 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    const pinVerified = payload.pin_verified === true;
+
     const { data: existing, error: existingError } = await client
       .from("v3_auth")
-      .select("id, installation_id, installation_id_2, push_token, push_token_2, hardware_id, hardware_id_2")
+      .select("id, installation_id, installation_id_2, push_token, push_token_2, hardware_id, hardware_id_2, last_seen_at, last_seen_at_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -121,6 +123,11 @@ Deno.serve(async (req) => {
     } else if (!slot2Installation) {
       slot = 2;
       reason = "slot_assigned";
+    } else if (pinVerified) {
+      const slot1LastSeen = existing.last_seen_at ? new Date(existing.last_seen_at).getTime() : 0;
+      const slot2LastSeen = existing.last_seen_at_2 ? new Date(existing.last_seen_at_2).getTime() : 0;
+      slot = slot1LastSeen <= slot2LastSeen ? 1 : 2;
+      reason = "slot_replaced_pin_verified";
     } else {
       return json(200, {
         ok: false,

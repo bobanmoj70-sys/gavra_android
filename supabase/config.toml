@@ -63,10 +63,10 @@ api_url = "http://127.0.0.1"
 # OpenAI API Key to use for Supabase AI in the Supabase Studio.
 openai_api_key = "env(OPENAI_API_KEY)"
 
-# Local testing inbox server for auth/message flows.
-[inbucket]
+# Local SMTP testing server for auth/message flows.
+[local_smtp]
 enabled = true
-# Port to use for the testing inbox web interface.
+# Port to use for the local SMTP web interface.
 port = 54324
 # Uncomment to expose additional ports for testing user applications that send messages.
 # smtp_port = 54325

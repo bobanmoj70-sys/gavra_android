@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/v3_adresa.dart';
@@ -8,7 +9,10 @@ import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
+import '../services/v3/v3_push_token_edge_service.dart';
+import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -51,6 +55,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   final _phoneController = TextEditingController();
   final _imeController = TextEditingController();
   final _prezimeController = TextEditingController();
+  final _pinController = TextEditingController();
+  final _pinConfirmController = TextEditingController();
   static const _secureStorage = FlutterSecureStorage();
 
   _SmsStep _step = _SmsStep.unosTelefona;
@@ -65,6 +71,11 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   bool _addressOnlyOnboarding = false;
   bool _requireBcAddress = false;
   bool _requireVsAddress = false;
+  bool _requirePin = false;
+  bool _vozacPinOnlyOnboarding = false;
+  bool _devicePinVerificationOnly = false;
+  int _devicePinAttempts = 0;
+  static const _maxDevicePinAttempts = 5;
   bool _isBackendReady = false;
 
   // Biometrija
@@ -93,6 +104,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     _phoneController.dispose();
     _imeController.dispose();
     _prezimeController.dispose();
+    _pinController.dispose();
+    _pinConfirmController.dispose();
     super.dispose();
   }
 
@@ -292,6 +305,21 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     );
     if (!verification.ok || !verification.deviceAllowed) {
       if (!mounted) return;
+      if (verification.reason == 'device_pin_required') {
+        setState(() {
+          _isLoading = false;
+          _addressOnlyOnboarding = true;
+          _requireBcAddress = false;
+          _requireVsAddress = false;
+          _requirePin = true;
+          _vozacPinOnlyOnboarding = false;
+          _devicePinVerificationOnly = true;
+          _devicePinAttempts = 0;
+          _missingProfileMessage = 'Prijava sa novog uređaja zahteva potvrdu PIN kodom (6 cifara).';
+          _step = _SmsStep.unosProfila;
+        });
+        return;
+      }
       if (verification.reason == 'device_limit_reached') {
         V3AppSnackBar.error(
           context,
@@ -310,8 +338,28 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     if (!mounted) return;
 
     if (putnik == null) {
-      // Putnik nije pronađen - možda je vozač, prosledi onVerified da odluči
-      debugPrint('[V3SmsLogin] putnik is null, calling onVerified for possible vozac');
+      // Putnik nije pronađen - možda je vozač
+      debugPrint('[V3SmsLogin] putnik is null, checking vozac...');
+      var vozac = V3VozacService.getVozacById(authId);
+      vozac ??= await V3VozacService.getVozacByIdDirect(authId);
+
+      if (vozac != null && (vozac.pinHash ?? '').trim().isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _addressOnlyOnboarding = true;
+          _requireBcAddress = false;
+          _requireVsAddress = false;
+          _requirePin = true;
+          _vozacPinOnlyOnboarding = true;
+          _devicePinVerificationOnly = false;
+          _missingProfileMessage = 'Iz sigurnosnih razloga potrebno je da podesite PIN kod (6 cifara).';
+          _step = _SmsStep.unosProfila;
+        });
+        return;
+      }
+
+      debugPrint('[V3SmsLogin] calling onVerified for vozac (or unknown)');
       await widget.onVerified(phone, authId);
       return;
     }
@@ -320,8 +368,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final missingTip = (putnik['tip_putnika']?.toString().trim() ?? '').isEmpty;
     final missingBc = (putnik['adresa_bc_id']?.toString().trim() ?? '').isEmpty;
     final missingVs = (putnik['adresa_vs_id']?.toString().trim() ?? '').isEmpty;
+    final missingPin = (putnik['pin_hash']?.toString().trim() ?? '').isEmpty;
 
-    if (missingIme || missingTip || missingBc || missingVs) {
+    if (missingIme || missingTip || missingBc || missingVs || missingPin) {
       final bcId = putnik['adresa_bc_id']?.toString().trim() ?? '';
       final vsId = putnik['adresa_vs_id']?.toString().trim() ?? '';
       final existingIme = putnik['ime_prezime']?.toString().trim() ?? '';
@@ -342,6 +391,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         _addressOnlyOnboarding = !missingIme && !missingTip;
         _requireBcAddress = missingBc;
         _requireVsAddress = missingVs;
+        _requirePin = missingPin;
+        _vozacPinOnlyOnboarding = false;
+        _devicePinVerificationOnly = false;
         _selectedBcAdresa = bcId.isEmpty ? null : V3AdresaService.getAdresaById(bcId);
         _selectedVsAdresa = vsId.isEmpty ? null : V3AdresaService.getAdresaById(vsId);
 
@@ -351,6 +403,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         if (missingTip) missingFields.add('kategoriju');
         if (missingBc) missingFields.add('adresu BC');
         if (missingVs) missingFields.add('adresu VS');
+        if (missingPin) missingFields.add('PIN kod');
         _missingProfileMessage = 'Dopunite: ${missingFields.join(', ')} da nastavite.';
         _step = _SmsStep.unosProfila;
       });
@@ -396,12 +449,164 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     );
   }
 
+  Future<void> _saveVozacPinOnly({
+    required String phone,
+    required String authId,
+  }) async {
+    final pin = _pinController.text.trim();
+    final pinConfirm = _pinConfirmController.text.trim();
+
+    if (!V3ClosedAuthService.isValidPin(pin)) {
+      V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
+      return;
+    }
+    if (pin != pinConfirm) {
+      V3AppSnackBar.warning(context, 'PIN-ovi se ne poklapaju.');
+      return;
+    }
+    if (phone.isEmpty || authId.isEmpty) {
+      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      _resetToStep1();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _statusMessage = '💾 Čuvam PIN...';
+    });
+
+    final saved = await V3ClosedAuthService.setPin(v3AuthId: authId, pin: pin);
+    if (!mounted) return;
+
+    if (!saved) {
+      V3AppSnackBar.error(context, '❌ Greška pri čuvanju PIN koda. Pokušaj ponovo.');
+      setState(() {
+        _isLoading = false;
+        _statusMessage = '';
+      });
+      return;
+    }
+
+    V3AppSnackBar.success(context, '✅ PIN je uspešno podešen.');
+    await widget.onVerified(phone, authId);
+  }
+
+  Future<void> _saveDevicePinVerification({
+    required String phone,
+    required String authId,
+  }) async {
+    final pin = _pinController.text.trim();
+    final pinConfirm = _pinConfirmController.text.trim();
+
+    if (!V3ClosedAuthService.isValidPin(pin)) {
+      V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
+      return;
+    }
+    if (pin != pinConfirm) {
+      V3AppSnackBar.warning(context, 'PIN-ovi se ne poklapaju.');
+      return;
+    }
+    if (phone.isEmpty || authId.isEmpty) {
+      V3AppSnackBar.error(context, '❌ Sesija je istekla. Počni ponovo.');
+      _resetToStep1();
+      return;
+    }
+    if (_devicePinAttempts >= _maxDevicePinAttempts) {
+      V3AppSnackBar.error(
+        context,
+        '❌ Previše pogrešnih pokušaja. Kontaktirajte admina.',
+      );
+      _resetToStep1();
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _statusMessage = '🔐 Proveravam PIN...';
+    });
+
+    try {
+      final ok = await V3ClosedAuthService.verifyPin(v3AuthId: authId, pin: pin);
+      if (!ok) {
+        if (!mounted) return;
+        _devicePinAttempts++;
+        _pinController.clear();
+        _pinConfirmController.clear();
+        final remaining = _maxDevicePinAttempts - _devicePinAttempts;
+        if (remaining <= 0) {
+          V3AppSnackBar.error(
+            context,
+            '❌ Previše pogrešnih pokušaja. Kontaktirajte admina.',
+          );
+          _resetToStep1();
+          return;
+        }
+        V3AppSnackBar.error(context, '❌ PIN nije ispravan. Preostalo pokušaja: $remaining.');
+        setState(() {
+          _statusMessage = '';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final installationId = (await V3DeviceIdentityService.getStableDeviceId()).trim();
+      final hardwareId = await V3DeviceIdentityService.getHardwareId();
+      final pushTokenResult = await V3PushTokenProvider.getBestToken().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => null,
+      );
+      final pushToken = pushTokenResult?.token.trim() ?? '';
+      final resolvedInstallationId = pushTokenResult?.installationId?.trim() ?? installationId;
+
+      if (resolvedInstallationId.isEmpty) {
+        if (!mounted) return;
+        V3AppSnackBar.error(context, '❌ Identitet uređaja nije dostupan.');
+        setState(() {
+          _statusMessage = '';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      await V3PushTokenEdgeService.writeLoginColumns(
+        v3AuthId: authId,
+        pushToken: pushToken,
+        installationId: resolvedInstallationId,
+        hardwareId: hardwareId,
+        pinVerified: true,
+      );
+
+      if (!mounted) return;
+      V3AppSnackBar.success(context, '✅ PIN potvrđen. Uređaj je verifikovan.');
+      await widget.onVerified(phone, authId);
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('[V3SmsLogin] _saveDevicePinVerification error: $e');
+      V3AppSnackBar.error(context, '❌ PIN potvrda trenutno nije moguća. Pokušajte ponovo.');
+      setState(() {
+        _statusMessage = '';
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _saveOnboarding() async {
+    final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
+    final authId = (_targetAuthId ?? '').trim();
+
+    if (_devicePinVerificationOnly) {
+      await _saveDevicePinVerification(phone: phone, authId: authId);
+      return;
+    }
+
+    if (_vozacPinOnlyOnboarding) {
+      await _saveVozacPinOnly(phone: phone, authId: authId);
+      return;
+    }
+
     final ime = _imeController.text.trim();
     final prezime = _prezimeController.text.trim();
     final fullName = '$ime $prezime'.trim();
-    final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
-    final authId = (_targetAuthId ?? '').trim();
 
     if (!_addressOnlyOnboarding) {
       if (ime.isEmpty || prezime.isEmpty) {
@@ -425,6 +630,19 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       }
       if (_requireVsAddress && _selectedVsAdresa == null) {
         V3AppSnackBar.warning(context, 'Izaberi VS adresu.');
+        return;
+      }
+    }
+
+    if (_requirePin) {
+      final pin = _pinController.text.trim();
+      final pinConfirm = _pinConfirmController.text.trim();
+      if (!V3ClosedAuthService.isValidPin(pin)) {
+        V3AppSnackBar.warning(context, 'PIN mora imati tačno 6 cifara.');
+        return;
+      }
+      if (pin != pinConfirm) {
+        V3AppSnackBar.warning(context, 'PIN-ovi se ne poklapaju.');
         return;
       }
     }
@@ -476,6 +694,19 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       );
 
       await V3PutnikService.addUpdatePutnik(putnik);
+
+      if (_requirePin) {
+        final pinSaved = await V3ClosedAuthService.setPin(
+          v3AuthId: authId,
+          pin: _pinController.text.trim(),
+        );
+        if (!pinSaved) {
+          if (!mounted) return;
+          V3AppSnackBar.error(context, '❌ Greška pri čuvanju PIN koda. Pokušaj ponovo.');
+          setState(() => _statusMessage = '');
+          return;
+        }
+      }
 
       final refreshed = await V3PutnikService.getActiveById(authId);
       final missingAfterSave = _missingRequiredProfileFields(
@@ -564,6 +795,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _addressOnlyOnboarding = false;
       _requireBcAddress = false;
       _requireVsAddress = false;
+      _requirePin = false;
+      _vozacPinOnlyOnboarding = false;
+      _devicePinVerificationOnly = false;
+      _devicePinAttempts = 0;
       _statusMessage = '';
     });
   }
@@ -573,7 +808,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     bool includeIdentityFields = true,
   }) {
     if (putnik == null) {
-      return includeIdentityFields ? const ['ime', 'tip', 'adresa BC', 'adresa VS'] : const ['adresa BC', 'adresa VS'];
+      return includeIdentityFields
+          ? const ['ime', 'tip', 'adresa BC', 'adresa VS', 'PIN kod']
+          : const ['adresa BC', 'adresa VS', 'PIN kod'];
     }
 
     final missing = <String>[];
@@ -581,6 +818,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final tip = putnik['tip_putnika']?.toString().trim() ?? '';
     final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
     final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
+    final pinHash = putnik['pin_hash']?.toString().trim() ?? '';
 
     if (includeIdentityFields) {
       if (ime.isEmpty) missing.add('ime');
@@ -588,6 +826,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
     if (bc.isEmpty) missing.add('adresa BC');
     if (vs.isEmpty) missing.add('adresa VS');
+    if (pinHash.isEmpty) missing.add('PIN kod');
     return missing;
   }
 
@@ -748,9 +987,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   Widget _buildProfileStep() {
     final adreseBc = V3AdresaService.getAdreseZaGrad('BC');
     final adreseVs = V3AdresaService.getAdreseZaGrad('VS');
-    final showIdentityFields = !_addressOnlyOnboarding;
-    final showBcDropdown = !_addressOnlyOnboarding || _requireBcAddress;
-    final showVsDropdown = !_addressOnlyOnboarding || _requireVsAddress;
+    final hideProfileFields = _vozacPinOnlyOnboarding || _devicePinVerificationOnly;
+    final showIdentityFields = !_addressOnlyOnboarding && !hideProfileFields;
+    final showBcDropdown = (!_addressOnlyOnboarding || _requireBcAddress) && !hideProfileFields;
+    final showVsDropdown = (!_addressOnlyOnboarding || _requireVsAddress) && !hideProfileFields;
 
     if (_selectedBcAdresa != null) {
       _selectedBcAdresa = adreseBc
@@ -949,6 +1189,70 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                   : (value) {
                       setState(() => _selectedVsAdresa = value);
                     },
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (_requirePin) ...[
+          TextField(
+            controller: _pinController,
+            enabled: !_isLoading,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Novi PIN kod (6 cifara) *',
+              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.1),
+              prefixIcon: const Icon(Icons.lock_outline, color: Colors.amber),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white30),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white30),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.amber, width: 2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _pinConfirmController,
+            enabled: !_isLoading,
+            obscureText: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Ponovi PIN kod *',
+              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.1),
+              prefixIcon: const Icon(Icons.lock_reset_outlined, color: Colors.amber),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white30),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white30),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.amber, width: 2),
+              ),
             ),
           ),
           const SizedBox(height: 12),

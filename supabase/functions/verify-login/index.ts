@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     const { data: account, error: lookupError } = await client
       .from("v3_auth")
-      .select("id, telefon, telefon_2, installation_id, installation_id_2, hardware_id, hardware_id_2")
+      .select("id, telefon, telefon_2, installation_id, installation_id_2, hardware_id, hardware_id_2, pin_hash")
       .eq("id", userId)
       .maybeSingle();
 
@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
 
     const incomingInstallationId = String(payload.installation_id ?? "").trim();
     const incomingHardwareId = String(payload.hardware_id ?? "").trim();
+    const pinAlreadySet = String(account.pin_hash ?? "").trim() !== "";
     let deviceRecognized = false;
     let deviceSlotsFull = false;
     let deviceAllowed = true;
@@ -111,17 +112,29 @@ Deno.serve(async (req) => {
 
       deviceRecognized = installationMatched || hardwareMatched;
       deviceSlotsFull = slot1Installation !== "" && slot2Installation !== "";
-      deviceAllowed = deviceRecognized || !deviceSlotsFull;
+      // Ako korisnik već ima podešen PIN, svaki neprepoznat uređaj mora da
+      // potvrdi identitet PIN-om (bez obzira da li ima slobodan slot).
+      // Ako PIN još nije podešen, zadržava se stari fallback: dozvoli ako
+      // ima slobodan slot, odbij ako su oba slota puna.
+      if (deviceRecognized) {
+        deviceAllowed = true;
+      } else if (pinAlreadySet) {
+        deviceAllowed = false;
+      } else {
+        deviceAllowed = !deviceSlotsFull;
+      }
     }
 
     if (!deviceAllowed) {
+      const reason = (!deviceRecognized && pinAlreadySet) ? "device_pin_required" : "device_limit_reached";
       return json(200, {
         ok: false,
-        reason: "device_limit_reached",
+        reason,
         v3_auth_id: userId,
         telefon: canonicalPhone,
         device_recognized: deviceRecognized,
         device_slots_full: deviceSlotsFull,
+        pin_required: !pinAlreadySet,
       });
     }
 
@@ -131,6 +144,7 @@ Deno.serve(async (req) => {
       telefon: canonicalPhone,
       device_recognized: deviceRecognized,
       device_slots_full: deviceSlotsFull,
+      pin_required: !pinAlreadySet,
     });
   } catch (error) {
     return json(200, {

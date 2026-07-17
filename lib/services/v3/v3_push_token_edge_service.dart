@@ -33,6 +33,7 @@ class V3PushTokenEdgeService {
     String? pushToken,
     String? installationId,
     String? hardwareId,
+    bool pinVerified = false,
   }) async {
     final targetId = v3AuthId.trim();
     final safePushToken = (pushToken ?? '').trim();
@@ -57,6 +58,7 @@ class V3PushTokenEdgeService {
         if (incomingHardwareId.isNotEmpty) 'incoming_hardware_id': incomingHardwareId,
         if (incomingPlatform.isNotEmpty) 'incoming_platform': incomingPlatform,
         if (incomingAppVersion.isNotEmpty) 'incoming_app_version': incomingAppVersion,
+        if (pinVerified) 'pin_verified': true,
       },
     );
 
