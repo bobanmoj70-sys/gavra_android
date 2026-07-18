@@ -56,10 +56,14 @@ function coordStr(lat: number, lng: number): string {
 
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
+  const mlApiKey = Deno.env.get("ML_API_KEY")?.trim() ?? "";
+  const headers: Record<string, string> = mlApiKey ? { "X-API-Key": mlApiKey } : {};
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS) });
+      const response = await fetch(url, { headers, signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS) });
       if (response.ok) return response;
+      // 4xx greske su trajne (los zahtev) - nema smisla retrijovati, vrati odmah.
+      if (response.status >= 400 && response.status < 500) return response;
       lastError = new Error(`HTTP ${response.status}`);
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));

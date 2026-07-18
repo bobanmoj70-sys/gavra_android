@@ -1,8 +1,9 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, Header
+from fastapi import FastAPI, HTTPException, Depends, Request, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 import requests
+import httpx
 from supabase._async.client import create_client as create_async_client, AsyncClient
 import os
 import sys
@@ -39,6 +40,7 @@ SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
 ML_API_KEY = os.environ.get('ML_API_KEY')
 PORT = int(os.environ.get('PORT', '8000'))
+OSRM_LOCAL_URL = os.environ.get('OSRM_LOCAL_URL', 'http://127.0.0.1:5000')
 
 # Backend mora čitati sve tabele, pa preferiramo SERVICE_ROLE_KEY (zaobilazi RLS).
 # Ako nije definisan, fallback na ANON_KEY (može biti ograničen RLS pravilima).
@@ -61,7 +63,7 @@ DB_FILE = os.path.join(os.path.dirname(__file__), "gavra_ai.db")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager za inicijalizaciju i gašenje resursa."""
-    global supabase, embedder, realtime_task, reconciliation_task
+    global supabase, embedder, realtime_task, reconciliation_task, osrm_client
     
     try:
         init_local_db()
@@ -72,6 +74,10 @@ async def lifespan(app: FastAPI):
         
         supabase = await create_async_client(SUPABASE_URL, SUPABASE_KEY)
         log_event("Supabase asinhrona konekcija uspešno otvorena.")
+        
+        # Inicijalizacija OSRM reverse proxy klijenta
+        osrm_client = httpx.AsyncClient(base_url=OSRM_LOCAL_URL, timeout=30.0)
+        log_event(f"OSRM reverse proxy klijent inicijalizovan za {OSRM_LOCAL_URL}.")
         
         # Učitavanje SentenceTransformer-a za semantiku (lazy, u pozadinskom thread-u)
         try:
@@ -92,6 +98,10 @@ async def lifespan(app: FastAPI):
         yield
         
         # Shutdown
+        if osrm_client:
+            await osrm_client.aclose()
+            osrm_client = None
+            log_event("OSRM reverse proxy klijent zatvoren.")
         if realtime_task:
             realtime_task.cancel()
             try:
@@ -163,6 +173,9 @@ CHAT_RATE_LIMIT_WINDOW_SECONDS = 60
 # Praćenje poslednje aktivnosti sesije za čišćenje starih sesija
 session_last_activity: dict[str, float] = {}
 SESSION_INACTIVITY_TIMEOUT_SECONDS = 3600  # 1 sat
+
+# HTTP klijent za OSRM reverse proxy
+osrm_client: httpx.AsyncClient | None = None
 
 # Šira lista srpskih stop-reči za kvalitetniju tekstualnu pretragu
 SRPSKE_STOP_RECI = {
@@ -322,9 +335,16 @@ def init_local_db():
             source_table TEXT,
             source_id TEXT,
             severity TEXT, -- 'nominal', 'significant', 'critical'
-            created_at TEXT
+            created_at TEXT,
+            is_global INTEGER DEFAULT 0 -- 1 = agregatni/globalni zaključak (nije vezan za jedan red u ai_knowledge_base)
         )
     ''')
+    
+    # Migracija za postojeće baze bez is_global kolone
+    try:
+        cursor.execute('ALTER TABLE ai_insights ADD COLUMN is_global INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass  # Kolona već postoji
     
     # Tabela koja prati status sinhronizacije
     cursor.execute('''
@@ -636,9 +656,12 @@ def parse_row_to_text(table_name: str, row: dict) -> str:
         return f"Greška pri parsiranju reda iz tabele {table_name}: {e}. Raw row: {json.dumps(row, ensure_ascii=False, default=str)}"
 
 # --- FUNKCIJA ZA ANALIZU I DETEKCIJU ANOMALIJA (SAM ZAKLJUČUJE ŠTA JE BITNO) ---
-def _upsert_insight(conn, cursor, title: str, description: str, source_table: str, source_id: str, severity: str):
+def _upsert_insight(conn, cursor, title: str, description: str, source_table: str, source_id: str, severity: str, is_global: bool = False):
     """Ažurira postojeći zaključak po (title, source_table, source_id) ili ubacuje novi,
-    i sinhronizuje ga u knowledge base radi chat pretrage."""
+    i sinhronizuje ga u knowledge base radi chat pretrage.
+    is_global=True označava agregatne zaključke (npr. 'Ukupan broj vozača') koji nisu
+    vezani za konkretan red u ai_knowledge_base i zato ne smeju biti obrisani od strane
+    čistača zastarelih zaključaka u _analyze_and_detect_insights_sync."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
         SELECT id FROM ai_insights
@@ -648,14 +671,14 @@ def _upsert_insight(conn, cursor, title: str, description: str, source_table: st
     if row:
         cursor.execute("""
             UPDATE ai_insights
-            SET description=?, severity=?, created_at=?
+            SET description=?, severity=?, created_at=?, is_global=?
             WHERE id=?
-        """, (description, severity, now, row[0]))
+        """, (description, severity, now, 1 if is_global else 0, row[0]))
     else:
         cursor.execute("""
-            INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (title, description, source_table, source_id, severity, now))
+            INSERT INTO ai_insights (title, description, source_table, source_id, severity, created_at, is_global)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (title, description, source_table, source_id, severity, now, 1 if is_global else 0))
     
     # Sinhronizuj u knowledge base
     unique_id = f"ai_insights:{source_table}:{source_id or 'global'}:{hashlib.sha256(title.encode('utf-8')).hexdigest()[:16]}"
@@ -692,10 +715,14 @@ def _analyze_and_detect_insights_sync():
         cursor = conn.cursor()
         
         # Brišemo zastarele nominal/significant zaključke čiji izvor više ne postoji u bazi znanja,
-        # ali zadržavamo kritične (koje korisnik možda želi ručno da pregleda).
+        # ali zadržavamo kritične (koje korisnik možda želi ručno da pregleda) i globalne/agregatne
+        # zaključke (is_global=1), jer njihov source_id je veštački hash i nikad neće postojati
+        # kao pravi red u ai_knowledge_base — bez ovog izuzetka bili bi brisani i ponovo ubacivani
+        # (sa novim id-jem) pri svakom ciklusu analize.
         cursor.execute("""
             DELETE FROM ai_insights
             WHERE severity != 'critical'
+              AND is_global = 0
               AND source_id != ''
               AND NOT EXISTS (
                   SELECT 1 FROM ai_knowledge_base kb
@@ -771,7 +798,8 @@ def _analyze_and_detect_insights_sync():
                 f"Ukupni zabeleženi rashodi u bazi iznose {rashodi:.1f} RSD kroz {n_rashod} transakcija, dok su prihodi {prihodi:.1f} RSD. Kompanija posluje sa deficitom u ovom posmatranom periodu.",
                 "v3_finansije",
                 hashlib.sha256("Rashodi premašili prihode".encode('utf-8')).hexdigest()[:16],
-                "significant"
+                "significant",
+                is_global=True
             )
         elif prihodi > 0:
             _upsert_insight(
@@ -781,7 +809,8 @@ def _analyze_and_detect_insights_sync():
                 f"Prihodi iznose ukupno {prihodi:.1f} RSD, dok su rashodi uspešno zadržani na {rashodi:.1f} RSD. Neto profit iznosi {(prihodi-rashodi):.1f} RSD.",
                 "v3_finansije",
                 hashlib.sha256("Stabilan finansijski bilans".encode('utf-8')).hexdigest()[:16],
-                "nominal"
+                "nominal",
+                is_global=True
             )
 
         # 3. ANALIZA ZAHTEVA PO GRADOVIMA
@@ -811,7 +840,8 @@ def _analyze_and_detect_insights_sync():
                 f"Grad sa ubedljivo najvećim brojem zahteva za transport je {omiljeni_grad} sa ukupno {gradovi[omiljeni_grad]} vožnji, što predstavlja {procenat:.1f}% od ukupnih zahteva u aplikaciji.",
                 "v3_zahtevi",
                 hashlib.sha256(title.encode('utf-8')).hexdigest()[:16],
-                "nominal"
+                "nominal",
+                is_global=True
             )
 
         # 4. AGREGATNI PREGLED KORISNIKA I VOZILA (za tačne odgovore na "koliko" pitanja)
@@ -839,7 +869,8 @@ def _analyze_and_detect_insights_sync():
                 f"U sistemu je registrovano ukupno {ukupno_korisnika} korisnika. Raspodela po tipovima: {', '.join(f'{k}: {v}' for k, v in sorted(tipovi.items()))}.",
                 "v3_auth",
                 hashlib.sha256("Ukupan broj korisnika u sistemu".encode('utf-8')).hexdigest()[:16],
-                "nominal"
+                "nominal",
+                is_global=True
             )
         
         if tipovi.get("VOZAC", 0) > 0:
@@ -850,7 +881,8 @@ def _analyze_and_detect_insights_sync():
                 f"U sistemu je registrovano ukupno {tipovi['VOZAC']} vozača.",
                 "v3_auth",
                 hashlib.sha256("Ukupan broj vozača".encode('utf-8')).hexdigest()[:16],
-                "nominal"
+                "nominal",
+                is_global=True
             )
         
         cursor.execute("SELECT content FROM ai_knowledge_base WHERE source_table='v3_vozila'")
@@ -863,7 +895,8 @@ def _analyze_and_detect_insights_sync():
                 f"U voznom parku se nalazi ukupno {vozila_count} vozila.",
                 "v3_vozila",
                 hashlib.sha256("Ukupan broj vozila".encode('utf-8')).hexdigest()[:16],
-                "nominal"
+                "nominal",
+                is_global=True
             )
         
         conn.commit()
@@ -918,7 +951,12 @@ async def _fetch_all_rows_incremental(table_name: str, last_sync_at: str | None)
         query = supabase.table(table_name).select("*").order("updated_at", desc=False)
         
         if last_sync_at:
-            query = query.gt("updated_at", last_sync_at)
+            # Koristimo gte (>=) umesto gt (>) jer gt ume da TRAJNO preskoci redove koji
+            # dele identičan updated_at sa poslednjim sinhronizovanim redom (npr. bulk
+            # update u istoj transakciji). Ponovna obrada graničnog reda je bezbedna jer
+            # je upis idempotentan (INSERT OR REPLACE po id-u), a _is_signature_unchanged
+            # sprecava nepotrebno ponovno racunanje embeddinga ako se sadrzaj nije promenio.
+            query = query.gte("updated_at", last_sync_at)
         
         response = await query.range(start, start + page_size - 1).execute()
         page = response.data or []
@@ -971,7 +1009,7 @@ async def _fetch_all_ids(table_name: str) -> set[str]:
 
 def _reconcile_deleted_rows(conn: sqlite3.Connection, cursor: sqlite3.Cursor, table_name: str, existing_ids: set[str]) -> int:
     """Briše iz lokalne baze znanja zapise čiji izvorni red više ne postoji u Supabase-u
-    (npr. obrisan dok server nije slušao realtime kanal). Vraća broj obrisanih zapisa."""
+    (npr. obrisan dok server nije slušao realtime). Vraća broj obrisanih zapisa."""
     cursor.execute("SELECT id, source_id FROM ai_knowledge_base WHERE source_table=?", (table_name,))
     local_rows = cursor.fetchall()
     
@@ -1180,6 +1218,15 @@ async def start_realtime_sync():
             
             log_event("🟢 Realtime mrežni kanal je uspešno otvoren i POTVRĐEN od strane servera — sada aktivno sluša sve tabele u sistemu!")
             
+            # Nadoknadi propuštene izmene (INSERT/UPDATE) koje su se desile dok kanal nije bio
+            # aktivan (npr. tokom reconnect backoff-a ili produženog Supabase prekida). Bez ovoga
+            # bi takve izmene ostale trajno nenaučene do sledećeg ručnog /resync-a ili restarta.
+            try:
+                log_event("🔄 Pokrećem catch-up sinhronizaciju za period dok kanal nije bio aktivan...")
+                await learn_past_data()
+            except Exception as e:
+                log_event(f"Upozorenje: Catch-up sinhronizacija nakon (re)konekcije nije uspela: {e}")
+            
             # Držimo kanal otvorenim dok se ne desi greška
             while True:
                 await asyncio.sleep(30)
@@ -1293,6 +1340,54 @@ def read_root():
         "logs_cached": len(live_logs)
     }
 
+@app.api_route("/osrm/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"])
+async def osrm_proxy(request: Request, path: str):
+    """Reverse proxy za OSRM backend. Tailscale Funnel /osrm -> /osrm/* -> lokalni OSRM:5000/*"""
+    if not osrm_client:
+        raise HTTPException(status_code=503, detail="OSRM reverse proxy nije inicijalizovan")
+    
+    try:
+        # Izgradi URL sa query stringom
+        url = httpx.URL(path=f"/{path}", query=request.url.query.encode("utf-8"))
+        
+        # Preuzmi i očisti header-e
+        headers = {}
+        for key, value in request.headers.items():
+            if key.lower() in ("host", "content-length", "transfer-encoding"):
+                continue
+            headers[key] = value
+        
+        # Pročitaj telo zahteva
+        body = await request.body()
+        
+        # Prosledi zahtev ka lokalnom OSRM serveru
+        rp_resp = await osrm_client.request(
+            method=request.method,
+            url=url,
+            headers=headers,
+            content=body,
+        )
+        
+        # Vrati odgovor klijentu
+        # NAPOMENA: content-length se NE kopira jer httpx može automatski dekompresovati
+        # gzip/deflate sadržaj, pa originalna vrednost više ne odgovara stvarnoj veličini tela
+        # (uzrokuje "connection closed" / truncated response kod klijenta).
+        return Response(
+            content=rp_resp.content,
+            status_code=rp_resp.status_code,
+            headers={
+                k: v for k, v in rp_resp.headers.items()
+                if k.lower() not in ("content-encoding", "transfer-encoding", "content-length")
+            },
+            media_type=rp_resp.headers.get("content-type"),
+        )
+    except httpx.RequestError as e:
+        log_event(f"OSRM proxy greška: {e}")
+        raise HTTPException(status_code=502, detail=f"OSRM nije dostupan: {e}")
+    except Exception as e:
+        log_event(f"Neočekivana OSRM proxy greška: {e}")
+        raise HTTPException(status_code=500, detail=f"OSRM proxy greška: {e}")
+
 @app.get("/logs", response_model=LogResponse)
 def get_logs():
     """Vraća najnovije logove učenja u realnom vremenu (maskirane)"""
@@ -1400,6 +1495,7 @@ def _search_knowledge_base_sync(usr_msg: str, top_k: int = 25):
             for unique_id, distance in cursor.fetchall():
                 # sqlite-vec distance je obično (1 - cosine_similarity) za vec0
                 score = max(0.0, 1.0 - float(distance))
+               
                 if score < VECTOR_MIN_SIMILARITY:
                     continue
                 cursor.execute("SELECT id, source_table, source_id, content, metadata FROM ai_knowledge_base WHERE id=?", (unique_id,))

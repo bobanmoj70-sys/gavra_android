@@ -1,5 +1,7 @@
 # Pokreće OSRM Docker kontejner (ako nije već pokrenut) i ponovo primenjuje
-# Tailscale serve/funnel rute za javni pristup (/ -> AI server 8000, /osrm -> OSRM 5000).
+# Tailscale serve/funnel rute za javni pristup.
+# Napomena: i / i /osrm idu na AI server (main.py, port 8000) - AI server ima
+# ugrađen reverse proxy koji /osrm/* prosleđuje lokalnom OSRM kontejneru (port 5000).
 # Poziva se automatski pri prijavi u Windows preko Scheduled Task-a
 # (vidi setup_osrm_autostart.ps1), ili ručno kad je potrebno.
 
@@ -64,16 +66,24 @@ if ($containerStatus -eq "true") {
     Start-Sleep -Seconds 3
 }
 
-# 3. Health-check OSRM lokalno
-try {
-    $resp = Invoke-RestMethod -Uri "http://127.0.0.1:5000/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 10
-    if ($resp.code -eq "Ok") {
-        Log "OSRM health-check OK (lokalno)."
-    } else {
-        Log "UPOZORENJE: OSRM health-check vratio code=$($resp.code)"
+# 3. Health-check OSRM lokalno (sa retry-om, jer osrm-routed treba par sekundi da učita mapu)
+$osrmLocalOk = $false
+for ($i = 1; $i -le 6; $i++) {
+    try {
+        $resp = Invoke-RestMethod -Uri "http://127.0.0.1:5000/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 10
+        if ($resp.code -eq "Ok") {
+            Log "OSRM health-check OK (lokalno)."
+            $osrmLocalOk = $true
+            break
+        }
+        Log "UPOZORENJE: OSRM health-check vratio code=$($resp.code) (pokušaj $i/6)"
+    } catch {
+        Log "OSRM health-check pokušaj $i/6 nije uspeo: $($_.Exception.Message)"
     }
-} catch {
-    Log "GREŠKA: OSRM health-check nije uspeo: $($_.Exception.Message)"
+    Start-Sleep -Seconds 5
+}
+if (-not $osrmLocalOk) {
+    Log "GREŠKA: OSRM lokalni health-check nije uspeo nakon 6 pokušaja."
 }
 
 # 4. Ponovo primeni Tailscale serve + funnel rute (idempotentno)
@@ -84,13 +94,32 @@ if (-not (Test-Path $TailscaleExe)) {
 
 try {
     & $TailscaleExe funnel --bg --set-path / http://127.0.0.1:8000 2>&1 | ForEach-Object { Log "  tailscale: $_" }
-    & $TailscaleExe funnel --bg --set-path /osrm http://127.0.0.1:5000 2>&1 | ForEach-Object { Log "  tailscale: $_" }
+    & $TailscaleExe funnel --bg --set-path /osrm http://127.0.0.1:8000/osrm 2>&1 | ForEach-Object { Log "  tailscale: $_" }
     Log "Tailscale funnel rute ponovo primenjene."
 } catch {
     Log "GREŠKA pri primeni Tailscale ruta: $($_.Exception.Message)"
 }
 
-# 5. Health-check preko javnog Funnel URL-a
+# 5. Sačekaj da AI server (port 8000) bude gore pre javnog health-checka.
+# Javni /osrm health-check zavisi od AI servera jer on radi proxy ka OSRM-u,
+# a ovaj task i GavraAI_Server_Autostart se pokreću nezavisno pri logon-u.
+$aiServerReady = $false
+for ($i = 1; $i -le 12; $i++) {
+    $conn = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+    if ($conn) {
+        $aiServerReady = $true
+        break
+    }
+    if ($i -eq 1) { Log "Čekam da AI server (port 8000) bude gore..." }
+    Start-Sleep -Seconds 5
+}
+if ($aiServerReady) {
+    Log "AI server (port 8000) je spreman."
+} else {
+    Log "UPOZORENJE: AI server (port 8000) nije otvorio port nakon 60s. Javni health-check će verovatno pući."
+}
+
+# 6. Health-check preko javnog Funnel URL-a
 try {
     $publicResp = Invoke-RestMethod -Uri "https://win-vfeglqf71ss.tail61b7a2.ts.net/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 15
     if ($publicResp.code -eq "Ok") {

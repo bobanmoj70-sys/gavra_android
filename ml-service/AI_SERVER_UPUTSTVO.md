@@ -82,6 +82,62 @@ Ako koristiš Tailscale:
 ML_BASE_URL=http://100.x.x.x:8000
 ```
 
+## OSRM konfiguracija (rute i ETA)
+
+AI server (`main.py`) sada sadrži ugrađeni reverse proxy za OSRM na putanji `/osrm/*`.
+To znači da Tailscale Funnel prosleđuje `/osrm` na `http://127.0.0.1:8000/osrm`, a AI server
+skida `/osrm` prefiks i prosleđuje zahtev lokalnom OSRM Docker kontejneru na portu 5000.
+
+### Potrebno u `.env` fajlu
+
+```dotenv
+# Lokalni OSRM (Docker) - obično se ne menja
+OSRM_LOCAL_URL=http://127.0.0.1:5000
+
+# Javna adresa koja se koristi u Supabase Edge Functions
+# Tailscale Funnel primer:
+OSRM_BASE_URL=https://tvoj-tailscale-url/osrm
+# Lokalna mreža primer:
+# OSRM_BASE_URL=http://192.168.x.x:8000/osrm
+```
+
+### Supabase Edge Functions
+
+U Supabase Dashboard-u ili CLI-ju postavi sledeće secrete za funkcije:
+- `v3-compute-eta`
+- `v3-auto-prepare-termins`
+
+Secreti:
+- `OSRM_BASE_URL` — mora biti ista vrednost kao `OSRM_BASE_URL` iz `.env` fajla.
+- `ML_API_KEY` — mora biti ista vrednost kao `ML_API_KEY` iz `.env` fajla. Ruta `/osrm/*` je
+  zaštićena istim API ključem kao i ostatak AI servera (samo `/` health-check je izuzet), pa
+  Edge Functions moraju slati `X-API-Key` header pri pozivu OSRM proxy-ja preko Funnel-a.
+
+Postavljanje secreta primer:
+
+```powershell
+supabase secrets set ML_API_KEY=tvoj-isti-kljuc-kao-u-main-py
+```
+
+### Testiranje OSRM proxy-ja
+
+Lokalno (bez ključa radi jer se lokalni Docker OSRM ne poziva preko `/osrm` proxy-ja iz browsera,
+ali sam AI server i dalje zahteva `X-API-Key` za `/osrm/*`):
+
+```powershell
+$headers = @{ "X-API-Key" = "tvoj-ml-api-key" }
+Invoke-RestMethod -Headers $headers -Uri "http://127.0.0.1:8000/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false"
+```
+
+Preko Tailscale Funnel-a:
+
+```powershell
+$headers = @{ "X-API-Key" = "tvoj-ml-api-key" }
+Invoke-RestMethod -Headers $headers -Uri "https://tvoj-tailscale-url/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false"
+```
+
+Oba zahteva treba da vrate `code: Ok`. Bez header-a `X-API-Key` server vraća `401 Unauthorized`.
+
 ## Logovi
 
 - Konzola: prikazuje se u prozoru gde je pokrenut server
