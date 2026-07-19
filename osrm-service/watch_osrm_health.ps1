@@ -17,7 +17,7 @@
 
 $ErrorActionPreference = "Continue"
 
-$ServiceDir = "c:\Users\Bojan\gavra_android\ml-service"
+$ServiceDir = "c:\Users\Bojan\gavra_android\osrm-service"
 $LogFile = "$ServiceDir\osrm_watchdog.log"
 $StartScript = "$ServiceDir\start_osrm_server.ps1"
 # Root URL ne zahteva X-API-Key (osrm_proxy.py: read_root je izuzet od provere kljuca)

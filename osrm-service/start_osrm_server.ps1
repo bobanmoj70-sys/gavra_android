@@ -12,7 +12,7 @@
 
 $ErrorActionPreference = "Continue"
 
-$ServiceDir = "c:\Users\Bojan\gavra_android\ml-service"
+$ServiceDir = "c:\Users\Bojan\gavra_android\osrm-service"
 $LogFile = "$ServiceDir\osrm_autostart.log"
 $ProxyLogFile = "$ServiceDir\osrm_proxy.log"
 $TailscaleExe = "C:\Program Files\Tailscale\tailscale.exe"
