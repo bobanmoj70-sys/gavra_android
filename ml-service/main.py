@@ -29,6 +29,7 @@ import entity_embeddings
 import temporal_brain
 import cross_table_learner
 import feature_importance
+import ensemble_scorer
 
 # Učitavanje .env pre bilo kakve druge inicijalizacije
 load_dotenv()
@@ -119,6 +120,16 @@ def init_local_db():
     temporal_brain.init_schema(conn)
     cross_table_learner.init_schema(conn)
     feature_importance.init_schema(conn)
+    ensemble_scorer.init_schema(conn)
+    # sync_cursor — pamti do kojeg ID-a smo učili po tabeli (incremental resync)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sync_cursor (
+            table_name TEXT PRIMARY KEY,
+            last_seen_id TEXT,
+            last_synced_at TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -172,9 +183,56 @@ async def _fetch_all_rows(table_name: str) -> list[dict]:
     return all_rows
 
 
+def _get_sync_cursor(conn: sqlite3.Connection, table_name: str) -> str | None:
+    """Vraća poslednji videni ID za tabelu (ili None ako nikad nismo učili)."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT last_seen_id FROM sync_cursor WHERE table_name=?", (table_name,))
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def _set_sync_cursor(conn: sqlite3.Connection, table_name: str, last_id: str):
+    """Snima poslednji videni ID za tabelu."""
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO sync_cursor (table_name, last_seen_id, last_synced_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(table_name) DO UPDATE SET
+            last_seen_id=excluded.last_seen_id,
+            last_synced_at=excluded.last_synced_at
+    """, (table_name, last_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
+
+
+async def _fetch_new_rows(table_name: str, since_id: str | None) -> list[dict]:
+    """Dohvata SAMO nove redove (posle since_id) — incremental resync.
+    Ako since_id=None, dohvata sve (prvi pokretanje).
+    Redovi su sortirani po id ASC da bi se učili hronološkim redom."""
+    all_rows: list[dict] = []
+    start = 0
+    while len(all_rows) < HISTORY_MAX_ROWS_PER_TABLE:
+        try:
+            query = supabase.table(table_name).select("*").order("id", desc=False)
+            if since_id is not None:
+                query = query.gt("id", since_id)
+            response = await query.range(start, start + HISTORY_PAGE_SIZE - 1).execute()
+        except Exception as e:
+            log_event(f"Upozorenje: Čitanje novih redova iz tabele {table_name} nije uspelo: {e}")
+            break
+        page = response.data or []
+        if not page:
+            break
+        all_rows.extend(page)
+        if len(page) < HISTORY_PAGE_SIZE:
+            break
+        start += HISTORY_PAGE_SIZE
+    return all_rows
+
+
 async def _learn_all_tables_historical():
     """Jednokratni (pri startu i periodično) prolaz kroz SVE otkrivene tabele —
-    neuronska mreža radi po jedan korak učenja za svaki postojeći red."""
+    uči SAMO nove redove (posle zadnje zabelježenog ID-a u sync_cursor).
+    Ovo sprečava da stari redovi imaju višestruko veći uticaj od novih."""
     global TABLES_TO_LEARN
     TABLES_TO_LEARN = await _discover_public_tables()
     if not TABLES_TO_LEARN:
@@ -185,12 +243,22 @@ async def _learn_all_tables_historical():
     conn = sqlite3.connect(DB_FILE)
     total_learned = 0
     total_anomalies = 0
+    total_new = 0
     
-    # Prvo: nauči cross-table FK veze (od svih redova)
+    # Incremental: dohvati samo nove redove po tabeli
     all_rows_by_table = {}
     for table_name in TABLES_TO_LEARN:
-        rows = await _fetch_all_rows(table_name)
+        since_id = _get_sync_cursor(conn, table_name)
+        rows = await _fetch_new_rows(table_name, since_id)
         all_rows_by_table[table_name] = rows or []
+        if rows:
+            total_new += len(rows)
+            log_event(f"📥 Tabela {table_name}: {len(rows)} novih redova" + (f" (posle id={since_id})" if since_id else " (prvi prolaz)"))
+    
+    if total_new == 0:
+        log_event("✅ Sve tabele su ažurirane — nema novih redova za učenje.")
+        conn.close()
+        return
     
     log_event("🔗 Otkrivam foreign key veze između tabela...")
     cross_table_learner.learn_foreign_keys(conn, TABLES_TO_LEARN, all_rows_by_table)
@@ -205,32 +273,57 @@ async def _learn_all_tables_historical():
         if not rows:
             continue
         
+        last_id = None
         for row_data in rows:
             rid = str(row_data.get("id", ""))
+            if rid:
+                last_id = rid
             try:
                 # [1] Autoencoder anomaly detection
                 thought = neural_brain.observe_and_think(conn, table_name, row_data, rid)
                 total_learned += 1
+                autoencoder_z = None
                 if thought:
                     neural_thoughts.append(thought)
+                    autoencoder_z = thought.get("z_score")
                     if thought["stage"] == "anomalija":
                         total_anomalies += 1
-                        # [3] Feature importance analiza
                         try:
                             from neural_brain import _load_state
                             state = _load_state(conn, table_name)
                             importance_analysis = feature_importance.log_feature_importance(
                                 conn, table_name, rid, row_data, thought["error"], state["weights"]
                             )
-                            log_event(f"🧠 Neuronska mreža zapažanje: {thought['detail']} → {importance_analysis['explanation']}")
+                            log_event(f"🧠 Neuronska mreža: {thought['detail']} → {importance_analysis['explanation']}")
                         except Exception as e:
                             log_event(f"Upozorenje: Feature importance nije uspelo: {e}")
-                            log_event(f"🧠 Neuronska mreža zapažanje: {thought['detail']}")
             except Exception as e:
                 log_event(f"Upozorenje: Učenje nije uspelo za {table_name}:{rid}: {e}")
+                autoencoder_z = None
+            
+            temporal_z = None
+            try:
+                # [2] Temporal sequence learning
+                temporal_result = temporal_brain.observe_temporal_sequence(conn, table_name, row_data, rid)
+                if temporal_result:
+                    temporal_z = temporal_result.get("error_z_score")
+                    log_event(f"📈 Trend anomalija: {temporal_result['detail']}")
+            except Exception as e:
+                log_event(f"Upozorenje: Temporal učenje nije uspelo za {table_name}:{rid}: {e}")
+            
+            cross_z = None
+            try:
+                # [3] Cross-table context + anomaly
+                cross_table_learner.learn_cross_table_context(conn, table_name, row_data, fk_map)
+                cross_result = cross_table_learner.detect_cross_table_anomaly(conn, table_name, row_data, rid)
+                if cross_result:
+                    cross_z = cross_result.get("error_z_score")
+                    log_event(f"🔗 Cross-table anomalija: {cross_result['detail']}")
+            except Exception as e:
+                log_event(f"Upozorenje: Cross-table učenje nije uspelo za {table_name}:{rid}: {e}")
             
             try:
-                # [2] Entity embeddings
+                # [4] Entity embeddings
                 relation = entity_embeddings.observe_and_relate(conn, table_name, row_data, rid)
                 if relation:
                     neural_relations.append(relation)
@@ -238,23 +331,22 @@ async def _learn_all_tables_historical():
                 log_event(f"Upozorenje: Učenje odnosa nije uspelo za {table_name}:{rid}: {e}")
             
             try:
-                # [4] Temporal sequence learning
-                temporal_result = temporal_brain.observe_temporal_sequence(conn, table_name, row_data, rid)
-                if temporal_result:
-                    log_event(f"📈 Trend anomalija: {temporal_result['detail']}")
+                # [5] Ensemble scoring — kombinuje sve signale
+                ens = ensemble_scorer.compute_and_save(
+                    conn, table_name, rid,
+                    autoencoder_z=autoencoder_z,
+                    temporal_z=temporal_z,
+                    cross_table_z=cross_z,
+                )
+                if ens["severity"] in ("high", "critical"):
+                    log_event(f"🚨 ENSEMBLE {ens['severity'].upper()} score={ens['composite_score']} ({ens['detectors_fired']} detektora): {table_name}:{rid}")
             except Exception as e:
-                log_event(f"Upozorenje: Temporal učenje nije uspelo za {table_name}:{rid}: {e}")
-            
-            try:
-                # [5] Cross-table context learning
-                cross_table_learner.learn_cross_table_context(conn, table_name, row_data, fk_map)
-                cross_result = cross_table_learner.detect_cross_table_anomaly(conn, table_name, row_data, rid)
-                if cross_result:
-                    log_event(f"🔗 Cross-table anomalija: {cross_result['detail']}")
-            except Exception as e:
-                log_event(f"Upozorenje: Cross-table učenje nije uspelo za {table_name}:{rid}: {e}")
+                log_event(f"Upozorenje: Ensemble scoring nije uspeo: {e}")
         
-        log_event(f"🧠 Naučeno {len(rows)} redova iz tabele {table_name}.")
+        # Snimamo sync_cursor tek kad završimo ceo batch za tabelu
+        if last_id:
+            _set_sync_cursor(conn, table_name, last_id)
+        log_event(f"🧠 Naučeno {len(rows)} novih redova iz tabele {table_name}.")
 
     conn.close()
     log_event(f"🧠 Istorijsko učenje završeno. Ukupno {total_learned} redova, {total_anomalies} anomalija uočeno.")
@@ -276,11 +368,16 @@ def _process_realtime_row_sync(table_name: str, row: dict):
     """Sinhrona obrada jednog realtime reda — mreža uči jedan korak iz njega."""
     rid = str(row.get("id", ""))
     conn = sqlite3.connect(DB_FILE)
+    autoencoder_z = None
+    temporal_z = None
+    cross_z = None
+    feature_culprit_pct = None
     try:
         # [1] Autoencoder anomaly detection
         thought = neural_brain.observe_and_think(conn, table_name, row, rid)
         if thought:
             neural_thoughts.append(thought)
+            autoencoder_z = thought.get("z_score")
             if thought["stage"] == "anomalija":
                 # [3] Feature importance
                 try:
@@ -289,10 +386,11 @@ def _process_realtime_row_sync(table_name: str, row: dict):
                     importance_analysis = feature_importance.log_feature_importance(
                         conn, table_name, rid, row, thought["error"], state["weights"]
                     )
-                    log_event(f"🧠 Neuronska mreža zapažanje (realtime): {thought['detail']} → {importance_analysis['explanation']}")
+                    feature_culprit_pct = importance_analysis.get("top_features", [{}])[0].get("importance_pct") if importance_analysis.get("top_features") else None
+                    log_event(f"🧠 Neuronska mreža (realtime): {thought['detail']} → {importance_analysis['explanation']}")
                 except Exception as e:
                     log_event(f"Upozorenje: Feature importance nije uspelo: {e}")
-                    log_event(f"🧠 Neuronska mreža zapažanje (realtime): {thought['detail']}")
+                    log_event(f"🧠 Neuronska mreža (realtime): {thought['detail']}")
     except Exception as e:
         log_event(f"Upozorenje: Realtime učenje nije uspelo za {table_name}:{rid}: {e}")
     
@@ -308,6 +406,7 @@ def _process_realtime_row_sync(table_name: str, row: dict):
         # [4] Temporal sequence learning
         temporal_result = temporal_brain.observe_temporal_sequence(conn, table_name, row, rid)
         if temporal_result:
+            temporal_z = temporal_result.get("error_z_score")
             log_event(f"📈 Trend anomalija (realtime): {temporal_result['detail']}")
     except Exception as e:
         log_event(f"Upozorenje: Temporal učenje nije uspelo: {e}")
@@ -316,9 +415,25 @@ def _process_realtime_row_sync(table_name: str, row: dict):
         # [5] Cross-table anomalies
         cross_result = cross_table_learner.detect_cross_table_anomaly(conn, table_name, row, rid)
         if cross_result:
+            cross_z = cross_result.get("error_z_score")
             log_event(f"🔗 Cross-table anomalija (realtime): {cross_result['detail']}")
     except Exception as e:
         log_event(f"Upozorenje: Cross-table detekcija nije uspela: {e}")
+    
+    try:
+        # [6] Ensemble scoring — kombinuje sve signale u jedan composite score
+        ens = ensemble_scorer.compute_and_save(
+            conn, table_name, rid,
+            autoencoder_z=autoencoder_z,
+            temporal_z=temporal_z,
+            cross_table_z=cross_z,
+            feature_culprit_pct=feature_culprit_pct,
+        )
+        if ens["severity"] in ("high", "critical"):
+            reasons_str = " | ".join(ens.get("reasons", []))
+            log_event(f"🚨 ENSEMBLE {ens['severity'].upper()} score={ens['composite_score']} — {table_name}:{rid} — {reasons_str}")
+    except Exception as e:
+        log_event(f"Upozorenje: Ensemble scoring nije uspeo: {e}")
     
     finally:
         conn.close()
@@ -540,12 +655,30 @@ def reset_neural_brain():
         temporal_brain.reset_brain(conn)
         cross_table_learner.reset_brain(conn)
         feature_importance.reset_brain(conn)
+        ensemble_scorer.reset_scores(conn)
+        # Briši i sync_cursor da sledeći resync nauči sve od početka
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM sync_cursor")
+        conn.commit()
     finally:
         conn.close()
     neural_thoughts.clear()
     neural_relations.clear()
     log_event("🧠 Neuronska mreža je resetovana na zahtev — sve težine su ponovo nasumične.")
     return {"status": "reset"}
+
+
+@app.get("/ensemble")
+def get_ensemble_report():
+    """Composite alarm izveštaj — kombinovani signal svih 4 detektora.
+    Prikazuje samo 'high' i 'critical' alarme, sortirane po skoru.
+    Ovo je najkorisniji endpoint za detekciju pravih anomalija (smanjeni false positives)."""
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        report = ensemble_scorer.get_report(conn)
+    finally:
+        conn.close()
+    return report
 
 
 @app.post("/resync")

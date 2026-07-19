@@ -27,13 +27,23 @@ from datetime import datetime
 import numpy as np
 
 # --- HIPERPARAMETRI (isključivo tehnički, ne poslovni) ---
-FEATURE_DIM = 24        # fiksna dužina ulaznog vektora (feature hashing prostor)
-HIDDEN_DIM = 10          # veličina "usko grlo" (bottleneck) sloja autoenkodera
-LEARNING_RATE = 0.05
+FEATURE_DIM = 64        # fiksna dužina ulaznog vektora (feature hashing prostor)
+                         # 64 umesto 24 → drastično manje hash kolizija za tabele sa >10 kolona
+HIDDEN_DIM = 16          # veličina "usko grlo" (bottleneck) sloja autoenkodera
+LEARNING_RATE = 0.05     # početna stopa učenja — smanjuje se kako mreža vidi više redova (adaptive)
 CLIP_VALUE = 10.0        # sprečava eksploziju gradijenata/vrednosti
-MIN_OBSERVATIONS_FOR_ANOMALY = 30   # koliko redova mreža mora da vidi pre nego što sme da prijavljuje anomalije
+MIN_OBSERVATIONS_FOR_ANOMALY = 50   # povećano: mreža mora da vidi više pre nego što sme da prijavljuje anomalije
 ERROR_Z_SCORE_THRESHOLD = 3.0
 MAX_ANOMALY_LOG_ROWS = 5000
+
+# EMA (Exponential Moving Average) decay za error statistiku:
+# Mreža "zaboravlja" staro normalno ponašanje kako se biznis menja.
+# alpha=0.003 → ~333 novih redova "poluvreme zaboravljanja" starog modela.
+EMA_ALPHA = 0.003
+
+# Adaptive learning rate: LR se smanjuje sa ∝ 1/sqrt(n) da bi se mreža
+# stabilizovala na velikim tabelama, a brzo učila na malim.
+MIN_LR = 0.005  # donja granica da učenje nikad ne stane potpuno
 
 _IGNORED_KEYS = {"id", "created_at", "updated_at", "embedding"}
 
@@ -226,15 +236,26 @@ def _forward(x: np.ndarray, weights: dict):
     return out, a1, W1, b1, W2, b2
 
 
-def _train_step(x: np.ndarray, weights: dict) -> float:
+def _adaptive_lr(n: int) -> float:
+    """Stopa učenja se smanjuje sa brojem videnih redova: LR ∝ 1/sqrt(n).
+    Tabele sa malo redova uče brzo; tabele sa 50k+ redova su stabilne."""
+    if n < 1:
+        return LEARNING_RATE
+    return max(MIN_LR, LEARNING_RATE / (1.0 + 0.1 * np.sqrt(n)))
+
+
+def _train_step(x: np.ndarray, weights: dict, n_observations: int = 0) -> float:
     """Jedan korak forward + backward propagacije (online gradient descent).
     Vraća reconstruction error (MSE) IZRAČUNAT PRE ažuriranja težina (tako da
     error odražava koliko je mreža bila 'iznenađena' ovim redom, a ne koliko
-    dobro već zna posle učenja iz njega)."""
+    dobro već zna posle učenja iz njega).
+    n_observations: broj videnih redova za adaptive learning rate."""
     out, a1, W1, b1, W2, b2 = _forward(x, weights)
 
     diff = out - x
     error = float(np.mean(diff ** 2))
+
+    lr = _adaptive_lr(n_observations)
 
     # --- Backpropagation (ručno, bez ijedne biblioteke za automatsku diferencijaciju) ---
     dz2 = (2.0 / FEATURE_DIM) * diff              # (FEATURE_DIM,)
@@ -250,10 +271,10 @@ def _train_step(x: np.ndarray, weights: dict) -> float:
     for grad in (dW1, db1, dW2, db2):
         np.clip(grad, -CLIP_VALUE, CLIP_VALUE, out=grad)
 
-    W1 -= LEARNING_RATE * dW1
-    b1 -= LEARNING_RATE * db1
-    W2 -= LEARNING_RATE * dW2
-    b2 -= LEARNING_RATE * db2
+    W1 -= lr * dW1
+    b1 -= lr * db1
+    W2 -= lr * dW2
+    b2 -= lr * db2
 
     weights["W1"] = W1.tolist()
     weights["b1"] = b1.tolist()
@@ -334,7 +355,7 @@ def observe_and_think(conn: sqlite3.Connection, table_name: str, row: dict, sour
     normalized = (features - mean) / std
     np.clip(normalized, -CLIP_VALUE, CLIP_VALUE, out=normalized)
 
-    error = _train_step(normalized, state["weights"])
+    error = _train_step(normalized, state["weights"], n_observations=n)
 
     # Ažuriraj statistiku ulaznih feature-a NAKON treninga (tako mreža uvek trenira
     # na normalizaciji dostupnoj DO ovog trenutka, sprečavajući curenje informacija iz budućnosti)
@@ -344,8 +365,18 @@ def observe_and_think(conn: sqlite3.Connection, table_name: str, row: dict, sour
     state["feature_mean"] = mean
     state["feature_m2"] = m2
 
-    # Ažuriraj statistiku grešaka i proveri anomaliju
-    err_mean, err_m2, err_n = _welford_update(state["error_mean"], state["error_m2"], state["error_n"], error)
+    # Ažuriraj statistiku grešaka:
+    # Koristimo EMA (Exponential Moving Average) umesto čistog Welford-a za error_mean,
+    # tako da mreža "zaboravlja" staro normalno ponašanje ako se biznis promeni.
+    # Za varijansu (m2) i dalje koristimo Welford — samo mean se EMA-uje.
+    err_n = state["error_n"] + 1
+    if state["error_n"] < MIN_OBSERVATIONS_FOR_ANOMALY:
+        # U ranoj fazi: čisti Welford da se brzo nauči osnovna distribucija
+        err_mean, err_m2, _ = _welford_update(state["error_mean"], state["error_m2"], state["error_n"], error)
+    else:
+        # Posle dovoljno uzoraka: EMA decay za mean (adaptivno), Welford za varijansu
+        err_mean = (1.0 - EMA_ALPHA) * state["error_mean"] + EMA_ALPHA * error
+        _, err_m2, _ = _welford_update(state["error_mean"], state["error_m2"], state["error_n"], error)
     state["error_mean"] = err_mean
     state["error_m2"] = err_m2
     state["error_n"] = err_n
