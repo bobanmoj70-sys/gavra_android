@@ -19,7 +19,6 @@ import 'v3_dugovi_screen.dart';
 import 'v3_finansije_screen.dart';
 import 'v3_gorivo_screen.dart';
 import 'v3_kapacitet_screen.dart';
-import 'v3_neural_mozak_screen.dart';
 import 'v3_odrzavanje_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
@@ -1426,36 +1425,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
                           const V3PosiljkeZahteviScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ─── RED 5: AI dugmad ───
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _NavBtn(
-                        color: Colors.deepPurple,
-                        height: V3ContainerUtils.responsiveHeight(context, 44),
-                        onTap: () => V3NavigationUtils.pushScreen<void>(
-                          context,
-                          const V3NeuralMozakScreen(),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '🧠 Neuronska mreža',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                              color: Colors.white,
-                            ),
-                          ),
                         ),
                       ),
                     ),

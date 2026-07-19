@@ -83,7 +83,6 @@ android/app/google-services.json
 
 # ML trained models (binary, large, regenerated on every train)
 models/saved/
-ml-service/models/saved/
 
 # Debug files
 debug_*.sql
@@ -141,14 +140,7 @@ temp_secrets/
 ios/ios_cert_key_pkcs8.pem
 
 /secrets/
-# Python/ML logs and databases
+# Python logs and databases
 __pycache__/
 *.pyc
 *.db
-ml-service/gavra_ai.db
-ml-service/__pycache__/
-ml-service/server.pid
-
-# AI server generated reports
-ml-service/diagnose_ai_report.txt
-ml-service/*.log
