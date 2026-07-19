@@ -14,12 +14,12 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
 import 'v3_admin_raspored_screen.dart';
 import 'v3_adrese_screen.dart';
-import 'v3_ai_znanje_screen.dart';
 import 'v3_dnevnik_vozaca_screen.dart';
 import 'v3_dugovi_screen.dart';
 import 'v3_finansije_screen.dart';
 import 'v3_gorivo_screen.dart';
 import 'v3_kapacitet_screen.dart';
+import 'v3_neural_mozak_screen.dart';
 import 'v3_odrzavanje_screen.dart';
 import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
@@ -1440,16 +1440,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   children: [
                     Expanded(
                       child: _NavBtn(
-                        color: Colors.pink,
+                        color: Colors.deepPurple,
                         height: V3ContainerUtils.responsiveHeight(context, 44),
                         onTap: () => V3NavigationUtils.pushScreen<void>(
                           context,
-                          const V3AiZnanjeScreen(),
+                          const V3NeuralMozakScreen(),
                         ),
                         child: const FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            '🧠 AI Znanje',
+                            '🧠 Neuronska mreža',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 12,
