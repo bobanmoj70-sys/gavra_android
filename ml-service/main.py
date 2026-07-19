@@ -26,6 +26,9 @@ from supabase._async.client import create_client as create_async_client, AsyncCl
 
 import neural_brain
 import entity_embeddings
+import temporal_brain
+import cross_table_learner
+import feature_importance
 
 # Učitavanje .env pre bilo kakve druge inicijalizacije
 load_dotenv()
@@ -113,6 +116,9 @@ def init_local_db():
     conn = sqlite3.connect(DB_FILE)
     neural_brain.init_schema(conn)
     entity_embeddings.init_schema(conn)
+    temporal_brain.init_schema(conn)
+    cross_table_learner.init_schema(conn)
+    feature_importance.init_schema(conn)
     conn.commit()
     conn.close()
 
@@ -179,29 +185,75 @@ async def _learn_all_tables_historical():
     conn = sqlite3.connect(DB_FILE)
     total_learned = 0
     total_anomalies = 0
-
+    
+    # Prvo: nauči cross-table FK veze (od svih redova)
+    all_rows_by_table = {}
     for table_name in TABLES_TO_LEARN:
         rows = await _fetch_all_rows(table_name)
+        all_rows_by_table[table_name] = rows or []
+    
+    log_event("🔗 Otkrivam foreign key veze između tabela...")
+    cross_table_learner.learn_foreign_keys(conn, TABLES_TO_LEARN, all_rows_by_table)
+    
+    # Dohvati FK mapu
+    cursor = conn.cursor()
+    cursor.execute("SELECT table_name, column_name, referenced_table FROM detected_foreign_keys")
+    fk_map = {(row[0], row[1]): row[2] for row in cursor.fetchall()}
+
+    for table_name in TABLES_TO_LEARN:
+        rows = all_rows_by_table.get(table_name, [])
         if not rows:
             continue
+        
         for row_data in rows:
             rid = str(row_data.get("id", ""))
             try:
+                # [1] Autoencoder anomaly detection
                 thought = neural_brain.observe_and_think(conn, table_name, row_data, rid)
                 total_learned += 1
                 if thought:
                     neural_thoughts.append(thought)
                     if thought["stage"] == "anomalija":
                         total_anomalies += 1
-                        log_event(f"🧠 Neuronska mreža zapažanje: {thought['detail']}")
+                        # [3] Feature importance analiza
+                        try:
+                            from neural_brain import _load_state
+                            state = _load_state(conn, table_name)
+                            importance_analysis = feature_importance.log_feature_importance(
+                                conn, table_name, rid, row_data, thought["error"], state["weights"]
+                            )
+                            log_event(f"🧠 Neuronska mreža zapažanje: {thought['detail']} → {importance_analysis['explanation']}")
+                        except Exception as e:
+                            log_event(f"Upozorenje: Feature importance nije uspelo: {e}")
+                            log_event(f"🧠 Neuronska mreža zapažanje: {thought['detail']}")
             except Exception as e:
                 log_event(f"Upozorenje: Učenje nije uspelo za {table_name}:{rid}: {e}")
+            
             try:
+                # [2] Entity embeddings
                 relation = entity_embeddings.observe_and_relate(conn, table_name, row_data, rid)
                 if relation:
                     neural_relations.append(relation)
             except Exception as e:
                 log_event(f"Upozorenje: Učenje odnosa nije uspelo za {table_name}:{rid}: {e}")
+            
+            try:
+                # [4] Temporal sequence learning
+                temporal_result = temporal_brain.observe_temporal_sequence(conn, table_name, row_data, rid)
+                if temporal_result:
+                    log_event(f"📈 Trend anomalija: {temporal_result['detail']}")
+            except Exception as e:
+                log_event(f"Upozorenje: Temporal učenje nije uspelo za {table_name}:{rid}: {e}")
+            
+            try:
+                # [5] Cross-table context learning
+                cross_table_learner.learn_cross_table_context(conn, table_name, row_data, fk_map)
+                cross_result = cross_table_learner.detect_cross_table_anomaly(conn, table_name, row_data, rid)
+                if cross_result:
+                    log_event(f"🔗 Cross-table anomalija: {cross_result['detail']}")
+            except Exception as e:
+                log_event(f"Upozorenje: Cross-table učenje nije uspelo za {table_name}:{rid}: {e}")
+        
         log_event(f"🧠 Naučeno {len(rows)} redova iz tabele {table_name}.")
 
     conn.close()
@@ -225,19 +277,49 @@ def _process_realtime_row_sync(table_name: str, row: dict):
     rid = str(row.get("id", ""))
     conn = sqlite3.connect(DB_FILE)
     try:
+        # [1] Autoencoder anomaly detection
         thought = neural_brain.observe_and_think(conn, table_name, row, rid)
         if thought:
             neural_thoughts.append(thought)
             if thought["stage"] == "anomalija":
-                log_event(f"🧠 Neuronska mreža zapažanje (realtime): {thought['detail']}")
+                # [3] Feature importance
+                try:
+                    from neural_brain import _load_state
+                    state = _load_state(conn, table_name)
+                    importance_analysis = feature_importance.log_feature_importance(
+                        conn, table_name, rid, row, thought["error"], state["weights"]
+                    )
+                    log_event(f"🧠 Neuronska mreža zapažanje (realtime): {thought['detail']} → {importance_analysis['explanation']}")
+                except Exception as e:
+                    log_event(f"Upozorenje: Feature importance nije uspelo: {e}")
+                    log_event(f"🧠 Neuronska mreža zapažanje (realtime): {thought['detail']}")
     except Exception as e:
         log_event(f"Upozorenje: Realtime učenje nije uspelo za {table_name}:{rid}: {e}")
+    
     try:
+        # [2] Entity embeddings
         relation = entity_embeddings.observe_and_relate(conn, table_name, row, rid)
         if relation:
             neural_relations.append(relation)
     except Exception as e:
         log_event(f"Upozorenje: Realtime učenje odnosa nije uspelo za {table_name}:{rid}: {e}")
+    
+    try:
+        # [4] Temporal sequence learning
+        temporal_result = temporal_brain.observe_temporal_sequence(conn, table_name, row, rid)
+        if temporal_result:
+            log_event(f"📈 Trend anomalija (realtime): {temporal_result['detail']}")
+    except Exception as e:
+        log_event(f"Upozorenje: Temporal učenje nije uspelo: {e}")
+    
+    try:
+        # [5] Cross-table anomalies
+        cross_result = cross_table_learner.detect_cross_table_anomaly(conn, table_name, row, rid)
+        if cross_result:
+            log_event(f"🔗 Cross-table anomalija (realtime): {cross_result['detail']}")
+    except Exception as e:
+        log_event(f"Upozorenje: Cross-table detekcija nije uspela: {e}")
+    
     finally:
         conn.close()
 
@@ -455,6 +537,9 @@ def reset_neural_brain():
     try:
         neural_brain.reset_brain(conn)
         entity_embeddings.reset_brain(conn)
+        temporal_brain.reset_brain(conn)
+        cross_table_learner.reset_brain(conn)
+        feature_importance.reset_brain(conn)
     finally:
         conn.close()
     neural_thoughts.clear()
@@ -468,6 +553,112 @@ async def trigger_resync():
     """Ručno pokreće ponovno otkrivanje tabela i istorijsko učenje (bez čekanja na periodični ciklus)."""
     asyncio.create_task(_learn_all_tables_historical())
     return {"status": "resync pokrenut u pozadini"}
+
+
+@app.get("/neural/temporal")
+def get_temporal_report():
+    """Izveštaj o vremenskim sekvencama i trend anomalijama."""
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        report = temporal_brain.get_temporal_report(conn)
+    finally:
+        conn.close()
+    return report
+
+
+@app.get("/neural/cross-table")
+def get_cross_table_report():
+    """Izveštaj o detektovanim foreign key vezama i cross-table anomalijama."""
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        report = cross_table_learner.get_cross_table_report(conn)
+    finally:
+        conn.close()
+    return report
+
+
+@app.get("/neural/importance")
+def get_feature_importance_report():
+    """Izveštaj o tome KOJE kolone uzrokuju anomalije (feature importance analiza)."""
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        report = feature_importance.get_importance_report(conn)
+    finally:
+        conn.close()
+    return report
+
+
+@app.post("/neural/feedback")
+def submit_user_feedback(table: str, source_id: str, is_anomaly: bool, user_note: str = ""):
+    """Korisnik potvrđuje ili odbija anomaliju — sistem prilagođava učenje.
+    
+    Primer zahteva:
+    {
+        "table": "orders",
+        "source_id": "12345",
+        "is_anomaly": false,
+        "user_note": "Ovo je normalno za ovog korisnika"
+    }
+    """
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        cursor = conn.cursor()
+        
+        # Spremi feedback
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name TEXT,
+                source_id TEXT,
+                user_verdict BOOLEAN,
+                note TEXT,
+                created_at TEXT
+            )
+        """)
+        
+        cursor.execute("""
+            INSERT INTO user_feedback (table_name, source_id, user_verdict, note, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (table, source_id, is_anomaly, user_note, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        
+        conn.commit()
+        
+        log_event(f"📝 User feedback: {table}[{source_id}] = {is_anomaly} ('{user_note}')")
+        
+        return {
+            "status": "feedback prijavljen",
+            "table": table,
+            "source_id": source_id,
+            "is_anomaly": is_anomaly,
+            "message": "Hvala na povratnoj informaciji! Sistem će koristiti ovo za poboljšanje."
+        }
+    except Exception as e:
+        log_event(f"Greška pri prikupljanju feedback-a: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
+@app.get("/neural/feedback-summary")
+def get_feedback_summary():
+    """Pregled korisnikovih povratnih informacija."""
+    conn = sqlite3.connect(DB_FILE)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM user_feedback WHERE user_verdict=1")
+        confirmed = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM user_feedback WHERE user_verdict=0")
+        rejected = cursor.fetchone()[0]
+        
+        return {
+            "confirmed_anomalies": confirmed,
+            "rejected_anomalies": rejected,
+            "total_feedback": confirmed + rejected,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        conn.close()
 
 
 @app.api_route("/osrm/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"])
