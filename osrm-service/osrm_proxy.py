@@ -55,7 +55,7 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def verify_api_key(request: Request, api_key: str = Depends(api_key_header)) -> bool:
-    # Root health-check je dozvoljen bez ključa (koristi ga watch_osrm_health.ps1 / Tailscale funnel health).
+    # Root health-check je dozvoljen bez ključa (koristi ga Tailscale funnel health-check).
     if request.url.path == "/":
         return True
     if api_key != ML_API_KEY:
