@@ -24,6 +24,7 @@ import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_biometric_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -71,6 +72,104 @@ class V3VozacScreen extends StatefulWidget {
 class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserver {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
   static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
+
+  // Prevodi za vozački ekran (SR/EN/RU/DE).
+  static const Map<String, Map<String, String>> _t = {
+    'gpsIskljucen': {
+      'sr': 'GPS je isključen. Uključi lokaciju na telefonu.',
+      'en': 'GPS is turned off. Enable location on your phone.',
+      'ru': 'ГПС выключен. Включите геолокацию на телефоне.',
+      'de': 'GPS ist ausgeschaltet. Aktivieren Sie den Standort auf Ihrem Telefon.',
+    },
+    'dozvolaOdbijena': {
+      'sr': 'Dozvola za lokaciju je odbijena.',
+      'en': 'Location permission was denied.',
+      'ru': 'В доступе к геолокации отказано.',
+      'de': 'Standortberechtigung wurde verweigert.',
+    },
+    'dozvolaTrajnoOdbijena': {
+      'sr': 'Dozvola za lokaciju je trajno odbijena. Uključi je u Settings.',
+      'en': 'Location permission was permanently denied. Enable it in Settings.',
+      'ru': 'В доступе к геолокации отказано навсегда. Включите её в настройках.',
+      'de': 'Standortberechtigung wurde dauerhaft verweigert. Aktivieren Sie sie in den Einstellungen.',
+    },
+    'rutaNemaKoordinate': {
+      'sr': 'Nije moguće formirati rutu: nema validnih koordinata adresa.',
+      'en': 'Cannot build route: no valid address coordinates.',
+      'ru': 'Не удалось построить маршрут: нет действительных координат адресов.',
+      'de': 'Route kann nicht erstellt werden: keine gültigen Adresskoordinaten.',
+    },
+    'zapocniVoznjuPrviPuta': {
+      'sr': 'Prvo započnite vožnju (START) da bi se ruta prosledila na mapu.',
+      'en': 'First start the ride (START) so the route can be sent to the map.',
+      'ru': 'Сначала начните поездку (СТАРТ), чтобы отправить маршрут на карту.',
+      'de': 'Starten Sie zuerst die Fahrt (START), damit die Route an die Karte gesendet werden kann.',
+    },
+    'nemaPutnikaZaTermin': {
+      'sr': 'Nema putnika za izabrani termin.',
+      'en': 'No passengers for the selected time slot.',
+      'ru': 'Нет пассажиров на выбранное время.',
+      'de': 'Keine Fahrgäste für den ausgewählten Termin.',
+    },
+    'hereWeGoOtvoren': {
+      'sr': 'HERE WeGo otvoren sa trenutnim redosledom stanica.',
+      'en': 'HERE WeGo opened with the current stop order.',
+      'ru': 'HERE WeGo открыт с текущим порядком остановок.',
+      'de': 'HERE WeGo mit der aktuellen Haltestellenreihenfolge geöffnet.',
+    },
+    'mapaNijeOtvorena': {
+      'sr': 'MAPA nije otvorena:',
+      'en': 'MAP was not opened:',
+      'ru': 'КАРТА не открыта:',
+      'de': 'KARTE wurde nicht geöffnet:',
+    },
+    'rutaPripremljena': {
+      'sr': 'Ruta pripremljena za HERE WeGo.',
+      'en': 'Route prepared for HERE WeGo.',
+      'ru': 'Маршрут подготовлен для HERE WeGo.',
+      'de': 'Route für HERE WeGo vorbereitet.',
+    },
+    'trackingVecPokrenut': {
+      'sr': 'Tracking je već pokrenut. Zaustaviće se automatski kada završite sa poslom.',
+      'en': 'Tracking is already running. It will stop automatically when you finish work.',
+      'ru': 'Отслеживание уже запущено. Оно остановится автоматически по завершению работы.',
+      'de': 'Tracking läuft bereits. Es wird automatisch gestoppt, wenn Sie die Arbeit beenden.',
+    },
+    'temaPromenjena': {
+      'sr': '🎨 Tema promenjena',
+      'en': '🎨 Theme changed',
+      'ru': '🎨 Тема изменена',
+      'de': '🎨 Thema geändert'
+    },
+    'nemogucIdentifikovatiVozaca': {
+      'sr': 'Nije moguće identifikovati vozača.',
+      'en': 'Unable to identify the driver.',
+      'ru': 'Не удалось идентифицировать водителя.',
+      'de': 'Der Fahrer konnte nicht identifiziert werden.',
+    },
+    'promeniTemu': {'sr': 'Promeni temu', 'en': 'Change theme', 'ru': 'Сменить тему', 'de': 'Thema ändern'},
+    'promeniPin': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern'},
+    'logout': {'sr': 'Logout', 'en': 'Log out', 'ru': 'Выйти', 'de': 'Abmelden'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'izaberiDan': {'sr': 'Izaberi dan', 'en': 'Select day', 'ru': 'Выберите день', 'de': 'Tag auswählen'},
+    'logoutPitanje': {
+      'sr': 'Da li ste sigurni da želite da se odjavite?',
+      'en': 'Are you sure you want to log out?',
+      'ru': 'Вы уверены, что хотите выйти?',
+      'de': 'Möchten Sie sich wirklich abmelden?',
+    },
+    'pinPromenjen': {
+      'sr': '✅ PIN je uspešno promenjen.',
+      'en': '✅ PIN has been changed successfully.',
+      'ru': '✅ PIN успешно изменён.',
+      'de': '✅ PIN wurde erfolgreich geändert.',
+    },
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
 
   DateTime _selectedDate = V3DanHelper.dateOnly(DateTime.now());
   String _selectedGrad = 'BC';
@@ -494,13 +593,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     switch (status) {
       case V3LocationPrereqStatus.serviceDisabled:
-        V3AppSnackBar.warning(context, 'GPS je isključen. Uključi lokaciju na telefonu.');
+        V3AppSnackBar.warning(context, _tr('gpsIskljucen'));
         break;
       case V3LocationPrereqStatus.denied:
-        V3AppSnackBar.warning(context, 'Dozvola za lokaciju je odbijena.');
+        V3AppSnackBar.warning(context, _tr('dozvolaOdbijena'));
         break;
       case V3LocationPrereqStatus.deniedForever:
-        V3AppSnackBar.warning(context, 'Dozvola za lokaciju je trajno odbijena. Uključi je u Settings.');
+        V3AppSnackBar.warning(context, _tr('dozvolaTrajnoOdbijena'));
         break;
       case V3LocationPrereqStatus.ok:
         break;
@@ -819,10 +918,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Future<void> _logout() async {
     final ok = await V3DialogHelper.showConfirmDialog(
       context,
-      title: 'Logout',
-      message: 'Da li ste sigurni da želite da se odjavite?',
-      confirmText: 'Logout',
-      cancelText: 'Otkaži',
+      title: _tr('logout'),
+      message: _tr('logoutPitanje'),
+      confirmText: _tr('logout'),
+      cancelText: _tr('otkazi'),
       isDangerous: true,
     );
     if (ok == true && mounted) {
@@ -1050,7 +1149,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     if (resolved.isEmpty) {
       if (mounted) {
-        V3AppSnackBar.error(context, 'Nije moguće formirati rutu: nema validnih koordinata adresa.');
+        V3AppSnackBar.error(context, _tr('rutaNemaKoordinate'));
       }
       return null;
     }
@@ -1098,12 +1197,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   Future<void> _handleOpenMap() async {
     if (!_isNavigating) {
-      if (mounted) V3AppSnackBar.warning(context, 'Prvo započnite vožnju (START) da bi se ruta prosledila na mapu.');
+      if (mounted) V3AppSnackBar.warning(context, _tr('zapocniVoznjuPrviPuta'));
       return;
     }
 
     if (_mojiPutnici.isEmpty) {
-      if (mounted) V3AppSnackBar.warning(context, 'Nema putnika za izabrani termin.');
+      if (mounted) V3AppSnackBar.warning(context, _tr('nemaPutnikaZaTermin'));
       return;
     }
 
@@ -1118,10 +1217,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       _hasSentRouteToMap = true;
       _lastSentRouteSignature = _routeSignatureFromWaypoints(waypointsToOpen);
       if (!mounted) return;
-      V3AppSnackBar.success(context, 'HERE WeGo otvoren sa trenutnim redosledom stanica.');
+      V3AppSnackBar.success(context, _tr('hereWeGoOtvoren'));
     } catch (e) {
       if (mounted) {
-        V3AppSnackBar.error(context, 'MAPA nije otvorena: $e');
+        V3AppSnackBar.error(context, '${_tr('mapaNijeOtvorena')} $e');
       }
     }
   }
@@ -1133,7 +1232,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     if (_mojiPutnici.isEmpty) {
       debugPrint('[START] => early return: nema putnika');
-      if (mounted) V3AppSnackBar.warning(context, 'Nema putnika za izabrani termin.');
+      if (mounted) V3AppSnackBar.warning(context, _tr('nemaPutnikaZaTermin'));
       return;
     }
 
@@ -1214,7 +1313,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     debugPrint(
         '[START] waypoints.length=${preparedRoute.waypointsToOpen.length} unresolvedCount=${preparedRoute.unresolvedCount}');
-    V3AppSnackBar.success(context, 'Ruta pripremljena za HERE WeGo.');
+    V3AppSnackBar.success(context, _tr('rutaPripremljena'));
     if (mounted) {
       setState(() {
         _isNavigating = true;
@@ -1238,7 +1337,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   void _handleStartTap() {
     // SAMO START - manualni STOP je uklonjen
     if (V3VozacLocationTrackingService.instance.isRunning) {
-      V3AppSnackBar.info(context, 'Tracking je već pokrenut. Zaustaviće se automatski kada završite sa poslom.');
+      V3AppSnackBar.info(context, _tr('trackingVecPokrenut'));
       return;
     }
 
@@ -1412,12 +1511,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                     await V3ThemeManager().nextTheme();
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
-                                    V3AppSnackBar.info(context, '🎨 Tema promenjena');
+                                    V3AppSnackBar.info(context, _tr('temaPromenjena'));
                                   } else if (val == 'promeni_pin') {
                                     final vozac = _efektivniVozac;
                                     final vozacAuthId = (vozac?.id?.toString() ?? '').trim();
                                     if (vozacAuthId.isEmpty) {
-                                      V3AppSnackBar.error(context, 'Nije moguće identifikovati vozača.');
+                                      V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
                                       return;
                                     }
                                     await V3DialogHelper.showDialogBuilder<void>(
@@ -1428,30 +1527,30 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                     _logout();
                                   }
                                 },
-                                itemBuilder: (_) => const [
+                                itemBuilder: (_) => [
                                   PopupMenuItem(
                                     value: 'tema',
                                     child: Row(children: [
-                                      Icon(Icons.palette, color: Colors.purpleAccent),
-                                      SizedBox(width: 8),
-                                      Text('Promeni temu'),
+                                      const Icon(Icons.palette, color: Colors.purpleAccent),
+                                      const SizedBox(width: 8),
+                                      Text(_tr('promeniTemu')),
                                     ]),
                                   ),
                                   PopupMenuItem(
                                     value: 'promeni_pin',
                                     child: Row(children: [
-                                      Icon(Icons.lock_reset_outlined, color: Colors.orangeAccent),
-                                      SizedBox(width: 8),
-                                      Text('Promeni PIN'),
+                                      const Icon(Icons.lock_reset_outlined, color: Colors.orangeAccent),
+                                      const SizedBox(width: 8),
+                                      Text(_tr('promeniPin')),
                                     ]),
                                   ),
-                                  PopupMenuDivider(),
+                                  const PopupMenuDivider(),
                                   PopupMenuItem(
                                     value: 'logout',
                                     child: Row(children: [
-                                      Icon(Icons.logout, color: Colors.red),
-                                      SizedBox(width: 8),
-                                      Text('Logout'),
+                                      const Icon(Icons.logout, color: Colors.red),
+                                      const SizedBox(width: 8),
+                                      Text(_tr('logout')),
                                     ]),
                                   ),
                                 ],
@@ -1708,7 +1807,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     V3DialogHelper.showDialogBuilder<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('Izaberi dan'),
+        title: Text(_tr('izaberiDan')),
         children: V3DanHelper.workdayNames.map((dan) {
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, dan),
@@ -1755,6 +1854,80 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
   bool _saving = false;
   String? _error;
 
+  // Prevodi za dijalog promene PIN-a (SR/EN/RU/DE).
+  static const Map<String, Map<String, String>> _t = {
+    'trenutniPinMora6Cifara': {
+      'sr': 'Trenutni PIN mora imati tačno 6 cifara.',
+      'en': 'Current PIN must be exactly 6 digits.',
+      'ru': 'Текущий PIN должен содержать ровно 6 цифр.',
+      'de': 'Die aktuelle PIN muss genau 6 Ziffern haben.',
+    },
+    'noviPinMora6Cifara': {
+      'sr': 'Novi PIN mora imati tačno 6 cifara.',
+      'en': 'New PIN must be exactly 6 digits.',
+      'ru': 'Новый PIN должен содержать ровно 6 цифр.',
+      'de': 'Die neue PIN muss genau 6 Ziffern haben.',
+    },
+    'noviPinoviSeNePoklapaju': {
+      'sr': 'Novi PIN-ovi se ne poklapaju.',
+      'en': 'New PINs do not match.',
+      'ru': 'Новые PIN-коды не совпадают.',
+      'de': 'Die neuen PINs stimmen nicht überein.',
+    },
+    'noviPinMoraBitiRazlicit': {
+      'sr': 'Novi PIN mora biti različit od trenutnog.',
+      'en': 'New PIN must be different from the current one.',
+      'ru': 'Новый PIN должен отличаться от текущего.',
+      'de': 'Die neue PIN muss sich von der aktuellen unterscheiden.',
+    },
+    'trenutniPinNijeIspravan': {
+      'sr': 'Trenutni PIN nije ispravan.',
+      'en': 'Current PIN is incorrect.',
+      'ru': 'Текущий PIN неверен.',
+      'de': 'Die aktuelle PIN ist falsch.',
+    },
+    'nalogNemaPin': {
+      'sr': 'Nalog nema podešen PIN.',
+      'en': 'Account has no PIN set.',
+      'ru': 'У аккаунта не установлен PIN.',
+      'de': 'Für das Konto ist keine PIN festgelegt.',
+    },
+    'greskaPromenaPin': {
+      'sr': 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+      'en': 'Error changing PIN. Please try again.',
+      'ru': 'Ошибка при смене PIN. Попробуйте снова.',
+      'de': 'Fehler beim Ändern der PIN. Bitte versuche es erneut.',
+    },
+    'pinPromenjen': {
+      'sr': '✅ PIN je uspešno promenjen.',
+      'en': '✅ PIN has been changed successfully.',
+      'ru': '✅ PIN успешно изменён.',
+      'de': '✅ PIN wurde erfolgreich geändert.',
+    },
+    'promeniPin': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern'},
+    'unesiPinSubtitle': {
+      'sr': 'Unesi trenutni i novi PIN (6 cifara)',
+      'en': 'Enter current and new PIN (6 digits)',
+      'ru': 'Введите текущий и новый PIN (6 цифр)',
+      'de': 'Aktuelle und neue PIN eingeben (6 Ziffern)',
+    },
+    'trenutniPin': {'sr': 'Trenutni PIN', 'en': 'Current PIN', 'ru': 'Текущий PIN', 'de': 'Aktuelle PIN'},
+    'noviPin': {'sr': 'Novi PIN', 'en': 'New PIN', 'ru': 'Новый PIN', 'de': 'Neue PIN'},
+    'ponoviNoviPin': {
+      'sr': 'Ponovi novi PIN',
+      'en': 'Repeat new PIN',
+      'ru': 'Повторите новый PIN',
+      'de': 'Neue PIN wiederholen',
+    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+
   @override
   void dispose() {
     _oldPinController.dispose();
@@ -1769,20 +1942,20 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
     final newPinConfirm = _newPinConfirmController.text.trim();
 
     if (!V3ClosedAuthService.isValidPin(oldPin)) {
-      setState(() => _error = 'Trenutni PIN mora imati tačno 6 cifara.');
+      setState(() => _error = _tr('trenutniPinMora6Cifara'));
       return;
     }
     if (!V3ClosedAuthService.isValidPin(newPin)) {
-      setState(() => _error = 'Novi PIN mora imati tačno 6 cifara.');
+      setState(() => _error = _tr('noviPinMora6Cifara'));
       return;
     }
 
     if (newPin != newPinConfirm) {
-      setState(() => _error = 'Novi PIN-ovi se ne poklapaju.');
+      setState(() => _error = _tr('noviPinoviSeNePoklapaju'));
       return;
     }
     if (newPin == oldPin) {
-      setState(() => _error = 'Novi PIN mora biti različit od trenutnog.');
+      setState(() => _error = _tr('noviPinMoraBitiRazlicit'));
       return;
     }
 
@@ -1801,9 +1974,9 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
 
     if (!result.ok) {
       final message = switch (result.reason) {
-        'old_pin_mismatch' => 'Trenutni PIN nije ispravan.',
-        'pin_not_set' => 'Nalog nema podešen PIN.',
-        _ => 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+        'old_pin_mismatch' => _tr('trenutniPinNijeIspravan'),
+        'pin_not_set' => _tr('nalogNemaPin'),
+        _ => _tr('greskaPromenaPin'),
       };
       setState(() {
         _saving = false;
@@ -1812,7 +1985,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
       return;
     }
 
-    V3AppSnackBar.success(context, '✅ PIN je uspešno promenjen.');
+    V3AppSnackBar.success(context, _tr('pinPromenjen'));
     Navigator.of(context, rootNavigator: true).pop();
   }
 
@@ -1839,21 +2012,21 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                   color: Colors.black.withValues(alpha: 0.18),
                   border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.lock_reset_outlined, color: Colors.white, size: 22),
-                    SizedBox(width: 10),
+                    const Icon(Icons.lock_reset_outlined, color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Promeni PIN',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                            _tr('promeniPin'),
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            'Unesi trenutni i novi PIN (6 cifara)',
-                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                            _tr('unesiPinSubtitle'),
+                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -1869,7 +2042,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                     children: [
                       V3InputUtils.textField(
                         controller: _oldPinController,
-                        label: 'Trenutni PIN',
+                        label: _tr('trenutniPin'),
                         icon: Icons.lock_outline,
                         keyboardType: TextInputType.number,
                         obscureText: true,
@@ -1877,7 +2050,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
                         controller: _newPinController,
-                        label: 'Novi PIN',
+                        label: _tr('noviPin'),
                         icon: Icons.lock_open_outlined,
                         keyboardType: TextInputType.number,
                         obscureText: true,
@@ -1885,7 +2058,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
                         controller: _newPinConfirmController,
-                        label: 'Ponovi novi PIN',
+                        label: _tr('ponoviNoviPin'),
                         icon: Icons.lock_open_outlined,
                         keyboardType: TextInputType.number,
                         obscureText: true,
@@ -1900,7 +2073,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                           Expanded(
                             child: V3ButtonUtils.outlinedButton(
                               onPressed: _saving ? null : () => Navigator.of(context, rootNavigator: true).pop(),
-                              text: 'Otkaži',
+                              text: _tr('otkazi'),
                               borderColor: Colors.white54,
                               foregroundColor: Colors.white70,
                             ),
@@ -1909,7 +2082,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                           Expanded(
                             child: V3ButtonUtils.primaryButton(
                               onPressed: _saving ? null : _sacuvaj,
-                              text: 'Sačuvaj',
+                              text: _tr('sacuvaj'),
                               icon: Icons.check,
                               isLoading: _saving,
                             ),

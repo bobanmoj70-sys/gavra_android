@@ -5,12 +5,35 @@ import 'package:flutter/material.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
+
+class _RadZahTr {
+  static const Map<String, Map<String, String>> _t = {
+    'monitoringZahteva': {
+      'sr': 'Monitoring zahteva',
+      'en': 'Request monitoring',
+      'ru': 'Мониторинг запросов',
+      'de': 'Anfragenüberwachung'
+    },
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
+    'otkazano': {'sr': 'otkazano', 'en': 'canceled', 'ru': 'отменено', 'de': 'storniert'},
+    'nemaZahteva': {'sr': 'Nema zahteva', 'en': 'No requests', 'ru': 'Нет запросов', 'de': 'Keine Anfragen'},
+    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// V3 ekran — Monitoring zahteva radnika.
 class V3RadniciZahteviScreen extends StatefulWidget {
@@ -97,9 +120,9 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
             centerTitle: true,
             foregroundColor: Colors.white,
             automaticallyImplyLeading: false,
-            title: const Text(
-              'Monitoring zahteva',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            title: Text(
+              _RadZahTr.tr('monitoringZahteva'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
           body: V3ContainerUtils.backgroundContainer(
@@ -114,13 +137,13 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
                       runSpacing: 6,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (obrada > 0) _badge('🟡 $obrada obrada', Colors.amber),
-                        if (odobreno > 0) _badge('🟢 $odobreno odobreno', Colors.greenAccent),
-                        if (odbijeno > 0) _badge('🔴 $odbijeno odbijeno', Colors.redAccent),
-                        if (otkazano > 0) _badge('⛔ $otkazano otkazano', Colors.orange),
+                        if (obrada > 0) _badge('🟡 $obrada ${_RadZahTr.tr('obrada')}', Colors.amber),
+                        if (odobreno > 0) _badge('🟢 $odobreno ${_RadZahTr.tr('odobreno')}', Colors.greenAccent),
+                        if (odbijeno > 0) _badge('🔴 $odbijeno ${_RadZahTr.tr('odbijeno')}', Colors.redAccent),
+                        if (otkazano > 0) _badge('⛔ $otkazano ${_RadZahTr.tr('otkazano')}', Colors.orange),
                         if (zahteviRaw.isEmpty)
                           Text(
-                            'Nema zahteva',
+                            _RadZahTr.tr('nemaZahteva'),
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                           ),
                       ],
@@ -130,7 +153,7 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
                     child: zahteviRaw.isEmpty
                         ? Center(
                             child: Text(
-                              'Nema zahteva',
+                              _RadZahTr.tr('nemaZahteva'),
                               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
                             ),
                           )
@@ -197,7 +220,7 @@ class _MonitoringCardRadnik extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          putnik?.imePrezime ?? 'Putnik',
+                          putnik?.imePrezime ?? _RadZahTr.tr('putnik'),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
@@ -220,4 +243,3 @@ class _MonitoringCardRadnik extends StatelessWidget {
     );
   }
 }
-

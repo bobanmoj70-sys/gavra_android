@@ -268,10 +268,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     'danPonedeljak': {'sr': 'Ponedeljak', 'en': 'Monday', 'ru': 'Понедельник', 'de': 'Montag'},
     'danUtorak': {'sr': 'Utorak', 'en': 'Tuesday', 'ru': 'Вторник', 'de': 'Dienstag'},
     'danSreda': {'sr': 'Sreda', 'en': 'Wednesday', 'ru': 'Среда', 'de': 'Mittwoch'},
-    'danCetvrtak': {'sr': 'Cetvrtak', 'en': 'Thursday', 'ru': 'Четверг', 'de': 'Donnerstag'},
+    'danCetvrtak': {'sr': 'Četvrtak', 'en': 'Thursday', 'ru': 'Четверг', 'de': 'Donnerstag'},
     'danPetak': {'sr': 'Petak', 'en': 'Friday', 'ru': 'Пятница', 'de': 'Freitag'},
     'danSubota': {'sr': 'Subota', 'en': 'Saturday', 'ru': 'Суббота', 'de': 'Samstag'},
     'danNedelja': {'sr': 'Nedelja', 'en': 'Sunday', 'ru': 'Воскресенье', 'de': 'Sonntag'},
+    'jezik': {'sr': 'Jezik', 'en': 'Language', 'ru': 'Язык', 'de': 'Sprache'},
   };
 
   String _tr(String key) {
@@ -924,7 +925,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                     ? '🇩🇪'
                     : '🇷🇸';
         return PopupMenuButton<String>(
-          tooltip: 'Jezik',
+          tooltip: _tr('jezik'),
           offset: const Offset(0, 44),
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_kapacitet_slots_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -10,6 +11,52 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
+
+class _KapTr {
+  static const Map<String, Map<String, String>> _t = {
+    'kapacitetPolazaka': {
+      'sr': 'Kapacitet Polazaka',
+      'en': 'Departure Capacity',
+      'ru': 'Вместимость рейсов',
+      'de': 'Abfahrtskapazität',
+    },
+    'belaCrkva': {'sr': 'Bela Crkva', 'en': 'Bela Crkva', 'ru': 'Бела-Црква', 'de': 'Bela Crkva'},
+    'vrsac': {'sr': 'Vršac', 'en': 'Vršac', 'ru': 'Вршац', 'de': 'Vršac'},
+    'greskaPriCuvanju': {
+      'sr': '❌ Greška pri čuvanju',
+      'en': '❌ Error saving',
+      'ru': '❌ Ошибка при сохранении',
+      'de': '❌ Fehler beim Speichern',
+    },
+    'mesta': {'sr': 'mesta', 'en': 'seats', 'ru': 'мест', 'de': 'Plätze'},
+    'kapacitetLabel': {'sr': 'Kapacitet', 'en': 'Capacity', 'ru': 'Вместимость', 'de': 'Kapazität'},
+    'nijePostavljen': {
+      'sr': 'nije postavljen',
+      'en': 'not set',
+      'ru': 'не установлено',
+      'de': 'nicht festgelegt',
+    },
+    'unesiteMaksimalanBrojMesta': {
+      'sr': 'Unesite maksimalan broj mesta:',
+      'en': 'Enter the maximum number of seats:',
+      'ru': 'Введите максимальное количество мест:',
+      'de': 'Geben Sie die maximale Platzanzahl ein:',
+    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'unesiteBrojIzmedju1i20': {
+      'sr': 'Unesite broj između 1 i 20',
+      'en': 'Enter a number between 1 and 20',
+      'ru': 'Введите число от 1 до 20',
+      'de': 'Geben Sie eine Zahl zwischen 1 und 20 ein',
+    },
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// Admin ekran za podešavanje kapaciteta polazaka
 class V3KapacitetScreen extends StatefulWidget {
@@ -80,7 +127,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
       );
     } catch (e) {
       debugPrint('[KapacitetScreen] upsertKapacitet error: $e');
-      if (mounted) V3AppSnackBar.error(context, '❌ Greška pri čuvanju');
+      if (mounted) V3AppSnackBar.error(context, _KapTr.tr('greskaPriCuvanju'));
     }
   }
 
@@ -92,7 +139,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
     );
     if (result != null && result != trenutni) {
       await _upsertKapacitet(grad, vreme, result);
-      if (mounted) V3AppSnackBar.success(context, '✅ $grad $vreme = $result mesta');
+      if (mounted) V3AppSnackBar.success(context, '✅ $grad $vreme = $result ${_KapTr.tr('mesta')}');
     }
   }
 
@@ -118,7 +165,9 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
               style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              maxMesta != null ? 'Kapacitet: $maxMesta mesta' : 'Kapacitet: nije postavljen',
+              maxMesta != null
+                  ? '${_KapTr.tr('kapacitetLabel')}: $maxMesta ${_KapTr.tr('mesta')}'
+                  : '${_KapTr.tr('kapacitetLabel')}: ${_KapTr.tr('nijePostavljen')}',
               style: TextStyle(
                 color: maxMesta == null
                     ? Colors.red
@@ -169,7 +218,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: const Text('Kapacitet Polazaka', style: TextStyle(color: Colors.white)),
+          title: Text(_KapTr.tr('kapacitetPolazaka'), style: const TextStyle(color: Colors.white)),
           centerTitle: true,
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -180,9 +229,9 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
             indicatorColor: Colors.green,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white54,
-            tabs: const [
-              Tab(text: 'Bela Crkva'),
-              Tab(text: 'Vrsac'),
+            tabs: [
+              Tab(text: _KapTr.tr('belaCrkva')),
+              Tab(text: _KapTr.tr('vrsac')),
             ],
           ),
         ),
@@ -348,9 +397,9 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Unesite maksimalan broj mesta:',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  Text(
+                    _KapTr.tr('unesiteMaksimalanBrojMesta'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   V3ContainerUtils.iconContainer(
@@ -375,7 +424,7 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                               side: BorderSide(color: Colors.grey.withValues(alpha: 0.5)),
                             ),
                           ),
-                          child: const Text('Otkaži', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          child: Text(_KapTr.tr('otkazi'), style: const TextStyle(color: Colors.grey, fontSize: 16)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -386,10 +435,10 @@ class _KapacitetEditDialogState extends State<_KapacitetEditDialog> {
                             if (value != null && value > 0 && value <= 20) {
                               Navigator.pop(context, value);
                             } else {
-                              V3AppSnackBar.error(context, 'Unesite broj između 1 i 20');
+                              V3AppSnackBar.error(context, _KapTr.tr('unesiteBrojIzmedju1i20'));
                             }
                           },
-                          text: 'Sačuvaj',
+                          text: _KapTr.tr('sacuvaj'),
                         ),
                       ),
                     ],

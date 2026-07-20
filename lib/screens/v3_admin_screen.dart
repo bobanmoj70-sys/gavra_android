@@ -5,6 +5,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_settings_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
@@ -35,6 +36,245 @@ class V3AdminScreen extends StatefulWidget {
 }
 
 class _V3AdminScreenState extends State<V3AdminScreen> {
+  static const Map<String, Map<String, String>> _t = {
+    'neradniDani': {'sr': 'Neradni dani', 'en': 'Non-working days', 'ru': 'Нерабочие дни', 'de': 'Arbeitsfreie Tage'},
+    'datumBiraSeIzKalendara': {
+      'sr': 'Datum se bira iz kalendara.',
+      'en': 'The date is chosen from the calendar.',
+      'ru': 'Дата выбирается из календаря.',
+      'de': 'Das Datum wird aus dem Kalender ausgewählt.',
+    },
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum'},
+    'izaberiDatum': {'sr': 'Izaberi datum', 'en': 'Select date', 'ru': 'Выберите дату', 'de': 'Datum auswählen'},
+    'scope': {'sr': 'Scope', 'en': 'Scope', 'ru': 'Область', 'de': 'Bereich'},
+    'sviAll': {'sr': 'Svi (ALL)', 'en': 'All (ALL)', 'ru': 'Все (ALL)', 'de': 'Alle (ALL)'},
+    'razlog': {'sr': 'Razlog', 'en': 'Reason', 'ru': 'Причина', 'de': 'Grund'},
+    'drzavniPraznik': {
+      'sr': 'Državni praznik',
+      'en': 'Public holiday',
+      'ru': 'Государственный праздник',
+      'de': 'Feiertag'
+    },
+    'dodajZameni': {
+      'sr': 'Dodaj / Zameni',
+      'en': 'Add / Replace',
+      'ru': 'Добавить / Заменить',
+      'de': 'Hinzufügen / Ersetzen'
+    },
+    'aktivnaPravila': {'sr': 'Aktivna pravila', 'en': 'Active rules', 'ru': 'Активные правила', 'de': 'Aktive Regeln'},
+    'nemaUnosa': {'sr': 'Nema unosa', 'en': 'No entries', 'ru': 'Нет записей', 'de': 'Keine Einträge'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'cuvam': {'sr': 'Čuvam...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...'},
+    'izaberiDatumIzKalendara': {
+      'sr': 'Izaberi datum iz kalendara.',
+      'en': 'Select a date from the calendar.',
+      'ru': 'Выберите дату из календаря.',
+      'de': 'Datum aus dem Kalender auswählen.',
+    },
+    'datumNijeValidan': {
+      'sr': 'Datum nije validan kalendarski.',
+      'en': 'The date is not a valid calendar date.',
+      'ru': 'Дата не является допустимой календарной датой.',
+      'de': 'Das Datum ist kein gültiges Kalenderdatum.',
+    },
+    'dodajBarJedanNeradanDan': {
+      'sr': 'Dodaj bar jedan neradan dan pre čuvanja.',
+      'en': 'Add at least one non-working day before saving.',
+      'ru': 'Добавьте хотя бы один нерабочий день перед сохранением.',
+      'de': 'Fügen Sie mindestens einen arbeitsfreien Tag hinzu, bevor Sie speichern.',
+    },
+    'neradniDaniSacuvani': {
+      'sr': '✅ Neradni dani sačuvani',
+      'en': '✅ Non-working days saved',
+      'ru': '✅ Нерабочие дни сохранены',
+      'de': '✅ Arbeitsfreie Tage gespeichert',
+    },
+    'greskaPriCuvanju': {
+      'sr': 'Greška pri čuvanju:',
+      'en': 'Error while saving:',
+      'ru': 'Ошибка при сохранении:',
+      'de': 'Fehler beim Speichern:'
+    },
+    'greskaPriUcitavanjuNeradnih': {
+      'sr': 'Greška pri učitavanju neradnih dana:',
+      'en': 'Error loading non-working days:',
+      'ru': 'Ошибка при загрузке нерабочих дней:',
+      'de': 'Fehler beim Laden der arbeitsfreien Tage:',
+    },
+    'customVremenaPolazaka': {
+      'sr': 'Custom vremena polazaka',
+      'en': 'Custom departure times',
+      'ru': 'Пользовательское время отправления',
+      'de': 'Benutzerdefinierte Abfahrtszeiten',
+    },
+    'unosFormataHint': {
+      'sr': 'Unos formata HH:mm, razdvojeno zarezom.',
+      'en': 'Enter in HH:mm format, comma-separated.',
+      'ru': 'Введите в формате ЧЧ:мм, через запятую.',
+      'de': 'Eingabe im Format HH:mm, durch Komma getrennt.',
+    },
+    'neispravnoVreme': {
+      'sr': 'Neispravno vreme:',
+      'en': 'Invalid time:',
+      'ru': 'Неверное время:',
+      'de': 'Ungültige Zeit:'
+    },
+    'customVremenaSacuvana': {
+      'sr': '✅ Custom vremena sačuvana',
+      'en': '✅ Custom times saved',
+      'ru': '✅ Пользовательское время сохранено',
+      'de': '✅ Benutzerdefinierte Zeiten gespeichert',
+    },
+    'greskaPriUcitavanjuCustom': {
+      'sr': 'Greška pri učitavanju custom vremena:',
+      'en': 'Error loading custom times:',
+      'ru': 'Ошибка при загрузке пользовательского времени:',
+      'de': 'Fehler beim Laden der benutzerdefinierten Zeiten:',
+    },
+    'infoBaner': {
+      'sr': '📢 Info baner',
+      'en': '📢 Info banner',
+      'ru': '📢 Информационный баннер',
+      'de': '📢 Info-Banner'
+    },
+    'infoBanerHint': {
+      'sr': 'Jedna poruka prikazana odabranoj grupi korisnika. Isključi kada ne treba da se prikazuje.',
+      'en': 'A single message shown to the selected group of users. Turn off when it should not be shown.',
+      'ru': 'Одно сообщение, показываемое выбранной группе пользователей. Отключите, если не нужно показывать.',
+      'de':
+          'Eine einzelne Nachricht für die ausgewählte Nutzergruppe. Deaktivieren, wenn sie nicht angezeigt werden soll.',
+    },
+    'prikaziBaner': {'sr': 'Prikaži baner', 'en': 'Show banner', 'ru': 'Показать баннер', 'de': 'Banner anzeigen'},
+    'naslov': {'sr': 'Naslov', 'en': 'Title', 'ru': 'Заголовок', 'de': 'Titel'},
+    'obavestenje': {'sr': 'Obaveštenje', 'en': 'Notice', 'ru': 'Уведомление', 'de': 'Hinweis'},
+    'poruka': {'sr': 'Poruka', 'en': 'Message', 'ru': 'Сообщение', 'de': 'Nachricht'},
+    'unesiTekstObavestenja': {
+      'sr': 'Unesi tekst obaveštenja...',
+      'en': 'Enter notice text...',
+      'ru': 'Введите текст уведомления...',
+      'de': 'Hinweistext eingeben...',
+    },
+    'bojaBanera': {'sr': 'Boja banera', 'en': 'Banner color', 'ru': 'Цвет баннера', 'de': 'Bannerfarbe'},
+    'prikaziKorisnicima': {
+      'sr': 'Prikaži korisnicima',
+      'en': 'Show to users',
+      'ru': 'Показать пользователям',
+      'de': 'Nutzern anzeigen'
+    },
+    'bakerUkljucenValidacija': {
+      'sr': 'Ako je baner uključen, moraš uneti i naslov i poruku.',
+      'en': 'If the banner is enabled, you must enter both a title and a message.',
+      'ru': 'Если баннер включен, необходимо ввести заголовок и сообщение.',
+      'de': 'Wenn der Banner aktiviert ist, müssen Titel und Nachricht eingegeben werden.',
+    },
+    'infoBanerSacuvan': {
+      'sr': '✅ Info baner sačuvan',
+      'en': '✅ Info banner saved',
+      'ru': '✅ Информационный баннер сохранен',
+      'de': '✅ Info-Banner gespeichert',
+    },
+    'greskaPriUcitavanjuBanera': {
+      'sr': 'Greška pri učitavanju info banera:',
+      'en': 'Error loading info banner:',
+      'ru': 'Ошибка при загрузке информационного баннера:',
+      'de': 'Fehler beim Laden des Info-Banners:',
+    },
+    'audSvi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle'},
+    'audPutnici': {'sr': 'Putnici', 'en': 'Passengers', 'ru': 'Пассажиры', 'de': 'Passagiere'},
+    'audVozaci': {'sr': 'Vozači', 'en': 'Drivers', 'ru': 'Водители', 'de': 'Fahrer'},
+    'audRadnici': {'sr': 'Radnici', 'en': 'Workers', 'ru': 'Рабочие', 'de': 'Arbeiter'},
+    'audUcenici': {'sr': 'Učenici', 'en': 'Students', 'ru': 'Ученики', 'de': 'Schüler'},
+    'updateVerzije': {
+      'sr': 'Update verzije',
+      'en': 'Update versions',
+      'ru': 'Версии обновления',
+      'de': 'Update-Versionen'
+    },
+    'androidLatest': {
+      'sr': 'Android latest',
+      'en': 'Android latest',
+      'ru': 'Android последняя',
+      'de': 'Android neueste'
+    },
+    'androidMin': {'sr': 'Android min', 'en': 'Android min', 'ru': 'Android минимальная', 'de': 'Android min'},
+    'iosLatest': {'sr': 'iOS latest', 'en': 'iOS latest', 'ru': 'iOS последняя', 'de': 'iOS neueste'},
+    'iosMin': {'sr': 'iOS min', 'en': 'iOS min', 'ru': 'iOS минимальная', 'de': 'iOS min'},
+    'forceAndroid': {
+      'sr': 'Force Android',
+      'en': 'Force Android',
+      'ru': 'Принудительно Android',
+      'de': 'Android erzwingen'
+    },
+    'forceIos': {'sr': 'Force iOS', 'en': 'Force iOS', 'ru': 'Принудительно iOS', 'de': 'iOS erzwingen'},
+    'maintenanceAndroid': {
+      'sr': 'Maintenance Android',
+      'en': 'Maintenance Android',
+      'ru': 'Обслуживание Android',
+      'de': 'Wartung Android'
+    },
+    'maintenanceIos': {'sr': 'Maintenance iOS', 'en': 'Maintenance iOS', 'ru': 'Обслуживание iOS', 'de': 'Wartung iOS'},
+    'androidVerzijaFormat': {
+      'sr': 'Android verzija mora biti u formatu npr. 6.0.192',
+      'en': 'Android version must be in format e.g. 6.0.192',
+      'ru': 'Версия Android должна быть в формате, например, 6.0.192',
+      'de': 'Die Android-Version muss z. B. im Format 6.0.192 vorliegen',
+    },
+    'iosVerzijaFormat': {
+      'sr': 'iOS verzija mora biti u formatu npr. 6.0.192',
+      'en': 'iOS version must be in format e.g. 6.0.192',
+      'ru': 'Версия iOS должна быть в формате, например, 6.0.192',
+      'de': 'Die iOS-Version muss z. B. im Format 6.0.192 vorliegen',
+    },
+    'updateVerzijeSacuvane': {
+      'sr': '✅ Update verzije sačuvane',
+      'en': '✅ Update versions saved',
+      'ru': '✅ Версии обновления сохранены',
+      'de': '✅ Update-Versionen gespeichert',
+    },
+    'uceniciBezVsTermina': {
+      'sr': 'Učenici bez VS termina',
+      'en': 'Students without VS slot',
+      'ru': 'Ученики без слота VS',
+      'de': 'Schüler ohne VS-Termin',
+    },
+    'bezVs': {'sr': 'Bez VS', 'en': 'Without VS', 'ru': 'Без VS', 'de': 'Ohne VS'},
+    'sviImajuVsTermin': {
+      'sr': '— svi imaju VS termin —',
+      'en': '— everyone has a VS slot —',
+      'ru': '— у всех есть слот VS —',
+      'de': '— alle haben einen VS-Termin —',
+    },
+    'zatvori': {'sr': 'Zatvori', 'en': 'Close', 'ru': 'Закрыть', 'de': 'Schließen'},
+    'tipRasporeda': {'sr': 'Tip rasporeda', 'en': 'Schedule type', 'ru': 'Тип расписания', 'de': 'Zeitplantyp'},
+    'custom': {'sr': '🛠️  Custom', 'en': '🛠️  Custom', 'ru': '🛠️  Настраиваемый', 'de': '🛠️  Benutzerdefiniert'},
+    'urediCustomVremena': {
+      'sr': '⏱️  Uredi custom vremena',
+      'en': '⏱️  Edit custom times',
+      'ru': '⏱️  Изменить пользовательское время',
+      'de': '⏱️  Benutzerdefinierte Zeiten bearbeiten',
+    },
+    'urediNeradneDane': {
+      'sr': '📅  Uredi neradne dane',
+      'en': '📅  Edit non-working days',
+      'ru': '📅  Изменить нерабочие дни',
+      'de': '📅  Arbeitsfreie Tage bearbeiten',
+    },
+    'urediInfoBaner': {
+      'sr': '📢  Uredi info baner',
+      'en': '📢  Edit info banner',
+      'ru': '📢  Изменить информационный баннер',
+      'de': '📢  Info-Banner bearbeiten',
+    },
+    'duznici': {'sr': 'Dužnici', 'en': 'Debtors', 'ru': 'Должники', 'de': 'Schuldner'},
+    'ukupanPazar': {'sr': 'UKUPAN PAZAR', 'en': 'TOTAL EARNINGS', 'ru': 'ОБЩАЯ ВЫРУЧКА', 'de': 'GESAMTEINNAHMEN'},
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+
   late final V3ThemeManager _themeManager;
   static final RegExp _versionPattern = RegExp(r'^\d+(\.\d+){1,3}$');
   static final RegExp _timePattern = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
@@ -124,7 +364,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           return StatefulBuilder(
             builder: (context, setModalState) => AlertDialog(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              title: const Text('Neradni dani', style: TextStyle(color: Colors.white)),
+              title: Text(_tr('neradniDani'), style: const TextStyle(color: Colors.white)),
               content: SizedBox(
                 width: 500,
                 child: SingleChildScrollView(
@@ -132,9 +372,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Datum se bira iz kalendara.',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      Text(
+                        _tr('datumBiraSeIzKalendara'),
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                       const SizedBox(height: 10),
                       TextField(
@@ -157,26 +397,26 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           }
                         },
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          labelText: 'Datum',
-                          hintText: 'Izaberi datum',
-                          prefixIcon: Icon(Icons.calendar_today, color: Colors.white70),
-                          labelStyle: TextStyle(color: Colors.white70),
+                        decoration: InputDecoration(
+                          labelText: _tr('datum'),
+                          hintText: _tr('izaberiDatum'),
+                          prefixIcon: const Icon(Icons.calendar_today, color: Colors.white70),
+                          labelStyle: const TextStyle(color: Colors.white70),
                         ),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         value: scope,
                         dropdownColor: Theme.of(context).colorScheme.primary,
-                        decoration: const InputDecoration(
-                          labelText: 'Scope',
-                          labelStyle: TextStyle(color: Colors.white70),
+                        decoration: InputDecoration(
+                          labelText: _tr('scope'),
+                          labelStyle: const TextStyle(color: Colors.white70),
                         ),
                         style: const TextStyle(color: Colors.white),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('Svi (ALL)')),
-                          DropdownMenuItem(value: 'bc', child: Text('BC')),
-                          DropdownMenuItem(value: 'vs', child: Text('VS')),
+                        items: [
+                          DropdownMenuItem(value: 'all', child: Text(_tr('sviAll'))),
+                          const DropdownMenuItem(value: 'bc', child: Text('BC')),
+                          const DropdownMenuItem(value: 'vs', child: Text('VS')),
                         ],
                         onChanged: (val) => setModalState(() => scope = val ?? 'all'),
                       ),
@@ -184,10 +424,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       TextField(
                         controller: reasonCtrl,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          labelText: 'Razlog',
-                          hintText: 'Državni praznik',
-                          labelStyle: TextStyle(color: Colors.white70),
+                        decoration: InputDecoration(
+                          labelText: _tr('razlog'),
+                          hintText: _tr('drzavniPraznik'),
+                          labelStyle: const TextStyle(color: Colors.white70),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -200,13 +440,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   : () {
                                       final date = dateCtrl.text.trim();
                                       if (!_dateIsoPattern.hasMatch(date)) {
-                                        V3AppSnackBar.warning(context, 'Izaberi datum iz kalendara.');
+                                        V3AppSnackBar.warning(context, _tr('izaberiDatumIzKalendara'));
                                         return;
                                       }
 
                                       final normalized = DateTime.tryParse(date);
                                       if (normalized == null) {
-                                        V3AppSnackBar.warning(context, 'Datum nije validan kalendarski.');
+                                        V3AppSnackBar.warning(context, _tr('datumNijeValidan'));
                                         return;
                                       }
 
@@ -227,7 +467,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                       });
                                     },
                               icon: const Icon(Icons.add),
-                              label: const Text('Dodaj / Zameni'),
+                              label: Text(_tr('dodajZameni')),
                             ),
                           ),
                         ],
@@ -235,10 +475,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       const SizedBox(height: 12),
                       const Divider(color: Colors.white24),
                       const SizedBox(height: 8),
-                      const Text('Aktivna pravila', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                      Text(_tr('aktivnaPravila'),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
                       if (items.isEmpty)
-                        const Text('Nema unosa', style: TextStyle(color: Colors.white60))
+                        Text(_tr('nemaUnosa'), style: const TextStyle(color: Colors.white60))
                       else
                         ...items.map(
                           (entry) => Container(
@@ -276,7 +517,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               actions: [
                 TextButton(
                   onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Otkaži'),
+                  child: Text(_tr('otkazi')),
                 ),
                 ElevatedButton(
                   onPressed: isSaving
@@ -288,14 +529,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             if (draftDate.isNotEmpty) {
                               if (!_dateIsoPattern.hasMatch(draftDate)) {
                                 setModalState(() => isSaving = false);
-                                V3AppSnackBar.warning(context, 'Izaberi datum iz kalendara.');
+                                V3AppSnackBar.warning(context, _tr('izaberiDatumIzKalendara'));
                                 return;
                               }
 
                               final normalized = DateTime.tryParse(draftDate);
                               if (normalized == null) {
                                 setModalState(() => isSaving = false);
-                                V3AppSnackBar.warning(context, 'Datum nije validan kalendarski.');
+                                V3AppSnackBar.warning(context, _tr('datumNijeValidan'));
                                 return;
                               }
 
@@ -313,21 +554,21 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
                             if (items.isEmpty) {
                               setModalState(() => isSaving = false);
-                              V3AppSnackBar.warning(context, 'Dodaj bar jedan neradan dan pre čuvanja.');
+                              V3AppSnackBar.warning(context, _tr('dodajBarJedanNeradanDan'));
                               return;
                             }
 
                             await V3AppSettingsService.updateGlobal({'neradni_dani': items});
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
-                            V3AppSnackBar.success(this.context, '✅ Neradni dani sačuvani');
+                            V3AppSnackBar.success(this.context, _tr('neradniDaniSacuvani'));
                           } catch (e) {
                             if (!mounted) return;
                             setModalState(() => isSaving = false);
-                            V3AppSnackBar.error(context, 'Greška pri čuvanju: $e');
+                            V3AppSnackBar.error(context, '${_tr('greskaPriCuvanju')} $e');
                           }
                         },
-                  child: const Text('Sačuvaj'),
+                  child: Text(_tr('sacuvaj')),
                 ),
               ],
             ),
@@ -336,7 +577,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, 'Greška pri učitavanju neradnih dana: $e');
+      V3AppSnackBar.error(context, '${_tr('greskaPriUcitavanjuNeradnih')} $e');
     }
   }
 
@@ -382,7 +623,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           return StatefulBuilder(
             builder: (context, setModalState) => AlertDialog(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              title: const Text('Custom vremena polazaka', style: TextStyle(color: Colors.white)),
+              title: Text(_tr('customVremenaPolazaka'), style: const TextStyle(color: Colors.white)),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -390,7 +631,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Unos formata HH:mm, razdvojeno zarezom.', style: TextStyle(color: Colors.white70)),
+                      Text(_tr('unosFormataHint'), style: const TextStyle(color: Colors.white70)),
                       const SizedBox(height: 10),
                       for (final day in V3DanHelper.workdayNames) ...[
                         Text(day, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
@@ -423,7 +664,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               actions: [
                 TextButton(
                   onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Otkaži'),
+                  child: Text(_tr('otkazi')),
                 ),
                 ElevatedButton(
                   onPressed: isSaving
@@ -447,7 +688,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           }
 
                           if (invalidTokens.isNotEmpty) {
-                            V3AppSnackBar.warning(context, 'Neispravno vreme: ${invalidTokens.join(', ')}');
+                            V3AppSnackBar.warning(context, '${_tr('neispravnoVreme')} ${invalidTokens.join(', ')}');
                             return;
                           }
 
@@ -459,14 +700,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             });
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
-                            V3AppSnackBar.success(this.context, '✅ Custom vremena sačuvana');
+                            V3AppSnackBar.success(this.context, _tr('customVremenaSacuvana'));
                           } catch (e) {
                             if (!mounted) return;
                             setModalState(() => isSaving = false);
-                            V3AppSnackBar.error(context, 'Greška pri čuvanju: $e');
+                            V3AppSnackBar.error(context, '${_tr('greskaPriCuvanju')} $e');
                           }
                         },
-                  child: const Text('Sačuvaj'),
+                  child: Text(_tr('sacuvaj')),
                 ),
               ],
             ),
@@ -475,7 +716,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, 'Greška pri učitavanju custom vremena: $e');
+      V3AppSnackBar.error(context, '${_tr('greskaPriUcitavanjuCustom')} $e');
     }
   }
 
@@ -511,7 +752,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           return StatefulBuilder(
             builder: (context, setModalState) => AlertDialog(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              title: const Text('📢 Info baner', style: TextStyle(color: Colors.white)),
+              title: Text(_tr('infoBaner'), style: const TextStyle(color: Colors.white)),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -519,17 +760,17 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Jedna poruka prikazana odabranoj grupi korisnika. Isključi kada ne treba da se prikazuje.',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      Text(
+                        _tr('infoBanerHint'),
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                       const SizedBox(height: 12),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         dense: true,
                         activeColor: Colors.amber,
-                        title: const Text('Prikaži baner',
-                            style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                        title: Text(_tr('prikaziBaner'),
+                            style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                         value: enabled,
                         onChanged: (val) => setModalState(() => enabled = val),
                       ),
@@ -537,11 +778,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       TextField(
                         controller: titleCtrl,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          labelText: 'Naslov',
-                          hintText: 'Obaveštenje',
-                          labelStyle: TextStyle(color: Colors.white70),
-                          prefixIcon: Icon(Icons.title, color: Colors.white70),
+                        decoration: InputDecoration(
+                          labelText: _tr('naslov'),
+                          hintText: _tr('obavestenje'),
+                          labelStyle: const TextStyle(color: Colors.white70),
+                          prefixIcon: const Icon(Icons.title, color: Colors.white70),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -550,16 +791,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         minLines: 3,
                         maxLines: 6,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          labelText: 'Poruka',
-                          hintText: 'Unesi tekst obaveštenja...',
-                          labelStyle: TextStyle(color: Colors.white70),
-                          prefixIcon: Icon(Icons.message_outlined, color: Colors.white70),
+                        decoration: InputDecoration(
+                          labelText: _tr('poruka'),
+                          hintText: _tr('unesiTekstObavestenja'),
+                          labelStyle: const TextStyle(color: Colors.white70),
+                          prefixIcon: const Icon(Icons.message_outlined, color: Colors.white70),
                           alignLabelWithHint: true,
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Text('Boja banera', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text(_tr('bojaBanera'), style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -582,7 +823,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             .toList(),
                       ),
                       const SizedBox(height: 12),
-                      const Text('Prikaži korisnicima', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      Text(_tr('prikaziKorisnicima'), style: const TextStyle(color: Colors.white70, fontSize: 12)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -620,7 +861,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               actions: [
                 TextButton(
                   onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Otkaži'),
+                  child: Text(_tr('otkazi')),
                 ),
                 ElevatedButton(
                   onPressed: isSaving
@@ -630,7 +871,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           final message = messageCtrl.text.trim();
 
                           if (enabled && (title.isEmpty || message.isEmpty)) {
-                            V3AppSnackBar.warning(context, 'Ako je baner uključen, moraš uneti i naslov i poruku.');
+                            V3AppSnackBar.warning(context, _tr('bakerUkljucenValidacija'));
                             return;
                           }
 
@@ -647,14 +888,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             });
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
-                            V3AppSnackBar.success(this.context, '✅ Info baner sačuvan');
+                            V3AppSnackBar.success(this.context, _tr('infoBanerSacuvan'));
                           } catch (e) {
                             if (!mounted) return;
                             setModalState(() => isSaving = false);
-                            V3AppSnackBar.error(context, 'Greška pri čuvanju: $e');
+                            V3AppSnackBar.error(context, '${_tr('greskaPriCuvanju')} $e');
                           }
                         },
-                  child: const Text('Sačuvaj'),
+                  child: Text(_tr('sacuvaj')),
                 ),
               ],
             ),
@@ -663,7 +904,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      V3AppSnackBar.error(context, 'Greška pri učitavanju info banera: $e');
+      V3AppSnackBar.error(context, '${_tr('greskaPriUcitavanjuBanera')} $e');
     }
   }
 
@@ -713,12 +954,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
       final minIos = minIosCtrl.text.trim().isEmpty ? latestIos : minIosCtrl.text.trim();
 
       if (!_isValidVersion(latestAndroid) || !_isValidVersion(minAndroid)) {
-        V3AppSnackBar.warning(dialogContext, 'Android verzija mora biti u formatu npr. 6.0.192');
+        V3AppSnackBar.warning(dialogContext, _tr('androidVerzijaFormat'));
         return;
       }
 
       if (!_isValidVersion(latestIos) || !_isValidVersion(minIos)) {
-        V3AppSnackBar.warning(dialogContext, 'iOS verzija mora biti u formatu npr. 6.0.192');
+        V3AppSnackBar.warning(dialogContext, _tr('iosVerzijaFormat'));
         return;
       }
 
@@ -737,10 +978,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
         if (!mounted) return;
         Navigator.of(dialogContext).pop();
-        V3AppSnackBar.success(context, '✅ Update verzije sačuvane');
+        V3AppSnackBar.success(context, _tr('updateVerzijeSacuvane'));
       } catch (e) {
         if (!mounted) return;
-        V3AppSnackBar.error(dialogContext, 'Greška pri čuvanju: $e');
+        V3AppSnackBar.error(dialogContext, '${_tr('greskaPriCuvanju')} $e');
       } finally {
         if (mounted) {
           setModalState(() => isSaving = false);
@@ -754,7 +995,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         return StatefulBuilder(
           builder: (builderContext, setModalState) {
             return AlertDialog(
-              title: const Text('Update verzije'),
+              title: Text(_tr('updateVerzije')),
               content: SizedBox(
                 width: 420,
                 child: SingleChildScrollView(
@@ -763,45 +1004,45 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                     children: [
                       TextField(
                         controller: latestAndroidCtrl,
-                        decoration: const InputDecoration(labelText: 'Android latest'),
+                        decoration: InputDecoration(labelText: _tr('androidLatest')),
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: minAndroidCtrl,
-                        decoration: const InputDecoration(labelText: 'Android min'),
+                        decoration: InputDecoration(labelText: _tr('androidMin')),
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: latestIosCtrl,
-                        decoration: const InputDecoration(labelText: 'iOS latest'),
+                        decoration: InputDecoration(labelText: _tr('iosLatest')),
                       ),
                       const SizedBox(height: 8),
                       TextField(
                         controller: minIosCtrl,
-                        decoration: const InputDecoration(labelText: 'iOS min'),
+                        decoration: InputDecoration(labelText: _tr('iosMin')),
                       ),
                       const SizedBox(height: 8),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Force Android'),
+                        title: Text(_tr('forceAndroid')),
                         value: forceAndroid,
                         onChanged: (value) => setModalState(() => forceAndroid = value),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Force iOS'),
+                        title: Text(_tr('forceIos')),
                         value: forceIos,
                         onChanged: (value) => setModalState(() => forceIos = value),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Maintenance Android'),
+                        title: Text(_tr('maintenanceAndroid')),
                         value: maintenanceAndroid,
                         onChanged: (value) => setModalState(() => maintenanceAndroid = value),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Maintenance iOS'),
+                        title: Text(_tr('maintenanceIos')),
                         value: maintenanceIos,
                         onChanged: (value) => setModalState(() => maintenanceIos = value),
                       ),
@@ -812,11 +1053,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Otkaži'),
+                  child: Text(_tr('otkazi')),
                 ),
                 ElevatedButton(
                   onPressed: isSaving ? null : () => save(setModalState, dialogContext),
-                  child: Text(isSaving ? 'Čuvam...' : 'Sačuvaj'),
+                  child: Text(isSaving ? _tr('cuvam') : _tr('sacuvaj')),
                 ),
               ],
             );
@@ -922,7 +1163,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         return AlertDialog(
           backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surface,
           title: Text(
-            'Učenici bez VS termina',
+            _tr('uceniciBezVsTermina'),
             style: theme.textTheme.titleMedium?.copyWith(
               color: onSurface,
               fontWeight: FontWeight.bold,
@@ -936,12 +1177,12 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Bez VS (${bezVs.length})',
+                    '${_tr('bezVs')} (${bezVs.length})',
                     style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    bezVs.isEmpty ? '— svi imaju VS termin —' : bezVs.join('\n'),
+                    bezVs.isEmpty ? _tr('sviImajuVsTermin') : bezVs.join('\n'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: onSurface.withValues(alpha: 0.82),
                       fontSize: 13,
@@ -954,7 +1195,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Zatvori'),
+              child: Text(_tr('zatvori')),
             ),
           ],
         );
@@ -1170,21 +1411,24 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                   PopupMenuItem(
                                     enabled: false,
                                     height: V3ContainerUtils.responsiveHeight(context, 28),
-                                    child: Text('Tip rasporeda', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                    child: Text(_tr('tipRasporeda'),
+                                        style: const TextStyle(color: Colors.white54, fontSize: 12)),
                                   ),
-                                  const PopupMenuItem(
+                                  PopupMenuItem(
                                       value: 'custom',
-                                      child: Text('🛠️  Custom', style: TextStyle(color: Colors.white))),
+                                      child: Text(_tr('custom'), style: const TextStyle(color: Colors.white))),
                                   const PopupMenuDivider(),
-                                  const PopupMenuItem(
+                                  PopupMenuItem(
                                       value: '__custom_times__',
-                                      child: Text('⏱️  Uredi custom vremena', style: TextStyle(color: Colors.white))),
-                                  const PopupMenuItem(
+                                      child:
+                                          Text(_tr('urediCustomVremena'), style: const TextStyle(color: Colors.white))),
+                                  PopupMenuItem(
                                       value: '__non_working_days__',
-                                      child: Text('📅  Uredi neradne dane', style: TextStyle(color: Colors.white))),
-                                  const PopupMenuItem(
+                                      child:
+                                          Text(_tr('urediNeradneDane'), style: const TextStyle(color: Colors.white))),
+                                  PopupMenuItem(
                                       value: '__info_banner__',
-                                      child: Text('📢  Uredi info baner', style: TextStyle(color: Colors.white))),
+                                      child: Text(_tr('urediInfoBaner'), style: const TextStyle(color: Colors.white))),
                                 ],
                               );
                               if (val == null) return;
@@ -1526,10 +1770,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
               children: [
                 const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 22),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Dužnici',
-                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                    _tr('duznici'),
+                    style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                 ),
                 Text(
@@ -1564,7 +1808,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'UKUPAN PAZAR',
+                    _tr('ukupanPazar'),
                     style: TextStyle(
                       color: Colors.green[800],
                       fontWeight: FontWeight.bold,

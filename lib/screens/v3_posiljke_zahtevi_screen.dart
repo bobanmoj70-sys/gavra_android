@@ -3,11 +3,29 @@ import 'package:flutter/material.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_status_policy.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
+
+class _PosZahTr {
+  static const Map<String, Map<String, String>> _t = {
+    'posiljke': {'sr': 'Pošiljke', 'en': 'Shipments', 'ru': 'Посылки', 'de': 'Sendungen'},
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
+    'nemaPosiljki': {'sr': 'Nema pošiljki', 'en': 'No shipments', 'ru': 'Нет посылок', 'de': 'Keine Sendungen'},
+    'posiljka': {'sr': 'Pošiljka', 'en': 'Shipment', 'ru': 'Посылка', 'de': 'Sendung'},
+    'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Zeit'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// V3 ekran za prikaz i upravljanje zahtevima tipa "pošiljka".
 /// Admin odobrava / odbija / otkazuje pošiljke.
@@ -69,9 +87,9 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
             title: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Pošiljke',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                Text(
+                  _PosZahTr.tr('posiljke'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                 ),
                 if (brObrada > 0) ...[
                   const SizedBox(width: 8),
@@ -102,9 +120,9 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
                       runSpacing: 6,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (brObrada > 0) _badge('🟡 $brObrada obrada', Colors.amber),
-                        if (brOdobreno > 0) _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
-                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
+                        if (brObrada > 0) _badge('🟡 $brObrada ${_PosZahTr.tr('obrada')}', Colors.amber),
+                        if (brOdobreno > 0) _badge('🟢 $brOdobreno ${_PosZahTr.tr('odobreno')}', Colors.greenAccent),
+                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno ${_PosZahTr.tr('odbijeno')}', Colors.redAccent),
                       ],
                     ),
                   ),
@@ -120,7 +138,7 @@ class _V3PosiljkeZahteviScreenState extends State<V3PosiljkeZahteviScreen> {
                                     size: 56, color: Colors.white.withValues(alpha: 0.25)),
                                 const SizedBox(height: 14),
                                 Text(
-                                  'Nema pošiljki',
+                                  _PosZahTr.tr('nemaPosiljki'),
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.6),
                                     fontSize: 16,
@@ -201,7 +219,7 @@ class _ZahtevKartica extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Pošiljka',
+                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? _PosZahTr.tr('posiljka'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -231,7 +249,7 @@ class _ZahtevKartica extends StatelessWidget {
                         borderRadiusGeometry: BorderRadius.circular(8),
                         border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.4)),
                         child: Text(
-                          '🕐 Vreme: ${zahtev.polazakAt}',
+                          '🕐 ${_PosZahTr.tr('vreme')}: ${zahtev.polazakAt}',
                           style: const TextStyle(color: Colors.purpleAccent, fontSize: 12, fontWeight: FontWeight.w600),
                         ),
                       ),

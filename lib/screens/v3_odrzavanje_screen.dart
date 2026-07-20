@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_date_utils.dart';
@@ -9,6 +10,98 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_ui_utils.dart';
+
+class _OdrTr {
+  static const Map<String, Map<String, String>> _t = {
+    'kolskaKnjiga': {
+      'sr': '📖 Kolska knjiga',
+      'en': '📖 Vehicle logbook',
+      'ru': '📖 Автомобильный журнал',
+      'de': '📖 Fahrzeugbuch'
+    },
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
+    'nemaVozila': {'sr': 'Nema vozila.', 'en': 'No vehicles.', 'ru': 'Нет автомобилей.', 'de': 'Keine Fahrzeuge.'},
+    'registracija': {'sr': 'Registracija', 'en': 'Registration', 'ru': 'Регистрация', 'de': 'Registrierung'},
+    'godinaLabel': {'sr': 'Godina', 'en': 'Year', 'ru': 'Год', 'de': 'Jahr'},
+    'kilometraza': {'sr': 'Kilometraža: ', 'en': 'Mileage: ', 'ru': 'Пробег: ', 'de': 'Kilometerstand: '},
+    'brojSasijeVin': {
+      'sr': 'Broj šasije (VIN)',
+      'en': 'Chassis number (VIN)',
+      'ru': 'Номер шасси (VIN)',
+      'de': 'Fahrgestellnummer (VIN)'
+    },
+    'brojSasije': {'sr': 'Broj šasije', 'en': 'Chassis number', 'ru': 'Номер шасси', 'de': 'Fahrgestellnummer'},
+    'registracijaVaziDo': {
+      'sr': 'Registracija važi do',
+      'en': 'Registration valid until',
+      'ru': 'Регистрация действительна до',
+      'de': 'Zulassung gültig bis'
+    },
+    'istekla': {'sr': 'ISTEKLA!', 'en': 'EXPIRED!', 'ru': 'ИСТЕКЛА!', 'de': 'ABGELAUFEN!'},
+    'dana': {'sr': 'dana', 'en': 'days', 'ru': 'дней', 'de': 'Tage'},
+    'napomena': {'sr': 'Napomena', 'en': 'Note', 'ru': 'Примечание', 'de': 'Notiz'},
+    'maliServis': {'sr': 'Mali servis', 'en': 'Minor service', 'ru': 'Малое ТО', 'de': 'Kleiner Service'},
+    'velikiServis': {'sr': 'Veliki servis', 'en': 'Major service', 'ru': 'Большое ТО', 'de': 'Großer Service'},
+    'alternator': {'sr': 'Alternator', 'en': 'Alternator', 'ru': 'Генератор', 'de': 'Lichtmaschine'},
+    'akumulator': {'sr': 'Akumulator', 'en': 'Battery', 'ru': 'Аккумулятор', 'de': 'Batterie'},
+    'plocicePrednje': {
+      'sr': 'Pločice prednje',
+      'en': 'Front brake pads',
+      'ru': 'Передние колодки',
+      'de': 'Vordere Bremsbeläge'
+    },
+    'plociceZadnje': {
+      'sr': 'Pločice zadnje',
+      'en': 'Rear brake pads',
+      'ru': 'Задние колодки',
+      'de': 'Hintere Bremsbeläge'
+    },
+    'trap': {'sr': 'Trap', 'en': 'Chassis/suspension', 'ru': 'Ходовая', 'de': 'Fahrwerk'},
+    'gumePrednje': {'sr': 'Gume prednje', 'en': 'Front tires', 'ru': 'Передние шины', 'de': 'Vorderreifen'},
+    'gumeZadnje': {'sr': 'Gume zadnje', 'en': 'Rear tires', 'ru': 'Задние шины', 'de': 'Hinterreifen'},
+    'menjane': {'sr': 'Menjane', 'en': 'Changed', 'ru': 'Заменено', 'de': 'Gewechselt'},
+    'radioCode': {'sr': 'Radio code', 'en': 'Radio code', 'ru': 'Код радио', 'de': 'Radio-Code'},
+    'unesi': {'sr': 'Unesi', 'en': 'Enter', 'ru': 'Введите', 'de': 'Eingeben'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum'},
+    'izaberiDatum': {'sr': 'Izaberi datum', 'en': 'Select date', 'ru': 'Выберите дату', 'de': 'Datum wählen'},
+    'kilometrazaServisa': {
+      'sr': 'Kilometraža servisa',
+      'en': 'Service mileage',
+      'ru': 'Пробег на ТО',
+      'de': 'Service-Kilometerstand'
+    },
+    'trenutno': {'sr': 'Trenutno', 'en': 'Current', 'ru': 'Текущий', 'de': 'Aktuell'},
+    'tipGuma': {'sr': 'Tip guma:', 'en': 'Tire type:', 'ru': 'Тип шин:', 'de': 'Reifentyp:'},
+    'letnje': {'sr': '☀️ Letnje', 'en': '☀️ Summer', 'ru': '☀️ Летние', 'de': '☀️ Sommer'},
+    'zimske': {'sr': '❄️ Zimske', 'en': '❄️ Winter', 'ru': '❄️ Зимние', 'de': '❄️ Winter'},
+    'markaIDimenzija': {
+      'sr': 'Marka i dimenzija',
+      'en': 'Brand and size',
+      'ru': 'Марка и размер',
+      'de': 'Marke und Größe'
+    },
+    'nprMichelin': {
+      'sr': 'npr. Michelin 215/65 R16',
+      'en': 'e.g. Michelin 215/65 R16',
+      'ru': 'напр. Michelin 215/65 R16',
+      'de': 'z.B. Michelin 215/65 R16'
+    },
+    'datumZamene': {'sr': 'Datum zamene', 'en': 'Replacement date', 'ru': 'Дата замены', 'de': 'Wechseldatum'},
+    'kilometrazaZamene': {
+      'sr': 'Kilometraža zamene',
+      'en': 'Replacement mileage',
+      'ru': 'Пробег при замене',
+      'de': 'Kilometerstand beim Wechsel'
+    },
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -50,7 +143,7 @@ String _formatServis(DateTime? datum, int? km) {
 String? _formatGumeSubtitle(DateTime? datum, int? km) {
   if (datum == null && km == null) return null;
   final parts = <String>[];
-  if (datum != null) parts.add('Menjane: ${V3Vozilo.formatDatum(datum)}');
+  if (datum != null) parts.add('${_OdrTr.tr('menjane')}: ${V3Vozilo.formatDatum(datum)}');
   if (km != null) parts.add('${V3FormatUtils.formatBroj(km)} km');
   return parts.join(' · ');
 }
@@ -73,7 +166,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('📖 Kolska knjiga'),
+        title: Text(_OdrTr.tr('kolskaKnjiga')),
         centerTitle: true,
         automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
@@ -97,7 +190,9 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             stream: V3VoziloService.streamVozila(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+                return Center(
+                    child:
+                        Text('${_OdrTr.tr('greska')}: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
               }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator(color: Colors.white));
@@ -105,7 +200,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
 
               final vozila = snapshot.data!;
               if (vozila.isEmpty) {
-                return const Center(child: Text('Nema vozila.', style: TextStyle(color: Colors.white)));
+                return Center(child: Text(_OdrTr.tr('nemaVozila'), style: const TextStyle(color: Colors.white)));
               }
 
               if (_selected == null) {
@@ -212,9 +307,11 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                 Text(v.displayNaziv,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 4),
-                Text('Registracija: ${v.registracija}', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                Text('${_OdrTr.tr('registracija')}: ${v.registracija}',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
                 if (v.godinaProizvodnje != null)
-                  Text('Godina: ${v.godinaProizvodnje}', style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                  Text('${_OdrTr.tr('godinaLabel')}: ${v.godinaProizvodnje}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
                 const SizedBox(height: 10),
                 V3ContainerUtils.styledContainer(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -225,7 +322,8 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                     children: [
                       const Icon(Icons.speed, size: 16, color: Colors.white),
                       const SizedBox(width: 6),
-                      Text('Kilometraža: ', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+                      Text(_OdrTr.tr('kilometraza'),
+                          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                       Text('${V3FormatUtils.formatBroj(v.trenutnaKm)} km',
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                     ],
@@ -239,15 +337,15 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           // Šasija
           _EditableField(
             icon: '🔢',
-            label: 'Broj šasije (VIN)',
+            label: _OdrTr.tr('brojSasijeVin'),
             value: v.brojSasije,
-            onEdit: () => _editText('broj_sasije', 'Broj šasije', v.brojSasije),
+            onEdit: () => _editText('broj_sasije', _OdrTr.tr('brojSasije'), v.brojSasije),
           ),
 
           // Registracija
           _EditableField(
             icon: '📋',
-            label: 'Registracija važi do',
+            label: _OdrTr.tr('registracijaVaziDo'),
             value: V3Vozilo.formatDatum(v.registracijaVaziDo),
             valueColor: v.registracijaIstekla
                 ? Colors.red.shade300
@@ -255,20 +353,20 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                     ? Colors.orange.shade300
                     : null,
             badge: v.registracijaIstekla
-                ? 'ISTEKLA!'
+                ? _OdrTr.tr('istekla')
                 : v.registracijaIstice
-                    ? '${v.danaDoIstekaRegistracije} dana'
+                    ? '${v.danaDoIstekaRegistracije} ${_OdrTr.tr('dana')}'
                     : null,
             badgeColor: v.registracijaIstekla ? Colors.red : Colors.orange,
-            onEdit: () => _editDate('registracija_vazi_do', 'Registracija važi do', v.registracijaVaziDo),
+            onEdit: () => _editDate('registracija_vazi_do', _OdrTr.tr('registracijaVaziDo'), v.registracijaVaziDo),
           ),
 
           // Napomena
           _EditableField(
             icon: '📝',
-            label: 'Napomena',
+            label: _OdrTr.tr('napomena'),
             value: v.napomena ?? '-',
-            onEdit: () => _editText('napomena', 'Napomena', v.napomena, multiline: true),
+            onEdit: () => _editText('napomena', _OdrTr.tr('napomena'), v.napomena, multiline: true),
           ),
 
           _SectionDivider(),
@@ -276,51 +374,51 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           // Servisi
           _EditableField(
             icon: '🔧',
-            label: 'Mali servis',
+            label: _OdrTr.tr('maliServis'),
             value: _formatServis(v.maliServisDatum, v.maliServisKm),
-            onEdit: () =>
-                _editServis('mali_servis', 'Mali servis', v.maliServisDatum, v.maliServisKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis(
+                'mali_servis', _OdrTr.tr('maliServis'), v.maliServisDatum, v.maliServisKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛠️',
-            label: 'Veliki servis',
+            label: _OdrTr.tr('velikiServis'),
             value: _formatServis(v.velikiServisDatum, v.velikiServisKm),
-            onEdit: () => _editServis(
-                'veliki_servis', 'Veliki servis', v.velikiServisDatum, v.velikiServisKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis('veliki_servis', _OdrTr.tr('velikiServis'), v.velikiServisDatum, v.velikiServisKm,
+                v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '⚡',
-            label: 'Alternator',
+            label: _OdrTr.tr('alternator'),
             value: _formatServis(v.alternatorDatum, v.alternatorKm),
-            onEdit: () =>
-                _editServis('alternator', 'Alternator', v.alternatorDatum, v.alternatorKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis(
+                'alternator', _OdrTr.tr('alternator'), v.alternatorDatum, v.alternatorKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🔋',
-            label: 'Akumulator',
+            label: _OdrTr.tr('akumulator'),
             value: _formatServis(v.akumulatorDatum, v.akumulatorKm),
-            onEdit: () =>
-                _editServis('akumulator', 'Akumulator', v.akumulatorDatum, v.akumulatorKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis(
+                'akumulator', _OdrTr.tr('akumulator'), v.akumulatorDatum, v.akumulatorKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛑',
-            label: 'Pločice prednje',
+            label: _OdrTr.tr('plocicePrednje'),
             value: _formatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
-            onEdit: () => _editServis(
-                'plocice_prednje', 'Pločice prednje', v.plocicePrednjeDatum, v.plocicePrednjeKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis('plocice_prednje', _OdrTr.tr('plocicePrednje'), v.plocicePrednjeDatum,
+                v.plocicePrednjeKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🛑',
-            label: 'Pločice zadnje',
+            label: _OdrTr.tr('plociceZadnje'),
             value: _formatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
-            onEdit: () => _editServis(
-                'plocice_zadnje', 'Pločice zadnje', v.plociceZadnjeDatum, v.plociceZadnjeKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis('plocice_zadnje', _OdrTr.tr('plociceZadnje'), v.plociceZadnjeDatum,
+                v.plociceZadnjeKm, v.trenutnaKm.toInt()),
           ),
           _EditableField(
             icon: '🔩',
-            label: 'Trap',
+            label: _OdrTr.tr('trap'),
             value: _formatServis(v.trapDatum, v.trapKm),
-            onEdit: () => _editServis('trap', 'Trap', v.trapDatum, v.trapKm, v.trenutnaKm.toInt()),
+            onEdit: () => _editServis('trap', _OdrTr.tr('trap'), v.trapDatum, v.trapKm, v.trenutnaKm.toInt()),
           ),
 
           _SectionDivider(),
@@ -328,7 +426,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           // Gume
           _EditableField(
             icon: '🛞',
-            label: 'Gume prednje',
+            label: _OdrTr.tr('gumePrednje'),
             value: v.gumePrednjeOpis ?? '-',
             subtitle: _formatGumeSubtitle(v.gumePrednjeDatum, v.gumePrednjeKm),
             onEdit: () =>
@@ -336,7 +434,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           ),
           _EditableField(
             icon: '🛞',
-            label: 'Gume zadnje',
+            label: _OdrTr.tr('gumeZadnje'),
             value: v.gumeZadnjeOpis ?? '-',
             subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
             onEdit: () =>
@@ -348,9 +446,9 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           // Radio
           _EditableField(
             icon: '📻',
-            label: 'Radio code',
+            label: _OdrTr.tr('radioCode'),
             value: v.radio ?? '-',
-            onEdit: () => _editText('radio', 'Radio code', v.radio),
+            onEdit: () => _editText('radio', _OdrTr.tr('radioCode'), v.radio),
           ),
           const SizedBox(height: 48),
         ],
@@ -589,13 +687,13 @@ class _TextDialogState extends State<_TextDialog> {
       title: Text(widget.label, style: const TextStyle(color: Colors.white)),
       content: V3InputUtils.textField(
         controller: _ctrl,
-        label: 'Unesi ${widget.label}',
+        label: '${_OdrTr.tr('unesi')} ${widget.label}',
         maxLines: widget.multiline ? 4 : 1,
       ),
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context),
-          text: 'Otkaži',
+          text: _OdrTr.tr('otkazi'),
           foregroundColor: Colors.white60,
         ),
         V3ButtonUtils.textButton(
@@ -614,7 +712,7 @@ class _TextDialogState extends State<_TextDialog> {
               V3UIUtils.showSaveError(context);
             }
           },
-          text: 'Sačuvaj',
+          text: _OdrTr.tr('sacuvaj'),
           foregroundColor: Colors.orange,
         ),
       ],
@@ -695,14 +793,14 @@ class _ServisSheetState extends State<_ServisSheet> {
                   },
                   child: InputDecorator(
                     decoration: InputDecoration(
-                      labelText: 'Datum',
+                      labelText: _OdrTr.tr('datum'),
                       labelStyle: const TextStyle(color: Colors.white60),
                       border: const OutlineInputBorder(),
                       enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
                       prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
                     ),
                     child: Text(
-                      _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : 'Izaberi datum',
+                      _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : _OdrTr.tr('izaberiDatum'),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -710,8 +808,8 @@ class _ServisSheetState extends State<_ServisSheet> {
                 const SizedBox(height: 16),
                 V3InputUtils.numberField(
                   controller: _kmCtrl,
-                  label: 'Kilometraža servisa',
-                  hint: 'Trenutno: ${widget.trenutnaKm} km',
+                  label: _OdrTr.tr('kilometrazaServisa'),
+                  hint: '${_OdrTr.tr('trenutno')}: ${widget.trenutnaKm} km',
                   suffixText: 'km',
                 ),
                 const SizedBox(height: 24),
@@ -733,7 +831,7 @@ class _ServisSheetState extends State<_ServisSheet> {
                       V3UIUtils.showSaveError(context);
                     }
                   },
-                  text: 'Sačuvaj',
+                  text: _OdrTr.tr('sacuvaj'),
                   icon: Icons.save,
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
@@ -826,7 +924,7 @@ class _GumeSheetState extends State<_GumeSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final label = widget.pozicija == 'prednje' ? 'Gume prednje' : 'Gume zadnje';
+    final label = widget.pozicija == 'prednje' ? _OdrTr.tr('gumePrednje') : _OdrTr.tr('gumeZadnje');
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade900,
@@ -846,13 +944,13 @@ class _GumeSheetState extends State<_GumeSheet> {
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 20),
-                const Text('Tip guma:', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.white70)),
+                Text(_OdrTr.tr('tipGuma'), style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _tipChip('☀️ Letnje', 'letnje'),
+                    _tipChip(_OdrTr.tr('letnje'), 'letnje'),
                     const SizedBox(width: 8),
-                    _tipChip('❄️ Zimske', 'zimske'),
+                    _tipChip(_OdrTr.tr('zimske'), 'zimske'),
                     const SizedBox(width: 8),
                     _tipChip('🛤️ M+S', 'ms'),
                   ],
@@ -860,8 +958,8 @@ class _GumeSheetState extends State<_GumeSheet> {
                 const SizedBox(height: 16),
                 V3InputUtils.textField(
                   controller: _opisCtrl,
-                  label: 'Marka i dimenzija',
-                  hint: 'npr. Michelin 215/65 R16',
+                  label: _OdrTr.tr('markaIDimenzija'),
+                  hint: _OdrTr.tr('nprMichelin'),
                   icon: Icons.description,
                 ),
                 const SizedBox(height: 16),
@@ -877,14 +975,14 @@ class _GumeSheetState extends State<_GumeSheet> {
                   },
                   child: InputDecorator(
                     decoration: InputDecoration(
-                      labelText: 'Datum zamene',
+                      labelText: _OdrTr.tr('datumZamene'),
                       labelStyle: const TextStyle(color: Colors.white60),
                       border: const OutlineInputBorder(),
                       enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
                       prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
                     ),
                     child: Text(
-                      _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : 'Izaberi datum',
+                      _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : _OdrTr.tr('izaberiDatum'),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -892,8 +990,8 @@ class _GumeSheetState extends State<_GumeSheet> {
                 const SizedBox(height: 16),
                 V3InputUtils.numberField(
                   controller: _kmCtrl,
-                  label: 'Kilometraža zamene',
-                  hint: 'Trenutno: ${widget.trenutnaKm} km',
+                  label: _OdrTr.tr('kilometrazaZamene'),
+                  hint: '${_OdrTr.tr('trenutno')}: ${widget.trenutnaKm} km',
                   suffixText: 'km',
                 ),
                 const SizedBox(height: 24),
@@ -902,9 +1000,9 @@ class _GumeSheetState extends State<_GumeSheet> {
                     String finalOpis = _opisCtrl.text.trim();
                     if (_tip != null && finalOpis.isEmpty) {
                       finalOpis = _tip == 'letnje'
-                          ? '☀️ Letnje'
+                          ? _OdrTr.tr('letnje')
                           : _tip == 'zimske'
-                              ? '❄️ Zimske'
+                              ? _OdrTr.tr('zimske')
                               : '🛤️ M+S';
                     } else if (_tip != null) {
                       final prefix = _tip == 'letnje'
@@ -934,7 +1032,7 @@ class _GumeSheetState extends State<_GumeSheet> {
                       V3UIUtils.showSaveError(context);
                     }
                   },
-                  text: 'Sačuvaj',
+                  text: _OdrTr.tr('sacuvaj'),
                   icon: Icons.save,
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_adresa.dart';
 import 'package:gavra_android/services/v3/v3_adresa_service.dart';
+import 'package:gavra_android/services/v3_locale_manager.dart';
 import 'package:gavra_android/theme.dart';
 
 import '../utils/v3_app_snack_bar.dart';
@@ -10,6 +11,78 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
+
+// Deljeni prevodi za ekran adresa (SR/EN/RU/DE).
+class _AdrTr {
+  _AdrTr._();
+
+  static const Map<String, Map<String, String>> _t = {
+    'naslov': {'sr': '📍 Adrese', 'en': '📍 Addresses', 'ru': '📍 Адреса', 'de': '📍 Adressen'},
+    'greska': {'sr': 'Greška:', 'en': 'Error:', 'ru': 'Ошибка:', 'de': 'Fehler:'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen'},
+    'adresaDodata': {
+      'sr': '✅ Adresa dodata',
+      'en': '✅ Address added',
+      'ru': '✅ Адрес добавлен',
+      'de': '✅ Adresse hinzugefügt',
+    },
+    'adresaIzmenjena': {
+      'sr': '✅ Adresa izmenjena',
+      'en': '✅ Address updated',
+      'ru': '✅ Адрес изменён',
+      'de': '✅ Adresse geändert',
+    },
+    'potvrdaBrisanja': {
+      'sr': 'Potvrda brisanja',
+      'en': 'Confirm deletion',
+      'ru': 'Подтвердите удаление',
+      'de': 'Löschen bestätigen',
+    },
+    'daLiSteSigurniObrisati': {
+      'sr': 'Da li ste sigurni da želite obrisati adresu',
+      'en': 'Are you sure you want to delete the address',
+      'ru': 'Вы уверены, что хотите удалить адрес',
+      'de': 'Möchten Sie die Adresse wirklich löschen',
+    },
+    'da': {'sr': 'DA', 'en': 'YES', 'ru': 'ДА', 'de': 'JA'},
+    'ne': {'sr': 'NE', 'en': 'NO', 'ru': 'НЕТ', 'de': 'NEIN'},
+    'adresaObrisana': {
+      'sr': '🗑️ Adresa obrisana',
+      'en': '🗑️ Address deleted',
+      'ru': '🗑️ Адрес удалён',
+      'de': '🗑️ Adresse gelöscht',
+    },
+    'ukupno': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt'},
+    'belaCrkvaKratko': {'sr': 'B. Crkva', 'en': 'B. Crkva', 'ru': 'Б. Црква', 'de': 'B. Crkva'},
+    'vrsac': {'sr': 'Vrsac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac'},
+    'belaCrkvaPuno': {'sr': 'Bela Crkva', 'en': 'Bela Crkva', 'ru': 'Бела Црква', 'de': 'Bela Crkva'},
+    'vrsacDijakritik': {'sr': 'Vršac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac'},
+    'pretraziAdrese': {
+      'sr': 'Pretraži adrese...',
+      'en': 'Search addresses...',
+      'ru': 'Поиск адресов...',
+      'de': 'Adressen suchen...',
+    },
+    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle'},
+    'nemaAdresa': {'sr': 'Nema adresa', 'en': 'No addresses', 'ru': 'Нет адресов', 'de': 'Keine Adressen'},
+    'novaAdresa': {'sr': 'Nova Adresa', 'en': 'New Address', 'ru': 'Новый адрес', 'de': 'Neue Adresse'},
+    'izmeniAdresu': {
+      'sr': 'Izmeni Adresu',
+      'en': 'Edit Address',
+      'ru': 'Изменить адрес',
+      'de': 'Adresse bearbeiten',
+    },
+    'nazivAdrese': {'sr': 'Naziv adrese', 'en': 'Address name', 'ru': 'Название адреса', 'de': 'Adressname'},
+    'grad': {'sr': 'Grad', 'en': 'City', 'ru': 'Город', 'de': 'Stadt'},
+    'odustani': {'sr': 'ODUSTANI', 'en': 'CANCEL', 'ru': 'ОТМЕНА', 'de': 'ABBRECHEN'},
+    'sacuvaj': {'sr': 'SAČUVAJ', 'en': 'SAVE', 'ru': 'СОХРАНИТЬ', 'de': 'SPEICHERN'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 class V3AdreseScreen extends StatefulWidget {
   const V3AdreseScreen({super.key});
@@ -26,7 +99,7 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('📍 Adrese'),
+        title: Text(_AdrTr.tr('naslov')),
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
@@ -39,7 +112,9 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
             stream: V3AdresaService.streamAdrese(),
             builder: (context, snapshot) {
               if (snapshot.hasError)
-                return Center(child: Text('Greška: ${snapshot.error}', style: const TextStyle(color: Colors.white70)));
+                return Center(
+                    child: Text('${_AdrTr.tr('greska')} ${snapshot.error}',
+                        style: const TextStyle(color: Colors.white70)));
               if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
               final sve = snapshot.data!;
               return _AdreseFilterPanel(
@@ -56,7 +131,7 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
         child: FloatingActionButton.extended(
           onPressed: () => _showAdresaDialog(),
           icon: const Icon(Icons.add),
-          label: const Text('Dodaj'),
+          label: Text(_AdrTr.tr('dodaj')),
           backgroundColor: Colors.green,
         ),
       ),
@@ -76,7 +151,8 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
           naziv: result['naziv'],
           grad: result['grad'],
         );
-        if (mounted) V3AppSnackBar.success(context, adresa == null ? '✅ Adresa dodata' : '✅ Adresa izmenjena');
+        if (mounted)
+          V3AppSnackBar.success(context, adresa == null ? _AdrTr.tr('adresaDodata') : _AdrTr.tr('adresaIzmenjena'));
       } catch (e) {
         V3ErrorUtils.asyncError(this, context, e);
       }
@@ -86,17 +162,17 @@ class _AdreseScreenState extends State<V3AdreseScreen> {
   Future<void> _confirmDelete(V3Adresa adresa) async {
     final confirm = await V3DialogHelper.showConfirmDialog(
       context,
-      title: 'Potvrda brisanja',
-      message: 'Da li ste sigurni da želite obrisati adresu "${adresa.naziv}"?',
-      confirmText: 'DA',
-      cancelText: 'NE',
+      title: _AdrTr.tr('potvrdaBrisanja'),
+      message: '${_AdrTr.tr('daLiSteSigurniObrisati')} "${adresa.naziv}"?',
+      confirmText: _AdrTr.tr('da'),
+      cancelText: _AdrTr.tr('ne'),
       isDangerous: true,
     );
 
     if (confirm == true) {
       try {
         await V3AdresaService.deleteAdresa(adresa.id);
-        if (mounted) V3AppSnackBar.success(context, '🗑️ Adresa obrisana');
+        if (mounted) V3AppSnackBar.success(context, _AdrTr.tr('adresaObrisana'));
       } catch (e) {
         V3ErrorUtils.asyncError(this, context, e);
       }
@@ -172,9 +248,9 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _StatCard(label: 'Ukupno', value: stats.ukupno, color: Colors.blue),
-                  _StatCard(label: 'B. Crkva', value: stats.belaCrkva, color: Colors.green),
-                  _StatCard(label: 'Vrsac', value: stats.vrsac, color: Colors.orange),
+                  _StatCard(label: _AdrTr.tr('ukupno'), value: stats.ukupno, color: Colors.blue),
+                  _StatCard(label: _AdrTr.tr('belaCrkvaKratko'), value: stats.belaCrkva, color: Colors.green),
+                  _StatCard(label: _AdrTr.tr('vrsac'), value: stats.vrsac, color: Colors.orange),
                 ],
               ),
               const SizedBox(height: 12),
@@ -182,7 +258,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
               TextField(
                 controller: V3TextUtils.adreseSearchController,
                 decoration: InputDecoration(
-                  hintText: 'Pretraži adrese...',
+                  hintText: _AdrTr.tr('pretraziAdrese'),
                   hintStyle: TextStyle(color: Colors.grey[400]),
                   prefixIcon: const Icon(Icons.search, color: Colors.white70),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -218,15 +294,19 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _GradChip(
-                      label: 'Svi', selected: _filterGrad == 'Svi', onTap: () => setState(() => _filterGrad = 'Svi')),
+                      label: _AdrTr.tr('svi'),
+                      selected: _filterGrad == 'Svi',
+                      onTap: () => setState(() => _filterGrad = 'Svi')),
                   const SizedBox(width: 8),
                   _GradChip(
-                      label: 'Bela Crkva',
+                      label: _AdrTr.tr('belaCrkvaPuno'),
                       selected: _filterGrad == 'BC',
                       onTap: () => setState(() => _filterGrad = 'BC')),
                   const SizedBox(width: 8),
                   _GradChip(
-                      label: 'Vrsac', selected: _filterGrad == 'VS', onTap: () => setState(() => _filterGrad = 'VS')),
+                      label: _AdrTr.tr('vrsac'),
+                      selected: _filterGrad == 'VS',
+                      onTap: () => setState(() => _filterGrad = 'VS')),
                 ],
               ),
             ],
@@ -235,7 +315,7 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
         // LISTA
         Expanded(
           child: filtered.isEmpty
-              ? const Center(child: Text('Nema adresa', style: TextStyle(color: Colors.white70)))
+              ? Center(child: Text(_AdrTr.tr('nemaAdresa'), style: const TextStyle(color: Colors.white70)))
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: filtered.length,
@@ -300,8 +380,8 @@ class _AdresaCard extends StatelessWidget {
   final void Function(V3Adresa) onDelete;
 
   static String _gradLabel(String? grad) => switch (grad) {
-        'BC' => 'Bela Crkva',
-        'VS' => 'Vrsac',
+        'BC' => _AdrTr.tr('belaCrkvaPuno'),
+        'VS' => _AdrTr.tr('vrsac'),
         _ => grad ?? '',
       };
 
@@ -365,19 +445,19 @@ class _AdresaDialogState extends State<_AdresaDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.adresa == null ? 'Nova Adresa' : 'Izmeni Adresu'),
+      title: Text(widget.adresa == null ? _AdrTr.tr('novaAdresa') : _AdrTr.tr('izmeniAdresu')),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _naziv, decoration: const InputDecoration(labelText: 'Naziv adrese')),
+            TextField(controller: _naziv, decoration: InputDecoration(labelText: _AdrTr.tr('nazivAdrese'))),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _selectedGrad,
-              decoration: const InputDecoration(labelText: 'Grad'),
-              items: const [
-                DropdownMenuItem(value: 'BC', child: Text('Bela Crkva')),
-                DropdownMenuItem(value: 'VS', child: Text('Vršac')),
+              decoration: InputDecoration(labelText: _AdrTr.tr('grad')),
+              items: [
+                DropdownMenuItem(value: 'BC', child: Text(_AdrTr.tr('belaCrkvaPuno'))),
+                DropdownMenuItem(value: 'VS', child: Text(_AdrTr.tr('vrsacDijakritik'))),
               ],
               onChanged: (v) => setState(() => _selectedGrad = v!),
             ),
@@ -385,7 +465,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
         ),
       ),
       actions: [
-        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'ODUSTANI'),
+        V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: _AdrTr.tr('odustani')),
         V3ButtonUtils.primaryButton(
           onPressed: () {
             if (_naziv.text.isEmpty) {
@@ -396,7 +476,7 @@ class _AdresaDialogState extends State<_AdresaDialog> {
               'grad': _selectedGrad,
             });
           },
-          text: 'SAČUVAJ',
+          text: _AdrTr.tr('sacuvaj'),
         ),
       ],
     );

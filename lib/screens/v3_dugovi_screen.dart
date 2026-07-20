@@ -5,10 +5,58 @@ import 'package:gavra_android/utils/v3_date_utils.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
 
 import '../helpers/v3_placanje_dialog_helper.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
+
+class _DugTr {
+  static const Map<String, Map<String, String>> _t = {
+    'dugovanja': {'sr': 'Dugovanja', 'en': 'Debts', 'ru': 'Долги', 'de': 'Schulden'},
+    'ukupnoDugova': {'sr': 'Ukupno dugova', 'en': 'Total debts', 'ru': 'Всего долгов', 'de': 'Gesamtschulden'},
+    'ukupanIznos': {'sr': 'Ukupan iznos', 'en': 'Total amount', 'ru': 'Общая сумма', 'de': 'Gesamtbetrag'},
+    'pretraziPutnike': {
+      'sr': '🔍  Pretraži putnike...',
+      'en': '🔍  Search passengers...',
+      'ru': '🔍  Поиск пассажиров...',
+      'de': '🔍  Passagiere suchen...',
+    },
+    'nemaEvidentiranihDugovanja': {
+      'sr': 'Nema evidentiranih dugovanja',
+      'en': 'No recorded debts',
+      'ru': 'Нет зарегистрированных долгов',
+      'de': 'Keine erfassten Schulden',
+    },
+    'nemaRezultataZa': {
+      'sr': 'Nema rezultata za',
+      'en': 'No results for',
+      'ru': 'Нет результатов для',
+      'de': 'Keine Ergebnisse für',
+    },
+    'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen'},
+    'za': {'sr': 'za', 'en': 'for', 'ru': 'для', 'de': 'für'},
+    'period': {'sr': 'Period', 'en': 'Period', 'ru': 'Период', 'de': 'Zeitraum'},
+    'obracun': {'sr': 'Obračun', 'en': 'Calculation', 'ru': 'Расчёт', 'de': 'Abrechnung'},
+    'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
+    'pokupio': {'sr': 'Pokupio', 'en': 'Collected by', 'ru': 'Забрал', 'de': 'Abgeholt von'},
+    'naplatio': {'sr': 'Naplatio', 'en': 'Charged by', 'ru': 'Взыскал', 'de': 'Eingezogen von'},
+    'naplacenoCreatedAt': {
+      'sr': 'Naplaćeno (created_at)',
+      'en': 'Collected (created_at)',
+      'ru': 'Взыскано (created_at)',
+      'de': 'Eingezogen (created_at)',
+    },
+    'updatedAt': {'sr': 'Updated at', 'en': 'Updated at', 'ru': 'Обновлено', 'de': 'Aktualisiert am'},
+    'finansijeNaziv': {'sr': 'Finansije naziv', 'en': 'Finance name', 'ru': 'Название финансов', 'de': 'Finanzname'},
+    'naplati': {'sr': 'NAPLATI', 'en': 'COLLECT', 'ru': 'ВЗЫСКАТЬ', 'de': 'EINZIEHEN'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 class V3DugoviScreen extends StatefulWidget {
   const V3DugoviScreen({super.key});
@@ -38,9 +86,9 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
             elevation: 0,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            title: const Text(
-              'Dugovanja',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+            title: Text(
+              _DugTr.tr('dugovanja'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
             ),
           ),
           body: Container(
@@ -54,14 +102,14 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                     child: Row(
                       children: [
                         _StatCard(
-                          label: 'Ukupno dugova',
+                          label: _DugTr.tr('ukupnoDugova'),
                           value: '${allDugovi.length}',
                           icon: '💳',
                           color: Colors.redAccent,
                         ),
                         const SizedBox(width: 8),
                         _StatCard(
-                          label: 'Ukupan iznos',
+                          label: _DugTr.tr('ukupanIznos'),
                           value: '${ukupanIznos.toStringAsFixed(0)} RSD',
                           icon: '💰',
                           color: Colors.orange,
@@ -82,12 +130,12 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                       ),
                       child: TextField(
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: '🔍  Pretraži putnike...',
-                          hintStyle: TextStyle(color: Colors.white54),
-                          prefixIcon: Icon(Icons.search, color: Colors.white54),
+                        decoration: InputDecoration(
+                          hintText: _DugTr.tr('pretraziPutnike'),
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          prefixIcon: const Icon(Icons.search, color: Colors.white54),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                         onChanged: (v) => V3StateUtils.safeSetState(this, () => _filter = v),
                       ),
@@ -107,7 +155,9 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                     const Text('✅', style: TextStyle(fontSize: 48)),
                                     const SizedBox(height: 12),
                                     Text(
-                                      _filter.isEmpty ? 'Nema evidentiranih dugovanja' : 'Nema rezultata za "$_filter"',
+                                      _filter.isEmpty
+                                          ? _DugTr.tr('nemaEvidentiranihDugovanja')
+                                          : '${_DugTr.tr('nemaRezultataZa')} "$_filter"',
                                       style: const TextStyle(color: Colors.white70, fontSize: 16),
                                     ),
                                   ],
@@ -138,7 +188,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                       if (context.mounted) {
                                         V3AppSnackBar.success(
                                           context,
-                                          '✅ Naplaćeno ${rezultat.iznos.toStringAsFixed(0)} RSD za ${dug.imePrezime}',
+                                          '✅ ${_DugTr.tr('naplaceno')} ${rezultat.iznos.toStringAsFixed(0)} RSD ${_DugTr.tr('za')} ${dug.imePrezime}',
                                         );
                                       }
                                     } finally {
@@ -272,34 +322,39 @@ class _DugCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 1),
-                  Text('Period: $periodStr', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                  Text('${_DugTr.tr('period')}: $periodStr',
+                      style: const TextStyle(color: Colors.white54, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Obračun: $obracunStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text('${_DugTr.tr('obracun')}: $obracunStr',
+                      style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
-                  Text('Uplaćeno: $uplataStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                  Text('${_DugTr.tr('uplaceno')}: $uplataStr',
+                      style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   const SizedBox(height: 1),
                   if (dug.pokupioVozacIme.isNotEmpty) ...[
-                    Text('Pokupio: ${dug.pokupioVozacIme}',
+                    Text('${_DugTr.tr('pokupio')}: ${dug.pokupioVozacIme}',
                         style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     const SizedBox(height: 1),
                   ],
                   if (naplatioStr != null) ...[
-                    Text('Naplatio: $naplatioStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    Text('${_DugTr.tr('naplatio')}: $naplatioStr',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     const SizedBox(height: 1),
                   ],
                   if (dug.uplaceno > 0) ...[
-                    Text('Naplaćeno (created_at): $naplacenoAtStr',
+                    Text('${_DugTr.tr('naplacenoCreatedAt')}: $naplacenoAtStr',
                         style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     const SizedBox(height: 1),
                   ],
                   const SizedBox(height: 1),
                   if (dug.updatedAt != null) ...[
-                    Text('Updated at: $updatedAtStr', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                    Text('${_DugTr.tr('updatedAt')}: $updatedAtStr',
+                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
                     const SizedBox(height: 1),
                   ],
                   if (finansijeNaziv.isNotEmpty) ...[
                     const SizedBox(height: 1),
-                    Text('Finansije naziv: $finansijeNaziv',
+                    Text('${_DugTr.tr('finansijeNaziv')}: $finansijeNaziv',
                         style: const TextStyle(color: Colors.white60, fontSize: 11)),
                   ],
                 ],
@@ -314,9 +369,9 @@ class _DugCard extends StatelessWidget {
                   color: Colors.green.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  'NAPLATI',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                child: Text(
+                  _DugTr.tr('naplati'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ),

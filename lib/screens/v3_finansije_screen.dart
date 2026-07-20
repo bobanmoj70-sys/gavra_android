@@ -7,6 +7,7 @@ import '../screens/v3_krediti_screen.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_kredit_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -18,6 +19,93 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
+
+class _FinTr {
+  static const Map<String, Map<String, String>> _t = {
+    'finansije': {'sr': 'Finansije', 'en': 'Finances', 'ru': 'Финансы', 'de': 'Finanzen'},
+    'potrazivanjaDugovi': {
+      'sr': 'Potraživanja (Dugovi)',
+      'en': 'Receivables (Debts)',
+      'ru': 'Дебиторская задолженность (Долги)',
+      'de': 'Forderungen (Schulden)',
+    },
+    'neplaceneVoznjeSvihPutnika': {
+      'sr': 'Neplaćene vožnje svih putnika',
+      'en': 'Unpaid rides of all passengers',
+      'ru': 'Неоплаченные поездки всех пассажиров',
+      'de': 'Unbezahlte Fahrten aller Passagiere',
+    },
+    'krediti': {'sr': 'Krediti', 'en': 'Loans', 'ru': 'Кредиты', 'de': 'Kredite'},
+    'preostaliDugZaKredite': {
+      'sr': 'Preostali dug za kredite',
+      'en': 'Remaining loan debt',
+      'ru': 'Остаток долга по кредитам',
+      'de': 'Verbleibende Kreditschuld',
+    },
+    'danas': {'sr': 'Danas', 'en': 'Today', 'ru': 'Сегодня', 'de': 'Heute'},
+    'ovaNedelja': {'sr': 'Ova nedelja', 'en': 'This week', 'ru': 'Эта неделя', 'de': 'Diese Woche'},
+    'ovajMesec': {'sr': 'Ovaj mesec', 'en': 'This month', 'ru': 'Этот месяц', 'de': 'Dieser Monat'},
+    'ovaGodina': {'sr': 'Ova godina', 'en': 'This year', 'ru': 'Этот год', 'de': 'Dieses Jahr'},
+    'ceoGodisnjiBilans': {
+      'sr': 'Ceo godišnji bilans',
+      'en': 'Full yearly balance',
+      'ru': 'Полный годовой баланс',
+      'de': 'Gesamte Jahresbilanz',
+    },
+    'uplata': {'sr': 'uplata', 'en': 'payments', 'ru': 'платежей', 'de': 'Zahlungen'},
+    'prihod': {'sr': 'Prihod', 'en': 'Income', 'ru': 'Доход', 'de': 'Einnahmen'},
+    'troskovi': {'sr': 'Troškovi', 'en': 'Expenses', 'ru': 'Расходы', 'de': 'Ausgaben'},
+    'neto': {'sr': 'NETO', 'en': 'NET', 'ru': 'НЕТТО', 'de': 'NETTO'},
+    'mesecniTroskovi': {
+      'sr': '📋 Mesečni troškovi',
+      'en': '📋 Monthly expenses',
+      'ru': '📋 Ежемесячные расходы',
+      'de': '📋 Monatliche Ausgaben',
+    },
+    'nemaTroskovaZaOvajMesec': {
+      'sr': 'Nema troškova za ovaj mesec',
+      'en': 'No expenses for this month',
+      'ru': 'Нет расходов за этот месяц',
+      'de': 'Keine Ausgaben für diesen Monat',
+    },
+    'dodajTroskove': {
+      'sr': 'Dodaj troškove',
+      'en': 'Add expenses',
+      'ru': 'Добавить расходы',
+      'de': 'Ausgaben hinzufügen'
+    },
+    'unesiIznosDodas': {
+      'sr': 'Unesi iznos koji želiš da DODAŠ na trenutni trošak.',
+      'en': 'Enter the amount you want to ADD to the current expense.',
+      'ru': 'Введите сумму, которую хотите ДОБАВИТЬ к текущему расходу.',
+      'de': 'Geben Sie den Betrag ein, den Sie zur aktuellen Ausgabe HINZUFÜGEN möchten.',
+    },
+    'trenutno': {'sr': 'Trenutno:', 'en': 'Current:', 'ru': 'Текущее:', 'de': 'Aktuell:'},
+    'dodajDots': {'sr': 'Dodaj...', 'en': 'Add...', 'ru': 'Добавить...', 'de': 'Hinzufügen...'},
+    'troskoviDodati': {
+      'sr': '✅ Troškovi dodati',
+      'en': '✅ Expenses added',
+      'ru': '✅ Расходы добавлены',
+      'de': '✅ Ausgaben hinzugefügt',
+    },
+    'katGorivo': {'sr': 'Gorivo', 'en': 'Fuel', 'ru': 'Топливо', 'de': 'Kraftstoff'},
+    'katOdrzavanje': {'sr': 'Održavanje', 'en': 'Maintenance', 'ru': 'Обслуживание', 'de': 'Wartung'},
+    'katPlate': {'sr': 'Plate', 'en': 'Salaries', 'ru': 'Зарплаты', 'de': 'Gehälter'},
+    'katKredit': {'sr': 'Kredit', 'en': 'Loan', 'ru': 'Кредит', 'de': 'Kredit'},
+    'katRegistracija': {'sr': 'Registracija', 'en': 'Registration', 'ru': 'Регистрация', 'de': 'Zulassung'},
+    'katYuAuto': {'sr': 'YU auto', 'en': 'YU auto', 'ru': 'YU авто', 'de': 'YU Auto'},
+    'katMajstori': {'sr': 'Majstori', 'en': 'Repairmen', 'ru': 'Мастера', 'de': 'Handwerker'},
+    'katPorez': {'sr': 'Porez', 'en': 'Tax', 'ru': 'Налог', 'de': 'Steuer'},
+    'katAlimentacija': {'sr': 'Alimentacija', 'en': 'Child support', 'ru': 'Алименты', 'de': 'Unterhalt'},
+    'katRacuni': {'sr': 'Računi', 'en': 'Bills', 'ru': 'Счета', 'de': 'Rechnungen'},
+    'katOstalo': {'sr': 'Ostalo', 'en': 'Other', 'ru': 'Прочее', 'de': 'Sonstiges'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// FINANSIJE — V3
 /// Prihodi/Rashodi: v3_finansije cache (tip = prihod/rashod)
@@ -195,21 +283,21 @@ _V3IzvestajData _buildIzvestaj() {
 }
 
 String _katLabel(String? kat) {
-  const map = {
-    'gorivo': 'Gorivo',
-    'odrzavanje': 'Održavanje',
-    'plate': 'Plate',
-    'plata': 'Plate',
-    'kredit': 'Kredit',
-    'registracija': 'Registracija',
-    'yu_auto': 'YU auto',
-    'majstori': 'Majstori',
-    'porez': 'Porez',
-    'alimentacija': 'Alimentacija',
-    'racuni': 'Računi',
-    'ostalo': 'Ostalo',
+  final map = {
+    'gorivo': _FinTr.tr('katGorivo'),
+    'odrzavanje': _FinTr.tr('katOdrzavanje'),
+    'plate': _FinTr.tr('katPlate'),
+    'plata': _FinTr.tr('katPlate'),
+    'kredit': _FinTr.tr('katKredit'),
+    'registracija': _FinTr.tr('katRegistracija'),
+    'yu_auto': _FinTr.tr('katYuAuto'),
+    'majstori': _FinTr.tr('katMajstori'),
+    'porez': _FinTr.tr('katPorez'),
+    'alimentacija': _FinTr.tr('katAlimentacija'),
+    'racuni': _FinTr.tr('katRacuni'),
+    'ostalo': _FinTr.tr('katOstalo'),
   };
-  return map[kat] ?? (kat ?? 'Ostalo');
+  return map[kat] ?? (kat ?? _FinTr.tr('katOstalo'));
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -229,7 +317,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             elevation: 0,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            title: const Text('Finansije', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(_FinTr.tr('finansije'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: Theme.of(context).backgroundGradient,
@@ -289,7 +377,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                       width: double.infinity,
                       child: V3ButtonUtils.outlinedButton(
                         onPressed: () => _showTroskoviDialog(iz.troskoviPoKategoriji),
-                        text: 'Dodaj troškove',
+                        text: _FinTr.tr('dodajTroskove'),
                         icon: Icons.edit,
                         borderColor: Colors.white24,
                         foregroundColor: Colors.white70,
@@ -330,10 +418,10 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Potraživanja (Dugovi)',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(_FinTr.tr('potrazivanjaDugovi'),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 2),
-                Text('Neplaćene vožnje svih putnika',
+                Text(_FinTr.tr('neplaceneVoznjeSvihPutnika'),
                     style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
               ],
             ),
@@ -374,10 +462,10 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Krediti',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(_FinTr.tr('krediti'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 2),
-                  Text('Preostali dug za kredite',
+                  Text(_FinTr.tr('preostaliDugZaKredite'),
                       style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                 ],
               ),
@@ -456,16 +544,16 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Column(
               children: [
-                _FinRow('Prihod', prihod, const Color(0xFF4ADE80), prefix: '+'),
+                _FinRow(_FinTr.tr('prihod'), prihod, const Color(0xFF4ADE80), prefix: '+'),
                 const SizedBox(height: 8),
-                _FinRow('Troškovi', troskovi, const Color(0xFFF87171), prefix: '-'),
+                _FinRow(_FinTr.tr('troskovi'), troskovi, const Color(0xFFF87171), prefix: '-'),
                 const SizedBox(height: 10),
                 Divider(color: Colors.white.withValues(alpha: 0.1)),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('NETO',
+                    Text(_FinTr.tr('neto'),
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.9))),
                     Row(
@@ -508,8 +596,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('📋 Mesečni troškovi',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(_FinTr.tr('mesecniTroskovi'),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 Text(_fmtIznos(ukupno),
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFF87171))),
               ],
@@ -518,7 +606,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
             child: poKat.isEmpty
-                ? const Text('Nema troškova za ovaj mesec', style: TextStyle(color: Colors.white38, fontSize: 13))
+                ? Text(_FinTr.tr('nemaTroskovaZaOvajMesec'),
+                    style: const TextStyle(color: Colors.white38, fontSize: 13))
                 : Column(
                     children: poKat.entries
                         .map((e) => _FinRow(e.key, e.value, e.value > 0 ? const Color(0xFFF87171) : Colors.white38,
@@ -591,18 +680,18 @@ class _TroskoviBottomSheet extends StatefulWidget {
 }
 
 class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
-  static const _stavke = [
-    ('plate', '💰', 'Plate'),
-    ('kredit', '🏦', 'Kredit'),
-    ('gorivo', '⛽', 'Gorivo'),
-    ('registracija', '📋', 'Registracija'),
-    ('yu_auto', '🚗', 'YU auto'),
-    ('majstori', '🛠️', 'Majstori'),
-    ('porez', '🏗️', 'Porez'),
-    ('alimentacija', '👶', 'Alimentacija'),
-    ('racuni', '🧾', 'Računi'),
-    ('ostalo', '📦', 'Ostalo'),
-  ];
+  static List<(String, String, String)> get _stavke => [
+        ('plate', '💰', _FinTr.tr('katPlate')),
+        ('kredit', '🏦', _FinTr.tr('katKredit')),
+        ('gorivo', '⛽', _FinTr.tr('katGorivo')),
+        ('registracija', '📋', _FinTr.tr('katRegistracija')),
+        ('yu_auto', '🚗', _FinTr.tr('katYuAuto')),
+        ('majstori', '🛠️', _FinTr.tr('katMajstori')),
+        ('porez', '🏗️', _FinTr.tr('katPorez')),
+        ('alimentacija', '👶', _FinTr.tr('katAlimentacija')),
+        ('racuni', '🧾', _FinTr.tr('katRacuni')),
+        ('ostalo', '📦', _FinTr.tr('katOstalo')),
+      ];
 
   late final Map<String, TextEditingController> _ctrls = {
     for (final s in _stavke) s.$1: TextEditingController(),
@@ -636,7 +725,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
       }
       await Future.wait(futures);
       if (mounted) {
-        V3AppSnackBar.success(context, '✅ Troškovi dodati');
+        V3AppSnackBar.success(context, _FinTr.tr('troskoviDodati'));
         Navigator.pop(context);
       }
     } catch (e) {
@@ -670,9 +759,9 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                   child: const SizedBox(),
                 ),
                 const SizedBox(height: 16),
-                const Text('⚙️ Dodaj troškove', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(_FinTr.tr('dodajTroskove'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                const Text('Unesi iznos koji želiš da DODAŠ na trenutni trošak.', style: TextStyle(color: Colors.grey)),
+                Text(_FinTr.tr('unesiIznosDodas'), style: const TextStyle(color: Colors.grey)),
                 const SizedBox(height: 20),
                 for (final s in _stavke) ...[
                   Row(
@@ -687,7 +776,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                             Text(s.$3, style: const TextStyle(fontSize: 16)),
                             if ((widget.poKat[_katLabel(s.$1)] ?? 0) > 0)
                               Text(
-                                'Trenutno: ${V3FormatUtils.formatBroj((widget.poKat[_katLabel(s.$1)] ?? 0).round())}',
+                                '${_FinTr.tr('trenutno')} ${V3FormatUtils.formatBroj((widget.poKat[_katLabel(s.$1)] ?? 0).round())}',
                                 style:
                                     TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
                               ),
@@ -698,7 +787,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                         flex: 3,
                         child: V3InputUtils.numberField(
                           controller: _ctrls[s.$1]!,
-                          label: 'Dodaj...',
+                          label: _FinTr.tr('dodajDots'),
                           suffixText: 'din',
                         ),
                       ),
@@ -711,7 +800,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                   width: double.infinity,
                   child: V3ButtonUtils.successButton(
                     onPressed: _saving ? null : _sacuvaj,
-                    text: 'Dodaj troškove',
+                    text: _FinTr.tr('dodajTroskove'),
                     icon: Icons.add_circle,
                     isLoading: _saving,
                   ),

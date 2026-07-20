@@ -4,11 +4,72 @@ import '../models/v3_vozac.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_uplata_pazara_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
+
+class _UplTr {
+  static const Map<String, Map<String, String>> _t = {
+    'uplataPazara': {'sr': 'Uplata pazara', 'en': 'Cash payment', 'ru': 'Оплата выручки', 'de': 'Kassenzahlung'},
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum'},
+    'predao': {'sr': 'Predao', 'en': 'Handed over', 'ru': 'Сдал', 'de': 'Übergeben'},
+    'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:'},
+    'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:'},
+    'cuvanje': {'sr': 'Čuvanje...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'zatraziUnosOdVozaca': {
+      'sr': 'Zatraži unos od vozača',
+      'en': 'Request entry from driver',
+      'ru': 'Запросить ввод у водителя',
+      'de': 'Eingabe vom Fahrer anfordern'
+    },
+    'greskaPriUcitavanju': {
+      'sr': 'Greška pri učitavanju',
+      'en': 'Error loading',
+      'ru': 'Ошибка загрузки',
+      'de': 'Fehler beim Laden'
+    },
+    'unesiteIznosVeciOd0': {
+      'sr': 'Unesite iznos veći od 0 din.',
+      'en': 'Enter an amount greater than 0.',
+      'ru': 'Введите сумму больше 0.',
+      'de': 'Geben Sie einen Betrag größer als 0 ein.'
+    },
+    'uplataPazaraSacuvana': {
+      'sr': 'Uplata pazara sačuvana',
+      'en': 'Cash payment saved',
+      'ru': 'Оплата выручки сохранена',
+      'de': 'Kassenzahlung gespeichert'
+    },
+    'greskaPriCuvanju': {
+      'sr': 'Greška pri čuvanju',
+      'en': 'Error saving',
+      'ru': 'Ошибка сохранения',
+      'de': 'Fehler beim Speichern'
+    },
+    'zahtevProslijedjenVozacu': {
+      'sr': 'Zahtev prosleđen vozaču!',
+      'en': 'Request sent to driver!',
+      'ru': 'Запрос отправлен водителю!',
+      'de': 'Anfrage an Fahrer gesendet!'
+    },
+    'greskaPriSlanjuZahteva': {
+      'sr': 'Greška pri slanju zahteva',
+      'en': 'Error sending request',
+      'ru': 'Ошибка отправки запроса',
+      'de': 'Fehler beim Senden der Anfrage'
+    },
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// Admin ekran za unos uplata pazara po vozacu i danu.
 class V3UplataPazaraScreen extends StatefulWidget {
@@ -68,7 +129,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
         _iznosController.text = predao != null ? predao.toStringAsFixed(0) : '';
       });
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, 'Greška pri učitavanju: $e');
+      V3ErrorUtils.safeError(this, context, '${_UplTr.tr('greskaPriUcitavanju')}: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -94,7 +155,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
 
     final predaoVal = double.tryParse(_iznosController.text.replaceAll(',', '.'));
     if (predaoVal == null || predaoVal <= 0) {
-      V3AppSnackBar.warning(context, 'Unesite iznos veći od 0 din.');
+      V3AppSnackBar.warning(context, _UplTr.tr('unesiteIznosVeciOd0'));
       return;
     }
 
@@ -108,9 +169,9 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
       );
       if (!mounted) return;
       setState(() => _predao = predaoVal);
-      V3AppSnackBar.success(context, 'Uplata pazara sačuvana');
+      V3AppSnackBar.success(context, _UplTr.tr('uplataPazaraSacuvana'));
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, 'Greška pri čuvanju: $e');
+      V3ErrorUtils.safeError(this, context, '${_UplTr.tr('greskaPriCuvanju')}: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -135,11 +196,11 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
         zahtevanUnos: true,
       );
       if (!mounted) return;
-      V3AppSnackBar.success(context, 'Zahtev prosleđen vozaču!');
+      V3AppSnackBar.success(context, _UplTr.tr('zahtevProslijedjenVozacu'));
       debugPrint('[Admin] _zatraziUnosOdVozaca: uspešno sačuvano');
     } catch (e) {
       debugPrint('[Admin] _zatraziUnosOdVozaca: greška $e');
-      V3ErrorUtils.safeError(this, context, 'Greška pri slanju zahteva: $e');
+      V3ErrorUtils.safeError(this, context, '${_UplTr.tr('greskaPriSlanjuZahteva')}: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -157,7 +218,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         centerTitle: true,
-        title: const Text('Uplata pazara'),
+        title: Text(_UplTr.tr('uplataPazara')),
       ),
       body: _isLoading && _vozaci.isEmpty
           ? const Center(child: CircularProgressIndicator())
@@ -172,7 +233,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                     dropdownColor: const Color(0xFF2A2A2A),
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Vozač',
+                      labelText: _UplTr.tr('vozac'),
                       labelStyle: const TextStyle(color: Colors.white70),
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.08),
@@ -197,7 +258,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                     onTap: _pickDate,
                     child: InputDecorator(
                       decoration: InputDecoration(
-                        labelText: 'Datum',
+                        labelText: _UplTr.tr('datum'),
                         labelStyle: const TextStyle(color: Colors.white70),
                         filled: true,
                         fillColor: Colors.white.withValues(alpha: 0.08),
@@ -214,7 +275,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                   // Iznos predaje
                   V3InputUtils.numberField(
                     controller: _iznosController,
-                    label: 'Predao',
+                    label: _UplTr.tr('predao'),
                     suffixText: 'din',
                     onChanged: (_) => setState(() {}),
                   ),
@@ -226,7 +287,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          razlika >= 0 ? 'Višak:' : 'Manjak:',
+                          razlika >= 0 ? _UplTr.tr('visak') : _UplTr.tr('manjak'),
                           style: TextStyle(
                             color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
                             fontSize: 16,
@@ -251,7 +312,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                     width: double.infinity,
                     child: V3ButtonUtils.primaryButton(
                       onPressed: _isSaving ? null : _save,
-                      text: _isSaving ? 'ÄŒuvanje...' : 'SaÄuvaj',
+                      text: _isSaving ? _UplTr.tr('cuvanje') : _UplTr.tr('sacuvaj'),
                       isLoading: _isSaving,
                     ),
                   ),
@@ -270,8 +331,8 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                       ),
                       onPressed: _isSaving ? null : _zatraziUnosOdVozaca,
                       icon: const Icon(Icons.send_to_mobile),
-                      label: const Text('Zatraži unos od vozača',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      label: Text(_UplTr.tr('zatraziUnosOdVozaca'),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

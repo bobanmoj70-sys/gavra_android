@@ -13,6 +13,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -27,6 +28,111 @@ import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_putnik_card.dart';
+
+class _RasTr {
+  static const Map<String, Map<String, String>> _t = {
+    'putnikaRasporedjeno': {
+      'sr': 'putnika raspoređeno',
+      'en': 'passengers assigned',
+      'ru': 'пассажиров назначено',
+      'de': 'Passagiere zugewiesen',
+    },
+    'slotRezervisan': {
+      'sr': '📅 Slot rezervisan (trenutno nema putnika)',
+      'en': '📅 Slot reserved (currently no passengers)',
+      'ru': '📅 Слот зарезервирован (сейчас нет пассажиров)',
+      'de': '📅 Slot reserviert (derzeit keine Passagiere)',
+    },
+    'dodelaUklonjena': {
+      'sr': '🗑️ Dodela uklonjena',
+      'en': '🗑️ Assignment removed',
+      'ru': '🗑️ Назначение удалено',
+      'de': '🗑️ Zuweisung entfernt',
+    },
+    'nemaOperativnogReda': {
+      'sr': '⚠️ Nema operativnog reda za izabranog putnika/termin',
+      'en': '⚠️ No operational record for the selected passenger/slot',
+      'ru': '⚠️ Нет операционной записи для выбранного пассажира/слота',
+      'de': '⚠️ Kein Betriebseintrag für den ausgewählten Passagier/Termin',
+    },
+    'putnik': {'sr': 'putnik', 'en': 'passenger', 'ru': 'пассажир', 'de': 'Passagier'},
+    'individualnaDodelaUklonjena': {
+      'sr': '🗑️ Individualna dodela uklonjena',
+      'en': '🗑️ Individual assignment removed',
+      'ru': '🗑️ Индивидуальное назначение удалено',
+      'de': '🗑️ Individuelle Zuweisung entfernt',
+    },
+    'nemaRegistrovanihVozaca': {
+      'sr': 'Nema registrovanih vozača',
+      'en': 'No registered drivers',
+      'ru': 'Нет зарегистрированных водителей',
+      'de': 'Keine registrierten Fahrer',
+    },
+    'terminLabel': {'sr': 'TERMIN', 'en': 'SLOT', 'ru': 'СЛОТ', 'de': 'TERMIN'},
+    'dodeliVozacaTerminu': {
+      'sr': 'Dodeli vozača terminu',
+      'en': 'Assign driver to slot',
+      'ru': 'Назначить водителя на слот',
+      'de': 'Fahrer dem Termin zuweisen',
+    },
+    'ukloniDodeluTermina': {
+      'sr': 'Ukloni dodelu termina',
+      'en': 'Remove slot assignment',
+      'ru': 'Удалить назначение слота',
+      'de': 'Terminzuweisung entfernen',
+    },
+    'potvrdi': {'sr': 'Potvrdi', 'en': 'Confirm', 'ru': 'Подтвердить', 'de': 'Bestätigen'},
+    'putnikDefault': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Passagier'},
+    'dodeliVozacaPutniku': {
+      'sr': 'Dodeli vozača putniku',
+      'en': 'Assign driver to passenger',
+      'ru': 'Назначить водителя пассажиру',
+      'de': 'Fahrer dem Passagier zuweisen',
+    },
+    'ukloniIndividualnuDodelu': {
+      'sr': 'Ukloni individualnu dodelu',
+      'en': 'Remove individual assignment',
+      'ru': 'Удалить индивидуальное назначение',
+      'de': 'Individuelle Zuweisung entfernen',
+    },
+    'rasporedVozaca': {
+      'sr': 'Raspored vozača',
+      'en': 'Driver schedule',
+      'ru': 'Расписание водителей',
+      'de': 'Fahrerplan'
+    },
+    'odaberiPolazakUDonjemMeniju': {
+      'sr': 'Odaberi polazak u donjem meniju',
+      'en': 'Select a departure in the bottom menu',
+      'ru': 'Выберите отправление в нижнем меню',
+      'de': 'Wählen Sie eine Abfahrt im unteren Menü',
+    },
+    'nemaPutnikaZaOvajPolazak': {
+      'sr': 'Nema putnika za ovaj polazak',
+      'en': 'No passengers for this departure',
+      'ru': 'Нет пассажиров для этого отправления',
+      'de': 'Keine Passagiere für diese Abfahrt',
+    },
+    'nepoznatPutnik': {
+      'sr': 'Nepoznat putnik',
+      'en': 'Unknown passenger',
+      'ru': 'Неизвестный пассажир',
+      'de': 'Unbekannter Passagier'
+    },
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
+    'nemaDodeleTapZaDodelu': {
+      'sr': 'Nema dodele — tap za dodelu vozača',
+      'en': 'Not assigned — tap to assign driver',
+      'ru': 'Не назначено — нажмите для назначения водителя',
+      'de': 'Keine Zuweisung — tippen zum Zuweisen des Fahrers',
+    },
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// V3 ekran za upravljanje rasporedom vozača.
 /// Admin dodeljuje vozača kroz `v3_trenutna_dodela`
@@ -384,7 +490,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
       if (mounted) {
         final putnikSuffix =
-            assignedCount > 0 ? '📋 $assignedCount putnika raspoređeno' : '📅 Slot rezervisan (trenutno nema putnika)';
+            assignedCount > 0 ? '📋 $assignedCount ${_RasTr.tr('putnikaRasporedjeno')}' : _RasTr.tr('slotRezervisan');
 
         V3AppSnackBar.success(
             context,
@@ -417,7 +523,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       await _reloadTrenutnaDodelaMap();
       if (mounted) setState(() {});
 
-      if (mounted) V3AppSnackBar.success(context, '🗑️ Dodela uklonjena: $grad $vreme ($_selectedDatumIso)');
+      if (mounted) V3AppSnackBar.success(context, '${_RasTr.tr('dodelaUklonjena')}: $grad $vreme ($_selectedDatumIso)');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -446,14 +552,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       );
 
       if (!assigned) {
-        if (mounted) V3AppSnackBar.warning(context, '⚠️ Nema operativnog reda za izabranog putnika/termin');
+        if (mounted) V3AppSnackBar.warning(context, _RasTr.tr('nemaOperativnogReda'));
         return;
       }
 
       await _reloadTrenutnaDodelaMap();
       if (mounted) setState(() {});
 
-      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → putnik ($datum)');
+      if (mounted) V3AppSnackBar.success(context, '✅ ${vozac.imePrezime} → ${_RasTr.tr('putnik')} ($datum)');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -477,7 +583,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       await _reloadTrenutnaDodelaMap();
       if (mounted) setState(() {});
 
-      if (mounted) V3AppSnackBar.success(context, '🗑️ Individualna dodela uklonjena');
+      if (mounted) V3AppSnackBar.success(context, _RasTr.tr('individualnaDodelaUklonjena'));
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -490,7 +596,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci();
     if (vozaci.isEmpty) {
-      if (mounted) V3AppSnackBar.warning(context, 'Nema registrovanih vozača');
+      if (mounted) V3AppSnackBar.warning(context, _RasTr.tr('nemaRegistrovanihVozaca'));
       return;
     }
 
@@ -518,11 +624,11 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
               )),
               const SizedBox(height: 16),
-              Text('🗓️ TERMIN: $grad $vreme — $_selectedDatumIso',
+              Text('🗓️ ${_RasTr.tr('terminLabel')}: $grad $vreme — $_selectedDatumIso',
                   style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1)),
               const SizedBox(height: 6),
-              const Text('Dodeli vozača terminu',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(_RasTr.tr('dodeliVozacaTerminu'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
               const SizedBox(height: 16),
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
@@ -538,7 +644,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     await _ukloniTermin(grad, vreme);
                   },
                   icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
-                  label: const Text('Ukloni dodelu termina', style: TextStyle(color: Colors.redAccent)),
+                  label: Text(_RasTr.tr('ukloniDodeluTermina'), style: const TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
               SizedBox(
@@ -550,7 +656,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                           Navigator.pop(ctx);
                           await _dodelijTermin(grad, vreme, odabran!);
                         },
-                  text: 'Potvrdi',
+                  text: _RasTr.tr('potvrdi'),
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
                   foregroundColor: Colors.white,
                   fontSize: 16,
@@ -569,7 +675,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     V3Vozac? odabran = trenutni;
     final vozaci = V3VozacService.getAllVozaci();
     if (vozaci.isEmpty) {
-      if (mounted) V3AppSnackBar.warning(context, 'Nema registrovanih vozača');
+      if (mounted) V3AppSnackBar.warning(context, _RasTr.tr('nemaRegistrovanihVozaca'));
       return;
     }
 
@@ -597,13 +703,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     BoxDecoration(color: Colors.white.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
               )),
               const SizedBox(height: 16),
-              Text('👤 ${(V3PutnikService.getPutnikById(termin.putnikId)?.imePrezime ?? 'Putnik').toUpperCase()}',
+              Text(
+                  '👤 ${(V3PutnikService.getPutnikById(termin.putnikId)?.imePrezime ?? _RasTr.tr('putnikDefault')).toUpperCase()}',
                   style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1)),
               Text('$_selectedGrad $_selectedVreme — $_selectedDatumIso',
                   style: const TextStyle(color: Colors.white38, fontSize: 11, letterSpacing: 1)),
               const SizedBox(height: 8),
-              const Text('Dodeli vozača putniku',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(_RasTr.tr('dodeliVozacaPutniku'),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
               const SizedBox(height: 16),
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
@@ -619,7 +726,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     await _ukloniPutnikDodelu(termin.putnikId, _selectedGrad, _selectedVreme);
                   },
                   icon: const Icon(Icons.person_remove_outlined, color: Colors.redAccent, size: 18),
-                  label: const Text('Ukloni individualnu dodelu', style: TextStyle(color: Colors.redAccent)),
+                  label: Text(_RasTr.tr('ukloniIndividualnuDodelu'), style: const TextStyle(color: Colors.redAccent)),
                 ),
               const SizedBox(height: 8),
               SizedBox(
@@ -631,7 +738,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                           Navigator.pop(ctx);
                           await _dodelijPutniku(termin.putnikId, odabran!, _selectedGrad, _selectedVreme);
                         },
-                  text: 'Potvrdi',
+                  text: _RasTr.tr('potvrdi'),
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
                   foregroundColor: Colors.white,
                   fontSize: 16,
@@ -713,9 +820,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             centerTitle: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: const Text(
-              'Raspored vozača',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            title: Text(
+              _RasTr.tr('rasporedVozaca'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
           body: Container(
@@ -793,7 +900,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                         Icon(Icons.inbox, size: 48, color: Colors.white.withValues(alpha: 0.3)),
                                         const SizedBox(height: 12),
                                         Text(
-                                          'Odaberi polazak u donjem meniju',
+                                          _RasTr.tr('odaberiPolazakUDonjemMeniju'),
                                           style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
                                           textAlign: TextAlign.center,
                                         ),
@@ -809,7 +916,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                                 size: 48, color: Colors.white.withValues(alpha: 0.3)),
                                             const SizedBox(height: 12),
                                             Text(
-                                              'Nema putnika za ovaj polazak',
+                                              _RasTr.tr('nemaPutnikaZaOvajPolazak'),
                                               style:
                                                   TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 15),
                                             ),
@@ -835,7 +942,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                                           final putnik = V3PutnikService.getPutnikById(z.putnikId) ??
                                               V3Putnik(
                                                 id: z.putnikId,
-                                                imePrezime: 'Nepoznat putnik',
+                                                imePrezime: _RasTr.tr('nepoznatPutnik'),
                                                 tipPutnika: 'dnevni',
                                               );
                                           return Padding(
@@ -929,7 +1036,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                vozac != null ? 'Vozač: ${vozac.imePrezime}' : 'Nema dodele — tap za dodelu vozača',
+                vozac != null ? '${_RasTr.tr('vozac')}: ${vozac.imePrezime}' : _RasTr.tr('nemaDodeleTapZaDodelu'),
                 style: TextStyle(
                   color: vozac != null ? Colors.white : Colors.white54,
                   fontWeight: FontWeight.w600,

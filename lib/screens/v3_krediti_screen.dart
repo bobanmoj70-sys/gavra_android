@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/v3_kredit.dart';
 import '../services/v3/v3_kredit_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -12,6 +13,169 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
+
+class _KredTr {
+  static const Map<String, Map<String, String>> _t = {
+    'mojiKrediti': {'sr': 'Moji krediti', 'en': 'My loans', 'ru': 'Мои кредиты', 'de': 'Meine Kredite'},
+    'nemaEvidentiranihKredita': {
+      'sr': 'Nema evidentiranih kredita',
+      'en': 'No recorded loans',
+      'ru': 'Нет зарегистрированных кредитов',
+      'de': 'Keine erfassten Kredite',
+    },
+    'dodajKredit': {'sr': 'Dodaj kredit', 'en': 'Add loan', 'ru': 'Добавить кредит', 'de': 'Kredit hinzufügen'},
+    'preostalaDugovanja': {
+      'sr': 'Preostala dugovanja',
+      'en': 'Remaining debts',
+      'ru': 'Оставшиеся долги',
+      'de': 'Verbleibende Schulden',
+    },
+    'ukupnoPreostaloZaOtplatu': {
+      'sr': 'Ukupno preostalo za otplatu',
+      'en': 'Total remaining to repay',
+      'ru': 'Всего осталось погасить',
+      'de': 'Insgesamt zu zahlender Restbetrag',
+    },
+    'kreditDodat': {
+      'sr': '✅ Kredit dodat',
+      'en': '✅ Loan added',
+      'ru': '✅ Кредит добавлен',
+      'de': '✅ Kredit hinzugefügt'
+    },
+    'kreditIzmenjen': {
+      'sr': '✅ Kredit izmenjen',
+      'en': '✅ Loan updated',
+      'ru': '✅ Кредит изменён',
+      'de': '✅ Kredit aktualisiert'
+    },
+    'uplataEvidentirana': {
+      'sr': '✅ Uplata evidentirana',
+      'en': '✅ Payment recorded',
+      'ru': '✅ Платёж зарегистрирован',
+      'de': '✅ Zahlung erfasst',
+    },
+    'obrisiKredit': {'sr': 'Obriši kredit', 'en': 'Delete loan', 'ru': 'Удалить кредит', 'de': 'Kredit löschen'},
+    'daLiSteSigurniObrisatiKredit': {
+      'sr': 'Da li si siguran da želiš da obrišeš „%NAZIV%"?',
+      'en': 'Are you sure you want to delete "%NAZIV%"?',
+      'ru': 'Вы уверены, что хотите удалить «%NAZIV%»?',
+      'de': 'Möchten Sie „%NAZIV%" wirklich löschen?',
+    },
+    'obrisi': {'sr': 'Obriši', 'en': 'Delete', 'ru': 'Удалить', 'de': 'Löschen'},
+    'kreditObrisan': {
+      'sr': '✅ Kredit obrisan',
+      'en': '✅ Loan deleted',
+      'ru': '✅ Кредит удалён',
+      'de': '✅ Kredit gelöscht'
+    },
+    'istorijaUplata': {
+      'sr': 'Istorija uplata',
+      'en': 'Payment history',
+      'ru': 'История платежей',
+      'de': 'Zahlungsverlauf',
+    },
+    'nemaEvidentiranihUplata': {
+      'sr': 'Nema evidentiranih uplata',
+      'en': 'No recorded payments',
+      'ru': 'Нет зарегистрированных платежей',
+      'de': 'Keine erfassten Zahlungen',
+    },
+    'obrisiUplatu': {'sr': 'Obriši uplatu', 'en': 'Delete payment', 'ru': 'Удалить платёж', 'de': 'Zahlung löschen'},
+    'daLiSteSigurniObrisatiUplatu': {
+      'sr': 'Da li si siguran da želiš da obrišeš ovu uplatu?',
+      'en': 'Are you sure you want to delete this payment?',
+      'ru': 'Вы уверены, что хотите удалить этот платёж?',
+      'de': 'Möchten Sie diese Zahlung wirklich löschen?',
+    },
+    'uplataObrisana': {
+      'sr': '✅ Uplata obrisana',
+      'en': '✅ Payment deleted',
+      'ru': '✅ Платёж удалён',
+      'de': '✅ Zahlung gelöscht'
+    },
+    'zatvori': {'sr': 'Zatvori', 'en': 'Close', 'ru': 'Закрыть', 'de': 'Schließen'},
+    'otplaceno': {'sr': 'OTPLAĆENO', 'en': 'PAID OFF', 'ru': 'ПОГАШЕНО', 'de': 'ABBEZAHLT'},
+    'kraj': {'sr': 'Kraj', 'en': 'End', 'ru': 'Конец', 'de': 'Ende'},
+    'ukupanIznos': {'sr': 'Ukupan iznos', 'en': 'Total amount', 'ru': 'Общая сумма', 'de': 'Gesamtbetrag'},
+    'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
+    'preostalo': {'sr': 'Preostalo', 'en': 'Remaining', 'ru': 'Осталось', 'de': 'Verbleibend'},
+    'uplati': {'sr': 'UPLATI', 'en': 'PAY', 'ru': 'ОПЛАТИТЬ', 'de': 'ZAHLEN'},
+    'uplateStat': {'sr': 'Uplate', 'en': 'Payments', 'ru': 'Платежи', 'de': 'Zahlungen'},
+    'prosek': {'sr': 'Prosek', 'en': 'Average', 'ru': 'Среднее', 'de': 'Durchschnitt'},
+    'najveca': {'sr': 'Najveća', 'en': 'Largest', 'ru': 'Наибольший', 'de': 'Größte'},
+    'grafikUplataPoMesecima': {
+      'sr': 'Grafik uplata po mesecima',
+      'en': 'Payments by month chart',
+      'ru': 'График платежей по месяцам',
+      'de': 'Zahlungsdiagramm nach Monaten',
+    },
+    'nazivPlaceholder': {
+      'sr': 'Naziv (npr. BMW, Mama)',
+      'en': 'Name (e.g. BMW, Mom)',
+      'ru': 'Название (напр. BMW, Мама)',
+      'de': 'Name (z.B. BMW, Mama)',
+    },
+    'ukupanIznosRsd': {
+      'sr': 'Ukupan iznos (RSD)',
+      'en': 'Total amount (RSD)',
+      'ru': 'Общая сумма (RSD)',
+      'de': 'Gesamtbetrag (RSD)',
+    },
+    'napomenaOpciono': {
+      'sr': 'Napomena (opciono)',
+      'en': 'Note (optional)',
+      'ru': 'Примечание (опционально)',
+      'de': 'Notiz (optional)',
+    },
+    'krajKreditaOpciono': {
+      'sr': 'Kraj kredita (opciono)',
+      'en': 'Loan end (optional)',
+      'ru': 'Конец кредита (опционально)',
+      'de': 'Kreditende (optional)',
+    },
+    'krajKreditaZadnjaRata': {
+      'sr': 'Kraj kredita / zadnja rata',
+      'en': 'Loan end / last installment',
+      'ru': 'Конец кредита / последний платёж',
+      'de': 'Kreditende / letzte Rate',
+    },
+    'izaberiDatum': {'sr': 'Izaberi datum', 'en': 'Select date', 'ru': 'Выберите дату', 'de': 'Datum wählen'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'nazivJeObavezan': {
+      'sr': 'Naziv je obavezan',
+      'en': 'Name is required',
+      'ru': 'Название обязательно',
+      'de': 'Name ist erforderlich',
+    },
+    'iznosNeMozeBitiNegativan': {
+      'sr': 'Iznos ne može biti negativan',
+      'en': 'Amount cannot be negative',
+      'ru': 'Сумма не может быть отрицательной',
+      'de': 'Betrag darf nicht negativ sein',
+    },
+    'uplataNaziv': {
+      'sr': 'Uplata',
+      'en': 'Payment',
+      'ru': 'Платёж',
+      'de': 'Zahlung',
+    },
+    'iznosUplate': {'sr': 'Iznos uplate', 'en': 'Payment amount', 'ru': 'Сумма платежа', 'de': 'Zahlungsbetrag'},
+    'iznosMoraBitiVeciOdNule': {
+      'sr': 'Iznos mora biti veći od nule',
+      'en': 'Amount must be greater than zero',
+      'ru': 'Сумма должна быть больше нуля',
+      'de': 'Betrag muss größer als null sein',
+    },
+    'dodajKreditTitle': {'sr': 'Dodaj kredit', 'en': 'Add loan', 'ru': 'Добавить кредит', 'de': 'Kredit hinzufügen'},
+    'izmeniKredit': {'sr': 'Izmeni kredit', 'en': 'Edit loan', 'ru': 'Изменить кредит', 'de': 'Kredit bearbeiten'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 class V3KreditiScreen extends StatefulWidget {
   const V3KreditiScreen({super.key});
@@ -39,7 +203,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
             elevation: 0,
             centerTitle: true,
             automaticallyImplyLeading: false,
-            title: const Text('Moji krediti', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(_KredTr.tr('mojiKrediti'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: Theme.of(context).backgroundGradient,
@@ -53,10 +217,10 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
                     const SizedBox(height: 16),
                     Expanded(
                       child: krediti.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text(
-                                'Nema evidentiranih kredita',
-                                style: TextStyle(color: Colors.white70, fontSize: 16),
+                                _KredTr.tr('nemaEvidentiranihKredita'),
+                                style: const TextStyle(color: Colors.white70, fontSize: 16),
                               ),
                             )
                           : ListView.builder(
@@ -75,7 +239,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
                       width: double.infinity,
                       child: V3ButtonUtils.successButton(
                         onPressed: () => _showKreditDialog(null),
-                        text: 'Dodaj kredit',
+                        text: _KredTr.tr('dodajKredit'),
                         icon: Icons.add_circle,
                       ),
                     ),
@@ -113,10 +277,10 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Preostala dugovanja',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(_KredTr.tr('preostalaDugovanja'),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 2),
-                Text('Ukupno preostalo za otplatu',
+                Text(_KredTr.tr('ukupnoPreostaloZaOtplatu'),
                     style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
               ],
             ),
@@ -143,7 +307,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
           napomena: result.napomena,
           krajKredita: result.krajKredita,
         );
-        if (mounted) V3AppSnackBar.success(context, '✅ Kredit dodat');
+        if (mounted) V3AppSnackBar.success(context, _KredTr.tr('kreditDodat'));
       } else {
         await V3KreditService.izmeni(
           id: kredit.id,
@@ -152,7 +316,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
           napomena: result.napomena,
           krajKredita: result.krajKredita,
         );
-        if (mounted) V3AppSnackBar.success(context, '✅ Kredit izmenjen');
+        if (mounted) V3AppSnackBar.success(context, _KredTr.tr('kreditIzmenjen'));
       }
     } catch (e) {
       if (mounted) V3ErrorUtils.asyncError(this, context, e);
@@ -172,7 +336,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
         iznos: result.iznos,
         napomena: result.napomena,
       );
-      if (mounted) V3AppSnackBar.success(context, '✅ Uplata evidentirana');
+      if (mounted) V3AppSnackBar.success(context, _KredTr.tr('uplataEvidentirana'));
     } catch (e) {
       if (mounted) V3ErrorUtils.asyncError(this, context, e);
     }
@@ -181,16 +345,16 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
   Future<void> _obrisiKredit(V3Kredit kredit) async {
     final confirmed = await V3DialogHelper.showConfirmDialog(
       context,
-      title: 'Obriši kredit',
-      message: 'Da li si siguran da želiš da obrišeš „${kredit.naziv}"?',
-      confirmText: 'Obriši',
+      title: _KredTr.tr('obrisiKredit'),
+      message: _KredTr.tr('daLiSteSigurniObrisatiKredit').replaceAll('%NAZIV%', kredit.naziv),
+      confirmText: _KredTr.tr('obrisi'),
       isDangerous: true,
     );
     if (confirmed != true) return;
 
     try {
       await V3KreditService.obrisi(kredit.id);
-      if (mounted) V3AppSnackBar.success(context, '✅ Kredit obrisan');
+      if (mounted) V3AppSnackBar.success(context, _KredTr.tr('kreditObrisan'));
     } catch (e) {
       if (mounted) V3ErrorUtils.asyncError(this, context, e);
     }
@@ -217,16 +381,16 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Istorija uplata: ${kredit.naziv}',
+                  '${_KredTr.tr('istorijaUplata')}: ${kredit.naziv}',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: kredit.uplate.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
-                            'Nema evidentiranih uplata',
-                            style: TextStyle(color: Colors.white70, fontSize: 14),
+                            _KredTr.tr('nemaEvidentiranihUplata'),
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
                           ),
                         )
                       : ListView.builder(
@@ -276,9 +440,9 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
                                     onPressed: () async {
                                       final confirmed = await V3DialogHelper.showConfirmDialog(
                                         context,
-                                        title: 'Obriši uplatu',
-                                        message: 'Da li si siguran da želiš da obrišeš ovu uplatu?',
-                                        confirmText: 'Obriši',
+                                        title: _KredTr.tr('obrisiUplatu'),
+                                        message: _KredTr.tr('daLiSteSigurniObrisatiUplatu'),
+                                        confirmText: _KredTr.tr('obrisi'),
                                         isDangerous: true,
                                       );
                                       if (confirmed == true) {
@@ -287,7 +451,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
                                             kreditId: kredit.id,
                                             uplataId: uplata.uplataId,
                                           );
-                                          if (mounted) V3AppSnackBar.success(context, '✅ Uplata obrisana');
+                                          if (mounted) V3AppSnackBar.success(context, _KredTr.tr('uplataObrisana'));
                                           Navigator.pop(context);
                                         } catch (e) {
                                           if (mounted) V3ErrorUtils.asyncError(this, context, e);
@@ -305,7 +469,7 @@ class _V3KreditiScreenState extends State<V3KreditiScreen> {
                 const SizedBox(height: 12),
                 V3ButtonUtils.outlinedButton(
                   onPressed: () => Navigator.pop(context),
-                  text: 'Zatvori',
+                  text: _KredTr.tr('zatvori'),
                   borderColor: Colors.white24,
                   foregroundColor: Colors.white70,
                 ),
@@ -375,8 +539,8 @@ class _KreditCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
                       ),
-                      child: const Text('OTPLAĆENO',
-                          style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
+                      child: Text(_KredTr.tr('otplaceno'),
+                          style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
                     ),
                 ],
               ),
@@ -391,16 +555,16 @@ class _KreditCard extends StatelessWidget {
                     const Icon(Icons.calendar_today, size: 12, color: Colors.white38),
                     const SizedBox(width: 6),
                     Text(
-                      'Kraj: ${kredit.krajKredita!.day.toString().padLeft(2, '0')}.${kredit.krajKredita!.month.toString().padLeft(2, '0')}.${kredit.krajKredita!.year}',
+                      '${_KredTr.tr('kraj')}: ${kredit.krajKredita!.day.toString().padLeft(2, '0')}.${kredit.krajKredita!.month.toString().padLeft(2, '0')}.${kredit.krajKredita!.year}',
                       style: const TextStyle(fontSize: 12, color: Colors.white54),
                     ),
                   ],
                 ),
               ],
               const SizedBox(height: 12),
-              _buildRow('Ukupan iznos', kredit.ukupanIznos, Colors.white70),
-              _buildRow('Uplaćeno', kredit.uplaceno, const Color(0xFF4ADE80)),
-              _buildRow('Preostalo', preostalo, const Color(0xFFF87171)),
+              _buildRow(_KredTr.tr('ukupanIznos'), kredit.ukupanIznos, Colors.white70),
+              _buildRow(_KredTr.tr('uplaceno'), kredit.uplaceno, const Color(0xFF4ADE80)),
+              _buildRow(_KredTr.tr('preostalo'), preostalo, const Color(0xFFF87171)),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -438,7 +602,7 @@ class _KreditCard extends StatelessWidget {
                   Expanded(
                     child: V3ButtonUtils.successButton(
                       onPressed: onUplati,
-                      text: 'UPLATI',
+                      text: _KredTr.tr('uplati'),
                       icon: Icons.payments,
                     ),
                   ),
@@ -467,9 +631,9 @@ class _KreditCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(label: 'Uplate', value: '${kredit.brojUplata}'),
-          _StatItem(label: 'Prosek', value: V3FormatUtils.formatBroj(kredit.prosecnaUplata.round())),
-          _StatItem(label: 'Najveća', value: V3FormatUtils.formatBroj(kredit.najvecaUplata.round())),
+          _StatItem(label: _KredTr.tr('uplateStat'), value: '${kredit.brojUplata}'),
+          _StatItem(label: _KredTr.tr('prosek'), value: V3FormatUtils.formatBroj(kredit.prosecnaUplata.round())),
+          _StatItem(label: _KredTr.tr('najveca'), value: V3FormatUtils.formatBroj(kredit.najvecaUplata.round())),
         ],
       ),
     );
@@ -522,8 +686,8 @@ class _KreditChart extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Grafik uplata po mesecima',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70)),
+          Text(_KredTr.tr('grafikUplataPoMesecima'),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white70)),
           const SizedBox(height: 8),
           Expanded(
             child: BarChart(
@@ -662,7 +826,7 @@ class _KreditDialogState extends State<_KreditDialog> {
       initialDate: _krajKredita ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      helpText: 'Kraj kredita / zadnja rata',
+      helpText: _KredTr.tr('krajKreditaZadnjaRata'),
     );
     if (picked != null) {
       V3StateUtils.safeSetState(this, () => _krajKredita = picked);
@@ -674,11 +838,11 @@ class _KreditDialogState extends State<_KreditDialog> {
     final iznos = double.tryParse(_iznosCtrl.text.replaceAll(',', '.')) ?? 0.0;
 
     if (naziv.isEmpty) {
-      V3AppSnackBar.error(context, 'Naziv je obavezan');
+      V3AppSnackBar.error(context, _KredTr.tr('nazivJeObavezan'));
       return;
     }
     if (iznos < 0) {
-      V3AppSnackBar.error(context, 'Iznos ne može biti negativan');
+      V3AppSnackBar.error(context, _KredTr.tr('iznosNeMozeBitiNegativan'));
       return;
     }
 
@@ -716,24 +880,24 @@ class _KreditDialogState extends State<_KreditDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                widget.kredit == null ? 'Dodaj kredit' : 'Izmeni kredit',
+                widget.kredit == null ? _KredTr.tr('dodajKreditTitle') : _KredTr.tr('izmeniKredit'),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 16),
               V3InputUtils.textField(
                 controller: _nazivCtrl,
-                label: 'Naziv (npr. BMW, Mama)',
+                label: _KredTr.tr('nazivPlaceholder'),
               ),
               const SizedBox(height: 12),
               V3InputUtils.numberField(
                 controller: _iznosCtrl,
-                label: 'Ukupan iznos (RSD)',
+                label: _KredTr.tr('ukupanIznosRsd'),
                 suffixText: 'din',
               ),
               const SizedBox(height: 12),
               V3InputUtils.textField(
                 controller: _napomenaCtrl,
-                label: 'Napomena (opciono)',
+                label: _KredTr.tr('napomenaOpciono'),
               ),
               const SizedBox(height: 12),
               InkWell(
@@ -741,7 +905,7 @@ class _KreditDialogState extends State<_KreditDialog> {
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'Kraj kredita (opciono)',
+                    labelText: _KredTr.tr('krajKreditaOpciono'),
                     labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.10),
@@ -767,7 +931,7 @@ class _KreditDialogState extends State<_KreditDialog> {
                   child: Text(
                     _krajKredita != null
                         ? '${_krajKredita!.day.toString().padLeft(2, '0')}.${_krajKredita!.month.toString().padLeft(2, '0')}.${_krajKredita!.year}'
-                        : 'Izaberi datum',
+                        : _KredTr.tr('izaberiDatum'),
                     style: TextStyle(
                       color: _krajKredita != null ? Colors.white : Colors.white54,
                     ),
@@ -780,7 +944,7 @@ class _KreditDialogState extends State<_KreditDialog> {
                   Expanded(
                     child: V3ButtonUtils.outlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      text: 'Otkaži',
+                      text: _KredTr.tr('otkazi'),
                       borderColor: Colors.white24,
                       foregroundColor: Colors.white70,
                     ),
@@ -789,7 +953,7 @@ class _KreditDialogState extends State<_KreditDialog> {
                   Expanded(
                     child: V3ButtonUtils.successButton(
                       onPressed: _saving ? null : _save,
-                      text: 'Sačuvaj',
+                      text: _KredTr.tr('sacuvaj'),
                       icon: Icons.save,
                       isLoading: _saving,
                     ),
@@ -857,24 +1021,24 @@ class _UplataDialogState extends State<_UplataDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Uplata: ${widget.kredit.naziv}',
+                '${_KredTr.tr('uplataNaziv')}: ${widget.kredit.naziv}',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 8),
               Text(
-                'Preostalo: ${V3FormatUtils.formatBroj(widget.kredit.preostalo.round())} din',
+                '${_KredTr.tr('preostalo')}: ${V3FormatUtils.formatBroj(widget.kredit.preostalo.round())} din',
                 style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 16),
               V3InputUtils.numberField(
                 controller: _iznosCtrl,
-                label: 'Iznos uplate',
+                label: _KredTr.tr('iznosUplate'),
                 suffixText: 'din',
               ),
               const SizedBox(height: 12),
               V3InputUtils.textField(
                 controller: _napomenaCtrl,
-                label: 'Napomena (opciono)',
+                label: _KredTr.tr('napomenaOpciono'),
               ),
               const SizedBox(height: 20),
               Row(
@@ -882,7 +1046,7 @@ class _UplataDialogState extends State<_UplataDialog> {
                   Expanded(
                     child: V3ButtonUtils.outlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      text: 'Otkaži',
+                      text: _KredTr.tr('otkazi'),
                       borderColor: Colors.white24,
                       foregroundColor: Colors.white70,
                     ),
@@ -893,7 +1057,7 @@ class _UplataDialogState extends State<_UplataDialog> {
                       onPressed: () {
                         final iznos = double.tryParse(_iznosCtrl.text.replaceAll(',', '.')) ?? 0.0;
                         if (iznos <= 0) {
-                          V3AppSnackBar.error(context, 'Iznos mora biti veći od nule');
+                          V3AppSnackBar.error(context, _KredTr.tr('iznosMoraBitiVeciOdNule'));
                           return;
                         }
                         Navigator.pop(
@@ -904,7 +1068,7 @@ class _UplataDialogState extends State<_UplataDialog> {
                           ),
                         );
                       },
-                      text: 'Uplati',
+                      text: _KredTr.tr('uplati'),
                       icon: Icons.payments,
                     ),
                   ),

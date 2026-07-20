@@ -5,12 +5,36 @@ import 'package:flutter/material.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
+
+class _UcenZahTr {
+  static const Map<String, Map<String, String>> _t = {
+    'monitoringZahteva': {
+      'sr': 'Monitoring zahteva',
+      'en': 'Request monitoring',
+      'ru': 'Мониторинг запросов',
+      'de': 'Anfragenüberwachung'
+    },
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
+    'otkazano': {'sr': 'otkazano', 'en': 'canceled', 'ru': 'отменено', 'de': 'storniert'},
+    'nemaZahteva': {'sr': 'Nema zahteva', 'en': 'No requests', 'ru': 'Нет запросов', 'de': 'Keine Anfragen'},
+    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast'},
+    'ucenik': {'sr': 'Učenik', 'en': 'Student', 'ru': 'Ученик', 'de': 'Schüler'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// V3 ekran — Monitoring Učenika
 /// Prikaz i upravljanje zahtevima putnika tipa 'ucenik'.
@@ -120,9 +144,9 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
             centerTitle: true,
             foregroundColor: Colors.white,
             automaticallyImplyLeading: false,
-            title: const Text(
-              'Monitoring zahteva',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            title: Text(
+              _UcenZahTr.tr('monitoringZahteva'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
           body: V3ContainerUtils.backgroundContainer(
@@ -137,13 +161,13 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
                       runSpacing: 6,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (brObrada > 0) _badge('🟡 $brObrada obrada', Colors.amber),
-                        if (brOdobreno > 0) _badge('🟢 $brOdobreno odobreno', Colors.greenAccent),
-                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno odbijeno', Colors.redAccent),
-                        if (brOtkazano > 0) _badge('⛔ $brOtkazano otkazano', Colors.orange),
+                        if (brObrada > 0) _badge('🟡 $brObrada ${_UcenZahTr.tr('obrada')}', Colors.amber),
+                        if (brOdobreno > 0) _badge('🟢 $brOdobreno ${_UcenZahTr.tr('odobreno')}', Colors.greenAccent),
+                        if (brOdbijeno > 0) _badge('🔴 $brOdbijeno ${_UcenZahTr.tr('odbijeno')}', Colors.redAccent),
+                        if (brOtkazano > 0) _badge('⛔ $brOtkazano ${_UcenZahTr.tr('otkazano')}', Colors.orange),
                         if (zahtevi.isEmpty)
                           Text(
-                            'Nema zahteva',
+                            _UcenZahTr.tr('nemaZahteva'),
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                           ),
                       ],
@@ -153,7 +177,7 @@ class _V3UceniciZahteviScreenState extends State<V3UceniciZahteviScreen> {
                     child: zahtevi.isEmpty
                         ? Center(
                             child: Text(
-                              'Nema zahteva',
+                              _UcenZahTr.tr('nemaZahteva'),
                               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
                             ),
                           )
@@ -217,7 +241,7 @@ class _MonitoringCardUcenik extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          putnik?.imePrezime ?? 'Putnik',
+                          putnik?.imePrezime ?? _UcenZahTr.tr('putnik'),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
@@ -279,7 +303,7 @@ class _ZahtevKarticaUcenik extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? 'Učenik',
+                          V3PutnikService.getPutnikById(zahtev.putnikId)?.imePrezime ?? _UcenZahTr.tr('ucenik'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,

@@ -13,6 +13,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_dnevna_predaja_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -23,6 +24,81 @@ import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
+
+class _DnevTr {
+  static const Map<String, Map<String, String>> _t = {
+    'dnevnikVozaca': {'sr': 'Dnevnik vozača', 'en': 'Driver log', 'ru': 'Журнал водителя', 'de': 'Fahrertagebuch'},
+    'sacuvajPdf': {'sr': 'Sačuvaj PDF', 'en': 'Save PDF', 'ru': 'Сохранить PDF', 'de': 'PDF speichern'},
+    'kopirajIzvestaj': {
+      'sr': 'Kopiraj izveštaj',
+      'en': 'Copy report',
+      'ru': 'Копировать отчёт',
+      'de': 'Bericht kopieren'
+    },
+    'vozacHint': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
+    'izaberiVozacaIDatum': {
+      'sr': 'Izaberi vozača i datum',
+      'en': 'Select driver and date',
+      'ru': 'Выберите водителя и дату',
+      'de': 'Fahrer und Datum auswählen',
+    },
+    'nemaAkcijaZa': {
+      'sr': 'Nema akcija za',
+      'en': 'No actions for',
+      'ru': 'Нет действий для',
+      'de': 'Keine Aktionen für',
+    },
+    'nepoznato': {'sr': 'Nepoznato', 'en': 'Unknown', 'ru': 'Неизвестно', 'de': 'Unbekannt'},
+    'pokupio': {'sr': 'POKUPIO', 'en': 'PICKED UP', 'ru': 'ЗАБРАЛ', 'de': 'ABGEHOLT'},
+    'dodao': {'sr': 'DODAO', 'en': 'ADDED', 'ru': 'ДОБАВИЛ', 'de': 'HINZUGEFÜGT'},
+    'otkazao': {'sr': 'OTKAZAO', 'en': 'CANCELED', 'ru': 'ОТМЕНИЛ', 'de': 'STORNIERT'},
+    'ukupnoNaplaceno': {
+      'sr': 'Ukupno naplaćeno:',
+      'en': 'Total collected:',
+      'ru': 'Всего взыскано:',
+      'de': 'Insgesamt eingezogen:',
+    },
+    'predao': {'sr': 'Predao:', 'en': 'Handed over:', 'ru': 'Сдал:', 'de': 'Übergeben:'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:'},
+    'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:'},
+    'unesiteIznosPredajeVeciOd0': {
+      'sr': 'Unesite iznos predaje veći od 0 din.',
+      'en': 'Enter a handover amount greater than 0.',
+      'ru': 'Введите сумму передачи больше 0.',
+      'de': 'Geben Sie einen Übergabebetrag größer als 0 ein.',
+    },
+    'predajaSacuvana': {
+      'sr': '✅ Predaja sačuvana',
+      'en': '✅ Handover saved',
+      'ru': '✅ Передача сохранена',
+      'de': '✅ Übergabe gespeichert',
+    },
+    'greskaPriCuvanju': {
+      'sr': '❌ Greška pri čuvanju',
+      'en': '❌ Error saving',
+      'ru': '❌ Ошибка при сохранении',
+      'de': '❌ Fehler beim Speichern',
+    },
+    'kopiranoUClipboard': {
+      'sr': '📋 Kopirano u clipboard',
+      'en': '📋 Copied to clipboard',
+      'ru': '📋 Скопировано в буфер обмена',
+      'de': '📋 In die Zwischenablage kopiert',
+    },
+    'greskaPriIzvozuPdf': {
+      'sr': '❌ Greška pri izvozu PDF',
+      'en': '❌ Error exporting PDF',
+      'ru': '❌ Ошибка экспорта PDF',
+      'de': '❌ Fehler beim PDF-Export',
+    },
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 /// DNEVNIK VOZAČA — V3
 /// Admin bira vozača i datum → vidi sve aktivnosti tog vozača za taj dan
@@ -231,7 +307,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
     }
 
     Clipboard.setData(ClipboardData(text: buf.toString()));
-    V3AppSnackBar.success(context, '📋 Kopirano u clipboard');
+    V3AppSnackBar.success(context, _DnevTr.tr('kopiranoUClipboard'));
   }
 
   Future<void> _exportPdf() async {
@@ -489,7 +565,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       if (!mounted) return;
       await OpenFilex.open(file.path);
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, '❌ Greška pri izvozu PDF: $e');
+      V3ErrorUtils.safeError(this, context, '${_DnevTr.tr('greskaPriIzvozuPdf')}: $e');
     }
   }
 
@@ -502,17 +578,18 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: true,
-        title: const Text('Dnevnik vozača', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title:
+            Text(_DnevTr.tr('dnevnikVozaca'), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
           if (_naplate.isNotEmpty) ...[
             IconButton(
               icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
-              tooltip: 'Sačuvaj PDF',
+              tooltip: _DnevTr.tr('sacuvajPdf'),
               onPressed: _exportPdf,
             ),
             IconButton(
               icon: const Icon(Icons.copy, color: Colors.white),
-              tooltip: 'Kopiraj izveštaj',
+              tooltip: _DnevTr.tr('kopirajIzvestaj'),
               onPressed: _share,
             ),
           ],
@@ -540,7 +617,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedVozacId,
-                            hint: const Text('Vozač', style: TextStyle(color: Colors.white54)),
+                            hint: Text(_DnevTr.tr('vozacHint'), style: const TextStyle(color: Colors.white54)),
                             dropdownColor: const Color(0xFF1A1A2E),
                             style: const TextStyle(color: Colors.white, fontSize: 14),
                             icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
@@ -601,10 +678,10 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
               // ─── Sadržaj ──────────────────────────────────────────
               Expanded(
                 child: _selectedVozacId == null
-                    ? const Center(
+                    ? Center(
                         child: Text(
-                          'Izaberi vozača i datum',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
+                          _DnevTr.tr('izaberiVozacaIDatum'),
+                          style: const TextStyle(color: Colors.white54, fontSize: 16),
                         ),
                       )
                     : Column(
@@ -613,7 +690,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                             child: (_naplate.isEmpty && _pokupio.isEmpty && _dodao.isEmpty && _otkazao.isEmpty)
                                 ? Center(
                                     child: Text(
-                                      'Nema akcija za ${_formatDatum(_selectedDate)}',
+                                      '${_DnevTr.tr('nemaAkcijaZa')} ${_formatDatum(_selectedDate)}',
                                       style: const TextStyle(color: Colors.white54, fontSize: 16),
                                     ),
                                   )
@@ -690,7 +767,7 @@ class _PokupioCard extends StatelessWidget {
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
     final putnik = rm.putniciCache[putnikId];
-    final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+    final putnikIme = putnik?['ime_prezime']?.toString() ?? _DnevTr.tr('nepoznato');
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -709,7 +786,8 @@ class _PokupioCard extends StatelessWidget {
             child:
                 Text(putnikIme, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
           ),
-          Text('POKUPIO', style: const TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(_DnevTr.tr('pokupio'),
+              style: const TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(width: 10),
           Text(vreme, style: const TextStyle(color: Colors.white38, fontSize: 12)),
         ],
@@ -730,7 +808,7 @@ class _DodaoCard extends StatelessWidget {
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
     final putnik = rm.putniciCache[putnikId];
-    final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+    final putnikIme = putnik?['ime_prezime']?.toString() ?? _DnevTr.tr('nepoznato');
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -755,7 +833,8 @@ class _DodaoCard extends StatelessWidget {
               ],
             ),
           ),
-          Text('DODAO', style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(_DnevTr.tr('dodao'),
+              style: const TextStyle(color: Colors.orangeAccent, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -777,7 +856,7 @@ class _OtkazaoCard extends StatelessWidget {
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
     final putnik = rm.putniciCache[putnikId];
-    final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+    final putnikIme = putnik?['ime_prezime']?.toString() ?? _DnevTr.tr('nepoznato');
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -802,7 +881,8 @@ class _OtkazaoCard extends StatelessWidget {
               ],
             ),
           ),
-          Text('OTKAZAO', style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(_DnevTr.tr('otkazao'),
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(width: 10),
           Text(vreme, style: const TextStyle(color: Colors.white38, fontSize: 12)),
         ],
@@ -823,7 +903,7 @@ class _NaplataCard extends StatelessWidget {
     final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
     final putnik = rm.putniciCache[putnikId];
-    final putnikIme = putnik?['ime_prezime']?.toString() ?? n['naziv']?.toString() ?? 'Nepoznato';
+    final putnikIme = putnik?['ime_prezime']?.toString() ?? n['naziv']?.toString() ?? _DnevTr.tr('nepoznato');
     final iznos = (n['iznos'] as num?)?.toDouble() ?? 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -910,7 +990,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
     if (predaoVal == null) return;
     if (predaoVal <= 0) {
       if (mounted) {
-        V3AppSnackBar.warning(context, 'Unesite iznos predaje veći od 0 din.');
+        V3AppSnackBar.warning(context, _DnevTr.tr('unesiteIznosPredajeVeciOd0'));
       }
       return;
     }
@@ -928,10 +1008,10 @@ class _PredajaFooterState extends State<_PredajaFooter> {
       if (mounted) {
         widget.onPredaoChanged?.call(predaoVal);
         setState(() => _sacuvan = true);
-        V3AppSnackBar.success(context, '✅ Predaja sačuvana');
+        V3AppSnackBar.success(context, _DnevTr.tr('predajaSacuvana'));
       }
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, '❌ Greška pri čuvanju: $e');
+      V3ErrorUtils.safeError(this, context, '${_DnevTr.tr('greskaPriCuvanju')}: $e');
     }
   }
 
@@ -955,7 +1035,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Ukupno naplaćeno:', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              Text(_DnevTr.tr('ukupnoNaplaceno'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
               Text(
                 '${widget.ukupnoIznos.toStringAsFixed(0)} din',
                 style: const TextStyle(color: Colors.greenAccent, fontSize: 16, fontWeight: FontWeight.bold),
@@ -967,7 +1047,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
           // Predao input + dugme
           Row(
             children: [
-              const Text('Predao:', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              Text(_DnevTr.tr('predao'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
               const SizedBox(width: 10),
               Expanded(
                 child: V3InputUtils.numberField(
@@ -979,7 +1059,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
               const SizedBox(width: 8),
               V3ButtonUtils.elevatedButton(
                 onPressed: _sacuvaj,
-                text: _sacuvan ? '✅' : 'Sačuvaj',
+                text: _sacuvan ? '✅' : _DnevTr.tr('sacuvaj'),
                 backgroundColor: _sacuvan ? Colors.green[700] : Colors.green,
                 foregroundColor: Colors.white,
                 borderRadius: BorderRadius.circular(10),
@@ -995,7 +1075,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  razlika >= 0 ? 'Višak:' : 'Manjak:',
+                  razlika >= 0 ? _DnevTr.tr('visak') : _DnevTr.tr('manjak'),
                   style: TextStyle(
                     color: razlika >= 0 ? Colors.greenAccent : Colors.redAccent,
                     fontSize: 14,

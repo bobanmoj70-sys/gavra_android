@@ -2,9 +2,69 @@ import 'package:flutter/material.dart';
 
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
+
+class _StatTr {
+  static const Map<String, Map<String, String>> _t = {
+    'detaljneStatistike': {
+      'sr': 'Detaljne statistike',
+      'en': 'Detailed statistics',
+      'ru': 'Подробная статистика',
+      'de': 'Detaillierte Statistik',
+    },
+    'tipRadnik': {
+      'sr': 'Tip: Radnik (model po danu)',
+      'en': 'Type: Worker (per-day model)',
+      'ru': 'Тип: Рабочий (модель по дням)',
+      'de': 'Typ: Arbeiter (Modell pro Tag)',
+    },
+    'tipUcenik': {
+      'sr': 'Tip: Učenik (model po danu)',
+      'en': 'Type: Student (per-day model)',
+      'ru': 'Тип: Ученик (модель по дням)',
+      'de': 'Typ: Schüler (Modell pro Tag)',
+    },
+    'tipPosiljka': {
+      'sr': 'Tip: Pošiljka (model po vožnji)',
+      'en': 'Type: Shipment (per-ride model)',
+      'ru': 'Тип: Посылка (модель по поездкам)',
+      'de': 'Typ: Sendung (Modell pro Fahrt)',
+    },
+    'tipDnevni': {
+      'sr': 'Tip: Dnevni (model po vožnji)',
+      'en': 'Type: Daily (per-ride model)',
+      'ru': 'Тип: Ежедневный (модель по поездкам)',
+      'de': 'Typ: Täglich (Modell pro Fahrt)',
+    },
+    'prikazPoMesecima': {
+      'sr': 'Prikaz po mesecima (januar-decembar %s)',
+      'en': 'Monthly view (January-December %s)',
+      'ru': 'Ежемесячный просмотр (январь-декабрь %s)',
+      'de': 'Monatsansicht (Januar-Dezember %s)',
+    },
+    'voznji': {'sr': 'Vožnji', 'en': 'Rides', 'ru': 'Поездки', 'de': 'Fahrten'},
+    'otkazano': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert'},
+    'obaveza': {'sr': 'Obaveza', 'en': 'Amount due', 'ru': 'Задолженность', 'de': 'Fälliger Betrag'},
+    'placeno': {'sr': 'Plaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
+    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schulden'},
+    'poslednjaUplata': {
+      'sr': 'Poslednja uplata',
+      'en': 'Last payment',
+      'ru': 'Последний платеж',
+      'de': 'Letzte Zahlung',
+    },
+  };
+
+  static String tr(String key, [String? arg]) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    var text = _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+    if (arg != null) text = text.replaceFirst('%s', arg);
+    return text;
+  }
+}
 
 class V3PutnikStatistikaScreen extends StatefulWidget {
   final String putnikId;
@@ -39,7 +99,7 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
             elevation: 0,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            title: const Text('Detaljne statistike', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(_StatTr.tr('detaljneStatistike'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: Theme.of(context).backgroundGradient,
@@ -69,7 +129,7 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Prikaz po mesecima (januar-decembar $godina)',
+                            _StatTr.tr('prikazPoMesecima', '$godina'),
                             style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12),
                           ),
                         ],
@@ -89,10 +149,10 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
 
   String _tipLabel(String tip) {
     final normalized = tip.toLowerCase();
-    if (normalized == 'radnik') return 'Tip: Radnik (model po danu)';
-    if (normalized == 'ucenik') return 'Tip: Učenik (model po danu)';
-    if (normalized == 'posiljka') return 'Tip: Pošiljka (model po vožnji)';
-    return 'Tip: Dnevni (model po vožnji)';
+    if (normalized == 'radnik') return _StatTr.tr('tipRadnik');
+    if (normalized == 'ucenik') return _StatTr.tr('tipUcenik');
+    if (normalized == 'posiljka') return _StatTr.tr('tipPosiljka');
+    return _StatTr.tr('tipDnevni');
   }
 }
 
@@ -121,9 +181,9 @@ class _MesecCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _MiniKpi(label: 'Vožnji', value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
+                _MiniKpi(label: _StatTr.tr('voznji'), value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
                 const SizedBox(width: 12),
-                _MiniKpi(label: 'Otkazano', value: '${stats.otkazano}', color: Colors.redAccent),
+                _MiniKpi(label: _StatTr.tr('otkazano'), value: '${stats.otkazano}', color: Colors.redAccent),
               ],
             ),
           ),
@@ -132,7 +192,7 @@ class _MesecCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Obaveza', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
                   '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)} = ${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
                   style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
@@ -144,7 +204,7 @@ class _MesecCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Plaćeno', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(_StatTr.tr('placeno'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.naplacenoIznos.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -155,7 +215,8 @@ class _MesecCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Dug (${stats.neplaceno})', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text('${_StatTr.tr('dug')} (${stats.neplaceno})',
+                  style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${stats.dugIznos.toStringAsFixed(0)} RSD',
                 style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -167,7 +228,7 @@ class _MesecCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Poslednja uplata', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(_StatTr.tr('poslednjaUplata'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
                   '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
                   style: const TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.w700),
@@ -180,7 +241,7 @@ class _MesecCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Otkazano', style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(_StatTr.tr('otkazano'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
                   '${stats.otkazano}',
                   style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),

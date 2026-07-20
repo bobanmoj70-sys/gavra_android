@@ -4,8 +4,192 @@ import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart'
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:gavra_android/theme.dart';
 
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_format_utils.dart';
+
+class _GorTr {
+  static const Map<String, Map<String, String>> _t = {
+    'gorivo': {'sr': 'Gorivo', 'en': 'Fuel', 'ru': 'Топливо', 'de': 'Kraftstoff'},
+    'nemaRedaZaDopunu': {
+      'sr': 'Nema reda za dopunu. Prvo dodaj početne podatke.',
+      'en': 'No record to refill. First add initial data.',
+      'ru': 'Нет записи для заправки. Сначала добавьте начальные данные.',
+      'de': 'Kein Eintrag zum Auffüllen. Zuerst Anfangsdaten hinzufügen.',
+    },
+    'dodajGorivo': {'sr': 'Dodaj gorivo', 'en': 'Add fuel', 'ru': 'Добавить топливо', 'de': 'Kraftstoff hinzufügen'},
+    'trenutnoKapacitet': {
+      'sr': 'Trenutno',
+      'en': 'Current',
+      'ru': 'Текущее',
+      'de': 'Aktuell',
+    },
+    'kapacitet': {'sr': 'kapacitet', 'en': 'capacity', 'ru': 'ёмкость', 'de': 'Kapazität'},
+    'kolikoLitaraJeDopunjeno': {
+      'sr': 'Koliko litara je dopunjeno (L)',
+      'en': 'How many liters were refilled (L)',
+      'ru': 'Сколько литров было заправлено (л)',
+      'de': 'Wie viele Liter wurden nachgefüllt (L)',
+    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'unesiPozitivanBrojLitara': {
+      'sr': 'Unesi pozitivan broj litara.',
+      'en': 'Enter a positive number of liters.',
+      'ru': 'Введите положительное число литров.',
+      'de': 'Geben Sie eine positive Literzahl ein.',
+    },
+    'prekoracenjeKapaciteta': {
+      'sr': 'Prekoračenje kapaciteta',
+      'en': 'Capacity exceeded',
+      'ru': 'Превышение ёмкости',
+      'de': 'Kapazität überschritten',
+    },
+    'novoStanjeQPremasujeKapacitet': {
+      'sr': 'Novo stanje %NOVO% L premašuje kapacitet %KAP% L.\n\nIpak dodati?',
+      'en': 'New level %NOVO% L exceeds capacity %KAP% L.\n\nAdd anyway?',
+      'ru': 'Новый уровень %NOVO% л превышает ёмкость %KAP% л.\n\nВсё равно добавить?',
+      'de': 'Neuer Stand %NOVO% L überschreitet die Kapazität %KAP% L.\n\nTrotzdem hinzufügen?',
+    },
+    'ne': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein'},
+    'da': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen'},
+    'gorivoDodatoNovoStanje': {
+      'sr': 'Gorivo dodato. Novo stanje: %NOVO% L',
+      'en': 'Fuel added. New level: %NOVO% L',
+      'ru': 'Топливо добавлено. Новый уровень: %NOVO% л',
+      'de': 'Kraftstoff hinzugefügt. Neuer Stand: %NOVO% L',
+    },
+    'greskaPriDodavanjuGoriva': {
+      'sr': 'Greška pri dodavanju goriva.',
+      'en': 'Error adding fuel.',
+      'ru': 'Ошибка при добавлении топлива.',
+      'de': 'Fehler beim Hinzufügen von Kraftstoff.',
+    },
+    'nemaRedaZaIzmenu': {
+      'sr': 'Nema reda za izmenu. Prvo dodaj početne podatke.',
+      'en': 'No record to edit. First add initial data.',
+      'ru': 'Нет записи для изменения. Сначала добавьте начальные данные.',
+      'de': 'Kein Eintrag zum Bearbeiten. Zuerst Anfangsdaten hinzufügen.',
+    },
+    'urediGorivo': {'sr': 'Uredi gorivo', 'en': 'Edit fuel', 'ru': 'Изменить топливо', 'de': 'Kraftstoff bearbeiten'},
+    'kapacitetRezervoaraL': {
+      'sr': 'Kapacitet rezervoara (L)',
+      'en': 'Tank capacity (L)',
+      'ru': 'Ёмкость бака (л)',
+      'de': 'Tankkapazität (L)',
+    },
+    'alarmNivoL': {
+      'sr': 'Alarm nivo (L)',
+      'en': 'Alarm level (L)',
+      'ru': 'Уровень тревоги (л)',
+      'de': 'Alarmstand (L)'
+    },
+    'brojacPistoljaL': {
+      'sr': 'Brojač pištolja (L)',
+      'en': 'Nozzle counter (L)',
+      'ru': 'Счётчик пистолета (л)',
+      'de': 'Zapfpistolenzähler (L)',
+    },
+    'trenutnoStanjeSeRacunaAutomatski': {
+      'sr': 'Trenutno stanje se računa automatski u bazi: kapacitet - brojač.',
+      'en': 'Current level is calculated automatically in the database: capacity - counter.',
+      'ru': 'Текущий уровень рассчитывается автоматически в базе: ёмкость - счётчик.',
+      'de': 'Der aktuelle Stand wird automatisch in der Datenbank berechnet: Kapazität - Zähler.',
+    },
+    'cenaPoLitru': {
+      'sr': 'Cena po litru (RSD)',
+      'en': 'Price per liter (RSD)',
+      'ru': 'Цена за литр (RSD)',
+      'de': 'Preis pro Liter (RSD)'
+    },
+    'dugRsd': {'sr': 'Dug (RSD)', 'en': 'Debt (RSD)', 'ru': 'Долг (RSD)', 'de': 'Schulden (RSD)'},
+    'vrednostiNeMoguBitiNegativne': {
+      'sr': 'Vrednosti ne mogu biti negativne.',
+      'en': 'Values cannot be negative.',
+      'ru': 'Значения не могут быть отрицательными.',
+      'de': 'Werte dürfen nicht negativ sein.',
+    },
+    'podaciOGorivuSuSacuvani': {
+      'sr': 'Podaci o gorivu su sačuvani.',
+      'en': 'Fuel data saved.',
+      'ru': 'Данные о топливе сохранены.',
+      'de': 'Kraftstoffdaten gespeichert.',
+    },
+    'greskaPriCuvanjuPodataka': {
+      'sr': 'Greška pri čuvanju podataka.',
+      'en': 'Error saving data.',
+      'ru': 'Ошибка при сохранении данных.',
+      'de': 'Fehler beim Speichern der Daten.',
+    },
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'obaveznoPolje': {'sr': 'Obavezno polje', 'en': 'Required field', 'ru': 'Обязательное поле', 'de': 'Pflichtfeld'},
+    'unesiBroj': {'sr': 'Unesi broj', 'en': 'Enter a number', 'ru': 'Введите число', 'de': 'Zahl eingeben'},
+    'pocetniPodaciZaGorivoSuKreirani': {
+      'sr': 'Početni podaci za gorivo su kreirani.',
+      'en': 'Initial fuel data has been created.',
+      'ru': 'Начальные данные о топливе созданы.',
+      'de': 'Anfängliche Kraftstoffdaten wurden erstellt.',
+    },
+    'neuspesnoKreiranjePocetnihPodataka': {
+      'sr': 'Neuspešno kreiranje početnih podataka.',
+      'en': 'Failed to create initial data.',
+      'ru': 'Не удалось создать начальные данные.',
+      'de': 'Erstellen der Anfangsdaten fehlgeschlagen.',
+    },
+    'dodavanjeDots': {'sr': 'Dodavanje...', 'en': 'Adding...', 'ru': 'Добавление...', 'de': 'Wird hinzugefügt...'},
+    'nemaPodatakaOGorivuUBazi': {
+      'sr': 'Nema podataka o gorivu u bazi',
+      'en': 'No fuel data in the database',
+      'ru': 'Нет данных о топливе в базе',
+      'de': 'Keine Kraftstoffdaten in der Datenbank',
+    },
+    'kreiranjeDots': {'sr': 'Kreiranje...', 'en': 'Creating...', 'ru': 'Создание...', 'de': 'Wird erstellt...'},
+    'dodajPocetnePodatke': {
+      'sr': 'Dodaj početne podatke',
+      'en': 'Add initial data',
+      'ru': 'Добавить начальные данные',
+      'de': 'Anfangsdaten hinzufügen',
+    },
+    'alarmNivoRezervoara': {
+      'sr': '🔔 Alarm nivo rezervoara',
+      'en': '🔔 Tank alarm level',
+      'ru': '🔔 Уровень тревоги бака',
+      'de': '🔔 Tank-Alarmstand',
+    },
+    'stanjeBrojacaPistolja': {
+      'sr': '🔫 Stanje brojača pištolja',
+      'en': '🔫 Nozzle counter state',
+      'ru': '🔫 Состояние счётчика пистолета',
+      'de': '🔫 Zapfpistolenzählerstand',
+    },
+    'cenaPoLitruEmoji': {
+      'sr': '💰 Cena po litru',
+      'en': '💰 Price per liter',
+      'ru': '💰 Цена за литр',
+      'de': '💰 Preis pro Liter',
+    },
+    'dugIznos': {
+      'sr': '💳 Dug (iznos)',
+      'en': '💳 Debt (amount)',
+      'ru': '💳 Долг (сумма)',
+      'de': '💳 Schulden (Betrag)'
+    },
+    'uneziIzmeniPodatke': {
+      'sr': 'Unesi / izmeni podatke',
+      'en': 'Enter / edit data',
+      'ru': 'Ввести / изменить данные',
+      'de': 'Daten eingeben / bearbeiten',
+    },
+    'maloGoriva': {'sr': '⚠️ MALO GORIVA', 'en': '⚠️ LOW FUEL', 'ru': '⚠️ МАЛО ТОПЛИВА', 'de': '⚠️ WENIG KRAFTSTOFF'},
+    'odKapaciteta': {'sr': 'od', 'en': 'of', 'ru': 'из', 'de': 'von'},
+    'kapacitetaL': {'sr': 'kapaciteta', 'en': 'capacity', 'ru': 'ёмкости', 'de': 'Kapazität'},
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 class V3GorivoScreen extends StatefulWidget {
   const V3GorivoScreen({super.key});
@@ -30,7 +214,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
         stanje?.id.isNotEmpty == true ? stanje!.id : (rezervoar?.id.isNotEmpty == true ? rezervoar!.id : null);
     if (id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nema reda za dopunu. Prvo dodaj početne podatke.')),
+        SnackBar(content: Text(_GorTr.tr('nemaRedaZaDopunu'))),
       );
       return;
     }
@@ -60,24 +244,24 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Dodaj gorivo',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      Text(
+                        _GorTr.tr('dodajGorivo'),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Trenutno: ${V3FormatUtils.formatGorivo(trenutno)} L / kapacitet ${V3FormatUtils.formatGorivo(kapacitet)} L',
+                        '${_GorTr.tr('trenutnoKapacitet')}: ${V3FormatUtils.formatGorivo(trenutno)} L / ${_GorTr.tr('kapacitet')} ${V3FormatUtils.formatGorivo(kapacitet)} L',
                         style: const TextStyle(color: Colors.white54, fontSize: 12),
                       ),
                       const SizedBox(height: 12),
-                      _fuelField(controller: dodatoCtrl, label: 'Koliko litara je dopunjeno (L)'),
+                      _fuelField(controller: dodatoCtrl, label: _GorTr.tr('kolikoLitaraJeDopunjeno')),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
                               onPressed: _isDodavanjeGoriva ? null : () => Navigator.of(context).pop(),
-                              child: const Text('Otkaži'),
+                              child: Text(_GorTr.tr('otkazi')),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -91,7 +275,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                       final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
                                       if (dodato <= 0) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Unesi pozitivan broj litara.')),
+                                          SnackBar(content: Text(_GorTr.tr('unesiPozitivanBrojLitara'))),
                                         );
                                         return;
                                       }
@@ -102,21 +286,23 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                           context: context,
                                           builder: (_) => AlertDialog(
                                             backgroundColor: const Color(0xFF1D1D1D),
-                                            title: const Text('Prekoračenje kapaciteta',
-                                                style: TextStyle(color: Colors.white)),
+                                            title: Text(_GorTr.tr('prekoracenjeKapaciteta'),
+                                                style: const TextStyle(color: Colors.white)),
                                             content: Text(
-                                              'Novo stanje ${V3FormatUtils.formatGorivo(novoStanje)} L premašuje kapacitet ${V3FormatUtils.formatGorivo(kapacitet)} L.\n\nIpak dodati?',
+                                              _GorTr.tr('novoStanjeQPremasujeKapacitet')
+                                                  .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
+                                                  .replaceAll('%KAP%', V3FormatUtils.formatGorivo(kapacitet)),
                                               style: const TextStyle(color: Colors.white70),
                                             ),
                                             actions: [
                                               TextButton(
                                                 onPressed: () => Navigator.pop(context, false),
-                                                child: const Text('Ne'),
+                                                child: Text(_GorTr.tr('ne')),
                                               ),
                                               ElevatedButton(
                                                 onPressed: () => Navigator.pop(context, true),
                                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                                                child: const Text('Da'),
+                                                child: Text(_GorTr.tr('da')),
                                               ),
                                             ],
                                           ),
@@ -134,8 +320,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                         SnackBar(
                                           content: Text(
                                             success
-                                                ? 'Gorivo dodato. Novo stanje: ${V3FormatUtils.formatGorivo(novoStanje)} L'
-                                                : 'Greška pri dodavanju goriva.',
+                                                ? _GorTr.tr('gorivoDodatoNovoStanje')
+                                                    .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
+                                                : _GorTr.tr('greskaPriDodavanjuGoriva'),
                                           ),
                                         ),
                                       );
@@ -150,7 +337,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                       height: 18,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                     )
-                                  : const Text('Dodaj'),
+                                  : Text(_GorTr.tr('dodaj')),
                             ),
                           ),
                         ],
@@ -171,7 +358,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
         stanje?.id.isNotEmpty == true ? stanje!.id : (rezervoar?.id.isNotEmpty == true ? rezervoar!.id : null);
     if (id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nema reda za izmenu. Prvo dodaj početne podatke.')),
+        SnackBar(content: Text(_GorTr.tr('nemaRedaZaIzmenu'))),
       );
       return;
     }
@@ -213,28 +400,28 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Uredi gorivo',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      Text(
+                        _GorTr.tr('urediGorivo'),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 12),
-                      _fuelField(controller: kapacitetCtrl, label: 'Kapacitet rezervoara (L)'),
-                      _fuelField(controller: alarmCtrl, label: 'Alarm nivo (L)'),
-                      _fuelField(controller: brojacCtrl, label: 'Brojač pištolja (L)'),
-                      const Text(
-                        'Trenutno stanje se računa automatski u bazi: kapacitet - brojač.',
-                        style: TextStyle(color: Colors.white60, fontSize: 12),
+                      _fuelField(controller: kapacitetCtrl, label: _GorTr.tr('kapacitetRezervoaraL')),
+                      _fuelField(controller: alarmCtrl, label: _GorTr.tr('alarmNivoL')),
+                      _fuelField(controller: brojacCtrl, label: _GorTr.tr('brojacPistoljaL')),
+                      Text(
+                        _GorTr.tr('trenutnoStanjeSeRacunaAutomatski'),
+                        style: const TextStyle(color: Colors.white60, fontSize: 12),
                       ),
                       const SizedBox(height: 8),
-                      _fuelField(controller: cenaCtrl, label: 'Cena po litru (RSD)'),
-                      _fuelField(controller: dugCtrl, label: 'Dug (RSD)'),
+                      _fuelField(controller: cenaCtrl, label: _GorTr.tr('cenaPoLitru')),
+                      _fuelField(controller: dugCtrl, label: _GorTr.tr('dugRsd')),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
                               onPressed: _isSavingFuelData ? null : () => Navigator.of(context).pop(),
-                              child: const Text('Otkaži'),
+                              child: Text(_GorTr.tr('otkazi')),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -253,7 +440,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
                                       if (kapacitet < 0 || alarm < 0 || brojac < 0 || cena < 0 || dug < 0) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Vrednosti ne mogu biti negativne.')),
+                                          SnackBar(content: Text(_GorTr.tr('vrednostiNeMoguBitiNegativne'))),
                                         );
                                         return;
                                       }
@@ -274,7 +461,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            success ? 'Podaci o gorivu su sačuvani.' : 'Greška pri čuvanju podataka.',
+                                            success
+                                                ? _GorTr.tr('podaciOGorivuSuSacuvani')
+                                                : _GorTr.tr('greskaPriCuvanjuPodataka'),
                                           ),
                                         ),
                                       );
@@ -289,7 +478,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                       height: 18,
                                       child: CircularProgressIndicator(strokeWidth: 2),
                                     )
-                                  : const Text('Sačuvaj'),
+                                  : Text(_GorTr.tr('sacuvaj')),
                             ),
                           ),
                         ],
@@ -319,10 +508,10 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
         ),
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
-            return 'Obavezno polje';
+            return _GorTr.tr('obaveznoPolje');
           }
           if (_toDoubleOrNull(value) == null) {
-            return 'Unesi broj';
+            return _GorTr.tr('unesiBroj');
           }
           return null;
         },
@@ -341,7 +530,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          success ? 'Početni podaci za gorivo su kreirani.' : 'Neuspešno kreiranje početnih podataka.',
+          success ? _GorTr.tr('pocetniPodaciZaGorivoSuKreirani') : _GorTr.tr('neuspesnoKreiranjePocetnihPodataka'),
         ),
       ),
     );
@@ -395,9 +584,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
             ),
           ),
         ),
-        title: const Text(
-          'Gorivo',
-          style: TextStyle(
+        title: Text(
+          _GorTr.tr('gorivo'),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -447,7 +636,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.add_circle_outline),
-                label: Text(_isDodavanjeGoriva ? 'Dodavanje...' : 'Dodaj gorivo'),
+                label: Text(_isDodavanjeGoriva ? _GorTr.tr('dodavanjeDots') : _GorTr.tr('dodajGorivo')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
@@ -460,7 +649,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
               padding: EdgeInsets.symmetric(vertical: isCompact ? 16 : 24),
               child: Column(
                 children: [
-                  const Text('Nema podataka o gorivu u bazi', style: TextStyle(color: Colors.white70)),
+                  Text(_GorTr.tr('nemaPodatakaOGorivuUBazi'), style: const TextStyle(color: Colors.white70)),
                   SizedBox(height: isCompact ? 8 : 12),
                   ElevatedButton.icon(
                     onPressed: _isCreatingInitialData ? null : _createInitialData,
@@ -471,7 +660,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.add),
-                    label: Text(_isCreatingInitialData ? 'Kreiranje...' : 'Dodaj početne podatke'),
+                    label: Text(_isCreatingInitialData ? _GorTr.tr('kreiranjeDots') : _GorTr.tr('dodajPocetnePodatke')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _accent,
                       foregroundColor: Colors.black,
@@ -484,30 +673,30 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
           _V3DetaljiCard(
             children: [
               _gorivoDetaljiRow(
-                '🔔 Alarm nivo rezervoara',
+                _GorTr.tr('alarmNivoRezervoara'),
                 hasFuelData ? '${V3FormatUtils.formatGorivo(alarmNivo)} L' : '-',
                 hasFuelData ? (ispodAlarma ? Colors.redAccent : Colors.white54) : Colors.white70,
               ),
               if (stanje != null) ...[
                 _gorivoDetaljiRow(
-                  '🔫 Stanje brojača pištolja',
+                  _GorTr.tr('stanjeBrojacaPistolja'),
                   '${V3FormatUtils.formatGorivo(stanje.stanjeBrojacPistolj)} L',
                   Colors.white70,
                 ),
                 _gorivoDetaljiRow(
-                  '💰 Cena po litru',
+                  _GorTr.tr('cenaPoLitruEmoji'),
                   '${stanje.cenaPoLitru.toStringAsFixed(2)} RSD',
                   Colors.amberAccent,
                 ),
                 _gorivoDetaljiRow(
-                  '💳 Dug (iznos)',
+                  _GorTr.tr('dugIznos'),
                   '${stanje.dugIznos.toStringAsFixed(2)} RSD',
                   stanje.dugIznos > 0 ? Colors.redAccent : Colors.greenAccent,
                 ),
               ] else ...[
-                _gorivoDetaljiRow('🔫 Stanje brojača pištolja', '-', Colors.white70),
-                _gorivoDetaljiRow('💰 Cena po litru', '-', Colors.white70),
-                _gorivoDetaljiRow('💳 Dug (iznos)', '-', Colors.white70),
+                _gorivoDetaljiRow(_GorTr.tr('stanjeBrojacaPistolja'), '-', Colors.white70),
+                _gorivoDetaljiRow(_GorTr.tr('cenaPoLitruEmoji'), '-', Colors.white70),
+                _gorivoDetaljiRow(_GorTr.tr('dugIznos'), '-', Colors.white70),
               ],
             ],
           ),
@@ -518,7 +707,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
               child: ElevatedButton.icon(
                 onPressed: _isSavingFuelData ? null : () => _openEditFuelDataSheet(rezervoar: r, stanje: stanje),
                 icon: const Icon(Icons.edit),
-                label: const Text('Unesi / izmeni podatke'),
+                label: Text(_GorTr.tr('uneziIzmeniPodatke')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accent,
                   foregroundColor: Colors.black,
@@ -607,9 +796,9 @@ class _V3BrojcanikCard extends StatelessWidget {
                   backgroundColor: Colors.red.withValues(alpha: 0.15),
                   borderRadiusGeometry: BorderRadius.circular(12),
                   border: Border.all(color: Colors.red),
-                  child: const Text(
-                    '⚠️ MALO GORIVA',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                  child: Text(
+                    _GorTr.tr('maloGoriva'),
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -627,7 +816,7 @@ class _V3BrojcanikCard extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                'od ${V3FormatUtils.formatGorivo(kapacitet)} L kapaciteta',
+                '${_GorTr.tr('odKapaciteta')} ${V3FormatUtils.formatGorivo(kapacitet)} L ${_GorTr.tr('kapacitetaL')}',
                 style: TextStyle(color: Colors.white54, fontSize: isCompact ? 13 : 14),
               ),
             ),

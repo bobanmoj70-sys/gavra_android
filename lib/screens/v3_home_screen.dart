@@ -21,6 +21,7 @@ import '../services/v3/v3_racun_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -103,6 +104,161 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
   static const Set<String> _adminUserIds = <String>{
     V3AppUpdateService.bojanUserId,
   };
+
+  // Prevodi za dijalog "Dodaj rezervaciju" (SR/EN/RU/DE).
+  static const Map<String, Map<String, String>> _t = {
+    'dodajRezervaciju': {
+      'sr': 'Dodaj Rezervaciju',
+      'en': 'Add Reservation',
+      'ru': 'Добавить резервацию',
+      'de': 'Reservierung hinzufügen',
+    },
+    'termin': {'sr': 'Termin', 'en': 'Appointment', 'ru': 'Время', 'de': 'Termin'},
+    'vreme': {'sr': '⏰ Vreme:', 'en': '⏰ Time:', 'ru': '⏰ Время:', 'de': '⏰ Zeit:'},
+    'grad': {'sr': '📍 Grad:', 'en': '📍 City:', 'ru': '📍 Город:', 'de': '📍 Stadt:'},
+    'dan': {'sr': '📅 Dan:', 'en': '📅 Day:', 'ru': '📅 День:', 'de': '📅 Tag:'},
+    'izaberiPutnika': {
+      'sr': 'Izaberi putnika',
+      'en': 'Select passenger',
+      'ru': 'Выберите пассажира',
+      'de': 'Fahrgast auswählen',
+    },
+    'pretrazi': {'sr': 'Pretraži...', 'en': 'Search...', 'ru': 'Поиск...', 'de': 'Suchen...'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'izaberitePutnika': {
+      'sr': '⚠️ Izaberite putnika',
+      'en': '⚠️ Select a passenger',
+      'ru': '⚠️ Выберите пассажира',
+      'de': '⚠️ Bitte Fahrgast auswählen',
+    },
+    'putnikNemaId': {
+      'sr': '⚠️ Putnik nema validan ID',
+      'en': '⚠️ Passenger has no valid ID',
+      'ru': '⚠️ У пассажира нет действительного ID',
+      'de': '⚠️ Fahrgast hat keine gültige ID',
+    },
+    'rezervacijaDodana': {
+      'sr': '✅ Rezervacija dodana',
+      'en': '✅ Reservation added',
+      'ru': '✅ Резервация добавлена',
+      'de': '✅ Reservierung hinzugefügt',
+    },
+    'greskaPrefix': {'sr': '❌ Greška:', 'en': '❌ Error:', 'ru': '❌ Ошибка:', 'de': '❌ Fehler:'},
+    'dodaje': {'sr': 'Dodaje...', 'en': 'Adding...', 'ru': 'Добавление...', 'de': 'Wird hinzugefügt...'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen'},
+    'noviRacun': {'sr': 'Novi račun', 'en': 'New invoice', 'ru': 'Новый счет', 'de': 'Neue Rechnung'},
+    'imePrezimeKupca': {
+      'sr': 'Ime i prezime kupca',
+      'en': 'Customer full name',
+      'ru': 'ФИО покупателя',
+      'de': 'Name des Kunden',
+    },
+    'adresaKupca': {
+      'sr': 'Adresa kupca',
+      'en': 'Customer address',
+      'ru': 'Адрес покупателя',
+      'de': 'Adresse des Kunden'
+    },
+    'opisUsluge': {
+      'sr': 'Opis usluge',
+      'en': 'Service description',
+      'ru': 'Описание услуги',
+      'de': 'Leistungsbeschreibung'
+    },
+    'cena': {'sr': 'Cena', 'en': 'Price', 'ru': 'Цена', 'de': 'Preis'},
+    'kolicina': {'sr': 'Količina', 'en': 'Quantity', 'ru': 'Количество', 'de': 'Menge'},
+    'jedinicaMere': {'sr': 'Jedinica mere', 'en': 'Unit of measure', 'ru': 'Единица измерения', 'de': 'Maßeinheit'},
+    'jmUsluga': {'sr': 'usluga', 'en': 'service', 'ru': 'услуга', 'de': 'Leistung'},
+    'jmDan': {'sr': 'dan', 'en': 'day', 'ru': 'день', 'de': 'Tag'},
+    'jmKom': {'sr': 'kom', 'en': 'pcs', 'ru': 'шт', 'de': 'Stk'},
+    'jmSat': {'sr': 'sat', 'en': 'hour', 'ru': 'час', 'de': 'Stunde'},
+    'jmKm': {'sr': 'km', 'en': 'km', 'ru': 'км', 'de': 'km'},
+    'mesecIzdavanja': {
+      'sr': 'Mesec izdavanja:',
+      'en': 'Issue month:',
+      'ru': 'Месяц выставления:',
+      'de': 'Ausstellungsmonat:'
+    },
+    'izaberiMesec': {'sr': 'Izaberi mesec', 'en': 'Select month', 'ru': 'Выберите месяц', 'de': 'Monat auswählen'},
+    'datumIzdavanja': {
+      'sr': 'Datum izdavanja:',
+      'en': 'Issue date:',
+      'ru': 'Дата выставления:',
+      'de': 'Ausstellungsdatum:'
+    },
+    'popuniteImeOpis': {
+      'sr': '⚠️ Popunite ime i opis',
+      'en': '⚠️ Fill in name and description',
+      'ru': '⚠️ Заполните имя и описание',
+      'de': '⚠️ Name und Beschreibung ausfüllen',
+    },
+    'uneseiteIspravnuCenu': {
+      'sr': '⚠️ Unesite ispravnu cenu',
+      'en': '⚠️ Enter a valid price',
+      'ru': '⚠️ Введите правильную цену',
+      'de': '⚠️ Gültigen Preis eingeben',
+    },
+    'stampaj': {'sr': 'Štampaj', 'en': 'Print', 'ru': 'Печать', 'de': 'Drucken'},
+    'stampajSpisak': {
+      'sr': 'Štampaj spisak',
+      'en': 'Print list',
+      'ru': 'Печать списка',
+      'de': 'Liste drucken',
+    },
+    'racunPostojeci': {
+      'sr': 'Račun - postojeći',
+      'en': 'Invoice - existing',
+      'ru': 'Счёт - существующий',
+      'de': 'Rechnung - vorhanden',
+    },
+    'racunNovi': {
+      'sr': 'Račun - novi',
+      'en': 'Invoice - new',
+      'ru': 'Счёт - новый',
+      'de': 'Rechnung - neu',
+    },
+    'racunFirma': {'sr': 'Račun — firma', 'en': 'Invoice — company', 'ru': 'Счёт — компания', 'de': 'Rechnung — Firma'},
+    'novaFirma': {'sr': 'Nova firma?', 'en': 'New company?', 'ru': 'Новая компания?', 'de': 'Neue Firma?'},
+    'nemaRezultata': {'sr': 'Nema rezultata', 'en': 'No results', 'ru': 'Нет результатов', 'de': 'Keine Ergebnisse'},
+    'adresaOpciono': {
+      'sr': 'Adresa (opciono)',
+      'en': 'Address (optional)',
+      'ru': 'Адрес (необязательно)',
+      'de': 'Adresse (optional)',
+    },
+    'nemaFirmiUBazi': {
+      'sr': '⚠️ Nema firmi u bazi (v3_racuni je prazan)',
+      'en': '⚠️ No companies in database (v3_racuni is empty)',
+      'ru': '⚠️ Нет компаний в базе (v3_racuni пуст)',
+      'de': '⚠️ Keine Firmen in der Datenbank (v3_racuni ist leer)',
+    },
+    'odaberitePutnika': {
+      'sr': '⚠️ Odaberite putnika',
+      'en': '⚠️ Select a passenger',
+      'ru': '⚠️ Выберите пассажира',
+      'de': '⚠️ Fahrgast auswählen',
+    },
+    'sekcijaFirma': {'sr': 'FIRMA', 'en': 'COMPANY', 'ru': 'КОМПАНИЯ', 'de': 'FIRMA'},
+    'sekcijaPutnik': {'sr': 'PUTNIK', 'en': 'PASSENGER', 'ru': 'ПАССАЖИР', 'de': 'FAHRGAST'},
+    'sekcijaMesecIDatumi': {
+      'sr': 'MESEC I DATUMI',
+      'en': 'MONTH AND DATES',
+      'ru': 'МЕСЯЦ И ДАТЫ',
+      'de': 'MONAT UND DATEN'
+    },
+    'sekcijaIznos': {'sr': 'IZNOS', 'en': 'AMOUNT', 'ru': 'СУММА', 'de': 'BETRAG'},
+    'dodajNovuFirmu': {
+      'sr': 'Dodaj novu firmu',
+      'en': 'Add new company',
+      'ru': 'Добавить новую компанию',
+      'de': 'Neue Firma hinzufügen',
+    },
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
 
   bool _isLoading = true;
   String _selectedDay = 'Ponedeljak';
@@ -404,9 +560,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     border: Border(bottom: BorderSide(color: Theme.of(ctx).glassBorder)),
                     child: Row(
                       children: [
-                        const Expanded(
-                          child: Text('Dodaj Rezervaciju',
-                              style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
+                        Expanded(
+                          child: Text(_tr('dodajRezervaciju'),
+                              style: const TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(dialogCtx),
@@ -438,12 +594,12 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Termin',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                Text(_tr('termin'),
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
-                                _buildStatRow('⏰ Vreme:', _selectedVreme),
-                                _buildStatRow('📍 Grad:', _selectedGrad),
-                                _buildStatRow('📅 Dan:', _selectedDay),
+                                _buildStatRow(_tr('vreme'), _selectedVreme),
+                                _buildStatRow(_tr('grad'), _selectedGrad),
+                                _buildStatRow(_tr('dan'), _selectedDay),
                               ],
                             ),
                           ),
@@ -452,7 +608,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           DropdownButtonFormField2<V3Putnik>(
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Izaberi putnika',
+                              labelText: _tr('izaberiPutnika'),
                               prefixIcon: const Icon(Icons.person_search),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               filled: true,
@@ -475,7 +631,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   decoration: InputDecoration(
                                     isDense: true,
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    hintText: 'Pretraži...',
+                                    hintText: _tr('pretrazi'),
                                     prefixIcon: const Icon(Icons.search, size: 20),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                   ),
@@ -522,7 +678,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                         Expanded(
                           child: V3ButtonUtils.outlinedButton(
                             onPressed: () => Navigator.pop(dialogCtx),
-                            text: 'Otkaži',
+                            text: _tr('otkazi'),
                             borderColor: Colors.red,
                             foregroundColor: Colors.white,
                           ),
@@ -535,11 +691,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 ? null
                                 : () async {
                                     if (selectedPutnik == null) {
-                                      V3AppSnackBar.error(ctx, '⚠️ Izaberite putnika');
+                                      V3AppSnackBar.error(ctx, _tr('izaberitePutnika'));
                                       return;
                                     }
                                     if (selectedPutnik!.id.isEmpty) {
-                                      V3AppSnackBar.error(ctx, '⚠️ Putnik nema validan ID');
+                                      V3AppSnackBar.error(ctx, _tr('putnikNemaId'));
                                       return;
                                     }
                                     setS(() => isLoading = true);
@@ -581,13 +737,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
                                       if (!dialogCtx.mounted) return;
                                       Navigator.pop(dialogCtx);
-                                      if (mounted) V3AppSnackBar.success(context, '✅ Rezervacija dodana');
+                                      if (mounted) V3AppSnackBar.success(context, _tr('rezervacijaDodana'));
                                     } catch (e) {
                                       setS(() => isLoading = false);
-                                      if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Greška: $e');
+                                      if (ctx.mounted) V3AppSnackBar.error(ctx, '${_tr('greskaPrefix')} $e');
                                     }
                                   },
-                            text: isLoading ? 'Dodaje...' : 'Dodaj',
+                            text: isLoading ? _tr('dodaje') : _tr('dodaj'),
                             icon: Icons.add,
                             backgroundColor: Colors.green.withValues(alpha: 0.7),
                             foregroundColor: Colors.white,
@@ -688,7 +844,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 value: selected,
                 isExpanded: true,
                 isDense: true,
-                hint: const Text('Adresa (opciono)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                hint: Text(_tr('adresaOpciono'), style: const TextStyle(fontSize: 13, color: Colors.grey)),
                 items: items,
                 onChanged: onChanged,
               ),
@@ -727,7 +883,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       ..sort((a, b) => (a['firma_naziv'] ?? '').toString().compareTo((b['firma_naziv'] ?? '').toString()));
 
     if (firme.isEmpty) {
-      V3AppSnackBar.warning(context, '⚠️ Nema firmi u bazi (v3_racuni je prazan)');
+      V3AppSnackBar.warning(context, _tr('nemaFirmiUBazi'));
       return;
     }
 
@@ -761,21 +917,21 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
           backgroundColor: const Color(0xFF1A2035),
-          title: const Text('Novi račun', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: Text(_tr('noviRacun'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _dialogField(imeCtrl, 'Ime i prezime kupca'),
+                _dialogField(imeCtrl, _tr('imePrezimeKupca')),
                 const SizedBox(height: 8),
-                _dialogField(adresaCtrl, 'Adresa kupca'),
+                _dialogField(adresaCtrl, _tr('adresaKupca')),
                 const SizedBox(height: 8),
-                _dialogField(opisCtrl, 'Opis usluge'),
+                _dialogField(opisCtrl, _tr('opisUsluge')),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: _dialogField(iznosCtrl, 'Cena', numeric: true)),
+                  Expanded(child: _dialogField(iznosCtrl, _tr('cena'), numeric: true)),
                   const SizedBox(width: 8),
-                  Expanded(child: _dialogField(kolicinaCtrl, 'Količina', numeric: true)),
+                  Expanded(child: _dialogField(kolicinaCtrl, _tr('kolicina'), numeric: true)),
                 ]),
                 const SizedBox(height: 8),
                 // Jedinica mjere
@@ -783,26 +939,26 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   value: jedMera,
                   dropdownColor: const Color(0xFF1A2035),
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Jedinica mere',
-                    labelStyle: TextStyle(color: Colors.white54),
-                    enabledBorder: OutlineInputBorder(
+                  decoration: InputDecoration(
+                    labelText: _tr('jedinicaMere'),
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    enabledBorder: const OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.white30),
                     ),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'usluga', child: Text('usluga')),
-                    DropdownMenuItem(value: 'dan', child: Text('dan')),
-                    DropdownMenuItem(value: 'kom', child: Text('kom')),
-                    DropdownMenuItem(value: 'sat', child: Text('sat')),
-                    DropdownMenuItem(value: 'km', child: Text('km')),
+                  items: [
+                    DropdownMenuItem(value: 'usluga', child: Text(_tr('jmUsluga'))),
+                    DropdownMenuItem(value: 'dan', child: Text(_tr('jmDan'))),
+                    DropdownMenuItem(value: 'kom', child: Text(_tr('jmKom'))),
+                    DropdownMenuItem(value: 'sat', child: Text(_tr('jmSat'))),
+                    DropdownMenuItem(value: 'km', child: Text(_tr('jmKm'))),
                   ],
                   onChanged: (v) => setS(() => jedMera = v ?? 'usluga'),
                 ),
                 const SizedBox(height: 8),
                 // Mesec izdavanja
                 Row(children: [
-                  const Text('Mesec izdavanja:', style: TextStyle(color: Colors.white70)),
+                  Text(_tr('mesecIzdavanja'), style: const TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: V3ButtonUtils.textButton(
@@ -819,7 +975,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             DateTime? privremeniIzbor = initialDate;
                             return AlertDialog(
                               backgroundColor: const Color(0xFF1A2035),
-                              title: const Text('Izaberi mesec', style: TextStyle(color: Colors.white)),
+                              title: Text(_tr('izaberiMesec'), style: const TextStyle(color: Colors.white)),
                               content: SizedBox(
                                 width: double.maxFinite,
                                 child: SingleChildScrollView(
@@ -868,7 +1024,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 const SizedBox(height: 8),
                 // Datum izdavanja
                 Row(children: [
-                  const Text('Datum izdavanja:', style: TextStyle(color: Colors.white70)),
+                  Text(_tr('datumIzdavanja'), style: const TextStyle(color: Colors.white70)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: V3ButtonUtils.textButton(
@@ -892,19 +1048,19 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           actions: [
             V3ButtonUtils.textButton(
               onPressed: () => Navigator.pop(ctx),
-              text: 'Otkaži',
+              text: _tr('otkazi'),
               foregroundColor: Colors.red,
             ),
             V3ButtonUtils.successButton(
               onPressed: () async {
                 if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
-                  V3AppSnackBar.error(ctx, '⚠️ Popunite ime i opis');
+                  V3AppSnackBar.error(ctx, _tr('popuniteImeOpis'));
                   return;
                 }
                 final cena = double.tryParse(iznosCtrl.text.trim()) ?? 0;
                 final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
                 if (cena <= 0) {
-                  V3AppSnackBar.error(ctx, '⚠️ Unesite ispravnu cenu');
+                  V3AppSnackBar.error(ctx, _tr('uneseiteIspravnuCenu'));
                   return;
                 }
 
@@ -927,7 +1083,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   Navigator.pop(ctx);
                 }
               },
-              text: 'Štampaj',
+              text: _tr('stampaj'),
             ),
           ],
         ),
@@ -1309,7 +1465,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: PopupMenuButton<String>(
-                                      tooltip: 'Štampaj',
+                                      tooltip: _tr('stampaj'),
                                       offset: const Offset(0, -150),
                                       onSelected: (val) {
                                         if (val == 'spisak') {
@@ -1341,7 +1497,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               height: V3ContainerUtils.responsiveHeight(context, 16),
                                               child: FittedBox(
                                                 fit: BoxFit.scaleDown,
-                                                child: Text('Štampaj',
+                                                child: Text(_tr('stampaj'),
                                                     style: TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 12,
@@ -1352,29 +1508,29 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                         ),
                                       ),
                                       itemBuilder: (_) => [
-                                        const PopupMenuItem(
+                                        PopupMenuItem(
                                           value: 'spisak',
                                           child: Row(children: [
-                                            Icon(Icons.list_alt, color: Colors.blue),
-                                            SizedBox(width: 8),
-                                            Text('Štampaj spisak'),
+                                            const Icon(Icons.list_alt, color: Colors.blue),
+                                            const SizedBox(width: 8),
+                                            Text(_tr('stampajSpisak')),
                                           ]),
                                         ),
                                         const PopupMenuDivider(),
-                                        const PopupMenuItem(
+                                        PopupMenuItem(
                                           value: 'racun_postojeci',
                                           child: Row(children: [
-                                            Icon(Icons.people, color: Colors.green),
-                                            SizedBox(width: 8),
-                                            Text('Račun - postojeći'),
+                                            const Icon(Icons.people, color: Colors.green),
+                                            const SizedBox(width: 8),
+                                            Text(_tr('racunPostojeci')),
                                           ]),
                                         ),
-                                        const PopupMenuItem(
+                                        PopupMenuItem(
                                           value: 'racun_novi',
                                           child: Row(children: [
-                                            Icon(Icons.person_add, color: Colors.orange),
-                                            SizedBox(width: 8),
-                                            Text('Račun - novi'),
+                                            const Icon(Icons.person_add, color: Colors.orange),
+                                            const SizedBox(width: 8),
+                                            Text(_tr('racunNovi')),
                                           ]),
                                         ),
                                       ],
@@ -1537,6 +1693,11 @@ class _RacunFirmeDialogContent extends StatefulWidget {
 }
 
 class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _V3HomeScreenState._t[key]?[code] ?? _V3HomeScreenState._t[key]?['sr'] ?? key;
+  }
+
   late Map<String, dynamic>? selectedFirma;
   late Map<String, dynamic>? selectedPutnik;
   late final TextEditingController pretragaCtrl;
@@ -1607,12 +1768,12 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
       backgroundColor: bg,
       titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      title: const Row(children: [
-        Icon(Icons.receipt_long, color: Colors.green, size: 22),
-        SizedBox(width: 8),
+      title: Row(children: [
+        const Icon(Icons.receipt_long, color: Colors.green, size: 22),
+        const SizedBox(width: 8),
         Expanded(
-          child:
-              Text('Račun — firma', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+          child: Text(_tr('racunFirma'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
         ),
       ]),
       content: SizedBox(
@@ -1628,12 +1789,12 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                 child: TextButton.icon(
                   onPressed: _showDodajNovuFirmuDialog,
                   icon: const Icon(Icons.add_business, size: 16, color: Colors.green),
-                  label: const Text('Nova firma?', style: TextStyle(color: Colors.green, fontSize: 12)),
+                  label: Text(_tr('novaFirma'), style: const TextStyle(color: Colors.green, fontSize: 12)),
                 ),
               ),
 
               // ── FIRMA ──
-              _sectionLabel('FIRMA'),
+              _sectionLabel(_tr('sekcijaFirma')),
               Container(
                 decoration: BoxDecoration(
                   color: sectionBg,
@@ -1688,13 +1849,13 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               _divider(),
 
               // ── PUTNIK ──
-              _sectionLabel('PUTNIK'),
+              _sectionLabel(_tr('sekcijaPutnik')),
               TextField(
                 controller: pretragaCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 13),
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Pretraži...',
+                  hintText: _tr('pretrazi'),
                   hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
                   prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 18),
                   suffixIcon: pretragaCtrl.text.isNotEmpty
@@ -1725,10 +1886,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                   border: Border.all(color: borderColor),
                 ),
                 child: filtrirani.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('Nema rezultata', style: TextStyle(color: Colors.white38)),
+                          padding: const EdgeInsets.all(16),
+                          child: Text(_tr('nemaRezultata'), style: const TextStyle(color: Colors.white38)),
                         ),
                       )
                     : ListView.builder(
@@ -1776,7 +1937,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               _divider(),
 
               // ── MESEC I DATUMI ──
-              _sectionLabel('MESEC I DATUMI'),
+              _sectionLabel(_tr('sekcijaMesecIDatumi')),
               InkWell(
                 onTap: () async {
                   final meseci = _racunMesecOptions();
@@ -1786,7 +1947,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                     builder: (dialogCtx) {
                       return AlertDialog(
                         backgroundColor: bg,
-                        title: const Text('Izaberi mesec', style: TextStyle(color: Colors.white)),
+                        title: Text(_tr('izaberiMesec'), style: const TextStyle(color: Colors.white)),
                         content: SizedBox(
                           width: double.maxFinite,
                           child: SingleChildScrollView(
@@ -1907,7 +2068,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               _divider(),
 
               // ── IZNOS ──
-              _sectionLabel('IZNOS'),
+              _sectionLabel(_tr('sekcijaIznos')),
               Row(children: [
                 Expanded(
                     child: V3InputUtils.numberField(
@@ -1964,20 +2125,20 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context),
-          text: 'Otkaži',
+          text: _tr('otkazi'),
           foregroundColor: Colors.red,
         ),
         V3ButtonUtils.successButton(
           onPressed: () async {
             final ime = (selectedPutnik?['ime_prezime']?.toString() ?? '').trim();
             if (ime.isEmpty) {
-              V3AppSnackBar.warning(context, '⚠️ Odaberite putnika');
+              V3AppSnackBar.warning(context, _tr('odaberitePutnika'));
               return;
             }
             final cena = double.tryParse(cenaCtrl.text.trim()) ?? 0;
             final dana = double.tryParse(danaCtrl.text.trim()) ?? 1;
             if (cena <= 0) {
-              V3AppSnackBar.warning(context, '⚠️ Unesite ispravnu cenu');
+              V3AppSnackBar.warning(context, _tr('uneseiteIspravnuCenu'));
               return;
             }
 
@@ -2026,7 +2187,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('Dodaj novu firmu',
+        title: Text(_tr('dodajNovuFirmu'),
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
         content: SingleChildScrollView(
           child: Column(

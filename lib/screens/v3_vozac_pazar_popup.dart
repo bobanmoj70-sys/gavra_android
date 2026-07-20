@@ -2,9 +2,52 @@
 
 import '../../services/v3/v3_uplata_pazara_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
+import '../../services/v3_locale_manager.dart';
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_button_utils.dart';
 import '../../utils/v3_input_utils.dart';
+
+class _PopupTr {
+  static const Map<String, Map<String, String>> _t = {
+    'unesiteIspravanIznos': {
+      'sr': 'Unesite ispravan iznos stotino nula',
+      'en': 'Enter a valid amount',
+      'ru': 'Введите правильную сумму',
+      'de': 'Geben Sie einen gültigen Betrag ein'
+    },
+    'pazarEvidentiran': {
+      'sr': 'Pazar je uspesno evidentiran. Hvala.',
+      'en': 'Earnings successfully recorded. Thank you.',
+      'ru': 'Выручка успешно зарегистрирована. Спасибо.',
+      'de': 'Einnahmen erfolgreich erfasst. Danke.'
+    },
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
+    'smenaZavrsenaUnesiteIznos': {
+      'sr': 'Vaša smena za danas je završena. Molimo unesite iznos današnjeg pazara.',
+      'en': 'Your shift for today has ended. Please enter today\'s earnings amount.',
+      'ru': 'Ваша смена на сегодня завершена. Пожалуйста, введите сумму сегодняшней выручки.',
+      'de': 'Ihre Schicht für heute ist beendet. Bitte geben Sie den heutigen Einnahmenbetrag ein.'
+    },
+    'unesitePredatIznos': {
+      'sr': 'Unesite predat iznos',
+      'en': 'Enter handed over amount',
+      'ru': 'Введите переданную сумму',
+      'de': 'Geben Sie den übergebenen Betrag ein'
+    },
+    'belezenje': {'sr': 'Beleženje...', 'en': 'Recording...', 'ru': 'Запись...', 'de': 'Aufzeichnen...'},
+    'sacuvajPazarIZatvori': {
+      'sr': 'Sacuvaj pazar i zatvori',
+      'en': 'Save earnings and close',
+      'ru': 'Сохранить выручку и закрыть',
+      'de': 'Einnahmen speichern und schließen'
+    },
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 class V3VozacPazarPopup extends StatefulWidget {
   final DateTime datum;
@@ -32,7 +75,7 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
 
     final predaoVal = double.tryParse(_iznosController.text.replaceAll(',', '.'));
     if (predaoVal == null || predaoVal < 0) {
-      V3AppSnackBar.warning(context, 'Unesite ispravan iznos stotino nula');
+      V3AppSnackBar.warning(context, _PopupTr.tr('unesiteIspravanIznos'));
       return;
     }
 
@@ -46,10 +89,10 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
         zahtevanUnos: false, // gasimo popup jer je ukucao!
       );
       if (!mounted) return;
-      V3AppSnackBar.success(context, 'Pazar je uspesno evidentiran. Hvala.');
+      V3AppSnackBar.success(context, _PopupTr.tr('pazarEvidentiran'));
       widget.onSaved();
     } catch (e) {
-      V3AppSnackBar.error(context, 'Greška: $e');
+      V3AppSnackBar.error(context, '${_PopupTr.tr('greska')}: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -67,15 +110,15 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
           children: [
             const Icon(Icons.attach_money, size: 64, color: Colors.greenAccent),
             const SizedBox(height: 16),
-            const Text(
-              'Vaša smena za danas je završena. Molimo unesite iznos današnjeg pazara.',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              _PopupTr.tr('smenaZavrsenaUnesiteIznos'),
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             V3InputUtils.numberField(
               controller: _iznosController,
-              label: 'Unesite predat iznos',
+              label: _PopupTr.tr('unesitePredatIznos'),
               suffixText: 'din',
               onChanged: (_) => setState(() {}),
             ),
@@ -84,7 +127,7 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
               width: double.infinity,
               child: V3ButtonUtils.elevatedButton(
                 onPressed: _isSaving ? null : _save,
-                text: _isSaving ? 'Beleženje...' : 'Sacuvaj pazar i zatvori',
+                text: _isSaving ? _PopupTr.tr('belezenje') : _PopupTr.tr('sacuvajPazarIZatvori'),
                 isLoading: _isSaving,
                 backgroundColor: Colors.greenAccent.shade700,
               ),

@@ -6,6 +6,7 @@ import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
@@ -21,6 +22,159 @@ import '../utils/v3_text_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import 'v3_putnik_statistika_screen.dart';
+
+class _PutTr {
+  static const Map<String, Map<String, String>> _t = {
+    'dodajPutnika': {
+      'sr': 'Dodaj putnika',
+      'en': 'Add passenger',
+      'ru': 'Добавить пассажира',
+      'de': 'Passagier hinzufügen'
+    },
+    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle'},
+    'pretraziPutnike': {
+      'sr': 'Pretraži putnike...',
+      'en': 'Search passengers...',
+      'ru': 'Поиск пассажиров...',
+      'de': 'Passagiere suchen...'
+    },
+    'nemaRezultataPretrage': {
+      'sr': 'Nema rezultata pretrage',
+      'en': 'No search results',
+      'ru': 'Нет результатов поиска',
+      'de': 'Keine Suchergebnisse'
+    },
+    'nemaPutnika': {'sr': 'Nema putnika', 'en': 'No passengers', 'ru': 'Нет пассажиров', 'de': 'Keine Passagiere'},
+    'potvrdiBrisanje': {
+      'sr': 'Potvrdi brisanje',
+      'en': 'Confirm deletion',
+      'ru': 'Подтвердите удаление',
+      'de': 'Löschen bestätigen'
+    },
+    'daLiSteSigurniObrisatiPutnika': {
+      'sr':
+          'Da li ste sigurni da želite da obrišete "%s"?\n\n⚠️ VAŽNO:\n• Putnik će biti TRAJNO obrisan\n• Sve vožnje i statistike se brišu\n• Ova akcija je NEPOVRATNA!',
+      'en':
+          'Are you sure you want to delete "%s"?\n\n⚠️ IMPORTANT:\n• The passenger will be PERMANENTLY deleted\n• All rides and statistics will be deleted\n• This action is IRREVERSIBLE!',
+      'ru':
+          'Вы уверены, что хотите удалить "%s"?\n\n⚠️ ВАЖНО:\n• Пассажир будет НАВСЕГДА удален\n• Все поездки и статистика будут удалены\n• Это действие НЕОБРАТИМО!',
+      'de':
+          'Möchten Sie "%s" wirklich löschen?\n\n⚠️ WICHTIG:\n• Der Passagier wird DAUERHAFT gelöscht\n• Alle Fahrten und Statistiken werden gelöscht\n• Diese Aktion ist UNWIDERRUFLICH!',
+    },
+    'obrisi': {'sr': 'Obriši', 'en': 'Delete', 'ru': 'Удалить', 'de': 'Löschen'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
+    'obrisan': {'sr': 'obrisan', 'en': 'deleted', 'ru': 'удален', 'de': 'gelöscht'},
+    'pozovi': {'sr': 'Pozovi', 'en': 'Call', 'ru': 'Позвонить', 'de': 'Anrufen'},
+    'detaljneStatistike': {
+      'sr': 'Detaljne statistike',
+      'en': 'Detailed statistics',
+      'ru': 'Подробная статистика',
+      'de': 'Detaillierte Statistik'
+    },
+    'uredi': {'sr': 'Uredi', 'en': 'Edit', 'ru': 'Изменить', 'de': 'Bearbeiten'},
+    'kontaktiraj': {'sr': 'Kontaktiraj', 'en': 'Contact', 'ru': 'Связаться с', 'de': 'Kontaktieren'},
+    'sms': {'sr': 'SMS', 'en': 'SMS', 'ru': 'SMS', 'de': 'SMS'},
+    'unesiteImeIliTelefon': {
+      'sr': '⚠️ Unesite makar ime ili broj telefona',
+      'en': '⚠️ Enter at least a name or phone number',
+      'ru': '⚠️ Введите хотя бы имя или номер телефона',
+      'de': '⚠️ Geben Sie mindestens einen Namen oder eine Telefonnummer ein',
+    },
+    'putnikDodan': {
+      'sr': '✅ Putnik dodan',
+      'en': '✅ Passenger added',
+      'ru': '✅ Пассажир добавлен',
+      'de': '✅ Passagier hinzugefügt'
+    },
+    'putnikSacuvan': {
+      'sr': '✅ Putnik sačuvan',
+      'en': '✅ Passenger saved',
+      'ru': '✅ Пассажир сохранен',
+      'de': '✅ Passagier gespeichert'
+    },
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
+    'nijeOdabrano': {
+      'sr': '— nije odabrano —',
+      'en': '— not selected —',
+      'ru': '— не выбрано —',
+      'de': '— nicht ausgewählt —'
+    },
+    'urediPutnika': {
+      'sr': 'Uredi putnika',
+      'en': 'Edit passenger',
+      'ru': 'Изменить пассажира',
+      'de': 'Passagier bearbeiten'
+    },
+    'noviPutnik': {'sr': 'Novi putnik', 'en': 'New passenger', 'ru': 'Новый пассажир', 'de': 'Neuer Passagier'},
+    'azurirajPodatke': {
+      'sr': 'Ažuriraj podatke i sačuvaj izmene',
+      'en': 'Update the details and save changes',
+      'ru': 'Обновите данные и сохраните изменения',
+      'de': 'Daten aktualisieren und Änderungen speichern',
+    },
+    'unesiPodatke': {
+      'sr': 'Unesi podatke i dodaj putnika',
+      'en': 'Enter the details and add passenger',
+      'ru': 'Введите данные и добавьте пассажира',
+      'de': 'Daten eingeben und Passagier hinzufügen',
+    },
+    'osnovniPodaci': {'sr': 'Osnovni podaci', 'en': 'Basic details', 'ru': 'Основные данные', 'de': 'Grunddaten'},
+    'tipPutnika': {'sr': 'Tip putnika', 'en': 'Passenger type', 'ru': 'Тип пассажира', 'de': 'Passagiertyp'},
+    'radnik': {'sr': '👷 Radnik', 'en': '👷 Worker', 'ru': '👷 Рабочий', 'de': '👷 Arbeiter'},
+    'ucenik': {'sr': '🎒 Učenik', 'en': '🎒 Student', 'ru': '🎒 Ученик', 'de': '🎒 Schüler'},
+    'dnevni': {'sr': '🚶 Dnevni', 'en': '🚶 Daily', 'ru': '🚶 Ежедневный', 'de': '🚶 Täglich'},
+    'posiljka': {'sr': '📦 Pošiljka', 'en': '📦 Shipment', 'ru': '📦 Посылка', 'de': '📦 Sendung'},
+    'imePrezime': {
+      'sr': 'Ime i prezime',
+      'en': 'First and last name',
+      'ru': 'Имя и фамилия',
+      'de': 'Vor- und Nachname'
+    },
+    'telefon1': {'sr': 'Telefon 1 *', 'en': 'Phone 1 *', 'ru': 'Телефон 1 *', 'de': 'Telefon 1 *'},
+    'telefon2': {
+      'sr': 'Telefon 2 (opciono)',
+      'en': 'Phone 2 (optional)',
+      'ru': 'Телефон 2 (опционально)',
+      'de': 'Telefon 2 (optional)'
+    },
+    'cenaPoVoznji': {'sr': 'Cena po vožnji', 'en': 'Price per ride', 'ru': 'Цена за поездку', 'de': 'Preis pro Fahrt'},
+    'cenaPoDanu': {'sr': 'Cena po danu', 'en': 'Price per day', 'ru': 'Цена за день', 'de': 'Preis pro Tag'},
+    'adreseBc': {
+      'sr': 'Adrese — Bela Crkva',
+      'en': 'Addresses — Bela Crkva',
+      'ru': 'Адреса — Бела-Црква',
+      'de': 'Adressen — Bela Crkva'
+    },
+    'adreseVs': {'sr': 'Adrese — Vršac', 'en': 'Addresses — Vršac', 'ru': 'Адреса — Вршац', 'de': 'Adressen — Vršac'},
+    'bcAdresa1': {'sr': 'BC — Adresa 1', 'en': 'BC — Address 1', 'ru': 'BC — Адрес 1', 'de': 'BC — Adresse 1'},
+    'bcAdresa2': {
+      'sr': 'BC — Adresa 2 (opciono)',
+      'en': 'BC — Address 2 (optional)',
+      'ru': 'BC — Адрес 2 (опционально)',
+      'de': 'BC — Adresse 2 (optional)'
+    },
+    'vsAdresa1': {'sr': 'VS — Adresa 1', 'en': 'VS — Address 1', 'ru': 'VS — Адрес 1', 'de': 'VS — Adresse 1'},
+    'vsAdresa2': {
+      'sr': 'VS — Adresa 2 (opciono)',
+      'en': 'VS — Address 2 (optional)',
+      'ru': 'VS — Адрес 2 (опционально)',
+      'de': 'VS — Adresse 2 (optional)'
+    },
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen'},
+  };
+
+  static String tr(String key, [List<String>? args]) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    var text = _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+    if (args != null) {
+      for (final a in args) {
+        text = text.replaceFirst('%s', a);
+      }
+    }
+    return text;
+  }
+}
 
 class V3PutniciScreen extends StatefulWidget {
   const V3PutniciScreen({super.key});
@@ -114,7 +268,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                                 icon: const Icon(Icons.person_add,
                                     color: Colors.white,
                                     shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                                tooltip: 'Dodaj putnika',
+                                tooltip: _PutTr.tr('dodajPutnika'),
                                 onPressed: _showAddDialog,
                               ),
                             ],
@@ -148,7 +302,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                     controller: V3TextUtils.putniciSearchController,
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
-                      hintText: 'Pretraži putnike...',
+                      hintText: _PutTr.tr('pretraziPutnike'),
                       hintStyle: TextStyle(color: Colors.grey[600]),
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       isDense: true,
@@ -189,8 +343,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                                 const SizedBox(height: 16),
                                 Text(
                                   V3TextUtils.getControllerText('putnici_search').isNotEmpty
-                                      ? 'Nema rezultata pretrage'
-                                      : 'Nema putnika',
+                                      ? _PutTr.tr('nemaRezultataPretrage')
+                                      : _PutTr.tr('nemaPutnika'),
                                   style: const TextStyle(fontSize: 18, color: Colors.white60),
                                 ),
                               ],
@@ -250,7 +404,7 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
           icon: Icon(icon,
               color: isSelected ? Colors.white : Colors.white60,
               shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-          tooltip: tip == 'svi' ? 'Svi' : tip[0].toUpperCase() + tip.substring(1),
+          tooltip: tip == 'svi' ? _PutTr.tr('svi') : tip[0].toUpperCase() + tip.substring(1),
           onPressed: () => V3StateUtils.safeSetState(this, () => _selectedFilter = isSelected ? 'svi' : tip),
         ),
         if (count > 0)
@@ -285,17 +439,16 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   Future<void> _obrisi(V3Putnik p) async {
     final potvrda = await V3DialogHelper.showConfirmDialog(
       context,
-      title: 'Potvrdi brisanje',
-      message:
-          'Da li ste sigurni da želite da obrišete "${p.imePrezime}"?\n\n⚠️ VAŽNO:\n• Putnik će biti TRAJNO obrisan\n• Sve vožnje i statistike se brišu\n• Ova akcija je NEPOVRATNA!',
-      confirmText: 'Obriši',
-      cancelText: 'Otkaži',
+      title: _PutTr.tr('potvrdiBrisanje'),
+      message: _PutTr.tr('daLiSteSigurniObrisatiPutnika', [p.imePrezime]),
+      confirmText: _PutTr.tr('obrisi'),
+      cancelText: _PutTr.tr('otkazi'),
       isDangerous: true,
     );
     if (potvrda != true || !mounted) return;
     try {
       await V3PutnikService.deactivatePutnik(p.id);
-      if (mounted) V3AppSnackBar.success(context, '${p.imePrezime} obrisan');
+      if (mounted) V3AppSnackBar.success(context, '${p.imePrezime} ${_PutTr.tr('obrisan')}');
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
     }
@@ -405,7 +558,7 @@ class _PutnikCard extends StatelessWidget {
                         child: _actionBtn(
                       context: context,
                       icon: Icons.phone,
-                      label: 'Pozovi',
+                      label: _PutTr.tr('pozovi'),
                       color: Colors.green,
                       onPressed: () => _pokaziKontakt(context),
                     )),
@@ -415,7 +568,7 @@ class _PutnikCard extends StatelessWidget {
                       child: _actionBtn(
                     context: context,
                     icon: Icons.analytics_outlined,
-                    label: 'Detaljne statistike',
+                    label: _PutTr.tr('detaljneStatistike'),
                     color: Colors.purpleAccent,
                     onPressed: onDetaljneStatistike,
                   )),
@@ -429,7 +582,7 @@ class _PutnikCard extends StatelessWidget {
                       child: _actionBtn(
                     context: context,
                     icon: Icons.edit_outlined,
-                    label: 'Uredi',
+                    label: _PutTr.tr('uredi'),
                     color: Colors.blue,
                     onPressed: onEdit,
                   )),
@@ -438,7 +591,7 @@ class _PutnikCard extends StatelessWidget {
                       child: _actionBtn(
                     context: context,
                     icon: Icons.delete_outline,
-                    label: 'Obriši',
+                    label: _PutTr.tr('obrisi'),
                     color: Colors.red,
                     onPressed: onDelete,
                   )),
@@ -530,7 +683,7 @@ class _PutnikCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Kontaktiraj ${putnik.imePrezime}',
+              Text('${_PutTr.tr('kontaktiraj')} ${putnik.imePrezime}',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               if (putnik.telefon1?.isNotEmpty == true) ...[
@@ -544,7 +697,7 @@ class _PutnikCard extends StatelessWidget {
                     Expanded(
                       child: ListTile(
                         leading: const Icon(Icons.phone, color: Colors.green),
-                        title: const Text('Pozovi'),
+                        title: Text(_PutTr.tr('pozovi')),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         onTap: () async {
                           Navigator.pop(context);
@@ -556,7 +709,7 @@ class _PutnikCard extends StatelessWidget {
                     Expanded(
                       child: ListTile(
                         leading: const Icon(Icons.sms, color: Colors.blueAccent),
-                        title: const Text('SMS'),
+                        title: Text(_PutTr.tr('sms')),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         onTap: () async {
                           Navigator.pop(context);
@@ -579,7 +732,7 @@ class _PutnikCard extends StatelessWidget {
                     Expanded(
                       child: ListTile(
                         leading: const Icon(Icons.phone, color: Colors.green),
-                        title: const Text('Pozovi'),
+                        title: Text(_PutTr.tr('pozovi')),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         onTap: () async {
                           Navigator.pop(context);
@@ -591,7 +744,7 @@ class _PutnikCard extends StatelessWidget {
                     Expanded(
                       child: ListTile(
                         leading: const Icon(Icons.sms, color: Colors.blueAccent),
-                        title: const Text('SMS'),
+                        title: Text(_PutTr.tr('sms')),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         onTap: () async {
                           Navigator.pop(context);
@@ -604,7 +757,7 @@ class _PutnikCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: 'Otkaži'),
+              V3ButtonUtils.textButton(onPressed: () => Navigator.pop(context), text: _PutTr.tr('otkazi')),
             ],
           ),
         ),
@@ -666,7 +819,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
 
     // Ako ne unese ni ime ni telefon, prekinemo
     if (imeVal.isEmpty && telText.isEmpty) {
-      V3AppSnackBar.error(context, '⚠️ Unesite makar ime ili broj telefona');
+      V3AppSnackBar.error(context, _PutTr.tr('unesiteImeIliTelefon'));
       return;
     }
 
@@ -694,11 +847,11 @@ class _PutnikDialogState extends State<_PutnikDialog> {
         createdBy: V3UuidUtils.normalizeUuid('admin'),
       );
       if (mounted) {
-        V3AppSnackBar.success(context, widget.existing == null ? '✅ Putnik dodan' : '✅ Putnik sačuvan');
+        V3AppSnackBar.success(context, widget.existing == null ? _PutTr.tr('putnikDodan') : _PutTr.tr('putnikSacuvan'));
         Navigator.pop(context);
       }
     } catch (e) {
-      V3AppSnackBar.error(context, 'Greška: $e');
+      V3AppSnackBar.error(context, '${_PutTr.tr('greska')}: $e');
     } finally {
       V3StateUtils.safeSetState(this, () => _saving = false);
     }
@@ -746,7 +899,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
               )
             : null,
       ),
-      hint: const Text('— nije odabrano —', style: TextStyle(fontSize: 13, color: adresaLabelColor)),
+      hint: Text(_PutTr.tr('nijeOdabrano'), style: const TextStyle(fontSize: 13, color: adresaLabelColor)),
       items: [
         ...adrese.map((a) => DropdownMenuItem(
               value: a,
@@ -815,11 +968,11 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isEdit ? 'Uredi putnika' : 'Novi putnik',
+                            isEdit ? _PutTr.tr('urediPutnika') : _PutTr.tr('noviPutnik'),
                             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
                           ),
                           Text(
-                            isEdit ? 'Ažuriraj podatke i sačuvaj izmene' : 'Unesi podatke i dodaj putnika',
+                            isEdit ? _PutTr.tr('azurirajPodatke') : _PutTr.tr('unesiPodatke'),
                             style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
                           ),
                         ],
@@ -844,9 +997,9 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                         ),
-                        child: const Text(
-                          'Osnovni podaci',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                        child: Text(
+                          _PutTr.tr('osnovniPodaci'),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -856,7 +1009,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         dropdownColor: Colors.black.withValues(alpha: 0.75),
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: 'Tip putnika',
+                          labelText: _PutTr.tr('tipPutnika'),
                           labelStyle: const TextStyle(color: labelColor),
                           isDense: true,
                           border: OutlineInputBorder(
@@ -875,11 +1028,11 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           fillColor: inputFill,
                           prefixIcon: const Icon(Icons.category_outlined, color: labelColor),
                         ),
-                        items: const [
-                          DropdownMenuItem(value: 'radnik', child: Text('👷 Radnik')),
-                          DropdownMenuItem(value: 'ucenik', child: Text('🎒 Učenik')),
-                          DropdownMenuItem(value: 'dnevni', child: Text('🚶 Dnevni')),
-                          DropdownMenuItem(value: 'posiljka', child: Text('📦 Pošiljka')),
+                        items: [
+                          DropdownMenuItem(value: 'radnik', child: Text(_PutTr.tr('radnik'))),
+                          DropdownMenuItem(value: 'ucenik', child: Text(_PutTr.tr('ucenik'))),
+                          DropdownMenuItem(value: 'dnevni', child: Text(_PutTr.tr('dnevni'))),
+                          DropdownMenuItem(value: 'posiljka', child: Text(_PutTr.tr('posiljka'))),
                         ],
                         onChanged: (v) {
                           if (v == null) return;
@@ -890,7 +1043,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       // Ime
                       V3InputUtils.textField(
                         controller: _ime,
-                        label: 'Ime i prezime',
+                        label: _PutTr.tr('imePrezime'),
                         icon: Icons.person,
                         fillColor: inputFill,
                         borderColor: inputBorder,
@@ -900,7 +1053,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       // Telefoni
                       V3InputUtils.formField(
                         controller: _tel1,
-                        label: 'Telefon 1 *',
+                        label: _PutTr.tr('telefon1'),
                         icon: Icons.phone,
                         keyboardType: TextInputType.phone,
                         fillColor: inputFill,
@@ -911,7 +1064,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       const SizedBox(height: 10),
                       V3InputUtils.formField(
                         controller: _tel2,
-                        label: 'Telefon 2 (opciono)',
+                        label: _PutTr.tr('telefon2'),
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
                         fillColor: inputFill,
@@ -923,7 +1076,9 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       // Cena
                       V3InputUtils.formField(
                         controller: _cenaDan,
-                        label: (_tip == 'dnevni' || _tip == 'posiljka') ? 'Cena po vožnji' : 'Cena po danu',
+                        label: (_tip == 'dnevni' || _tip == 'posiljka')
+                            ? _PutTr.tr('cenaPoVoznji')
+                            : _PutTr.tr('cenaPoDanu'),
                         icon: Icons.numbers,
                         keyboardType: TextInputType.number,
                         suffixText: 'din',
@@ -941,26 +1096,26 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.lightBlueAccent.withValues(alpha: 0.4)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.lightBlueAccent),
-                            SizedBox(width: 4),
-                            Text('Adrese — Bela Crkva',
-                                style: TextStyle(
+                            const Icon(Icons.location_on, size: 16, color: Colors.lightBlueAccent),
+                            const SizedBox(width: 4),
+                            Text(_PutTr.tr('adreseBc'),
+                                style: const TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent)),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
                       _adresaDropdown(
-                        label: 'BC — Adresa 1',
+                        label: _PutTr.tr('bcAdresa1'),
                         grad: 'BC',
                         value: _adresaBc1,
                         onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc1 = v),
                       ),
                       const SizedBox(height: 8),
                       _adresaDropdown(
-                        label: 'BC — Adresa 2 (opciono)',
+                        label: _PutTr.tr('bcAdresa2'),
                         grad: 'BC',
                         value: _adresaBc2,
                         onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc2 = v),
@@ -975,26 +1130,26 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.orangeAccent),
-                            SizedBox(width: 4),
-                            Text('Adrese — Vršac',
-                                style:
-                                    TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
+                            const Icon(Icons.location_on, size: 16, color: Colors.orangeAccent),
+                            const SizedBox(width: 4),
+                            Text(_PutTr.tr('adreseVs'),
+                                style: const TextStyle(
+                                    fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
                       _adresaDropdown(
-                        label: 'VS — Adresa 1',
+                        label: _PutTr.tr('vsAdresa1'),
                         grad: 'VS',
                         value: _adresaVs1,
                         onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs1 = v),
                       ),
                       const SizedBox(height: 8),
                       _adresaDropdown(
-                        label: 'VS — Adresa 2 (opciono)',
+                        label: _PutTr.tr('vsAdresa2'),
                         grad: 'VS',
                         value: _adresaVs2,
                         onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs2 = v),
@@ -1016,13 +1171,13 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                   children: [
                     V3ButtonUtils.textButton(
                       onPressed: () => Navigator.pop(context),
-                      text: 'Otkaži',
+                      text: _PutTr.tr('otkazi'),
                       foregroundColor: Colors.white70,
                     ),
                     const SizedBox(width: 8),
                     V3ButtonUtils.primaryButton(
                       onPressed: _saving ? null : _sacuvaj,
-                      text: isEdit ? 'Sačuvaj' : 'Dodaj',
+                      text: isEdit ? _PutTr.tr('sacuvaj') : _PutTr.tr('dodaj'),
                       icon: isEdit ? Icons.save_as_rounded : Icons.person_add_alt_1_rounded,
                       isLoading: _saving,
                     ),

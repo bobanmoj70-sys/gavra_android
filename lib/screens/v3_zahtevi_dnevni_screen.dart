@@ -8,6 +8,7 @@ import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_container_utils.dart';
@@ -18,6 +19,38 @@ import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
+
+class _ZahDnevTr {
+  static const Map<String, Map<String, String>> _t = {
+    'monitoringZahteva': {
+      'sr': 'Monitoring zahteva',
+      'en': 'Request monitoring',
+      'ru': 'Мониторинг запросов',
+      'de': 'Anfragenüberwachung'
+    },
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
+    'nemaZahteva': {'sr': 'Nema zahteva', 'en': 'No requests', 'ru': 'Нет запросов', 'de': 'Keine Anfragen'},
+    'uspeh': {'sr': '✅ Uspeh', 'en': '✅ Success', 'ru': '✅ Успех', 'de': '✅ Erfolg'},
+    'odobrenoLabel': {'sr': '✅ Odobreno', 'en': '✅ Approved', 'ru': '✅ Одобрено', 'de': '✅ Genehmigt'},
+    'otkazano': {'sr': '🚫 Otkazano', 'en': '🚫 Canceled', 'ru': '🚫 Отменено', 'de': '🚫 Storniert'},
+    'odbijenoLabel': {'sr': '❌ Odbijeno', 'en': '❌ Rejected', 'ru': '❌ Отклонено', 'de': '❌ Abgelehnt'},
+    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast'},
+    'nepoznat': {'sr': 'Nepoznat', 'en': 'Unknown', 'ru': 'Неизвестно', 'de': 'Unbekannt'},
+    'cekaOdgovor': {
+      'sr': 'čeka odgovor...',
+      'en': 'awaiting response...',
+      'ru': 'ожидает ответа...',
+      'de': 'wartet auf Antwort...'
+    },
+  };
+
+  static String tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+}
 
 class V3ZahteviDnevniScreen extends StatefulWidget {
   const V3ZahteviDnevniScreen({super.key});
@@ -128,12 +161,12 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
     try {
       await V3ZahtevService.updateStatus(id, status);
       if (mounted) {
-        String label = '✅ Uspeh';
+        String label = _ZahDnevTr.tr('uspeh');
         if (V3StatusPolicy.isApproved(status))
-          label = '✅ Odobreno';
+          label = _ZahDnevTr.tr('odobrenoLabel');
         else if (V3StatusPolicy.isCanceled(status))
-          label = '🚫 Otkazano';
-        else if (V3StatusPolicy.isRejected(status)) label = '❌ Odbijeno';
+          label = _ZahDnevTr.tr('otkazano');
+        else if (V3StatusPolicy.isRejected(status)) label = _ZahDnevTr.tr('odbijenoLabel');
 
         V3AppSnackBar.success(context, label);
       }
@@ -163,9 +196,9 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
             centerTitle: true,
             foregroundColor: Colors.white,
             automaticallyImplyLeading: false,
-            title: const Text(
-              'Monitoring zahteva',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            title: Text(
+              _ZahDnevTr.tr('monitoringZahteva'),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
           body: V3ContainerUtils.backgroundContainer(
@@ -180,12 +213,15 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                       runSpacing: 6,
                       alignment: WrapAlignment.center,
                       children: [
-                        if (obrada.isNotEmpty) _StatusBadge('🟡 ${obrada.length} obrada', Colors.amber),
-                        if (odobreno.isNotEmpty) _StatusBadge('🟢 ${odobreno.length} odobreno', Colors.greenAccent),
-                        if (odbijeno.isNotEmpty) _StatusBadge('🔴 ${odbijeno.length} odbijeno', Colors.redAccent),
+                        if (obrada.isNotEmpty)
+                          _StatusBadge('🟡 ${obrada.length} ${_ZahDnevTr.tr('obrada')}', Colors.amber),
+                        if (odobreno.isNotEmpty)
+                          _StatusBadge('🟢 ${odobreno.length} ${_ZahDnevTr.tr('odobreno')}', Colors.greenAccent),
+                        if (odbijeno.isNotEmpty)
+                          _StatusBadge('🔴 ${odbijeno.length} ${_ZahDnevTr.tr('odbijeno')}', Colors.redAccent),
                         if (zahtevi.isEmpty)
                           Text(
-                            'Nema zahteva',
+                            _ZahDnevTr.tr('nemaZahteva'),
                             style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                           ),
                       ],
@@ -195,7 +231,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
                     child: zahtevi.isEmpty
                         ? Center(
                             child: Text(
-                              'Nema zahteva',
+                              _ZahDnevTr.tr('nemaZahteva'),
                               style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
                             ),
                           )
@@ -291,7 +327,7 @@ class _MonitoringCardDaily extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          putnik?.imePrezime ?? 'Putnik',
+                          putnik?.imePrezime ?? _ZahDnevTr.tr('putnik'),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
@@ -397,7 +433,7 @@ class _ZahtevCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: V3SafeText.userName(
-                          putnik?.imePrezime ?? 'Nepoznat',
+                          putnik?.imePrezime ?? _ZahDnevTr.tr('nepoznat'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -439,7 +475,7 @@ class _ZahtevCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  V3ZahtevTimelapseWidget(zahtev: zahtev, cekaTekst: 'čeka odgovor...'),
+                  V3ZahtevTimelapseWidget(zahtev: zahtev, cekaTekst: _ZahDnevTr.tr('cekaOdgovor')),
                 ],
               ),
             ),
