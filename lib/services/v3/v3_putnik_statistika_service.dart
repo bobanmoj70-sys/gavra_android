@@ -65,6 +65,7 @@ class V3PutnikMesecnaStatistika {
   final double ukupnaObaveza;
   final int brojUplata;
   final DateTime? poslednjaUplata;
+  final String? poslednjaUplataVozac;
 
   const V3PutnikMesecnaStatistika({
     required this.godina,
@@ -81,6 +82,7 @@ class V3PutnikMesecnaStatistika {
     this.ukupnaObaveza = 0,
     this.brojUplata = 0,
     this.poslednjaUplata,
+    this.poslednjaUplataVozac,
   });
 }
 
@@ -488,9 +490,18 @@ class V3PutnikStatistikaService {
           ukupnaObaveza: stavka.obaveza,
           brojUplata: uplate.length,
           poslednjaUplata: uplate.isNotEmpty ? uplate.last.datum : null,
+          poslednjaUplataVozac: uplate.isNotEmpty ? _imeVozaca(uplate.last.naplatioBy) : null,
         );
       },
     ).toList(growable: false);
+  }
+
+  static String? _imeVozaca(String? vozacId) {
+    final id = (vozacId ?? '').trim();
+    if (id.isEmpty) return null;
+    final vozacData = V3MasterRealtimeManager.instance.vozaciCache[id];
+    final ime = vozacData?['ime_prezime']?.toString().trim();
+    return (ime != null && ime.isNotEmpty) ? ime : null;
   }
 
   static V3PutnikMesecnaStatistika getTekuciMesec(
@@ -579,6 +590,7 @@ class V3PutnikStatistikaService {
       ukupnaObaveza: obracun.obaveza,
       brojUplata: uplate.length,
       poslednjaUplata: uplate.isNotEmpty ? uplate.last.datum : null,
+      poslednjaUplataVozac: uplate.isNotEmpty ? _imeVozaca(uplate.last.naplatioBy) : null,
     );
   }
 

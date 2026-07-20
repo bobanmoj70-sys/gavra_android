@@ -50,6 +50,12 @@ class _StatTr {
     'obaveza': {'sr': 'Obaveza', 'en': 'Amount due', 'ru': 'Задолженность', 'de': 'Fälliger Betrag'},
     'placeno': {'sr': 'Plaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
     'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schulden'},
+    'ukupanDug': {
+      'sr': 'Ukupan dug',
+      'en': 'Total debt',
+      'ru': 'Общий долг',
+      'de': 'Gesamtschulden',
+    },
     'poslednjaUplata': {
       'sr': 'Poslednja uplata',
       'en': 'Last payment',
@@ -136,7 +142,7 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...meseci.map((m) => _MesecCard(stats: m)),
+                    ...meseci.map((m) => _MesecCard(putnikId: widget.putnikId, stats: m)),
                   ],
                 ),
               ),
@@ -157,12 +163,14 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
 }
 
 class _MesecCard extends StatelessWidget {
+  final String putnikId;
   final V3PutnikMesecnaStatistika stats;
 
-  const _MesecCard({required this.stats});
+  const _MesecCard({required this.putnikId, required this.stats});
 
   @override
   Widget build(BuildContext context) {
+    final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId);
     return V3ContainerUtils.styledContainer(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -230,25 +238,24 @@ class _MesecCard extends StatelessWidget {
               children: [
                 Text(_StatTr.tr('poslednjaUplata'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
-                  '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
+                  stats.poslednjaUplataVozac != null && stats.poslednjaUplataVozac!.isNotEmpty
+                      ? '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}. (${stats.poslednjaUplataVozac})'
+                      : '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
                   style: const TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ],
-          if (stats.otkazano > 0) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_StatTr.tr('otkazano'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
-                Text(
-                  '${stats.otkazano}',
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(_StatTr.tr('ukupanDug'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+              Text(
+                '${ukupanDug.toStringAsFixed(0)} RSD',
+                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
         ],
       ),
     );

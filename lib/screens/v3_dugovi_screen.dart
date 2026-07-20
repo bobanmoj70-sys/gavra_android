@@ -178,6 +178,7 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                                         putnikId: dug.putnikId,
                                         imePrezime: dug.imePrezime,
                                         defaultCena: dug.iznos,
+                                        cenaPoModelu: dug.cena,
                                         snimiMesecnuUplatu: true,
                                         brojVoznji: dug.brojVoznji,
                                         mesec: dug.mesec,
