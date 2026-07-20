@@ -16,7 +16,7 @@ class V3FinansijeRepository {
   }) {
     return supabase
         .from('v3_finansije')
-        .select('id, iznos, broj_voznji, created_at')
+        .select('id, iznos, created_at')
         .eq('tip', 'prihod')
         .eq('kategorija', 'operativna_naplata')
         .eq('putnik_v3_auth_id', putnikId)

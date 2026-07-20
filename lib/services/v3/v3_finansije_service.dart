@@ -379,10 +379,14 @@ class V3FinansijeService {
     var brojVoznjiRealizacija = 0;
     var ukupanIznos = 0.0;
 
+    final rm = V3MasterRealtimeManager.instance;
+    final putnikData = rm.putniciCache[putnikId] ?? const <String, dynamic>{};
+    final tipPutnika = (putnikData['tip_putnika'] as String? ?? '').toLowerCase();
+
     for (final row in naplataRows) {
       // Ukupan iznos se izvodi isključivo iz uplate_json (jedini izvor istine).
       ukupanIznos += _getUkupanIznosUplata(row);
-      brojVoznjiRealizacija += (row['broj_voznji'] as num?)?.toInt() ?? 0;
+      brojVoznjiRealizacija += _countRealizovaneVoznje(row, tipPutnika);
     }
 
     return (brojVoznji: brojVoznjiRealizacija, ukupanIznos: ukupanIznos);
@@ -461,7 +465,6 @@ class V3FinansijeService {
         }
 
         if (latestId.isNotEmpty) {
-          final currentBroj = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
           final operativnaId = _resolveOperativnaStavkaId(
             putnikId: safePutnikId,
             datum: datum,
@@ -475,28 +478,17 @@ class V3FinansijeService {
             datum: datum,
             cena: cenaVoznje,
           );
-          final currentRealizovane = _readRealizovaneVoznje(latest);
-          final updatedRealizovane = _appendRealizovanaVoznja(
-            stavke: currentRealizovane,
-            operativnaId: operativnaId,
-            datum: datum,
-            pokupljenBy: evidentiraoBy,
-            pokupljenAt: pokupljenAt,
-            dodaoBy: dodaoBy,
-            azuriraoBy: azuriraoBy,
-            grad: grad,
-            vreme: vreme,
-          );
           // NAPOMENA: Ovde se NE dodaje lažna "uplata" u uplate_json — vožnja se
           // evidentira kao NENAPLAĆENA (currentNenaplacene/updatedNenaplacene) i
           // stvarni zapis o uplati se pravi tek kada putnik zaista plati
           // (vidi sacuvajMesecnuNaplatu). Ranije se ovde dodavao lažni uplata
           // zapis sa vremenom pokupljanja, zbog čega je "vreme naplate" u UI-u
           // pogrešno prikazivalo isto vreme kao pokupljanje.
+          //
+          // realizovane_voznje_json se više ne popunjava ovde — održava je
+          // database trigger v3_sync_realizovane_voznje_to_finansije.
           final updatePayload = <String, dynamic>{
-            'broj_voznji': currentBroj + 1,
             _nenaplaceneVoznjeKey: updatedNenaplacene,
-            _realizovaneVoznjeKey: updatedRealizovane,
             'updated_at': DateTime.now().toIso8601String(),
           };
           final updated = await _repo.updateByIdReturning(latestId, updatePayload);
@@ -518,24 +510,11 @@ class V3FinansijeService {
         'tip': 'prihod',
         'iznos': 0,
         'putnik_v3_auth_id': safePutnikId,
-        'broj_voznji': 1,
         _nenaplaceneVoznjeKey: [
           {
             'operativna_id': operativnaId,
             'datum': datum.toIso8601String(),
             'cena': cenaVoznje,
-          }
-        ],
-        _realizovaneVoznjeKey: [
-          {
-            'operativna_id': operativnaId,
-            'datum': datum.toIso8601String(),
-            if (evidentiraoBy != null && evidentiraoBy.isNotEmpty) 'pokupljen_by': evidentiraoBy,
-            if (pokupljenAt != null && pokupljenAt.isNotEmpty) 'pokupljen_at': pokupljenAt,
-            if (dodaoBy != null && dodaoBy.isNotEmpty) 'dodao_by': dodaoBy,
-            if (azuriraoBy != null && azuriraoBy.isNotEmpty) 'azurirao_by': azuriraoBy,
-            if (grad != null && grad.isNotEmpty) 'grad': grad,
-            if (vreme != null && vreme.isNotEmpty) 'vreme': vreme,
           }
         ],
         'mesec': datum.month,
@@ -870,7 +849,6 @@ class V3FinansijeService {
     required double iznos,
     required int mesec,
     required int godina,
-    int brojVoznji = 0,
   }) async {
     final safePutnikId = putnikId.trim();
     if (safePutnikId.isEmpty) {
@@ -916,7 +894,6 @@ class V3FinansijeService {
           throw StateError('Master red za finansije nema validan ID');
         }
 
-        final currentBrojVoznji = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
         final currentNenaplacene = _readNenaplaceneVoznje(latest);
         final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
         final updatedNenaplacene = _consumeNenaplaceneVoznje(
@@ -924,9 +901,8 @@ class V3FinansijeService {
           uplacenIznos: iznos,
           defaultCena: cenaVoznje,
         );
-        // Broj vožnji se ne menja pri plaćanju - samo pri pokupljanju (evidentirajRealizacijuPriPokupljanju)
-        // Zadržavamo trenutnu vrednost da ne bi smanjili broj vožnji ako se u međuvremenu povećao
-        final finalBrojVoznji = currentBrojVoznji;
+        // Broj vožnji se izvodi isključivo iz realizovane_voznje_json, ne iz
+        // skalarne kolone. Pri plaćanju se broj vožnji ne menja.
         final currentUplate = _readUplate(latest);
         final updatedUplate = _appendUplata(currentUplate, uplataStavka);
         // Skalarne kolone su izvedene iz uplate_json (jedini izvor istine).
@@ -936,7 +912,6 @@ class V3FinansijeService {
         row = await _repo.updateByIdReturning(existingId, {
           'iznos': updatedIznos,
           'naplaceno_by': updatedNaplatioBy,
-          'broj_voznji': finalBrojVoznji,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
           _uplateKey: updatedUplate,
           'updated_at': now.toIso8601String(),
@@ -954,7 +929,6 @@ class V3FinansijeService {
           'iznos': initialIznos,
           'putnik_v3_auth_id': safePutnikId,
           'naplaceno_by': initialNaplatioBy,
-          'broj_voznji': brojVoznji,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           _uplateKey: initialUplate,
           'mesec': mesec,
@@ -977,33 +951,12 @@ class V3FinansijeService {
     required double iznos,
     required DateTime datum,
   }) async {
-    // Za dnevne/posiljke čitamo trenutni broj vožnji ako postoji red,
-    // da ne bismo prepisali broj vožnji evidentiran pri pokupljanju
-    final safePutnikId = putnikId.trim();
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
-    final existing = cache.where((row) {
-      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
-      if (rPutnikId != safePutnikId.toLowerCase()) return false;
-      final rG = _parseInternalInt(row['godina']);
-      final rM = _parseInternalInt(row['mesec']);
-      if (rG != datum.year || rM != datum.month) return false;
-      return (row['tip']?.toString().toLowerCase() ?? '') == 'prihod';
-    }).toList();
-
-    int brojVoznji = 0;
-    if (existing.isNotEmpty) {
-      _sortByCreatedAtDesc(existing);
-      final latest = existing.first;
-      brojVoznji = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
-    }
-
     return sacuvajMesecnuNaplatu(
       putnikId: putnikId,
       naplacenoBy: naplacenoBy,
       iznos: iznos,
       mesec: datum.month,
       godina: datum.year,
-      brojVoznji: brojVoznji,
     );
   }
 
@@ -1047,132 +1000,9 @@ class V3FinansijeService {
     return result;
   }
 
-  static List<Map<String, dynamic>> _appendRealizovanaVoznja({
-    required List<Map<String, dynamic>> stavke,
-    required String operativnaId,
-    required DateTime datum,
-    String? pokupljenBy,
-    String? pokupljenAt,
-    String? dodaoBy,
-    String? azuriraoBy,
-    String? grad,
-    String? vreme,
-  }) {
-    final safeOperativnaId = operativnaId.trim();
-    if (safeOperativnaId.isEmpty) return stavke;
-
-    final existingIndex = stavke.indexWhere(
-      (s) => (s['operativna_id']?.toString() ?? '').trim() == safeOperativnaId,
-    );
-
-    final updated = List<Map<String, dynamic>>.from(stavke);
-    final novaStavka = <String, dynamic>{
-      'operativna_id': safeOperativnaId,
-      'datum': datum.toIso8601String(),
-      if (pokupljenBy != null && pokupljenBy.isNotEmpty) 'pokupljen_by': pokupljenBy,
-      if (pokupljenAt != null && pokupljenAt.isNotEmpty) 'pokupljen_at': pokupljenAt,
-      if (dodaoBy != null && dodaoBy.isNotEmpty) 'dodao_by': dodaoBy,
-      if (azuriraoBy != null && azuriraoBy.isNotEmpty) 'azurirao_by': azuriraoBy,
-      if (grad != null && grad.isNotEmpty) 'grad': grad,
-      if (vreme != null && vreme.isNotEmpty) 'vreme': vreme,
-    };
-
-    if (existingIndex >= 0) {
-      updated[existingIndex] = {...updated[existingIndex], ...novaStavka};
-    } else {
-      updated.add(novaStavka);
-    }
-
-    updated.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
-    return updated;
-  }
-
   static DateTime _parseNenaplacenaDatumOrEpoch(Map<String, dynamic> stavka) {
     final dt = V3DateUtils.parseTs(stavka['datum']?.toString());
     return dt ?? DateTime.fromMillisecondsSinceEpoch(0);
-  }
-
-  /// @deprecated Ova metoda se više ne poziva iz klijentskog koda.
-  /// Otkazivanja se sada automatski arhiviraju preko database triggera
-  /// `v3_sync_otkazane_voznje_to_finansije` koji osluškuje promene
-  /// `otkazano_at` u `v3_operativna_nedelja`.
-  /// Ostavljena je za potencijalne interne/legacy pozive i testiranje.
-  static Future<void> evidentirajOtkazivanje({
-    required String putnikId,
-    required DateTime datum,
-    String? operativnaId,
-    String? otkazaoBy,
-    String? otkazanoAt,
-    String? tipOtkazivanja, // 'putnik' | 'vozac'
-    String? grad,
-    String? vreme,
-  }) async {
-    final safePutnikId = putnikId.trim();
-    if (safePutnikId.isEmpty) return;
-
-    final lockKey = '${_getLockKey(safePutnikId, datum.month, datum.year)}:otkaz';
-    if (_mesecnaNaplataLocks.contains(lockKey)) return;
-    _mesecnaNaplataLocks.add(lockKey);
-
-    try {
-      final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
-      final existingMesecna = cache.where((row) {
-        final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
-        if (rPutnikId != safePutnikId.toLowerCase()) return false;
-        final rG = _parseInternalInt(row['godina']);
-        final rM = _parseInternalInt(row['mesec']);
-        return rG == datum.year && rM == datum.month && (row['tip']?.toString().toLowerCase() ?? '') == 'prihod';
-      }).toList();
-
-      final stavkaId = (operativnaId ?? '').trim().isNotEmpty
-          ? operativnaId!
-          : 'auto:${safePutnikId.toLowerCase()}:${V3DateUtils.parseIsoDatePart(datum.toIso8601String())}:${_uuid.v4()}';
-
-      final novaStavka = <String, dynamic>{
-        'operativna_id': stavkaId,
-        'datum': datum.toIso8601String(),
-        if (otkazaoBy != null && otkazaoBy.isNotEmpty) 'otkazao_by': otkazaoBy,
-        if (otkazanoAt != null && otkazanoAt.isNotEmpty) 'otkazano_at': otkazanoAt,
-        if (tipOtkazivanja != null && tipOtkazivanja.isNotEmpty) 'tip_otkazivanja': tipOtkazivanja,
-        if (grad != null && grad.isNotEmpty) 'grad': grad,
-        if (vreme != null && vreme.isNotEmpty) 'vreme': vreme,
-      };
-
-      if (existingMesecna.isNotEmpty) {
-        _sortByCreatedAtDesc(existingMesecna);
-        final latest = existingMesecna.first;
-        final latestId = (latest['id'] ?? '').toString();
-        if (latestId.isNotEmpty) {
-          final currentOtkazane = _readOtkazaneVoznje(latest);
-          final updatedOtkazane = _appendOtkazanaVoznja(
-            stavke: currentOtkazane,
-            novaStavka: novaStavka,
-          );
-          final updated = await _repo.updateByIdReturning(latestId, {
-            _otkazaneVoznjeKey: updatedOtkazane,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updated);
-          return;
-        }
-      }
-
-      // Ako ne postoji red, kreiraj novi master red samo za arhivu otkazivanja
-      final row = await _repo.insertReturning({
-        'naziv': 'Evidencija otkazivanja ${datum.month}/${datum.year}',
-        'kategorija': _masterKategorija(),
-        'tip': 'prihod',
-        'iznos': 0,
-        'putnik_v3_auth_id': safePutnikId,
-        'broj_voznji': 0,
-        _otkazaneVoznjeKey: [novaStavka],
-        'mesec': datum.month,
-        'godina': datum.year,
-      });
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
-    } finally {
-      _mesecnaNaplataLocks.remove(lockKey);
-    }
   }
 
   static List<Map<String, dynamic>> _readOtkazaneVoznje(Map<String, dynamic> row) {
@@ -1212,32 +1042,6 @@ class V3FinansijeService {
 
     result.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
     return result;
-  }
-
-  static List<Map<String, dynamic>> _appendOtkazanaVoznja({
-    required List<Map<String, dynamic>> stavke,
-    required Map<String, dynamic> novaStavka,
-  }) {
-    final operativnaId = (novaStavka['operativna_id']?.toString() ?? '').trim();
-    final otkazanoAt = novaStavka['otkazano_at']?.toString() ?? '';
-
-    final updated = List<Map<String, dynamic>>.from(stavke);
-
-    // Ažuriraj postojeću stavku ako je isti operativna_id i nema otkazano_at (npr. ponovno otkazivanje)
-    final existingIndex = updated.indexWhere((s) {
-      if ((s['operativna_id']?.toString() ?? '').trim() != operativnaId) return false;
-      final existingOtkazanoAt = s['otkazano_at']?.toString() ?? '';
-      return existingOtkazanoAt.isEmpty || existingOtkazanoAt == otkazanoAt;
-    });
-
-    if (existingIndex >= 0) {
-      updated[existingIndex] = {...updated[existingIndex], ...novaStavka};
-    } else {
-      updated.add(novaStavka);
-    }
-
-    updated.sort((a, b) => _parseNenaplacenaDatumOrEpoch(a).compareTo(_parseNenaplacenaDatumOrEpoch(b)));
-    return updated;
   }
 
   static List<Map<String, dynamic>> _readUplate(Map<String, dynamic> row) {
@@ -1324,5 +1128,20 @@ class V3FinansijeService {
 
     result.sort((a, b) => a.datum.compareTo(b.datum));
     return result;
+  }
+
+  /// Broji realizovane vožnje iz arhivske JSON kolone.
+  /// Za putnike tipa 'radnik'/'ucenik' naplata je po danu, pa se broje
+  /// unikatni dani. Za sve ostale tipove broje se pojedinačne vožnje.
+  static int _countRealizovaneVoznje(Map<String, dynamic> row, String tipPutnika) {
+    final voznje = _readRealizovaneVoznje(row);
+    if (_isPoDanuTip(tipPutnika)) {
+      final dani = voznje
+          .map((v) => V3DateUtils.parseIsoDatePart(v['datum']?.toString() ?? ''))
+          .where((d) => d.isNotEmpty)
+          .toSet();
+      return dani.length;
+    }
+    return voznje.length;
   }
 }

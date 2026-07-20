@@ -447,7 +447,6 @@ class V3PlacanjeDialogHelper {
           iznos: rezultat.iznos,
           mesec: rezultat.mesec,
           godina: rezultat.godina,
-          brojVoznji: rezultat.brojVoznji,
         );
       } else {
         await V3FinansijeService.sacuvajNaplatuZaMesec(
