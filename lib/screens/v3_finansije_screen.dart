@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/v3_finansije.dart';
+import '../models/v3_kredit.dart';
 import '../screens/v3_krediti_screen.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
@@ -306,8 +307,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream:
-          V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_finansije', 'v3_auth', 'v3_app_settings']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_finansije', 'v3_krediti', 'v3_auth', 'v3_app_settings']),
       builder: (context, _) {
         final iz = _buildIzvestaj();
         return Scaffold(
@@ -697,6 +698,14 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
     for (final s in _stavke) s.$1: TextEditingController(),
   };
   bool _saving = false;
+  late final List<V3Kredit> _krediti = V3KreditService.getKrediti();
+  String? _selectedKreditId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_krediti.isNotEmpty) _selectedKreditId = _krediti.first.id;
+  }
 
   @override
   void dispose() {
@@ -711,17 +720,38 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
       final futures = <Future<void>>[];
       for (final s in _stavke) {
         final val = double.tryParse(_ctrls[s.$1]!.text.replaceAll(',', '.')) ?? 0;
-        if (val > 0) {
+        if (val <= 0) continue;
+
+        if (s.$1 == 'kredit' && _selectedKreditId != null) {
+          // Otplata konkretnog kredita: umanjuje preostali dug tog kredita
+          // i evidentira trošak radi statistike.
+          final kredit = _krediti.firstWhere((k) => k.id == _selectedKreditId);
+          futures.add(V3KreditService.uplati(
+            id: kredit.id,
+            iznos: val,
+            napomena: 'Uplata sa ekrana Finansije',
+          ));
           futures.add(V3FinansijeService.addTrosak(V3Trosak(
             id: '',
-            naziv: s.$3,
+            naziv: '${s.$3} (${kredit.naziv})',
             kategorija: s.$1,
             iznos: val,
             isplataIz: 'pazar',
             mesec: now.month,
             godina: now.year,
           )));
+          continue;
         }
+
+        futures.add(V3FinansijeService.addTrosak(V3Trosak(
+          id: '',
+          naziv: s.$3,
+          kategorija: s.$1,
+          iznos: val,
+          isplataIz: 'pazar',
+          mesec: now.month,
+          godina: now.year,
+        )));
       }
       await Future.wait(futures);
       if (mounted) {
@@ -793,6 +823,28 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                       ),
                     ],
                   ),
+                  if (s.$1 == 'kredit' && _krediti.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 34),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedKreditId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Koji kredit se otplaćuje?',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _krediti
+                            .map((k) => DropdownMenuItem(
+                                  value: k.id,
+                                  child: Text('${k.naziv} (${_fmtIznos(k.preostalo)} preostalo)'),
+                                ))
+                            .toList(),
+                        onChanged: (val) => V3StateUtils.safeSetState(this, () => _selectedKreditId = val),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                 ],
                 const SizedBox(height: 4),
