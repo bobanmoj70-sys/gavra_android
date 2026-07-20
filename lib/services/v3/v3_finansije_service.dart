@@ -465,18 +465,16 @@ class V3FinansijeService {
             grad: grad,
             vreme: vreme,
           );
-          final currentUplate = _readUplate(latest);
-          final updatedUplate = _appendUplata(currentUplate, {
-            'uplata_id': 'upl:${_uuid.v4()}',
-            'datum': DateTime.now().toIso8601String(),
-            'iznos': cenaVoznje,
-            'naplatio_by': evidentiraoBy,
-          });
+          // NAPOMENA: Ovde se NE dodaje lažna "uplata" u uplate_json — vožnja se
+          // evidentira kao NENAPLAĆENA (currentNenaplacene/updatedNenaplacene) i
+          // stvarni zapis o uplati se pravi tek kada putnik zaista plati
+          // (vidi sacuvajMesecnuNaplatu). Ranije se ovde dodavao lažni uplata
+          // zapis sa vremenom pokupljanja, zbog čega je "vreme naplate" u UI-u
+          // pogrešno prikazivalo isto vreme kao pokupljanje.
           final updatePayload = <String, dynamic>{
             'broj_voznji': currentBroj + 1,
             _nenaplaceneVoznjeKey: updatedNenaplacene,
             _realizovaneVoznjeKey: updatedRealizovane,
-            _uplateKey: updatedUplate,
             'updated_at': DateTime.now().toIso8601String(),
           };
           final updated = await _repo.updateByIdReturning(latestId, updatePayload);
