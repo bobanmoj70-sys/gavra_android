@@ -149,6 +149,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     },
     'promeniTemu': {'sr': 'Promeni temu', 'en': 'Change theme', 'ru': 'Сменить тему', 'de': 'Thema ändern'},
     'promeniPin': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern'},
+    'promeniJezik': {'sr': 'Promeni jezik', 'en': 'Change language', 'ru': 'Изменить язык', 'de': 'Sprache ändern'},
+    'jezikPromenjen': {
+      'sr': '🌐 Jezik promenjen',
+      'en': '🌐 Language changed',
+      'ru': '🌐 Язык изменён',
+      'de': '🌐 Sprache geändert',
+    },
     'logout': {'sr': 'Logout', 'en': 'Log out', 'ru': 'Выйти', 'de': 'Abmelden'},
     'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
     'izaberiDan': {'sr': 'Izaberi dan', 'en': 'Select day', 'ru': 'Выберите день', 'de': 'Tag auswählen'},
@@ -1512,6 +1519,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                     V3StateUtils.safeSetState(this, () {});
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, _tr('temaPromenjena'));
+                                  } else if (val == 'jezik') {
+                                    const codes = ['sr', 'en', 'ru', 'de'];
+                                    final current = V3LocaleManager().currentLocale.languageCode;
+                                    final idx = codes.indexOf(current);
+                                    final next = codes[(idx + 1) % codes.length];
+                                    await V3LocaleManager().changeLocale(Locale(next));
+                                    V3StateUtils.safeSetState(this, () {});
+                                    if (!mounted) return;
+                                    V3AppSnackBar.info(context, _tr('jezikPromenjen'));
                                   } else if (val == 'promeni_pin') {
                                     final vozac = _efektivniVozac;
                                     final vozacAuthId = (vozac?.id?.toString() ?? '').trim();
@@ -1534,6 +1550,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                       const Icon(Icons.palette, color: Colors.purpleAccent),
                                       const SizedBox(width: 8),
                                       Text(_tr('promeniTemu')),
+                                    ]),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'jezik',
+                                    child: Row(children: [
+                                      const Icon(Icons.language, color: Colors.lightBlueAccent),
+                                      const SizedBox(width: 8),
+                                      Text(_tr('promeniJezik')),
                                     ]),
                                   ),
                                   PopupMenuItem(
