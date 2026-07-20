@@ -91,11 +91,30 @@ class V3FinansijeService {
   }
 
   /// Iznos poslednje pojedinačne uplate, izveden isključivo iz uplate_json.
-  static double _readPoslednjaDopuna(Map<String, dynamic> row) {
+  static double _readPosledjaDopuna(Map<String, dynamic> row) {
     final uplate = _readUplate(row);
     if (uplate.isEmpty) return 0.0;
     return (uplate.last['iznos'] as num?)?.toDouble() ?? 0.0;
   }
+
+  /// Ukupan iznos svih uplata iz uplate_json (jedini izvor istine).
+  static double _getUkupanIznosUplata(Map<String, dynamic> row) {
+    final uplate = _readUplate(row);
+    if (uplate.isEmpty) return 0.0;
+    return uplate.fold<double>(0.0, (sum, u) => sum + ((u['iznos'] as num?)?.toDouble() ?? 0.0));
+  }
+
+  /// Ko je poslednji uplatio, izvedeno isključivo iz uplate_json.
+  static String? _getNaplatioBy(Map<String, dynamic> row) {
+    final uplate = _readUplate(row);
+    if (uplate.isEmpty) return null;
+    final last = uplate.last;
+    final naplatioBy = last['naplatio_by']?.toString().trim();
+    return naplatioBy?.isEmpty ?? true ? null : naplatioBy;
+  }
+
+  /// Da li red ima bilo kakvu stvarnu uplatu u uplate_json.
+  static bool _hasUplata(Map<String, dynamic> row) => _readUplate(row).isNotEmpty;
 
   static void _sortByCreatedAtDesc(List<Map<String, dynamic>> rows) {
     rows.sort((a, b) => _createdAtOrEpoch(b).compareTo(_createdAtOrEpoch(a)));
@@ -283,18 +302,16 @@ class V3FinansijeService {
     _sortByCreatedAtDesc(candidates);
     final latest = candidates.first;
 
-    // Ukupan iznos je ukupna suma uplaćena
-    final ukupanIznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
-
-    // Poslednja dopuna se izvodi iz uplate_json (jedini izvor istine)
-    final poslednjaDopuna = _readPoslednjaDopuna(latest);
+    // Ukupan iznos se izvodi isključivo iz uplate_json (jedini izvor istine).
+    final ukupanIznos = _getUkupanIznosUplata(latest);
+    final poslednjaDopuna = _readPosledjaDopuna(latest);
 
     return V3NaplataInfo(
       isPaid: ukupanIznos > 0,
       ukupanIznos: ukupanIznos,
       poslednjaDopuna: poslednjaDopuna,
       paidAt: _naplacenoAt(latest),
-      paidBy: latest['naplaceno_by']?.toString(),
+      paidBy: _getNaplatioBy(latest),
       updatedAt: V3DateUtils.parseTs(latest['updated_at']?.toString()),
       updatedBy: latest['updated_by']?.toString(),
       uplataAt: _readLastUplata(latest),
@@ -308,13 +325,8 @@ class V3FinansijeService {
     final candidates = _naplataRows().where((row) {
       final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
       if (rPutnikId != putnik.toLowerCase()) return false;
-      // Uzimamo samo redove sa stvarnom uplatom.
-      // naplaceno_by se može pojaviti i na evidenciji realizacije (bez uplate),
-      // pa nije pouzdan kriterijum za "zadnju naplatu". Jedini pouzdan izvor
-      // je uplate_json.
-      final iznos = (row['iznos'] as num?)?.toDouble() ?? 0;
-      final imaUplatu = _readUplate(row).isNotEmpty;
-      return iznos > 0 || imaUplatu;
+      // Jedini pouzdan izvor za postojanje uplate je uplate_json.
+      return _hasUplata(row);
     }).toList();
     if (candidates.isEmpty) return null;
 
@@ -326,8 +338,9 @@ class V3FinansijeService {
     });
     final latest = candidates.first;
 
-    final ukupanIznos = (latest['iznos'] as num?)?.toDouble() ?? 0;
-    final poslednjaDopuna = _readPoslednjaDopuna(latest);
+    // Ukupan iznos se izvodi isključivo iz uplate_json (jedini izvor istine).
+    final ukupanIznos = _getUkupanIznosUplata(latest);
+    final poslednjaDopuna = _readPosledjaDopuna(latest);
 
     return V3NaplataInfo(
       isPaid: ukupanIznos > 0,
@@ -367,7 +380,8 @@ class V3FinansijeService {
     var ukupanIznos = 0.0;
 
     for (final row in naplataRows) {
-      ukupanIznos += (row['iznos'] as num?)?.toDouble() ?? 0.0;
+      // Ukupan iznos se izvodi isključivo iz uplate_json (jedini izvor istine).
+      ukupanIznos += _getUkupanIznosUplata(row);
       brojVoznjiRealizacija += (row['broj_voznji'] as num?)?.toInt() ?? 0;
     }
 
@@ -504,7 +518,6 @@ class V3FinansijeService {
         'tip': 'prihod',
         'iznos': 0,
         'putnik_v3_auth_id': safePutnikId,
-        'naplaceno_by': (evidentiraoBy ?? '').trim().isEmpty ? null : evidentiraoBy,
         'broj_voznji': 1,
         _nenaplaceneVoznjeKey: [
           {
@@ -649,10 +662,13 @@ class V3FinansijeService {
     final targetDay = DateTime(dan.year, dan.month, dan.day);
     final rows = _naplataRowsForDan(targetDay)
         .where((row) {
-          final naplatioBy = row['naplaceno_by']?.toString() ?? '';
-          if (naplatioBy != id) return false;
-          // Prikazujemo samo redove sa stvarnom uplatom istog dana (u uplate_json).
-          return _readUplate(row).isNotEmpty;
+          // Prikazujemo samo redove sa stvarnom uplatom istog dana od traženog vozača (u uplate_json).
+          return _readUplate(row).any((u) {
+            final dt = V3DateUtils.parseTs(u['datum']?.toString());
+            if (dt == null) return false;
+            if (dt.year != targetDay.year || dt.month != targetDay.month || dt.day != targetDay.day) return false;
+            return (u['naplatio_by']?.toString() ?? '').trim().toLowerCase() == id.toLowerCase();
+          });
         })
         .map((row) => Map<String, dynamic>.from(row))
         .toList(growable: false);
@@ -756,7 +772,7 @@ class V3FinansijeService {
         ).toList()
           ..sort((a, b) => _createdAtOrEpoch(b).compareTo(_createdAtOrEpoch(a)));
         final latestNaplata = naplateRows.isNotEmpty ? naplateRows.first : null;
-        final naplatioById = latestNaplata?['naplaceno_by']?.toString().trim();
+        final naplatioById = _getNaplatioBy(latestNaplata ?? <String, dynamic>{});
         final updatedById = latestNaplata?['updated_by']?.toString().trim();
 
         final brojVoznji = summary.brojVoznji;
@@ -900,7 +916,6 @@ class V3FinansijeService {
           throw StateError('Master red za finansije nema validan ID');
         }
 
-        final currentIznos = (latest['iznos'] as num?)?.toDouble() ?? 0.0;
         final currentBrojVoznji = (latest['broj_voznji'] as num?)?.toInt() ?? 0;
         final currentNenaplacene = _readNenaplaceneVoznje(latest);
         final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
@@ -914,26 +929,34 @@ class V3FinansijeService {
         final finalBrojVoznji = currentBrojVoznji;
         final currentUplate = _readUplate(latest);
         final updatedUplate = _appendUplata(currentUplate, uplataStavka);
+        // Skalarne kolone su izvedene iz uplate_json (jedini izvor istine).
+        final updatedIznos = _getUkupanIznosUplata(<String, dynamic>{_uplateKey: updatedUplate});
+        final updatedNaplatioBy = _getNaplatioBy(<String, dynamic>{_uplateKey: updatedUplate});
 
         row = await _repo.updateByIdReturning(existingId, {
-          'iznos': currentIznos + iznos,
-          'naplaceno_by': naplacenoBy,
+          'iznos': updatedIznos,
+          'naplaceno_by': updatedNaplatioBy,
           'broj_voznji': finalBrojVoznji,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
           _uplateKey: updatedUplate,
           'updated_at': now.toIso8601String(),
         });
       } else {
+        // Skalarne kolone su izvedene iz uplate_json (jedini izvor istine).
+        final initialUplate = [uplataStavka];
+        final initialIznos = _getUkupanIznosUplata(<String, dynamic>{_uplateKey: initialUplate});
+        final initialNaplatioBy = _getNaplatioBy(<String, dynamic>{_uplateKey: initialUplate});
+
         row = await _repo.insertReturning({
           'naziv': 'Evidencija prevoza $mesec/$godina',
           'kategorija': _masterKategorija(),
           'tip': 'prihod',
-          'iznos': iznos,
+          'iznos': initialIznos,
           'putnik_v3_auth_id': safePutnikId,
-          'naplaceno_by': naplacenoBy,
+          'naplaceno_by': initialNaplatioBy,
           'broj_voznji': brojVoznji,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
-          _uplateKey: [uplataStavka],
+          _uplateKey: initialUplate,
           'mesec': mesec,
           'godina': godina,
         });
@@ -1069,6 +1092,11 @@ class V3FinansijeService {
     return dt ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
+  /// @deprecated Ova metoda se više ne poziva iz klijentskog koda.
+  /// Otkazivanja se sada automatski arhiviraju preko database triggera
+  /// `v3_sync_otkazane_voznje_to_finansije` koji osluškuje promene
+  /// `otkazano_at` u `v3_operativna_nedelja`.
+  /// Ostavljena je za potencijalne interne/legacy pozive i testiranje.
   static Future<void> evidentirajOtkazivanje({
     required String putnikId,
     required DateTime datum,

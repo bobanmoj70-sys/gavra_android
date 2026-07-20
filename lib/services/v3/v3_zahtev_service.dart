@@ -9,7 +9,6 @@ import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
-import 'v3_finansije_service.dart';
 import 'v3_operativna_nedelja_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 import 'v3_vozac_service.dart';
@@ -261,16 +260,7 @@ class V3ZahtevService {
         updatedBy: updBy,
       );
 
-      await V3FinansijeService.evidentirajOtkazivanje(
-        putnikId: putnikId,
-        datum: datum,
-        operativnaId: row['id']?.toString(),
-        otkazaoBy: otkazaoPutnikId,
-        otkazanoAt: otkazanoAt,
-        tipOtkazivanja: 'putnik',
-        grad: row['grad']?.toString(),
-        vreme: row['polazak_at']?.toString(),
-      );
+      // Trigger v3_sync_otkazane_voznje_to_finansije automatski ažurira arhivu.
     }
 
     await _syncOperativnaAssignmentsForContext(
@@ -326,17 +316,6 @@ class V3ZahtevService {
             operativnaRow: row,
             updatedBy: updBy,
           );
-
-          await V3FinansijeService.evidentirajOtkazivanje(
-            putnikId: putnikId ?? row['created_by']?.toString() ?? '',
-            datum: _parseTs(row['datum']?.toString()),
-            operativnaId: operativnaId,
-            otkazaoBy: safeVozacId,
-            otkazanoAt: otkazanoAt,
-            tipOtkazivanja: 'vozac',
-            grad: row['grad']?.toString(),
-            vreme: row['polazak_at']?.toString(),
-          );
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
@@ -367,17 +346,6 @@ class V3ZahtevService {
           await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
             operativnaRow: row2,
             updatedBy: updBy,
-          );
-
-          await V3FinansijeService.evidentirajOtkazivanje(
-            putnikId: putnikId ?? row2['created_by']?.toString() ?? '',
-            datum: _parseTs(row2['datum']?.toString()),
-            operativnaId: operativnaId,
-            otkazaoBy: safePutnikOtkazaoId,
-            otkazanoAt: otkazanoAt,
-            tipOtkazivanja: 'putnik',
-            grad: row2['grad']?.toString(),
-            vreme: row2['polazak_at']?.toString(),
           );
         } else {
           throw Exception('operativnaId je obavezan za otkazivanje');

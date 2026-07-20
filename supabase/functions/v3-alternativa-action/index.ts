@@ -72,6 +72,19 @@ async function updateOperativnaForReject(client: any, row: any) {
     .is("otkazano_at", null);
 }
 
+// @deprecated Ručne sinhronizacije otkazivanja sa v3_finansije su zamenjene
+// database triggerom v3_sync_otkazane_voznje_to_finansije.
+// Ove funkcije su zadržane kao prazne da ne bi poremetile postojeće pozive,
+// ali se više ne izvršavaju.
+async function evidentirajOtkazivanjeUFInansijama(_client: any, _zahtev: any) {
+  // No-op: trigger održava otkazane_voznje_json.
+}
+
+// @deprecated Vidi evidentirajOtkazivanjeUFInansijama.
+async function ukloniOtkazivanjeIzFinansija(_client: any, _zahtev: any) {
+  // No-op: trigger održava otkazane_voznje_json.
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, reason: "method_not_allowed" });
