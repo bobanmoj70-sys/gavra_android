@@ -252,7 +252,7 @@ class _MesecCard extends StatelessWidget {
               Text(_StatTr.tr('ukupanDug'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
               Text(
                 '${ukupanDug.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ],
           ),
