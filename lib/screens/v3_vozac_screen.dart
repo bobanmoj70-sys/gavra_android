@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
@@ -92,6 +93,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       'en': 'Location permission was permanently denied. Enable it in Settings.',
       'ru': 'В доступе к геолокации отказано навсегда. Включите её в настройках.',
       'de': 'Standortberechtigung wurde dauerhaft verweigert. Aktivieren Sie sie in den Einstellungen.',
+    },
+    'dozvolaPotrebnaUvek': {
+      'sr': 'Za praćenje vožnje potrebna je dozvola "Uvek" za lokaciju. Podesi u Settings.',
+      'en': 'Driving tracking requires "Always" location permission. Enable it in Settings.',
+      'ru': 'Для отслеживания поездки требуется разрешение «Всегда» на геолокацию. Включите в настройках.',
+      'de':
+          'Für die Fahrtverfolgung ist die Standortfreigabe "Immer" erforderlich. Aktivieren Sie sie in den Einstellungen.',
     },
     'rutaNemaKoordinate': {
       'sr': 'Nije moguće formirati rutu: nema validnih koordinata adresa.',
@@ -607,6 +615,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         break;
       case V3LocationPrereqStatus.deniedForever:
         V3AppSnackBar.warning(context, _tr('dozvolaTrajnoOdbijena'));
+        break;
+      case V3LocationPrereqStatus.needsAlwaysPermission:
+        V3AppSnackBar.warning(context, _tr('dozvolaPotrebnaUvek'));
+        unawaited(Geolocator.openAppSettings());
         break;
       case V3LocationPrereqStatus.ok:
         break;

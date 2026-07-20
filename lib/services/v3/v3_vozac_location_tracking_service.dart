@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,6 +15,7 @@ enum V3LocationPrereqStatus {
   serviceDisabled,
   denied,
   deniedForever,
+  needsAlwaysPermission,
 }
 
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
@@ -26,6 +29,25 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   String _activeVreme = '';
   Position? _lastSentPosition;
   bool _isRunning = false;
+
+  /// Tracking se automatski gasi ako traje duže od ovog vremena
+  /// (safety net ako se ne detektuje da su svi putnici pokupljeni).
+  static const Duration _maxTrackingDuration = Duration(minutes: 55);
+
+  DateTime? _trackingStartedAt;
+
+  /// iOS nema pravi background isolate (flutter_background_service na iOS-u
+  /// se oslanja na retke/negarantovane background fetch pozive). Zato na iOS-u
+  /// koristimo Geolocator position stream sa allowsBackgroundLocationUpdates,
+  /// koji iOS budi na promenu lokacije čak i kad je app suspendovana.
+  StreamSubscription<Position>? _iosPositionSub;
+  bool _iosInFlight = false;
+  Timer? _iosWatchdogTimer;
+
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+  static const String _kStorageStartedAt = 'vozac_tracking_started_at';
 
   /// Optimizovani redosled putnika (deljen između ekrana)
   final List<String> _optimizedPutnikIds = [];
@@ -147,6 +169,22 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _activeVreme = preservedVreme;
     }
     _activeVozacId = normalizedVozacId;
+    _trackingStartedAt ??= DateTime.now();
+    unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _trackingStartedAt!.toIso8601String()));
+
+    final prereqStatus = await checkLocationPrerequisites();
+    if (prereqStatus != V3LocationPrereqStatus.ok) {
+      debugPrint('[V3VozacLocationTrackingService] start() prekinut, prereq status=$prereqStatus');
+      _activeVozacId = '';
+      _trackingStartedAt = null;
+      unawaited(_secureStorage.delete(key: _kStorageStartedAt));
+      return;
+    }
+
+    if (Platform.isIOS) {
+      await _startIosTracking();
+      return;
+    }
 
     final service = FlutterBackgroundService();
     var isServiceRunning = await service.isRunning();
@@ -199,9 +237,17 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _activeVreme = '';
     _lastSentPosition = null;
     _isRunning = false;
+    _trackingStartedAt = null;
     onLocationSent = null;
     _optimizedPutnikIds.clear();
     _etaSecondsCache.clear();
+
+    unawaited(_secureStorage.delete(key: _kStorageStartedAt));
+
+    await _iosPositionSub?.cancel();
+    _iosPositionSub = null;
+    _iosWatchdogTimer?.cancel();
+    _iosWatchdogTimer = null;
 
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
@@ -257,6 +303,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     if (permission == LocationPermission.denied) {
       return V3LocationPrereqStatus.denied;
+    }
+
+    // iOS zahteva "Always" autorizaciju za allowsBackgroundLocationUpdates
+    // (koje koristimo u _startIosTracking). "While Using" (whileInUse) nije
+    // dovoljno — tracking bi prestao čim app ode u pozadinu.
+    if (Platform.isIOS && permission == LocationPermission.whileInUse) {
+      return V3LocationPrereqStatus.needsAlwaysPermission;
     }
 
     return V3LocationPrereqStatus.ok;
@@ -324,6 +377,93 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// Registruje lifecycle observer za background tracking servis.
   void initialize() {
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_restorePersistedStartedAt());
+  }
+
+  Future<void> _restorePersistedStartedAt() async {
+    try {
+      final raw = await _secureStorage.read(key: _kStorageStartedAt);
+      if (raw != null && raw.isNotEmpty) {
+        _trackingStartedAt = DateTime.tryParse(raw);
+      }
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] restore started_at error: $e');
+    }
+  }
+
+  /// Pokreće iOS-specifičan tracking preko Geolocator position stream-a sa
+  /// allowsBackgroundLocationUpdates. Za razliku od Androida, ovde nema
+  /// pravog background isolate-a — GPS updates i ETA se računaju u main isolate-u,
+  /// koji iOS budi na promenu lokacije čak i kad je app suspendovana.
+  Future<void> _startIosTracking() async {
+    await _iosPositionSub?.cancel();
+    _isRunning = true;
+
+    final locationSettings = AppleSettings(
+      accuracy: LocationAccuracy.high,
+      activityType: ActivityType.automotiveNavigation,
+      distanceFilter: 20,
+      pauseLocationUpdatesAutomatically: false,
+      showBackgroundLocationIndicator: true,
+      allowBackgroundLocationUpdates: true,
+    );
+
+    _iosPositionSub = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+      (position) {
+        unawaited(_handleIosPosition(position));
+      },
+      onError: (Object e) {
+        debugPrint('[V3VozacLocationTrackingService][iOS] position stream error: $e');
+      },
+    );
+
+    // distanceFilter znači da position stream NEĆE emitovati update dok se
+    // vozilo ne pomeri ≥20m — ako vozač stoji (saobraćaj, parkiran, zaboravio
+    // da ugasi tracking), _handleIosPosition se ne bi pozivao i 55-min watchdog
+    // nikad ne bi okinuo. Zato držimo odvojen periodičan tajmer isključivo za
+    // watchdog proveru, nezavisno od kretanja vozila.
+    _iosWatchdogTimer?.cancel();
+    _iosWatchdogTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      final startedAt = _trackingStartedAt;
+      if (startedAt == null) return;
+      if (DateTime.now().difference(startedAt) < _maxTrackingDuration) return;
+
+      debugPrint(
+          '[V3VozacLocationTrackingService][iOS] Auto-stop (watchdog timer): ${_maxTrackingDuration.inMinutes} min trackinga isteklo');
+      unawaited(stop());
+    });
+  }
+
+  Future<void> _handleIosPosition(Position position) async {
+    if (_iosInFlight) return;
+    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) return;
+
+    // 55-min auto-stop watchdog (iOS ekvivalent Android background isolate watchdoga)
+    final startedAt = _trackingStartedAt;
+    if (startedAt != null && DateTime.now().difference(startedAt) >= _maxTrackingDuration) {
+      debugPrint(
+          '[V3VozacLocationTrackingService][iOS] Auto-stop: ${_maxTrackingDuration.inMinutes} min trackinga isteklo');
+      await stop();
+      return;
+    }
+
+    _iosInFlight = true;
+    try {
+      _lastSentPosition = position;
+      await computeEta(
+        vozacId: _activeVozacId,
+        lat: position.latitude,
+        lng: position.longitude,
+        grad: _activeGrad,
+        vreme: _activeVreme,
+        datumIso: _activeDatumIso,
+      );
+      onLocationSent?.call(position);
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService][iOS] computeEta error: $e');
+    } finally {
+      _iosInFlight = false;
+    }
   }
 
   @override
