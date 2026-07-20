@@ -16,12 +16,17 @@ const String _kReady = 'ready';
 const String _kRequestState = 'request_state';
 const Duration _kInterval = Duration(seconds: 20);
 
+/// Tracking se automatski gasi ako traje duže od ovog vremena
+/// (safety net ako se ne detektuje da su svi putnici pokupljeni).
+const Duration _kMaxTrackingDuration = Duration(minutes: 55);
+
 /// Ključevi za perzistentno čuvanje aktivnog stanja (koristi se ako se
 /// background isolate restartuje dok main isolate nije dostupan).
 const String _kStorageVozacId = 'bg_tracking_vozac_id';
 const String _kStorageDatumIso = 'bg_tracking_datum_iso';
 const String _kStorageGrad = 'bg_tracking_grad';
 const String _kStorageVreme = 'bg_tracking_vreme';
+const String _kStorageStartedAt = 'bg_tracking_started_at';
 
 const _secureStorage = FlutterSecureStorage(
   aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -32,6 +37,7 @@ String? _bgVozacId;
 String _bgDatumIso = '';
 String _bgGrad = '';
 String _bgVreme = '';
+DateTime? _bgTrackingStartedAt;
 Timer? _bgTimer;
 bool _bgInFlight = false;
 SupabaseClient? _bgSupabaseClient;
@@ -49,11 +55,16 @@ Future<void> _bgLoadPersistedState() async {
     final datumIso = (values[_kStorageDatumIso] ?? '').trim();
     final grad = (values[_kStorageGrad] ?? '').trim().toUpperCase();
     final vreme = V3TimeUtils.normalizeToHHmm(values[_kStorageVreme] ?? '');
+    final startedAtRaw = (values[_kStorageStartedAt] ?? '').trim();
     if (vozacId.isNotEmpty) _bgVozacId = vozacId;
     if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
     if (grad.isNotEmpty) _bgGrad = grad;
     if (vreme.isNotEmpty) _bgVreme = vreme;
-    debugPrint('[BG] Učitano perzistentno stanje: vozacId=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
+    if (startedAtRaw.isNotEmpty) {
+      _bgTrackingStartedAt = DateTime.tryParse(startedAtRaw);
+    }
+    debugPrint(
+        '[BG] Učitano perzistentno stanje: vozacId=$vozacId datum=$datumIso grad=$grad vreme=$vreme startedAt=$startedAtRaw');
   } catch (e) {
     debugPrint('[BG] Greška pri učitavanju perzistentnog stanja: $e');
   }
@@ -65,6 +76,7 @@ Future<void> _bgClearPersistedState() async {
     await _secureStorage.delete(key: _kStorageDatumIso);
     await _secureStorage.delete(key: _kStorageGrad);
     await _secureStorage.delete(key: _kStorageVreme);
+    await _secureStorage.delete(key: _kStorageStartedAt);
   } catch (e) {
     debugPrint('[BG] Greška pri brisanju perzistentnog stanja: $e');
   }
@@ -123,6 +135,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     _bgDatumIso = '';
     _bgGrad = '';
     _bgVreme = '';
+    _bgTrackingStartedAt = null;
     await _bgClearPersistedState();
     // ETA cleanup mora biti pre brisanja Supabase kredencijala
     if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
@@ -147,6 +160,10 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
       if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
       if (grad.isNotEmpty) _bgGrad = grad;
       if (vreme.isNotEmpty) _bgVreme = vreme;
+      if (_bgTrackingStartedAt == null) {
+        _bgTrackingStartedAt = DateTime.now();
+        unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _bgTrackingStartedAt!.toIso8601String()));
+      }
       _bgStartTimerIfReady();
     }
   });
@@ -175,6 +192,33 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   _bgStartTimerIfReady();
   service.invoke(_kReady, {});
   debugPrint('[BG] Background servis spreman');
+
+  // Auto-stop watchdog: proverava svakih 20s da li je pređeno max trajanje trackinga.
+  Timer.periodic(_kInterval, (_) {
+    final startedAt = _bgTrackingStartedAt;
+    if (startedAt == null) return;
+    if (DateTime.now().difference(startedAt) < _kMaxTrackingDuration) return;
+
+    debugPrint('[BG] Auto-stop: ${_kMaxTrackingDuration.inMinutes} min trackinga isteklo');
+    unawaited(() async {
+      final vozacIdToClean = _bgVozacId;
+      _bgTimer?.cancel();
+      _bgTimer = null;
+      _bgVozacId = null;
+      _bgDatumIso = '';
+      _bgGrad = '';
+      _bgVreme = '';
+      _bgTrackingStartedAt = null;
+      await _bgClearPersistedState();
+      if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
+        await _bgClearEtaForVozac(vozacIdToClean);
+      }
+      _bgSupabaseUrl = '';
+      _bgSupabaseAnonKey = '';
+      _bgSupabaseClient = null;
+      service.stopSelf();
+    }());
+  });
 }
 
 void _bgStartTimerIfReady() {
