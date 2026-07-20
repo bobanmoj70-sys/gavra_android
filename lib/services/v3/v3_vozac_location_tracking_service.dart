@@ -48,6 +48,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
   static const String _kStorageStartedAt = 'vozac_tracking_started_at';
+  static const String _kStorageVozacId = 'vozac_tracking_vozac_id';
+  static const String _kStorageDatumIso = 'vozac_tracking_datum_iso';
+  static const String _kStorageGrad = 'vozac_tracking_grad';
+  static const String _kStorageVreme = 'vozac_tracking_vreme';
 
   /// Optimizovani redosled putnika (deljen između ekrana)
   final List<String> _optimizedPutnikIds = [];
@@ -171,6 +175,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _activeVozacId = normalizedVozacId;
     _trackingStartedAt ??= DateTime.now();
     unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _trackingStartedAt!.toIso8601String()));
+    unawaited(_secureStorage.write(key: _kStorageVozacId, value: normalizedVozacId));
+    unawaited(_secureStorage.write(key: _kStorageDatumIso, value: _activeDatumIso));
+    unawaited(_secureStorage.write(key: _kStorageGrad, value: _activeGrad));
+    unawaited(_secureStorage.write(key: _kStorageVreme, value: _activeVreme));
 
     final prereqStatus = await checkLocationPrerequisites();
     if (prereqStatus != V3LocationPrereqStatus.ok) {
@@ -178,6 +186,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _activeVozacId = '';
       _trackingStartedAt = null;
       unawaited(_secureStorage.delete(key: _kStorageStartedAt));
+      unawaited(_secureStorage.delete(key: _kStorageVozacId));
+      unawaited(_secureStorage.delete(key: _kStorageDatumIso));
+      unawaited(_secureStorage.delete(key: _kStorageGrad));
+      unawaited(_secureStorage.delete(key: _kStorageVreme));
       return;
     }
 
@@ -243,6 +255,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _etaSecondsCache.clear();
 
     unawaited(_secureStorage.delete(key: _kStorageStartedAt));
+    unawaited(_secureStorage.delete(key: _kStorageVozacId));
+    unawaited(_secureStorage.delete(key: _kStorageDatumIso));
+    unawaited(_secureStorage.delete(key: _kStorageGrad));
+    unawaited(_secureStorage.delete(key: _kStorageVreme));
 
     await _iosPositionSub?.cancel();
     _iosPositionSub = null;
@@ -377,17 +393,48 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// Registruje lifecycle observer za background tracking servis.
   void initialize() {
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_restorePersistedStartedAt());
+    unawaited(_restoreAndResumeIfNeeded());
   }
 
-  Future<void> _restorePersistedStartedAt() async {
+  /// Ako je app na iOS-u bio prisilno ugašen dok je tracking bio aktivan,
+  /// ovde pokušavamo da automatski nastavimo tracking na osnovu sačuvane
+  /// sesije (vozacId/grad/vreme/datum + started_at), bez potrebe da vozač
+  /// ručno ponovo klikne "Pokreni vožnju". Android ovo ne treba jer background
+  /// isolate tamo nastavlja da radi nezavisno od glavne app.
+  Future<void> _restoreAndResumeIfNeeded() async {
     try {
-      final raw = await _secureStorage.read(key: _kStorageStartedAt);
-      if (raw != null && raw.isNotEmpty) {
-        _trackingStartedAt = DateTime.tryParse(raw);
+      final startedRaw = await _secureStorage.read(key: _kStorageStartedAt);
+      if (startedRaw == null || startedRaw.isEmpty) return;
+
+      final startedAt = DateTime.tryParse(startedRaw);
+      if (startedAt == null) return;
+      _trackingStartedAt = startedAt;
+
+      if (!Platform.isIOS) return;
+      if (_isRunning) return;
+
+      // Ako je vreme trajanja već isteklo, samo očisti sesiju umesto restarta.
+      if (DateTime.now().difference(startedAt) >= _maxTrackingDuration) {
+        debugPrint('[V3VozacLocationTrackingService][iOS] Sačuvana sesija istekla, ne nastavljam tracking.');
+        await stop();
+        return;
       }
+
+      final vozacId = (await _secureStorage.read(key: _kStorageVozacId) ?? '').trim();
+      final datumIso = (await _secureStorage.read(key: _kStorageDatumIso) ?? '').trim();
+      final grad = (await _secureStorage.read(key: _kStorageGrad) ?? '').trim();
+      final vreme = (await _secureStorage.read(key: _kStorageVreme) ?? '').trim();
+
+      if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
+
+      debugPrint(
+          '[V3VozacLocationTrackingService][iOS] Nastavljam sačuvanu sesiju: vozac=$vozacId grad=$grad vreme=$vreme');
+      _activeDatumIso = datumIso;
+      _activeGrad = grad;
+      _activeVreme = vreme;
+      await start(vozacId: vozacId);
     } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] restore started_at error: $e');
+      debugPrint('[V3VozacLocationTrackingService] restore/resume error: $e');
     }
   }
 
