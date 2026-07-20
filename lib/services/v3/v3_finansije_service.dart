@@ -680,6 +680,37 @@ class V3FinansijeService {
     return result;
   }
 
+  /// Vraća ukupan iznos duga koji je nastao TAČNO na zadati dan (podrazumevano danas),
+  /// za putnike tipa 'dnevni' i 'posiljka' (naplata po pokupljenju/danu).
+  ///
+  /// Ovo je analogno metodi [getPazarPoVozacuZaDan] koja prikazuje samo uplate
+  /// izvršene tog dana - ovde se prikazuje samo dug (nenaplaćena vožnja)
+  /// nastao tog dana, a ne kumulativni dug kroz ceo mesec.
+  static double getDugZaDan(DateTime dan) {
+    final rm = V3MasterRealtimeManager.instance;
+    final targetDay = DateTime(dan.year, dan.month, dan.day);
+    double total = 0.0;
+
+    for (final row in _naplataRows()) {
+      final putnikId = row['putnik_v3_auth_id']?.toString().trim() ?? '';
+      if (putnikId.isEmpty) continue;
+
+      final putnikData = rm.putniciCache[putnikId];
+      final tip = (putnikData?['tip_putnika'] as String? ?? '').toLowerCase();
+      if (tip != 'dnevni' && tip != 'posiljka') continue;
+
+      for (final stavka in _readNenaplaceneVoznje(row)) {
+        final datum = V3DateUtils.parseTs(stavka['datum']?.toString());
+        if (datum == null) continue;
+        if (datum.year == targetDay.year && datum.month == targetDay.month && datum.day == targetDay.day) {
+          total += (stavka['cena'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+    }
+
+    return total;
+  }
+
   static List<V3Dug> getDugovi() {
     final rm = V3MasterRealtimeManager.instance;
     final dugovi = <V3Dug>[];

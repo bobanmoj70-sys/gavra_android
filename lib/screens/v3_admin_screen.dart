@@ -1695,10 +1695,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   Widget _buildPazarSection(BuildContext context) {
     final vozaci = V3VozacService.getAllVozaci();
     final pazarPoVozacu = _getPazarPoVozacu();
-    final sveDugovi = V3FinansijeService.getDugovi();
-    // Dužnici = dnevni + pošiljke (naplata po pokupljenju)
-    final dugovi = sveDugovi.where((d) => d.tipPutnika == 'dnevni' || d.tipPutnika == 'posiljka').toList();
-    final dugoviIznos = dugovi.fold(0.0, (s, d) => s + d.iznos);
+    // Dužnici = dnevni + pošiljke (naplata po pokupljenju), prikazano SAMO za tekući dan
+    // (isto kao pazar vozača, koji se takođe prikazuje samo za danas).
+    final dugoviIznos = V3FinansijeService.getDugZaDan(DateTime.now());
     final ukupnoPazar = pazarPoVozacu.values.fold(0.0, (s, v) => s + v);
 
     return Column(
