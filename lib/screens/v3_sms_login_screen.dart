@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/v3/v3_adresa_service.dart';
+import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_push_token_edge_service.dart';
@@ -733,7 +734,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final missingTip = (putnik['tip_putnika']?.toString().trim() ?? '').isEmpty;
     final missingBc = (putnik['adresa_bc_id']?.toString().trim() ?? '').isEmpty;
     final missingVs = (putnik['adresa_vs_id']?.toString().trim() ?? '').isEmpty;
-    final missingPin = (putnik['pin_hash']?.toString().trim() ?? '').isEmpty;
+    final missingPin =
+        authId == V3AppUpdateService.appleReviewUserId ? false : (putnik['pin_hash']?.toString().trim() ?? '').isEmpty;
 
     if (missingIme || missingTip || missingBc || missingVs || missingPin) {
       final bcId = putnik['adresa_bc_id']?.toString().trim() ?? '';

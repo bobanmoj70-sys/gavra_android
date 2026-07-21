@@ -3,6 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
+// Apple Review test nalog - koristi ga Apple-ov reviewer prilikom provere aplikacije.
+// Za ovaj nalog PIN se nikad ne traži (ni na novom uređaju), da se reviewer ne zbuni.
+const APPLE_REVIEW_USER_ID = "db969766-e0ec-422c-95d7-620c8c9b8df5";
+
 type VerifyLoginPayload = {
   v3_auth_id?: string;
   telefon?: string;
@@ -95,11 +99,16 @@ Deno.serve(async (req) => {
     const incomingInstallationId = String(payload.installation_id ?? "").trim();
     const incomingHardwareId = String(payload.hardware_id ?? "").trim();
     const pinAlreadySet = String(account.pin_hash ?? "").trim() !== "";
+    const isAppleReviewAccount = userId === APPLE_REVIEW_USER_ID;
     let deviceRecognized = false;
     let deviceSlotsFull = false;
     let deviceAllowed = true;
 
-    if (incomingInstallationId || incomingHardwareId) {
+    if (isAppleReviewAccount) {
+      // Apple Review nalog uvek prolazi bez PIN provere, bez obzira na uređaj/slotove.
+      deviceRecognized = true;
+      deviceAllowed = true;
+    } else if (incomingInstallationId || incomingHardwareId) {
       const slot1Installation = String(account.installation_id ?? "").trim();
       const slot2Installation = String(account.installation_id_2 ?? "").trim();
       const slot1Hardware = String(account.hardware_id ?? "").trim();
@@ -144,7 +153,7 @@ Deno.serve(async (req) => {
       telefon: canonicalPhone,
       device_recognized: deviceRecognized,
       device_slots_full: deviceSlotsFull,
-      pin_required: !pinAlreadySet,
+      pin_required: isAppleReviewAccount ? false : !pinAlreadySet,
     });
   } catch (error) {
     return json(200, {
