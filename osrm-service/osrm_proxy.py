@@ -23,12 +23,12 @@ from fastapi.security import APIKeyHeader
 
 load_dotenv()
 
-ML_API_KEY = os.environ.get("ML_API_KEY")
+GAVRA013_API_KEY = os.environ.get("GAVRA013_API_KEY")
 PORT = int(os.environ.get("PORT", "8000"))
 OSRM_LOCAL_URL = os.environ.get("OSRM_LOCAL_URL", "http://127.0.0.1:5000")
 
-if not ML_API_KEY:
-    raise RuntimeError("ML_API_KEY mora biti definisan (environment varijabla) radi zaštite OSRM proxy-ja")
+if not GAVRA013_API_KEY:
+    raise RuntimeError("GAVRA013_API_KEY mora biti definisan radi zaštite OSRM proxy-ja")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("gavra_osrm_proxy")
@@ -58,7 +58,7 @@ async def verify_api_key(request: Request, api_key: str = Depends(api_key_header
     # Root health-check je dozvoljen bez ključa (koristi ga Tailscale funnel health-check).
     if request.url.path == "/":
         return True
-    if api_key != ML_API_KEY:
+    if api_key != GAVRA013_API_KEY:
         raise HTTPException(status_code=401, detail="Nevažeći API ključ")
     return True
 

@@ -56,8 +56,8 @@ function coordStr(lat: number, lng: number): string {
 
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
-  const mlApiKey = Deno.env.get("ML_API_KEY")?.trim() ?? "";
-  const headers: Record<string, string> = mlApiKey ? { "X-API-Key": mlApiKey } : {};
+  const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
+  const headers: Record<string, string> = apiKey ? { "X-API-Key": apiKey } : {};
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url, { headers, signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS) });

@@ -26,8 +26,11 @@ function Log($msg) {
     Add-Content -Path $LogFile -Value $line
 }
 
-if (-not ($env:Path -like "*$DockerBin*")) {
-    $env:Path += ";$DockerBin"
+# Proveri neophodne environment varijable pre pokretanja
+$apiKey = $env:GAVRA013_API_KEY
+if (-not $apiKey) {
+    Log "GREŠKA: GAVRA013_API_KEY environment varijabla nije definisana. OSRM proxy zahteva API ključ."
+    exit 1
 }
 
 Log "=== Pokretanje OSRM autostart skripte (samostalan proxy, bez AI) ==="
@@ -135,7 +138,7 @@ try {
 
 # 6. Health-check preko javnog Funnel URL-a
 try {
-    $publicResp = Invoke-RestMethod -Uri "https://win-vfeglqf71ss.tail61b7a2.ts.net/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 15
+    $publicResp = Invoke-RestMethod -Uri "https://win-vfeglqf71ss.tail61b7a2.ts.net/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 15 -Headers @{ "X-API-Key" = $apiKey }
     if ($publicResp.code -eq "Ok") {
         Log "OSRM javni (Funnel) health-check OK."
     } else {

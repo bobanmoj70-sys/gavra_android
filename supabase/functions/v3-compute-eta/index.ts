@@ -11,6 +11,8 @@ const ETA_STALE_THRESHOLD_SECONDS = 130;
 const OSRM_MAX_RETRIES = 3;
 const OSRM_BASE_DELAY_MS = 1000;
 const OSRM_REQUEST_TIMEOUT_MS = 12000;
+/// OSRM /trip endpoint po default-u odbija vise od 100 waypoint-a
+const OSRM_MAX_WAYPOINTS = 100;
 
 type ComputeEtaPayload = {
   vozac_id?: string;
@@ -60,8 +62,8 @@ function normalizeDateIso(value: unknown): string {
 /// Fetch sa eksponencijalnim backoff retry-om
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
-  const mlApiKey = Deno.env.get("ML_API_KEY")?.trim() ?? "";
-  const headers: Record<string, string> = mlApiKey ? { "X-API-Key": mlApiKey } : {};
+  const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
+  const headers: Record<string, string> = apiKey ? { "X-API-Key": apiKey } : {};
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -213,6 +215,11 @@ Deno.serve(async (req) => {
     const osrmUrl =
       `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
       `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
+
+    const waypointCount = remaining.length + 2;
+    if (waypointCount > OSRM_MAX_WAYPOINTS) {
+      return json(200, { ok: false, reason: "osrm_too_many_waypoints", count: waypointCount, max: OSRM_MAX_WAYPOINTS });
+    }
 
     console.log(`[v3-compute-eta] remaining=${remaining.length} tripCoords=${tripCoords}`);
 

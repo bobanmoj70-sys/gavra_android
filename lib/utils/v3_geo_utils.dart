@@ -16,12 +16,15 @@ class V3GeoUtils {
 
   /// Hardcoded koordinate centara gradova — pouzdanije od Nominatim geocodinga.
   /// Vraća (lat, lng) ili null ako grad nije poznat.
+  /// Ove koordinate moraju biti sinhronizovane sa DEFAULT_START/DEST u
+  /// supabase/functions/v3-compute-eta/index.ts i
+  /// supabase/functions/v3-auto-prepare-termins/index.ts.
   static ({double lat, double lng})? gradCenterCoord(String grad) {
     switch (grad.trim().toUpperCase()) {
       case 'VS':
-        return (lat: 45.1196, lng: 21.3050); // centar Vršac
+        return (lat: 45.118736452002345, lng: 21.301195520159723); // centar Vršac
       case 'BC':
-        return (lat: 44.8994, lng: 21.4165); // centar Bela Crkva
+        return (lat: 44.90281796231954, lng: 21.424364904529384); // centar Bela Crkva
       default:
         return null;
     }
