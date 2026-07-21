@@ -54,6 +54,32 @@ function coordStr(lat: number, lng: number): string {
   return `${lng},${lat}`;
 }
 
+/// Vraća YYYY-MM-DD za dati instant u Europe/Belgrade zoni (poštuje DST).
+function toBelgradeDateIso(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Belgrade",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  return `${map.year}-${map.month}-${map.day}`;
+}
+
+/// Vraća HH:mm za dati instant u Europe/Belgrade zoni (poštuje DST).
+function toBelgradeHHmm(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Belgrade",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  return `${map.hour}:${map.minute}`;
+}
+
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
   const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
@@ -97,13 +123,15 @@ Deno.serve(async (req) => {
 
   try {
     const now = new Date();
-    const todayIso = now.toISOString().split("T")[0];
-
+    // `polazak_at`/`datum` u bazi se čuvaju kao lokalno Beogradsko vreme
+    // (bez TZ konverzije pri upisu — vidi v3-alternativa-action), pa ovde
+    // MORAMO poredи u istoj zoni, a ne u UTC-u (razlika je 1-2h zavisno od DST).
     const windowStart = new Date(now.getTime() + 10 * 60 * 1000);
     const windowEnd = new Date(now.getTime() + 11 * 60 * 1000);
 
-    const startTime = normalizeTime(windowStart.toISOString());
-    const endTime = normalizeTime(windowEnd.toISOString());
+    const todayIso = toBelgradeDateIso(now);
+    const startTime = toBelgradeHHmm(windowStart);
+    const endTime = toBelgradeHHmm(windowEnd);
 
     console.log(`[v3-auto-prepare-termins] Checking termins between ${startTime} and ${endTime} on ${todayIso}`);
 

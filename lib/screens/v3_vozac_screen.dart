@@ -213,6 +213,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
   bool _osrmUnavailableShown = false;
+  bool _etaReoptimizeInFlight = false;
 
   void _resetMapSyncState() {
     _hasSentRouteToMap = false;
@@ -1130,6 +1131,25 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       debugPrint('[SYNC] passengers synced to slot: ${passengerData.length}');
     } catch (e) {
       debugPrint('[SYNC] mergePassengersIntoWaypointsJson error: $e');
+      return;
+    }
+
+    // Odmah reoptimizuj OSRM redosled — ne čekaj sledeći periodični GPS tick
+    // (Android tajmer do 20s, iOS do sledećeg pomaka ≥20m). Ovo osigurava da
+    // se redosled kartica/rute ažurira odmah čim je putnik pokupljen/otkazan
+    // ili mu je promenjena adresa.
+    if (_etaReoptimizeInFlight || !_isNavigating) return;
+    _etaReoptimizeInFlight = true;
+    try {
+      final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
+      debugPrint('[SYNC] immediate re-optimize order: ${etaResult.order}');
+      if (!mounted) return;
+      _refreshPutniciOrderFromEtaCache();
+      unawaited(_syncMapRouteIfNeeded(reason: 'immediate_reoptimize'));
+    } catch (e) {
+      debugPrint('[SYNC] immediate re-optimize error: $e');
+    } finally {
+      _etaReoptimizeInFlight = false;
     }
   }
 
