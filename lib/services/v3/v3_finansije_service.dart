@@ -1130,6 +1130,43 @@ class V3FinansijeService {
     return result;
   }
 
+  static List<Map<String, dynamic>> getRealizovaneVoznjeZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final safePutnikId = putnikId.trim();
+    if (safePutnikId.isEmpty) return const <Map<String, dynamic>>[];
+
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    final result = <Map<String, dynamic>>[];
+
+    for (final row in cache) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != safePutnikId.toLowerCase()) continue;
+      final rG = _parseInternalInt(row['godina']);
+      final rM = _parseInternalInt(row['mesec']);
+      if (rG != godina || rM != mesec) continue;
+
+      final voznje = _readRealizovaneVoznje(row);
+      for (final v in voznje) {
+        final datum = V3DateUtils.parseTs(v['datum']?.toString()) ?? DateTime.tryParse(v['datum']?.toString() ?? '');
+        if (datum == null) continue;
+        result.add({
+          ...v,
+          '_datum_parsed': datum,
+        });
+      }
+    }
+
+    result.sort((a, b) {
+      final aDt = a['_datum_parsed'] as DateTime;
+      final bDt = b['_datum_parsed'] as DateTime;
+      return aDt.compareTo(bDt);
+    });
+    return result;
+  }
+
   /// Broji realizovane vožnje iz arhivske JSON kolone.
   /// Za putnike tipa 'radnik'/'ucenik' naplata je po danu, pa se broje
   /// unikatni dani. Za sve ostale tipove broje se pojedinačne vožnje.

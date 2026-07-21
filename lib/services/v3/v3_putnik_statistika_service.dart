@@ -134,6 +134,25 @@ class V3PutnikGodisnjiPoravnanje {
   bool get uskladjenoGodisnje => saldoNaKrajuGodine.abs() <= 0.009;
 }
 
+/// Pregled jednog dana u mesecu za putnika: vožnje i eventualna uplata.
+class V3PutnikDnevnaStavka {
+  final DateTime datum;
+  final int brojVoznji;
+  final List<String> vozaciPokupljeni;
+  final double uplataIznos;
+  final String? uplatioVozac;
+
+  const V3PutnikDnevnaStavka({
+    required this.datum,
+    this.brojVoznji = 0,
+    this.vozaciPokupljeni = const <String>[],
+    this.uplataIznos = 0,
+    this.uplatioVozac,
+  });
+
+  bool get imaUplatu => uplataIznos > 0.009;
+}
+
 class V3PutnikStatistikaService {
   V3PutnikStatistikaService._();
 
@@ -597,4 +616,83 @@ class V3PutnikStatistikaService {
   static Set<(int, int)> _getMeseciSaPodacima(String putnikId) {
     return V3FinansijeService.getNaplataMeseciForPutnik(putnikId);
   }
+
+  /// Vraća spojeni dnevni pregled vožnji i uplata za putnika u izabranom mesecu.
+  static List<V3PutnikDnevnaStavka> getDnevneStavkeZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+    required String tipPutnika,
+  }) {
+    final safePutnikId = putnikId.trim();
+    if (safePutnikId.isEmpty) return const <V3PutnikDnevnaStavka>[];
+
+    final isPoDanu = _isPoDanuTip(tipPutnika);
+
+    final voznje = V3FinansijeService.getRealizovaneVoznjeZaMesec(
+      putnikId: safePutnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    final uplate = V3FinansijeService.getUplateZaMesec(
+      putnikId: safePutnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    final poDanu = <DateTime, _DnevniAgregat>{};
+
+    for (final v in voznje) {
+      final dt = v['_datum_parsed'] as DateTime? ??
+          V3DateUtils.parseTs(v['datum']?.toString()) ??
+          DateTime.tryParse(v['datum']?.toString() ?? '');
+      if (dt == null) continue;
+
+      final dan = DateTime(dt.year, dt.month, dt.day);
+      final agregat = poDanu.putIfAbsent(dan, () => _DnevniAgregat());
+      if (isPoDanu) {
+        agregat.daniSaVoznjom.add(dan);
+      } else {
+        agregat.brojVoznji++;
+      }
+
+      final vozacId = (v['pokupljen_by']?.toString() ?? '').trim();
+      if (vozacId.isNotEmpty) {
+        final ime = _imeVozaca(vozacId);
+        if (ime != null && ime.isNotEmpty && !agregat.vozaciPokupljeni.contains(ime)) {
+          agregat.vozaciPokupljeni.add(ime);
+        }
+      }
+    }
+
+    for (final u in uplate) {
+      final dan = DateTime(u.datum.year, u.datum.month, u.datum.day);
+      final agregat = poDanu.putIfAbsent(dan, () => _DnevniAgregat());
+      agregat.uplataIznos += u.iznos;
+      if (u.naplatioBy != null && u.naplatioBy!.isNotEmpty) {
+        agregat.uplatioVozacId = u.naplatioBy;
+      }
+    }
+
+    final dani = poDanu.keys.toList()..sort();
+    return dani.map((dan) {
+      final a = poDanu[dan]!;
+      return V3PutnikDnevnaStavka(
+        datum: dan,
+        brojVoznji: isPoDanu ? a.daniSaVoznjom.length : a.brojVoznji,
+        vozaciPokupljeni: a.vozaciPokupljeni,
+        uplataIznos: a.uplataIznos,
+        uplatioVozac: _imeVozaca(a.uplatioVozacId),
+      );
+    }).toList(growable: false);
+  }
+}
+
+class _DnevniAgregat {
+  int brojVoznji = 0;
+  final Set<DateTime> daniSaVoznjom = <DateTime>{};
+  final List<String> vozaciPokupljeni = <String>[];
+  double uplataIznos = 0;
+  String? uplatioVozacId;
 }

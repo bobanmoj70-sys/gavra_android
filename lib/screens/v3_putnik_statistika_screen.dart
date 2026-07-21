@@ -6,6 +6,7 @@ import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
+import 'v3_putnik_voznje_mesec_screen.dart';
 
 class _StatTr {
   static const Map<String, Map<String, String>> _t = {
@@ -171,92 +172,114 @@ class _MesecCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId);
-    return V3ContainerUtils.styledContainer(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      backgroundColor: V3StyleHelper.whiteAlpha06,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: V3StyleHelper.whiteAlpha13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${stats.mesecNaziv} ${stats.godina}',
-            style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _MiniKpi(label: _StatTr.tr('voznji'), value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
-                const SizedBox(width: 12),
-                _MiniKpi(label: _StatTr.tr('otkazano'), value: '${stats.otkazano}', color: Colors.redAccent),
-              ],
+    final putnikData = V3MasterRealtimeManager.instance.putniciCache[putnikId] ?? const <String, dynamic>{};
+    final tipPutnika = (putnikData['tip_putnika'] as String? ?? '').trim();
+    final ime = (putnikData['ime'] as String? ?? '').trim();
+    final prezime = (putnikData['prezime'] as String? ?? '').trim();
+    final imePrezime = [ime, prezime].where((s) => s.isNotEmpty).join(' ');
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => V3PutnikVoznjeMesecScreen(
+              putnikId: putnikId,
+              imePrezime: imePrezime,
+              tipPutnika: tipPutnika,
+              godina: stats.godina,
+              mesec: stats.mesec,
             ),
           ),
-          const SizedBox(height: 10),
-          if (stats.cena > 0) ...[
+        );
+      },
+      child: V3ContainerUtils.styledContainer(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        backgroundColor: V3StyleHelper.whiteAlpha06,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: V3StyleHelper.whiteAlpha13),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${stats.mesecNaziv} ${stats.godina}',
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _MiniKpi(label: _StatTr.tr('voznji'), value: '${stats.ukupnoVoznji}', color: Colors.greenAccent),
+                  const SizedBox(width: 12),
+                  _MiniKpi(label: _StatTr.tr('otkazano'), value: '${stats.otkazano}', color: Colors.redAccent),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            if (stats.cena > 0) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                  Text(
+                    '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)} = ${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
+                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(_StatTr.tr('placeno'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
-                  '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)} = ${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                  '${stats.naplacenoIznos.toStringAsFixed(0)} RSD',
+                  style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-          ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(_StatTr.tr('placeno'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
-              Text(
-                '${stats.naplacenoIznos.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('${_StatTr.tr('dug')} (${stats.neplaceno})',
-                  style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
-              Text(
-                '${stats.dugIznos.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          if (stats.poslednjaUplata != null) ...[
-            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_StatTr.tr('poslednjaUplata'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text('${_StatTr.tr('dug')} (${stats.neplaceno})',
+                    style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                 Text(
-                  stats.poslednjaUplataVozac != null && stats.poslednjaUplataVozac!.isNotEmpty
-                      ? '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}. (${stats.poslednjaUplataVozac})'
-                      : '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
-                  style: const TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                  '${stats.dugIznos.toStringAsFixed(0)} RSD',
+                  style: const TextStyle(color: Colors.orangeAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            if (stats.poslednjaUplata != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_StatTr.tr('poslednjaUplata'),
+                      style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                  Text(
+                    stats.poslednjaUplataVozac != null && stats.poslednjaUplataVozac!.isNotEmpty
+                        ? '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}. (${stats.poslednjaUplataVozac})'
+                        : '${stats.poslednjaUplata!.day.toString().padLeft(2, '0')}.${stats.poslednjaUplata!.month.toString().padLeft(2, '0')}.',
+                    style: const TextStyle(color: Colors.blueAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_StatTr.tr('ukupanDug'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(
+                  '${ukupanDug.toStringAsFixed(0)} RSD',
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(_StatTr.tr('ukupanDug'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
-              Text(
-                '${ukupanDug.toStringAsFixed(0)} RSD',
-                style: const TextStyle(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
