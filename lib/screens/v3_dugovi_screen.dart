@@ -264,27 +264,12 @@ class _DugCard extends StatelessWidget {
   final V3Dug dug;
   final VoidCallback onNaplati;
 
-  String _formatTs(DateTime? ts) {
-    if (ts == null) return '-';
-    final dd = ts.day.toString().padLeft(2, '0');
-    final mm = ts.month.toString().padLeft(2, '0');
-    final hh = ts.hour.toString().padLeft(2, '0');
-    final mi = ts.minute.toString().padLeft(2, '0');
-    return '$dd.$mm.${ts.year} $hh:$mi';
-  }
-
   @override
   Widget build(BuildContext context) {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
     final periodStr = '${V3DateUtils.mesecNaziv(dug.mesec)} ${dug.godina}';
     final obracunStr =
         '${dug.brojVoznji} × ${dug.cena.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
-    final uplataStr = '${dug.uplaceno.toStringAsFixed(0)} RSD';
-    final naplatioStr = (dug.uplaceno > 0 && dug.vozacIme.isNotEmpty) ? dug.vozacIme : null;
-    final azuriraoStr = null;
-    final naplacenoAtStr = _formatTs(dug.naplacenoAt ?? dug.createdAt);
-    final updatedAtStr = _formatTs(dug.updatedAt);
-    final finansijeNaziv = (dug.finansijeNaziv ?? '').trim();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -328,36 +313,6 @@ class _DugCard extends StatelessWidget {
                   const SizedBox(height: 1),
                   Text('${_DugTr.tr('obracun')}: $obracunStr',
                       style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  const SizedBox(height: 1),
-                  Text('${_DugTr.tr('uplaceno')}: $uplataStr',
-                      style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  const SizedBox(height: 1),
-                  if (dug.pokupioVozacIme.isNotEmpty) ...[
-                    Text('${_DugTr.tr('pokupio')}: ${dug.pokupioVozacIme}',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                    const SizedBox(height: 1),
-                  ],
-                  if (naplatioStr != null) ...[
-                    Text('${_DugTr.tr('naplatio')}: $naplatioStr',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                    const SizedBox(height: 1),
-                  ],
-                  if (dug.uplaceno > 0) ...[
-                    Text('${_DugTr.tr('naplacenoCreatedAt')}: $naplacenoAtStr',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                    const SizedBox(height: 1),
-                  ],
-                  const SizedBox(height: 1),
-                  if (dug.updatedAt != null) ...[
-                    Text('${_DugTr.tr('updatedAt')}: $updatedAtStr',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                    const SizedBox(height: 1),
-                  ],
-                  if (finansijeNaziv.isNotEmpty) ...[
-                    const SizedBox(height: 1),
-                    Text('${_DugTr.tr('finansijeNaziv')}: $finansijeNaziv',
-                        style: const TextStyle(color: Colors.white60, fontSize: 11)),
-                  ],
                 ],
               ),
             ),
