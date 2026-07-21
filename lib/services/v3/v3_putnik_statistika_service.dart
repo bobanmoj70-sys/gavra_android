@@ -535,6 +535,43 @@ class V3PutnikStatistikaService {
     );
   }
 
+  static double getUkupanDugDoMeseca({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    if (putnikId.isEmpty) return 0;
+
+    final sviMeseci = _getMeseciSaPodacima(putnikId).toList()..add((godina, mesec));
+    sviMeseci.sort((a, b) {
+      final cmp = a.$1.compareTo(b.$1);
+      if (cmp != 0) return cmp;
+      return a.$2.compareTo(b.$2);
+    });
+
+    final uniqueMeseci = <(int, int)>[];
+    for (final m in sviMeseci) {
+      if (uniqueMeseci.isEmpty || uniqueMeseci.last != m) {
+        uniqueMeseci.add(m);
+      }
+    }
+
+    double ukupno = 0;
+    bool poceloDugovanje = false;
+    for (final (g, m) in uniqueMeseci) {
+      final stat = getZaMesec(putnikId: putnikId, godina: g, mesec: m);
+      if (stat.dugIznos > 0.009) {
+        poceloDugovanje = true;
+      }
+      if (poceloDugovanje) {
+        ukupno += stat.dugIznos;
+      }
+      if (g == godina && m == mesec) break;
+    }
+
+    return ukupno;
+  }
+
   static double getUkupanDugZaSveMesece(
     String putnikId, {
     DateTime? now,
@@ -542,15 +579,11 @@ class V3PutnikStatistikaService {
     if (putnikId.isEmpty) return 0;
 
     final ref = now ?? DateTime.now();
-    final meseci = _getMeseciSaPodacima(putnikId)..add((ref.year, ref.month));
-
-    double ukupno = 0;
-    for (final (godina, mesec) in meseci) {
-      final stat = getZaMesec(putnikId: putnikId, godina: godina, mesec: mesec);
-      ukupno += stat.dugIznos;
-    }
-
-    return ukupno;
+    return getUkupanDugDoMeseca(
+      putnikId: putnikId,
+      godina: ref.year,
+      mesec: ref.month,
+    );
   }
 
   static V3PutnikMesecnaStatistika getZaMesec({

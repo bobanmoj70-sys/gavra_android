@@ -171,7 +171,11 @@ class _MesecCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId);
+    final ukupanDug = V3PutnikStatistikaService.getUkupanDugDoMeseca(
+      putnikId: putnikId,
+      godina: stats.godina,
+      mesec: stats.mesec,
+    );
     final putnikData = V3MasterRealtimeManager.instance.putniciCache[putnikId] ?? const <String, dynamic>{};
     final tipPutnika = (putnikData['tip_putnika'] as String? ?? '').trim();
     final ime = (putnikData['ime'] as String? ?? '').trim();
