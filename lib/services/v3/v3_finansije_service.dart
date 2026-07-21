@@ -113,9 +113,6 @@ class V3FinansijeService {
     return naplatioBy?.isEmpty ?? true ? null : naplatioBy;
   }
 
-  /// Da li red ima bilo kakvu stvarnu uplatu u uplate_json.
-  static bool _hasUplata(Map<String, dynamic> row) => _readUplate(row).isNotEmpty;
-
   static void _sortByCreatedAtDesc(List<Map<String, dynamic>> rows) {
     rows.sort((a, b) => _createdAtOrEpoch(b).compareTo(_createdAtOrEpoch(a)));
   }
@@ -322,35 +319,42 @@ class V3FinansijeService {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return null;
 
-    final candidates = _naplataRows().where((row) {
+    DateTime? latestUplataDatum;
+    Map<String, dynamic>? latestUplata;
+    Map<String, dynamic>? latestRow;
+
+    for (final row in _naplataRows()) {
       final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
-      if (rPutnikId != putnik.toLowerCase()) return false;
-      // Jedini pouzdan izvor za postojanje uplate je uplate_json.
-      return _hasUplata(row);
-    }).toList();
-    if (candidates.isEmpty) return null;
+      if (rPutnikId != putnik.toLowerCase()) continue;
 
-    // Sortiramo po updated_at da bismo dobili poslednju dopunu
-    candidates.sort((a, b) {
-      final aUpdatedAt = V3DateUtils.parseTs(a['updated_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bUpdatedAt = V3DateUtils.parseTs(b['updated_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      return bUpdatedAt.compareTo(aUpdatedAt);
-    });
-    final latest = candidates.first;
+      final uplate = _readUplate(row);
+      if (uplate.isEmpty) continue;
 
-    // Ukupan iznos se izvodi isključivo iz uplate_json (jedini izvor istine).
-    final ukupanIznos = _getUkupanIznosUplata(latest);
-    final poslednjaDopuna = _readPosledjaDopuna(latest);
+      for (final uplata in uplate) {
+        final datum = V3DateUtils.parseTs(uplata['datum']?.toString());
+        if (datum == null) continue;
+        if (latestUplataDatum == null || datum.isAfter(latestUplataDatum)) {
+          latestUplataDatum = datum;
+          latestUplata = uplata;
+          latestRow = row;
+        }
+      }
+    }
+
+    if (latestUplata == null || latestRow == null) return null;
+
+    final ukupanIznos = _getUkupanIznosUplata(latestRow);
+    final poslednjaDopuna = (latestUplata['iznos'] as num?)?.toDouble() ?? 0.0;
 
     return V3NaplataInfo(
       isPaid: ukupanIznos > 0,
       ukupanIznos: ukupanIznos,
       poslednjaDopuna: poslednjaDopuna,
-      paidAt: _naplacenoAt(latest),
-      paidBy: latest['naplaceno_by']?.toString(),
-      updatedAt: V3DateUtils.parseTs(latest['updated_at']?.toString()),
-      updatedBy: latest['updated_by']?.toString(),
-      uplataAt: _readLastUplata(latest),
+      paidAt: latestUplataDatum,
+      paidBy: latestUplata['naplatio_by']?.toString(),
+      updatedAt: V3DateUtils.parseTs(latestRow['updated_at']?.toString()),
+      updatedBy: latestRow['updated_by']?.toString(),
+      uplataAt: latestUplataDatum,
     );
   }
 
@@ -1146,7 +1150,7 @@ class V3FinansijeService {
       if (rPutnikId != safePutnikId.toLowerCase()) continue;
       final rG = _parseInternalInt(row['godina']);
       final rM = _parseInternalInt(row['mesec']);
-      if (rG != godina || rM != mesec) continue;
+      if (rG != godina || rM != mesec) return const <Map<String, dynamic>>[];
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {
