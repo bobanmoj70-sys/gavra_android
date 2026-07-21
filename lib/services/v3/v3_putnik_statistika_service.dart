@@ -504,7 +504,7 @@ class V3PutnikStatistikaService {
               ? (stavka.brojVoznji - (stavka.uplata / stavka.cena).floor()).clamp(0, stavka.brojVoznji).toInt()
               : 0,
           naplacenoIznos: stavka.uplata,
-          dugIznos: stavka.saldoKraj < 0 ? -stavka.saldoKraj : 0,
+          dugIznos: stavka.obaveza > stavka.uplata ? stavka.obaveza - stavka.uplata : 0,
           cena: stavka.cena,
           ukupnaObaveza: stavka.obaveza,
           brojUplata: uplate.length,
