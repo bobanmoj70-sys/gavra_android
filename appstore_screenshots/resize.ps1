@@ -7,15 +7,16 @@ $ipadDir = Join-Path $src "ipad_13"
 New-Item -ItemType Directory -Path $iphoneDir -Force | Out-Null
 New-Item -ItemType Directory -Path $ipadDir -Force | Out-Null
 
-$iphoneW = 1320; $iphoneH = 2868
-$ipadW = 2064; $ipadH = 2752
+$iphoneW = 1284; $iphoneH = 2778
+$ipadW = 2048; $ipadH = 2732
 
 function Resize-Stretch($srcPath, $destPath, $w, $h) {
     $img = [System.Drawing.Image]::FromFile($srcPath)
-    $bmp = New-Object System.Drawing.Bitmap $w, $h
+    $bmp = New-Object System.Drawing.Bitmap $w, $h, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $g.Clear([System.Drawing.Color]::White)
     $g.DrawImage($img, 0, 0, $w, $h)
     $bmp.Save($destPath, [System.Drawing.Imaging.ImageFormat]::Png)
     $g.Dispose(); $bmp.Dispose(); $img.Dispose()
@@ -38,10 +39,11 @@ function Resize-Fit($srcPath, $destPath, $canvasW, $canvasH) {
     $x = [int](($canvasW - $newW) / 2)
     $y = [int](($canvasH - $newH) / 2)
 
-    $bmp = New-Object System.Drawing.Bitmap $canvasW, $canvasH
+    $bmp = New-Object System.Drawing.Bitmap $canvasW, $canvasH, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $g.Clear([System.Drawing.Color]::White)
     $g.DrawImage($img, $x, $y, $newW, $newH)
     $bmp.Save($destPath, [System.Drawing.Imaging.ImageFormat]::Png)
     $g.Dispose(); $bmp.Dispose(); $img.Dispose()
