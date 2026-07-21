@@ -1087,6 +1087,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       final missingAfterSave = _missingRequiredProfileFields(
         refreshed,
         includeIdentityFields: !_addressOnlyOnboarding,
+        authId: authId,
       );
       if (missingAfterSave.isNotEmpty) {
         if (!mounted) return;
@@ -1186,6 +1187,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   List<String> _missingRequiredProfileFields(
     Map<String, dynamic>? putnik, {
     bool includeIdentityFields = true,
+    String? authId,
   }) {
     if (putnik == null) {
       return includeIdentityFields
@@ -1198,7 +1200,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final tip = putnik['tip_putnika']?.toString().trim() ?? '';
     final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
     final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
-    final pinHash = putnik['pin_hash']?.toString().trim() ?? '';
+    final isAppleReview = (authId ?? putnik['id']?.toString().trim()) == V3AppUpdateService.appleReviewUserId;
+    final pinHash = isAppleReview ? 'x' : (putnik['pin_hash']?.toString().trim() ?? '');
 
     if (includeIdentityFields) {
       if (ime.isEmpty) missing.add('imeKratko');
