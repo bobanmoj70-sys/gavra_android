@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/v3_vozilo.dart';
 import '../services/v3/v3_vozilo_service.dart';
 import '../services/v3_locale_manager.dart';
+import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_date_utils.dart';
@@ -95,6 +96,56 @@ class _OdrTr {
       'ru': 'Пробег при замене',
       'de': 'Kilometerstand beim Wechsel'
     },
+    'dodajVozilo': {
+      'sr': 'Dodaj vozilo',
+      'en': 'Add vehicle',
+      'ru': 'Добавить автомобиль',
+      'de': 'Fahrzeug hinzufügen'
+    },
+    'obrisiVozilo': {
+      'sr': 'Obriši vozilo',
+      'en': 'Delete vehicle',
+      'ru': 'Удалить автомобиль',
+      'de': 'Fahrzeug löschen'
+    },
+    'potvrdiBrisanjeVozila': {
+      'sr': 'Potvrdi brisanje',
+      'en': 'Confirm deletion',
+      'ru': 'Подтвердить удаление',
+      'de': 'Löschen bestätigen'
+    },
+    'potvrdiBrisanjeVozilaPoruka': {
+      'sr': 'Da li sigurno želiš da obrišeš ovo vozilo?',
+      'en': 'Are you sure you want to delete this vehicle?',
+      'ru': 'Вы уверены, что хотите удалить этот автомобиль?',
+      'de': 'Möchten Sie dieses Fahrzeug wirklich löschen?'
+    },
+    'marka': {'sr': 'Marka', 'en': 'Brand', 'ru': 'Марка', 'de': 'Marke'},
+    'model': {'sr': 'Model', 'en': 'Model', 'ru': 'Модель', 'de': 'Modell'},
+    'registracijaObavezna': {
+      'sr': 'Registracija je obavezna',
+      'en': 'Registration is required',
+      'ru': 'Регистрация обязательна',
+      'de': 'Registrierung ist erforderlich'
+    },
+    'voziloDodato': {
+      'sr': '✅ Vozilo dodato',
+      'en': '✅ Vehicle added',
+      'ru': '✅ Автомобиль добавлен',
+      'de': '✅ Fahrzeug hinzugefügt'
+    },
+    'voziloObrisano': {
+      'sr': '✅ Vozilo obrisano',
+      'en': '✅ Vehicle deleted',
+      'ru': '✅ Автомобиль удалён',
+      'de': '✅ Fahrzeug gelöscht'
+    },
+    'greskaPriBrisanju': {
+      'sr': 'Greška pri brisanju',
+      'en': 'Error deleting',
+      'ru': 'Ошибка удаления',
+      'de': 'Fehler beim Löschen'
+    },
   };
 
   static String tr(String key) {
@@ -172,6 +223,41 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            color: Colors.grey.shade900,
+            onSelected: (value) {
+              if (value == 'add') {
+                _addVozilo();
+              } else if (value == 'delete') {
+                _deleteVozilo();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'add',
+                child: Row(
+                  children: [
+                    const Icon(Icons.add, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(_OdrTr.tr('dodajVozilo'), style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Text(_OdrTr.tr('obrisiVozilo'), style: const TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -519,6 +605,45 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
         trenutnaKm: trenutnaKm,
       ),
     );
+  }
+
+  Future<void> _addVozilo() async {
+    final result = await V3DialogHelper.showDialogBuilder<V3Vozilo?>(
+      context: context,
+      builder: (_) => const _AddVoziloDialog(),
+    );
+    if (result == null || !mounted) return;
+    try {
+      await V3VoziloService.addUpdateVozilo(result);
+      if (!mounted) return;
+      V3AppSnackBar.success(context, _OdrTr.tr('voziloDodato'));
+    } catch (_) {
+      if (!mounted) return;
+      V3UIUtils.showSaveError(context);
+    }
+  }
+
+  Future<void> _deleteVozilo() async {
+    final selected = _selected;
+    if (selected == null) return;
+    final confirmed = await V3DialogHelper.showConfirmDialog(
+      context,
+      title: _OdrTr.tr('potvrdiBrisanjeVozila'),
+      message: _OdrTr.tr('potvrdiBrisanjeVozilaPoruka'),
+      confirmText: _OdrTr.tr('obrisiVozilo'),
+      cancelText: _OdrTr.tr('otkazi'),
+      isDangerous: true,
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await V3VoziloService.deleteVozilo(selected.id);
+      if (!mounted) return;
+      setState(() => _selected = null);
+      V3AppSnackBar.success(context, _OdrTr.tr('voziloObrisano'));
+    } catch (_) {
+      if (!mounted) return;
+      V3UIUtils.showSaveError(context);
+    }
   }
 }
 
@@ -1042,6 +1167,108 @@ class _GumeSheetState extends State<_GumeSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Add Vozilo Dialog ────────────────────────────────────────────────────────
+
+class _AddVoziloDialog extends StatefulWidget {
+  const _AddVoziloDialog();
+
+  @override
+  State<_AddVoziloDialog> createState() => _AddVoziloDialogState();
+}
+
+class _AddVoziloDialogState extends State<_AddVoziloDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _regCtrl = TextEditingController();
+  final _markaCtrl = TextEditingController();
+  final _modelCtrl = TextEditingController();
+  final _godinaCtrl = TextEditingController();
+  final _sasijaCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _regCtrl.dispose();
+    _markaCtrl.dispose();
+    _modelCtrl.dispose();
+    _godinaCtrl.dispose();
+    _sasijaCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.grey.shade900,
+      title: Text(_OdrTr.tr('dodajVozilo'), style: const TextStyle(color: Colors.white)),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              V3InputUtils.textField(
+                controller: _regCtrl,
+                label: _OdrTr.tr('registracija'),
+                icon: Icons.directions_car,
+                hint: 'BG-123-AA',
+              ),
+              const SizedBox(height: 12),
+              V3InputUtils.textField(
+                controller: _markaCtrl,
+                label: _OdrTr.tr('marka'),
+                icon: Icons.branding_watermark,
+              ),
+              const SizedBox(height: 12),
+              V3InputUtils.textField(
+                controller: _modelCtrl,
+                label: _OdrTr.tr('model'),
+                icon: Icons.model_training,
+              ),
+              const SizedBox(height: 12),
+              V3InputUtils.numberField(
+                controller: _godinaCtrl,
+                label: _OdrTr.tr('godinaLabel'),
+              ),
+              const SizedBox(height: 12),
+              V3InputUtils.textField(
+                controller: _sasijaCtrl,
+                label: _OdrTr.tr('brojSasijeVin'),
+                icon: Icons.confirmation_number,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context),
+          text: _OdrTr.tr('otkazi'),
+          foregroundColor: Colors.white60,
+        ),
+        V3ButtonUtils.textButton(
+          onPressed: () {
+            final reg = _regCtrl.text.trim();
+            if (reg.isEmpty) {
+              V3AppSnackBar.warning(context, _OdrTr.tr('registracijaObavezna'));
+              return;
+            }
+            final vozilo = V3Vozilo(
+              id: '',
+              registracija: reg,
+              marka: _markaCtrl.text.trim().isEmpty ? null : _markaCtrl.text.trim(),
+              model: _modelCtrl.text.trim().isEmpty ? null : _modelCtrl.text.trim(),
+              godinaProizvodnje: int.tryParse(_godinaCtrl.text.trim()),
+              brojSasije: _sasijaCtrl.text.trim().isEmpty ? null : _sasijaCtrl.text.trim(),
+            );
+            Navigator.pop(context, vozilo);
+          },
+          text: _OdrTr.tr('sacuvaj'),
+          foregroundColor: Colors.orange,
+        ),
+      ],
     );
   }
 }

@@ -8,4 +8,8 @@ class V3VoziloRepository {
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) {
     return supabase.from('v3_vozila').update(payload).eq('id', id).select().single();
   }
+
+  Future<void> deleteById(String id) {
+    return supabase.from('v3_vozila').delete().eq('id', id);
+  }
 }

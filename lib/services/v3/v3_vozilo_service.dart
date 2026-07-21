@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/v3_vozilo.dart';
 import '../realtime/v3_master_realtime_manager.dart';
@@ -8,6 +9,7 @@ import 'repositories/v3_vozilo_repository.dart';
 class V3VoziloService {
   V3VoziloService._();
   static final V3VoziloRepository _repo = V3VoziloRepository();
+  static const Uuid _uuid = Uuid();
 
   static List<V3Vozilo> getAllVozila() {
     final cache = V3MasterRealtimeManager.instance.vozilaCache.values;
@@ -27,10 +29,24 @@ class V3VoziloService {
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();
+      if (vozilo.id.isEmpty) {
+        data['id'] = _uuid.v4();
+      }
       final row = await _repo.upsertReturning(data);
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_vozila', row);
     } catch (e) {
       debugPrint('[V3VoziloService] Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Briše vozilo po id.
+  static Future<void> deleteVozilo(String id) async {
+    try {
+      await _repo.deleteById(id);
+      V3MasterRealtimeManager.instance.v3RemoveFromCache('v3_vozila', id);
+    } catch (e) {
+      debugPrint('[V3VoziloService] deleteVozilo error: $e');
       rethrow;
     }
   }
