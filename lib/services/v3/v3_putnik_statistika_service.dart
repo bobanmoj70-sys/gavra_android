@@ -139,15 +139,19 @@ class V3PutnikDnevnaStavka {
   final DateTime datum;
   final int brojVoznji;
   final List<String> vozaciPokupljeni;
+  final List<String> vremenaPokupljenja;
   final double uplataIznos;
   final String? uplatioVozac;
+  final String? uplataVreme;
 
   const V3PutnikDnevnaStavka({
     required this.datum,
     this.brojVoznji = 0,
     this.vozaciPokupljeni = const <String>[],
+    this.vremenaPokupljenja = const <String>[],
     this.uplataIznos = 0,
     this.uplatioVozac,
+    this.uplataVreme,
   });
 
   bool get imaUplatu => uplataIznos > 0.009;
@@ -691,10 +695,17 @@ class V3PutnikStatistikaService {
       }
 
       final vozacId = (v['pokupljen_by']?.toString() ?? '').trim();
+      final vremePokupljenja = (v['pokupljen_at']?.toString() ?? '').trim();
       if (vozacId.isNotEmpty) {
         final ime = _imeVozaca(vozacId);
         if (ime != null && ime.isNotEmpty && !agregat.vozaciPokupljeni.contains(ime)) {
           agregat.vozaciPokupljeni.add(ime);
+        }
+      }
+      if (vremePokupljenja.isNotEmpty) {
+        final formatted = _formatVremePokupljenja(vremePokupljenja);
+        if (formatted != null && formatted.isNotEmpty) {
+          agregat.vremenaPokupljenja.add(formatted);
         }
       }
     }
@@ -706,6 +717,9 @@ class V3PutnikStatistikaService {
       if (u.naplatioBy != null && u.naplatioBy!.isNotEmpty) {
         agregat.uplatioVozacId = u.naplatioBy;
       }
+      final h = u.datum.hour.toString().padLeft(2, '0');
+      final m = u.datum.minute.toString().padLeft(2, '0');
+      agregat.uplataVreme = '$h:$m';
     }
 
     final dani = poDanu.keys.toList()..sort();
@@ -715,10 +729,20 @@ class V3PutnikStatistikaService {
         datum: dan,
         brojVoznji: isPoDanu ? a.daniSaVoznjom.length : a.brojVoznji,
         vozaciPokupljeni: a.vozaciPokupljeni,
+        vremenaPokupljenja: a.vremenaPokupljenja,
         uplataIznos: a.uplataIznos,
         uplatioVozac: _imeVozaca(a.uplatioVozacId),
+        uplataVreme: a.uplataVreme,
       );
     }).toList(growable: false);
+  }
+
+  static String? _formatVremePokupljenja(String? raw) {
+    final dt = V3DateUtils.parseTs(raw);
+    if (dt == null) return null;
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
 
@@ -726,6 +750,8 @@ class _DnevniAgregat {
   int brojVoznji = 0;
   final Set<DateTime> daniSaVoznjom = <DateTime>{};
   final List<String> vozaciPokupljeni = <String>[];
+  final List<String> vremenaPokupljenja = <String>[];
   double uplataIznos = 0;
   String? uplatioVozacId;
+  String? uplataVreme;
 }

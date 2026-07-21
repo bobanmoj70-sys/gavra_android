@@ -28,6 +28,7 @@ class _VoznjeMesecTr {
     'uplata': {'sr': 'Uplata', 'en': 'Payment', 'ru': 'Оплата', 'de': 'Zahlung'},
     'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
     'pokupio': {'sr': 'Pokupio', 'en': 'Picked up', 'ru': 'Подобрал', 'de': 'Abgeholt'},
+    'vreme': {'sr': 'vreme', 'en': 'time', 'ru': 'время', 'de': 'Zeit'},
     'ukupno': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt'},
   };
 
@@ -277,6 +278,21 @@ class _DnevnaStavkaRow extends StatelessWidget {
                 ),
               ],
             ),
+            if (stavka.vremenaPokupljenja.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 14, color: V3StyleHelper.whiteAlpha65),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${_VoznjeMesecTr.tr('vreme')}: ${stavka.vremenaPokupljenja.join(', ')}',
+                      style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
           if (stavka.imaUplatu) ...[
             const SizedBox(height: 8),
@@ -301,13 +317,30 @@ class _DnevnaStavkaRow extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        '${stavka.uplataIznos.toStringAsFixed(0)} RSD',
-                        style: const TextStyle(
-                          color: Colors.greenAccent,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${stavka.uplataIznos.toStringAsFixed(0)} RSD',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          if (stavka.uplataVreme != null && stavka.uplataVreme!.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              stavka.uplataVreme!,
+                              style: TextStyle(
+                                color: Colors.greenAccent.withValues(alpha: 0.8),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       if (stavka.uplatioVozac != null && stavka.uplatioVozac!.isNotEmpty)
                         Text(

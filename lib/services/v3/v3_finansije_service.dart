@@ -887,6 +887,7 @@ class V3FinansijeService {
         'datum': now.toIso8601String(),
         'iznos': iznos,
         'naplatio_by': naplacenoBy,
+        'naplatio_at': now.toIso8601String(),
       };
 
       Map<String, dynamic> row;
@@ -1075,6 +1076,7 @@ class V3FinansijeService {
           'datum': datum,
           'iznos': iznos,
           'naplatio_by': item['naplatio_by']?.toString(),
+          'naplatio_at': item['naplatio_at']?.toString(),
         });
       }
     } catch (_) {
@@ -1126,6 +1128,7 @@ class V3FinansijeService {
           datum: datum,
           iznos: (uplataMap['iznos'] as num?)?.toDouble() ?? 0,
           naplatioBy: uplataMap['naplatio_by']?.toString(),
+          naplatioAt: V3DateUtils.parseTs(uplataMap['naplatio_at']?.toString()),
         ));
       }
     }
@@ -1150,7 +1153,7 @@ class V3FinansijeService {
       if (rPutnikId != safePutnikId.toLowerCase()) continue;
       final rG = _parseInternalInt(row['godina']);
       final rM = _parseInternalInt(row['mesec']);
-      if (rG != godina || rM != mesec) return const <Map<String, dynamic>>[];
+      if (rG != godina || rM != mesec) continue;
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {

@@ -63,12 +63,14 @@ class V3Uplata {
   final DateTime datum;
   final double iznos;
   final String? naplatioBy;
+  final DateTime? naplatioAt;
 
   V3Uplata({
     required this.uplataId,
     required this.datum,
     required this.iznos,
     this.naplatioBy,
+    this.naplatioAt,
   });
 
   factory V3Uplata.fromJson(Map<String, dynamic> json) {
@@ -79,6 +81,7 @@ class V3Uplata {
           DateTime.now(),
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
       naplatioBy: json['naplatio_by']?.toString(),
+      naplatioAt: V3DateUtils.parseTs(json['naplatio_at']?.toString()),
     );
   }
 
@@ -87,5 +90,6 @@ class V3Uplata {
         'datum': datum.toIso8601String(),
         'iznos': iznos,
         if (naplatioBy != null && naplatioBy!.isNotEmpty) 'naplatio_by': naplatioBy,
+        if (naplatioAt != null) 'naplatio_at': naplatioAt!.toIso8601String(),
       };
 }
