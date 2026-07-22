@@ -245,7 +245,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return;
     }
 
-    final vozacAuthId = (vozac.id?.toString() ?? '').trim();
+    final vozacAuthId = (vozac.id.toString()).trim();
     if (vozacAuthId.isEmpty) {
       _assignedOperativnaIds = <String>{};
       _assignedSlotRows = <Map<String, String>>[];
@@ -721,7 +721,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     //    Individualna dodela + slot dodela (ostali putnici iz termina
     //    koji nisu individualno dodeljeni drugom vozaču)
 
-    final vozacAuthId = (vozac.id?.toString() ?? '').trim();
+    final vozacAuthId = vozac.id.toString().trim();
 
     // Najpre individualno dodeljeni putnici
     final terminPutnici = _assignedOperativnaRows(
@@ -960,6 +960,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final rm = V3MasterRealtimeManager.instance;
     final vozac = V3VozacService.currentVozac;
     if (vozac == null) return 0;
+    final vozacAuthId = vozac.id.toString().trim();
 
     final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
     final gradUp = grad.toUpperCase();
@@ -981,6 +982,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     ).where(hasActivePutnik)) {
       final id = row['id']?.toString();
       if (id != null && id.isNotEmpty) rowsById.putIfAbsent(id, () => row);
+    }
+
+    for (final raw in rm.operativnaNedeljaCache.values) {
+      final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
+      final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
+      final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
+      if (rowDatum != _selectedDatumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
+      if (raw['created_by'] == null) continue;
+
+      final entryId = raw['id']?.toString() ?? '';
+      if (entryId.isEmpty) continue;
+      if (rowsById.containsKey(entryId)) continue;
+
+      final assignedVozac = _allTerminToVozac[entryId];
+      if (assignedVozac != null && assignedVozac != vozacAuthId) continue;
+
+      final row = Map<String, dynamic>.from(raw);
+      row['vreme'] = row['vreme'] ?? row['polazak_at'];
+      if (!hasActivePutnik(row)) continue;
+      rowsById[entryId] = row;
     }
 
     return V3StatusPolicy.countOccupiedSeatsForSlot<Map<String, dynamic>>(

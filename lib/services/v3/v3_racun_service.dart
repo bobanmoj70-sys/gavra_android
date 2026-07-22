@@ -150,6 +150,8 @@ class V3RacunService {
       await _ensureAssets();
       final pdf = pw.Document();
       final upisPayloads = <Map<String, dynamic>>[];
+      int? sledeciRedniBroj;
+      int? sekvencaGodina;
       final theme = pw.ThemeData.withFont(
         base: _regular,
         bold: _bold,
@@ -161,7 +163,19 @@ class V3RacunService {
         final imePutnika = r['ime_prezime']?.toString() ?? '---';
         final brojVoznji = (r['broj_voznji'] as num?)?.toDouble() ?? 1.0;
         final cenaPoVoznji = (r['cena_po_voznji'] as num?)?.toDouble() ?? 0.0;
-        final brojRacuna = r['broj_racuna']?.toString() ?? await getNextBrojRacuna();
+        final brojRacunaRaw = r['broj_racuna']?.toString().trim() ?? '';
+        String brojRacuna;
+        if (brojRacunaRaw.isNotEmpty) {
+          brojRacuna = brojRacunaRaw;
+        } else {
+          if (sledeciRedniBroj == null || sekvencaGodina == null) {
+            final firstBroj = await getNextBrojRacuna();
+            sledeciRedniBroj = _extractRedniBroj(firstBroj) ?? 1;
+            sekvencaGodina = _extractGodina(firstBroj);
+          }
+          brojRacuna = '$sledeciRedniBroj/$sekvencaGodina';
+          sledeciRedniBroj = sledeciRedniBroj + 1;
+        }
 
         final firmaNaziv = r['firma_naziv']?.toString() ?? imePutnika;
         final firmaAdresa = r['firma_adresa']?.toString() ?? '---';

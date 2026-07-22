@@ -2157,6 +2157,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                   'firma_naziv': selectedFirma?['firma_naziv'],
                   'firma_adresa': selectedFirma?['firma_adresa'],
                   'firma_pib': selectedFirma?['firma_pib'],
+                  'firma_mb': selectedFirma?['firma_mb'],
                   'firma_ziro': selectedFirma?['firma_ziro'],
                 }
               ],
