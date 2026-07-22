@@ -758,27 +758,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       runSpacing: 2,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        // 1. BELA: potpuno plaćeno ali nije pokupljen
-                        if (isPlacen && !isPokupljen) ...[
-                          Text(
-                            () {
-                              final vpl = poslednjaDopunaAt ?? naplataAt;
-                              final ukupnoStr = ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
-                              final poslednjeStr =
-                                  poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
-                              final dtStr = _fmt(vpl);
-                              return [
-                                if (ukupnoStr.isNotEmpty) ukupnoStr,
-                                if (poslednjeStr.isNotEmpty) poslednjeStr,
-                                if (dtStr.isNotEmpty) dtStr
-                              ].join(' • ');
-                            }(),
-                            style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-
-                        // 2. PLAVA: pokupljen, nema uplate
-                        if (isPokupljen && !isPlacen) ...[
+                        // Vožnje: broj + vreme pokupljanja — prikazuje se svaki put kad je putnik pokupljen,
+                        // nezavisno od statusa naplate.
+                        if (isPokupljen) ...[
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
@@ -796,23 +778,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           ),
                         ],
 
-                        // 3. ZELENA: pokupljen + potpuno plaćen
-                        if (isPokupljen && isPlacen) ...[
-                          Text(
-                            () {
-                              final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              final defaults =
-                                  _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
-                              final brojVoznji = defaults.brojVoznji;
-                              final voznjaText = brojVoznji > 1 ? 'Vožnje' : 'Vožnja';
-                              if (dtStr.isNotEmpty) {
-                                return '$voznjaText ($brojVoznji): $dtStr';
-                              } else {
-                                return '$voznjaText ($brojVoznji)';
-                              }
-                            }(),
-                            style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
-                          ),
+                        // Uplata: ukupno za tekući mesec + poslednja uplata — prikazuje se svaki put kad
+                        // postoji bilo kakva uplata, nezavisno od toga da li je dug potpuno izmiren.
+                        if (imaUplatu) ...[
                           Text(
                             () {
                               final vpl = poslednjaDopunaAt ?? naplataAt;
