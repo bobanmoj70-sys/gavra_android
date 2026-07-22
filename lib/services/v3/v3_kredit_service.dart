@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/v3_kredit.dart';
 import '../../models/v3_kredit_uplata.dart';
+import '../../utils/v3_date_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_kredit_repository.dart';
 
@@ -80,7 +81,7 @@ class V3KreditService {
       'ukupan_iznos': ukupanIznos,
       if (napomena != null && napomena.trim().isNotEmpty) 'napomena': napomena.trim(),
       if (krajKredita != null) 'kraj_kredita': krajKredita.toIso8601String().substring(0, 10) else 'kraj_kredita': null,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': V3DateUtils.nowIsoUtc(),
     });
 
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_krediti', row);
@@ -112,7 +113,7 @@ class V3KreditService {
     final row = await _repo.updateByIdReturning(id, {
       'uplaceno': kredit.uplaceno + iznos,
       'uplate_json': updatedUplate.map((u) => u.toJson()).toList(),
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': V3DateUtils.nowIsoUtc(),
     });
 
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_krediti', row);
@@ -163,7 +164,7 @@ class V3KreditService {
     final row = await _repo.updateByIdReturning(kreditId, {
       'uplaceno': novoUplaceno < 0 ? 0.0 : novoUplaceno,
       'uplate_json': updatedUplate.map((u) => u.toJson()).toList(),
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': V3DateUtils.nowIsoUtc(),
     });
 
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_krediti', row);

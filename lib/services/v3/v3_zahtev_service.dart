@@ -105,7 +105,7 @@ class V3ZahtevService {
       final createdByUuid = V3UuidUtils.normalizeUuid(createdBy);
       if (createdByUuid != null) data['created_by'] = createdByUuid;
       if (!data.containsKey('created_at')) {
-        data['created_at'] = DateTime.now().toIso8601String();
+        data['created_at'] = V3DateUtils.nowIsoUtc();
       }
       final row = await _repository.create(data);
 
@@ -240,7 +240,7 @@ class V3ZahtevService {
 
     final datumIso = _datumKey(datum);
     final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
-    final otkazanoAt = DateTime.now().toIso8601String();
+    final otkazanoAt = V3DateUtils.nowIsoUtc();
 
     // Pre nego što ažuriramo, proverimo da li uopšte ima aktivnih redova.
     // Ako ih nema, verovatno je već otkazano u međuvremenu — ne radimo ništa.
@@ -313,7 +313,7 @@ class V3ZahtevService {
         throw Exception('Obavezno je navesti tačno jednog aktera otkazivanja');
       }
 
-      final otkazanoAt = DateTime.now().toIso8601String();
+      final otkazanoAt = V3DateUtils.nowIsoUtc();
 
       if (hasVozacActor) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
@@ -391,7 +391,7 @@ class V3ZahtevService {
     try {
       final payload = {
         if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
-        'pokupljen_at': DateTime.now().toIso8601String(),
+        'pokupljen_at': V3DateUtils.nowIsoUtc(),
       };
       if (operativnaId != null && operativnaId.isNotEmpty) {
         final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
@@ -412,7 +412,7 @@ class V3ZahtevService {
     String? updatedBy,
   }) async {
     try {
-      final nowIso = DateTime.now().toIso8601String();
+      final nowIso = V3DateUtils.nowIsoUtc();
       await _domain.resetToObrada(
         id: id,
         novoVreme: novoVreme,

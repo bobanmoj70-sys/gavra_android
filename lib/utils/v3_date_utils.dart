@@ -97,8 +97,21 @@ class V3DateUtils {
   /// Koristiti za: created_at, updated_at, pokupljen_at, placeno_at, itd.
   static DateTime? parseTs(String? s) {
     if (s == null || s.isEmpty) return null;
+
+    final trimmed = s.trim();
+    final isDateOnly = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(trimmed);
+    if (isDateOnly) {
+      return DateTime.tryParse(trimmed);
+    }
+
     final parsed = DateTime.tryParse(s);
     if (parsed == null) return null;
+
+    final hasExplicitOffset = trimmed.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(trimmed);
+    if (!hasExplicitOffset) {
+      return parsed;
+    }
+
     return _toBelgrade(parsed);
   }
 
@@ -119,15 +132,32 @@ class V3DateUtils {
     return parseDatum(s) ?? fallback;
   }
 
+  /// Trenutni trenutak kao ISO-8601 u UTC (`...Z`) za upis u timestamptz.
+  static String nowIsoUtc() {
+    return DateTime.now().toUtc().toIso8601String();
+  }
+
+  /// DateTime kao ISO-8601 u UTC (`...Z`) za upis u timestamptz.
+  static String toIsoUtc(DateTime value) {
+    return value.toUtc().toIso8601String();
+  }
+
   static String parseIsoDatePart(Object? raw) {
     final value = (raw ?? '').toString().trim();
     if (value.isEmpty) return '';
 
+    final dateOnlyMatch = RegExp(r'^(\d{4}-\d{2}-\d{2})$').firstMatch(value);
+    if (dateOnlyMatch != null) {
+      return dateOnlyMatch.group(1) ?? '';
+    }
+
     final parsed = DateTime.tryParse(value);
     if (parsed != null) {
-      final y = parsed.year.toString().padLeft(4, '0');
-      final m = parsed.month.toString().padLeft(2, '0');
-      final d = parsed.day.toString().padLeft(2, '0');
+      final hasExplicitOffset = value.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(value);
+      final normalized = hasExplicitOffset ? _toBelgrade(parsed) : parsed;
+      final y = normalized.year.toString().padLeft(4, '0');
+      final m = normalized.month.toString().padLeft(2, '0');
+      final d = normalized.day.toString().padLeft(2, '0');
       return '$y-$m-$d';
     }
 

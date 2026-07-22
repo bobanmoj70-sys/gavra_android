@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 type PushProvider = 'fcm';
 type TokenInput = { token: string; provider: PushProvider };
@@ -18,6 +19,7 @@ type PushPayload = {
 };
 
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
+const supportedLocaleCodes = new Set(['sr', 'en', 'ru', 'de']);
 
 let cachedFcmToken: { token: string; exp: number; projectId: string } | null = null;
 
@@ -94,6 +96,56 @@ function normalizeHhMmOrEmpty(input: string): string | null {
   const hh = String(Number(match[1] ?? 0)).padStart(2, '0');
   const mm = String(Number(match[2] ?? 0)).padStart(2, '0');
   return `${hh}:${mm}`;
+}
+
+function normalizeLocaleCode(value: unknown): string {
+  const code = String(value ?? '').trim().toLowerCase();
+  return supportedLocaleCodes.has(code) ? code : 'sr';
+}
+
+function resolveLocalizedText(
+  baseText: string,
+  data: Record<string, string>,
+  prefix: 'title' | 'body',
+  localeCode: string,
+): string {
+  const current = normalizeLocaleCode(localeCode);
+  const localized = String(data[`${prefix}_${current}`] ?? '').trim();
+  if (localized) return localized;
+
+  const fallback = String(data[`${prefix}_sr`] ?? '').trim();
+  if (fallback) return fallback;
+
+  return baseText;
+}
+
+async function resolveRecipientLocale(payload: PushPayload, data: Record<string, string>): Promise<string> {
+  const explicit = normalizeLocaleCode(data.locale_code ?? payload._secrets?.locale_code);
+  if (explicit) return explicit;
+
+  const recipientId = String(payload.recipient_id ?? data.recipient_id ?? '').trim();
+  if (!recipientId) return 'sr';
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (!supabaseUrl || !serviceRoleKey) return 'sr';
+
+  try {
+    const client = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: recipient, error } = await client
+      .from('v3_auth')
+      .select('locale_code')
+      .eq('id', recipientId)
+      .maybeSingle();
+
+    if (error) return 'sr';
+    return normalizeLocaleCode(recipient?.locale_code);
+  } catch {
+    return 'sr';
+  }
 }
 
 function alignAndValidateData(payload: PushPayload, data: Record<string, string>): { ok: true; data: Record<string, string> } | { ok: false; error: string } {
@@ -322,6 +374,9 @@ Deno.serve(async (req) => {
     }
 
     const data = alignedDataResult.data;
+    const localeCode = await resolveRecipientLocale(payload, data);
+    const resolvedTitle = resolveLocalizedText(title, data, 'title', localeCode);
+    const resolvedBody = resolveLocalizedText(body, data, 'body', localeCode);
 
     if (String(data.type ?? '').trim() === 'v3_alternativa') {
       dataOnly = true;
@@ -335,7 +390,7 @@ Deno.serve(async (req) => {
     }
 
     const results: PushResult[] = await Promise.all(
-      normalizedTokens.map((tokenItem) => sendFcm(tokenItem.token, title, body, dataOnly, data, payload)),
+      normalizedTokens.map((tokenItem) => sendFcm(tokenItem.token, resolvedTitle, resolvedBody, dataOnly, data, payload)),
     );
 
     const sent = results.filter((entry) => entry.ok).length;

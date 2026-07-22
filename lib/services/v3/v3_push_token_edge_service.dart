@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../globals.dart';
+import '../v3_locale_manager.dart';
 
 class V3PushTokenEdgeService {
   V3PushTokenEdgeService._();
@@ -41,6 +42,7 @@ class V3PushTokenEdgeService {
     final incomingHardwareId = (hardwareId ?? '').trim();
     final incomingPlatform = _resolvePlatform();
     final incomingAppVersion = await _resolveAppVersion();
+    final incomingLocaleCode = V3LocaleManager().currentLocale.languageCode;
 
     if (targetId.isEmpty) {
       throw Exception('Nedostaje v3_auth_id za upis login kolona.');
@@ -55,6 +57,7 @@ class V3PushTokenEdgeService {
         'v3_auth_id': targetId,
         'incoming_installation_id': incomingInstallationId,
         if (safePushToken.isNotEmpty) 'incoming_push_token': safePushToken,
+        if (incomingLocaleCode.isNotEmpty) 'incoming_locale_code': incomingLocaleCode,
         if (incomingHardwareId.isNotEmpty) 'incoming_hardware_id': incomingHardwareId,
         if (incomingPlatform.isNotEmpty) 'incoming_platform': incomingPlatform,
         if (incomingAppVersion.isNotEmpty) 'incoming_app_version': incomingAppVersion,

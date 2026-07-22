@@ -87,9 +87,9 @@ class V3Uplata {
 
   Map<String, dynamic> toJson() => {
         'uplata_id': uplataId,
-        'datum': datum.toIso8601String(),
+        'datum': V3DateUtils.toIsoUtc(datum),
         'iznos': iznos,
         if (naplatioBy != null && naplatioBy!.isNotEmpty) 'naplatio_by': naplatioBy,
-        if (naplatioAt != null) 'naplatio_at': naplatioAt!.toIso8601String(),
+        if (naplatioAt != null) 'naplatio_at': V3DateUtils.toIsoUtc(naplatioAt!),
       };
 }

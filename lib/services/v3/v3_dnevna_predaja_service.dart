@@ -21,8 +21,8 @@ class V3DnevnaPredajaService {
         tip: _tip,
         kategorija: _kategorija,
         vozacId: vozacId,
-        dayStartIso: dayStart.toIso8601String(),
-        dayEndIso: dayEnd.toIso8601String(),
+        dayStartIso: V3DateUtils.toIsoUtc(dayStart),
+        dayEndIso: V3DateUtils.toIsoUtc(dayEnd),
       );
 
       if (res == null) return null;
@@ -52,8 +52,8 @@ class V3DnevnaPredajaService {
       tip: _tip,
       kategorija: _kategorija,
       vozacId: predaja.vozacId ?? '',
-      dayStartIso: dayStart.toIso8601String(),
-      dayEndIso: dayEnd.toIso8601String(),
+      dayStartIso: V3DateUtils.toIsoUtc(dayStart),
+      dayEndIso: V3DateUtils.toIsoUtc(dayEnd),
       selectColumns: 'id',
     );
 
@@ -76,7 +76,7 @@ class V3DnevnaPredajaService {
 
     final insertData = {
       ...baseData,
-      'created_at': dayStart.toIso8601String(),
+      'created_at': V3DateUtils.toIsoUtc(dayStart),
       if (predaja.id.isNotEmpty) 'id': predaja.id,
     };
 

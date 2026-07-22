@@ -19,6 +19,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
+import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -154,7 +155,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           datum: widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now(),
           operativnaId: widget.entry?.id,
           evidentiraoBy: currentVozac.id,
-          pokupljenAt: DateTime.now().toIso8601String(),
+          pokupljenAt: V3DateUtils.nowIsoUtc(),
           dodaoBy: widget.entry?.createdBy,
           azuriraoBy: widget.entry?.updatedBy,
           grad: widget.entry?.grad,

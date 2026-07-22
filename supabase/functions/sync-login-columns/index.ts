@@ -28,6 +28,11 @@ function deriveIncomingInstallationId(params: {
   );
 }
 
+function normalizeLocaleCode(value: unknown): string {
+  const code = String(value ?? "").trim().toLowerCase();
+  return ["sr", "en", "ru", "de"].includes(code) ? code : "";
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, updated: false, reason: "method_not_allowed" });
@@ -56,7 +61,7 @@ Deno.serve(async (req) => {
 
     const { data: existing, error: existingError } = await client
       .from("v3_auth")
-      .select("id, installation_id, installation_id_2, push_token, push_token_2, hardware_id, hardware_id_2, last_seen_at, last_seen_at_2")
+      .select("id, installation_id, installation_id_2, push_token, push_token_2, hardware_id, hardware_id_2, locale_code, last_seen_at, last_seen_at_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -84,6 +89,14 @@ Deno.serve(async (req) => {
     const incomingPlatform = firstNonEmpty(payload.incoming_platform, payload.platform);
     const incomingAppVersion = firstNonEmpty(payload.incoming_app_version, payload.app_version);
     const incomingHardwareId = firstNonEmpty(payload.incoming_hardware_id, payload.hardware_id);
+    const incomingLocaleCode = normalizeLocaleCode(
+      firstNonEmpty(
+        payload.incoming_locale_code,
+        payload.locale_code,
+        payload.language_code,
+        payload.language,
+      ),
+    );
 
     if (!incomingInstallationIdResolved) {
       return json(200, { ok: false, updated: false, reason: "missing_incoming_installation_id" });
@@ -154,6 +167,7 @@ Deno.serve(async (req) => {
       if (incomingPushToken) patch.push_token = incomingPushToken;
       patch.installation_id = incomingInstallationIdResolved;
       if (incomingHardwareId) patch.hardware_id = incomingHardwareId;
+      if (incomingLocaleCode) patch.locale_code = incomingLocaleCode;
       patch.last_seen_at = now;
       if (incomingPlatform) patch.platform = incomingPlatform;
       if (incomingAppVersion) patch.app_version = incomingAppVersion;
@@ -163,6 +177,7 @@ Deno.serve(async (req) => {
       if (incomingPushToken) patch.push_token_2 = incomingPushToken;
       patch.installation_id_2 = incomingInstallationIdResolved;
       if (incomingHardwareId) patch.hardware_id_2 = incomingHardwareId;
+      if (incomingLocaleCode) patch.locale_code = incomingLocaleCode;
       patch.last_seen_at_2 = now;
       if (incomingPlatform) patch.platform_2 = incomingPlatform;
       if (incomingAppVersion) patch.app_version_2 = incomingAppVersion;
@@ -198,9 +213,21 @@ Deno.serve(async (req) => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
           body: JSON.stringify({
             tokens: [{ token: replacedPushToken, provider: "fcm" }],
+            recipient_id: userId,
             title: "Bezbednosno obaveštenje",
             body: "Vaš uređaj je odjavljen jer je prijavljen novi uređaj potvrđen PIN kodom.",
-            data: { type: "v3_device_replaced" },
+            data: {
+              type: "v3_device_replaced",
+              locale_code: incomingLocaleCode || String(existing.locale_code ?? "").trim() || "sr",
+              title_sr: "Bezbednosno obaveštenje",
+              title_en: "Security notice",
+              title_ru: "Уведомление безопасности",
+              title_de: "Sicherheitsmeldung",
+              body_sr: "Vaš uređaj je odjavljen jer je prijavljen novi uređaj potvrđen PIN kodom.",
+              body_en: "Your device was signed out because a new device was approved with a PIN code.",
+              body_ru: "Ваше устройство было отключено, потому что новое устройство было подтверждено PIN-кодом.",
+              body_de: "Ihr Gerät wurde abgemeldet, weil ein neues Gerät per PIN-Code bestätigt wurde.",
+            },
           }),
         }).catch((e: unknown) => console.error("send-push-notification failed", e));
       }

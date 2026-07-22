@@ -546,7 +546,7 @@ Deno.serve(async (req) => {
         try {
           const { data: vozacAuth, error: vozacError } = await client
             .from("v3_auth")
-            .select("push_token, push_token_2")
+            .select("push_token, push_token_2, locale_code")
             .eq("id", vozacId)
             .single();
 
@@ -559,10 +559,20 @@ Deno.serve(async (req) => {
 
             if (vozacTokens.length > 0) {
               const eventId = `vozac_auto_start:${vozacId}:${datumIso}:${grad}:${vreme}`;
+              const localeCode = String(vozacAuth.locale_code ?? "").trim().toLowerCase();
               await client.rpc("notify_push", {
                 tokens: vozacTokens,
+                recipient_id: vozacId,
                 title: "Termin za 10 minuta",
                 body: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
+                title_sr: "Termin za 10 minuta",
+                title_en: "Appointment in 10 minutes",
+                title_ru: "Термин через 10 минут",
+                title_de: "Termin in 10 Minuten",
+                body_sr: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
+                body_en: `Tap to start tracking for ${grad} ${vreme}.`,
+                body_ru: `Нажмите, чтобы начать отслеживание для ${grad} ${vreme}.`,
+                body_de: `Tippen Sie, um die Verfolgung für ${grad} ${vreme} zu starten.`,
                 data: {
                   type: "vozac_auto_start_tracking",
                   event_id: eventId,
@@ -571,6 +581,15 @@ Deno.serve(async (req) => {
                   grad: grad,
                   vreme: vreme,
                   screen: "v3_vozac",
+                  locale_code: localeCode || "sr",
+                  title_sr: "Termin za 10 minuta",
+                  title_en: "Appointment in 10 minutes",
+                  title_ru: "Термин через 10 минут",
+                  title_de: "Termin in 10 Minuten",
+                  body_sr: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
+                  body_en: `Tap to start tracking for ${grad} ${vreme}.`,
+                  body_ru: `Нажмите, чтобы начать отслеживание для ${grad} ${vreme}.`,
+                  body_de: `Tippen Sie, um die Verfolgung für ${grad} ${vreme} zu starten.`,
                 },
               });
               console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);

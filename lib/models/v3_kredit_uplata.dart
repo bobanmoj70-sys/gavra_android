@@ -27,7 +27,7 @@ class V3KreditUplata {
 
   Map<String, dynamic> toJson() => {
         'uplata_id': uplataId,
-        'datum': datum.toIso8601String(),
+        'datum': V3DateUtils.toIsoUtc(datum),
         'iznos': iznos,
         if (napomena != null && napomena!.isNotEmpty) 'napomena': napomena,
       };

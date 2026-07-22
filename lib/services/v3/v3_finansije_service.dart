@@ -579,7 +579,7 @@ class V3FinansijeService {
           // database trigger v3_sync_realizovane_voznje_to_finansije.
           final updatePayload = <String, dynamic>{
             _nenaplaceneVoznjeKey: updatedNenaplacene,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': V3DateUtils.nowIsoUtc(),
           };
           final updated = await _repo.updateByIdReturning(latestId, updatePayload);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updated);
@@ -1019,10 +1019,10 @@ class V3FinansijeService {
       final now = DateTime.now();
       final uplataStavka = <String, dynamic>{
         'uplata_id': 'upl:${_uuid.v4()}',
-        'datum': now.toIso8601String(),
+        'datum': V3DateUtils.toIsoUtc(now),
         'iznos': iznos,
         'naplatio_by': naplacenoBy,
-        'naplatio_at': now.toIso8601String(),
+        'naplatio_at': V3DateUtils.toIsoUtc(now),
       };
 
       Map<String, dynamic> row;
@@ -1054,7 +1054,7 @@ class V3FinansijeService {
           'naplaceno_by': updatedNaplatioBy,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
           _uplateKey: updatedUplate,
-          'updated_at': now.toIso8601String(),
+          'updated_at': V3DateUtils.toIsoUtc(now),
         });
       } else {
         // Skalarne kolone su izvedene iz uplate_json (jedini izvor istine).

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../models/v3_uplata_pazara.dart';
+import '../../utils/v3_date_utils.dart';
 
 /// Servis za rad sa mesecnom uplatom pazara (`v3_uplata_pazara`).
 class V3UplataPazaraService {
@@ -74,7 +75,7 @@ class V3UplataPazaraService {
         debugPrint('[V3UplataPazaraService] ažuriram postojeći zapis id=${uplata.id}');
         await supabase.from('v3_uplata_pazara').update({
           'dnevne_uplate_json': updated.dnevneUplate.map((e) => e.toJson()).toList(),
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': V3DateUtils.nowIsoUtc(),
         }).eq('id', uplata.id);
       } else {
         debugPrint('[V3UplataPazaraService] kreiram novi zapis');
