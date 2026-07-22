@@ -128,7 +128,7 @@ class V3TrenutnaDodelaSlotService {
 
     final result = await supabase
         .from(tableName)
-        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId')
+        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme')
         .select('id')
         .single();
     return result['id']?.toString();
@@ -253,7 +253,7 @@ class V3TrenutnaDodelaSlotService {
 
     final result = await supabase
         .from(tableName)
-        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme,$colVozacId')
+        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme')
         .select('id')
         .single();
     return result['id']?.toString();
@@ -321,7 +321,10 @@ class V3TrenutnaDodelaSlotService {
   static Future<Map<String, String>> loadAllVozacBySlotKey({
     String? datumIso,
   }) async {
-    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVozacId');
+    dynamic query = supabase
+        .from(tableName)
+        .select('$colDatum, $colGrad, $colVreme, $colVozacId, updated_at')
+        .order('updated_at', ascending: false);
 
     final trimmedDatum = _normalizeDatumIso(datumIso);
     if (trimmedDatum.isNotEmpty) {
@@ -338,7 +341,13 @@ class V3TrenutnaDodelaSlotService {
       final vreme = _normalizeVreme(mapped[colVreme]?.toString());
       final vozacId = (mapped[colVozacId]?.toString() ?? '').trim();
       if (datum.isNotEmpty && grad.isNotEmpty && vreme.isNotEmpty && vozacId.isNotEmpty) {
-        result['$datum|$grad|$vreme'] = vozacId;
+        final key = '$datum|$grad|$vreme';
+        if (result.containsKey(key)) {
+          debugPrint(
+              '[V3TrenutnaDodelaSlotService] Duplicate slotKey detected while loading: $key (keeping latest updated_at row)');
+          continue;
+        }
+        result[key] = vozacId;
       }
     }
     return result;
