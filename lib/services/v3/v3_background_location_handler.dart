@@ -44,6 +44,7 @@ SupabaseClient? _bgSupabaseClient;
 String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
 bool _bgConfigReady = false;
+ServiceInstance? _bgService;
 
 bool get _bgCanSendLocation =>
     _bgVozacId != null && _bgVozacId!.isNotEmpty && _bgDatumIso.isNotEmpty && _bgGrad.isNotEmpty && _bgVreme.isNotEmpty;
@@ -111,10 +112,71 @@ void _bgTryInitSupabaseClient() {
   debugPrint('[BG] Supabase client inicijalizovan iz main isolate konfiguracije');
 }
 
+/// Proverava da li je vrednost timestamp setovana (string nije prazan ili nije null).
+bool _bgIsTimestampSet(Object? value) {
+  if (value == null) return false;
+  if (value is String) return value.trim().isNotEmpty;
+  return true;
+}
+
+/// Proverava da li su svi putnici za aktivni termin završeni
+/// (pokupljeni ili otkazani). Vraća false ako nema putnika ili ako
+/// postoji bar jedan koji nije završen.
+Future<bool> _bgAllPassengersCompleted() async {
+  if (!_bgCanSendLocation) return false;
+
+  final client = _bgSupabaseClient;
+  if (client == null) return false;
+
+  try {
+    final rows = await client
+        .from('v3_operativna_nedelja')
+        .select('id, pokupljen_at, otkazano_at')
+        .eq('datum', _bgDatumIso)
+        .eq('grad', _bgGrad)
+        .eq('polazak_at', _bgVreme);
+
+    if (rows.isEmpty) return false;
+
+    for (final row in rows) {
+      final pokupljen = _bgIsTimestampSet(row['pokupljen_at']);
+      final otkazan = _bgIsTimestampSet(row['otkazano_at']);
+      if (!pokupljen && !otkazan) return false;
+    }
+    return true;
+  } catch (e) {
+    debugPrint('[BG] Greška pri proveri putnika: $e');
+    return false;
+  }
+}
+
+/// Zaustavlja background tracking i čisti stanje.
+Future<void> _bgStopTracking() async {
+  final service = _bgService;
+  final vozacIdToClean = _bgVozacId;
+  _bgTimer?.cancel();
+  _bgTimer = null;
+  _bgVozacId = null;
+  _bgDatumIso = '';
+  _bgGrad = '';
+  _bgVreme = '';
+  _bgTrackingStartedAt = null;
+  await _bgClearPersistedState();
+  if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
+    await _bgClearEtaForVozac(vozacIdToClean);
+  }
+  _bgSupabaseUrl = '';
+  _bgSupabaseAnonKey = '';
+  _bgSupabaseClient = null;
+  service?.stopSelf();
+}
+
 /// Top-level callback za flutter_background_service.
 /// Pokreće se u posebnom isolate-u i šalje GPS lokaciju svakih 30 sekundi.
 @pragma('vm:entry-point')
 Future<void> onBackgroundServiceStart(ServiceInstance service) async {
+  _bgService = service;
+
   // Supabase konfiguraciju očekujemo iz main isolate-a preko service.invoke.
   service.on(_kSetSupabaseConfig).listen((event) {
     _bgSupabaseUrl = (event?['url'] ?? '').toString().trim();
@@ -128,23 +190,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   });
 
   service.on(_kActionStop).listen((event) async {
-    final vozacIdToClean = _bgVozacId;
-    _bgTimer?.cancel();
-    _bgTimer = null;
-    _bgVozacId = null;
-    _bgDatumIso = '';
-    _bgGrad = '';
-    _bgVreme = '';
-    _bgTrackingStartedAt = null;
-    await _bgClearPersistedState();
-    // ETA cleanup mora biti pre brisanja Supabase kredencijala
-    if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
-      await _bgClearEtaForVozac(vozacIdToClean);
-    }
-    _bgSupabaseUrl = '';
-    _bgSupabaseAnonKey = '';
-    _bgSupabaseClient = null;
-    service.stopSelf();
+    await _bgStopTracking();
   });
 
   // Glavni isolate šalje vozac_id preko invoke
@@ -200,24 +246,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     if (DateTime.now().difference(startedAt) < _kMaxTrackingDuration) return;
 
     debugPrint('[BG] Auto-stop: ${_kMaxTrackingDuration.inMinutes} min trackinga isteklo');
-    unawaited(() async {
-      final vozacIdToClean = _bgVozacId;
-      _bgTimer?.cancel();
-      _bgTimer = null;
-      _bgVozacId = null;
-      _bgDatumIso = '';
-      _bgGrad = '';
-      _bgVreme = '';
-      _bgTrackingStartedAt = null;
-      await _bgClearPersistedState();
-      if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
-        await _bgClearEtaForVozac(vozacIdToClean);
-      }
-      _bgSupabaseUrl = '';
-      _bgSupabaseAnonKey = '';
-      _bgSupabaseClient = null;
-      service.stopSelf();
-    }());
+    unawaited(_bgStopTracking());
   });
 }
 
@@ -314,6 +343,13 @@ Future<void> _bgSendLocation() async {
     } else {
       debugPrint(
           '[BG] Lokacija poslata: ${position.latitude}, ${position.longitude} updated=${responseData is Map ? responseData['updated'] : '?'}');
+    }
+
+    // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.
+    if (await _bgAllPassengersCompleted()) {
+      debugPrint('[BG] Auto-stop: svi putnici su pokupljeni/otkazani');
+      await _bgStopTracking();
+      return;
     }
   } catch (e) {
     debugPrint('[BG] Greška pri slanju lokacije: $e');

@@ -142,6 +142,42 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
+  /// Proverava da li je vrednost timestamp setovana.
+  bool _isTimestampSet(Object? value) {
+    if (value == null) return false;
+    if (value is String) return value.trim().isNotEmpty;
+    return true;
+  }
+
+  /// Proverava da li su svi putnici za aktivni termin završeni
+  /// (pokupljeni ili otkazani). Vraća false ako nema putnika.
+  Future<bool> _allPassengersCompleted() async {
+    if (_activeVozacId.isEmpty || _activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
+      return false;
+    }
+
+    try {
+      final rows = await Supabase.instance.client
+          .from('v3_operativna_nedelja')
+          .select('id, pokupljen_at, otkazano_at')
+          .eq('datum', _activeDatumIso)
+          .eq('grad', _activeGrad)
+          .eq('polazak_at', _activeVreme);
+
+      if (rows.isEmpty) return false;
+
+      for (final row in rows) {
+        final pokupljen = _isTimestampSet(row['pokupljen_at']);
+        final otkazan = _isTimestampSet(row['otkazano_at']);
+        if (!pokupljen && !otkazan) return false;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] Greška pri proveri putnika: $e');
+      return false;
+    }
+  }
+
   Future<void> start({required String vozacId}) async {
     final normalizedVozacId = vozacId.trim();
     if (normalizedVozacId.isEmpty) return;
@@ -534,6 +570,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       );
       _iosLastEtaComputedAt = DateTime.now();
       onLocationSent?.call(position);
+
+      // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.
+      if (await _allPassengersCompleted()) {
+        debugPrint('[V3VozacLocationTrackingService][iOS] Auto-stop: svi putnici su pokupljeni/otkazani');
+        await stop();
+      }
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService][iOS] computeEta error: $e');
     } finally {
