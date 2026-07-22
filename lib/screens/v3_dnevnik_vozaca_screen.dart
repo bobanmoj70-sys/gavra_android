@@ -247,7 +247,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
         final p = _pokupio[i];
         final datum = V3DateUtils.parseTs(p['pokupljen_at']?.toString()) ?? DateTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
-        final putnikId = p['created_by']?.toString() ?? '';
+        final putnikId = p['putnik_v3_auth_id']?.toString() ?? p['created_by']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
         final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
         buf.writeln('  ${i + 1}. $putnikIme — $vreme');
@@ -260,7 +260,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       buf.writeln('DODATI PUTNICI (${_dodao.length}):');
       for (int i = 0; i < _dodao.length; i++) {
         final p = _dodao[i];
-        final putnikId = p['created_by']?.toString() ?? '';
+        final putnikId = p['putnik_v3_auth_id']?.toString() ?? p['created_by']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
         final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
         final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
@@ -375,7 +375,10 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                     children: [
                       _pdfCell('${i + 1}.', style: baseStyle),
                       _pdfCell(
-                          (rm.putniciCache[_pokupio[i]['created_by']?.toString() ?? '']?['ime_prezime']?.toString() ??
+                          (rm.putniciCache[_pokupio[i]['putnik_v3_auth_id']?.toString() ??
+                                      _pokupio[i]['created_by']?.toString() ??
+                                      '']?['ime_prezime']
+                                  ?.toString() ??
                               'Nepoznato'),
                           style: baseStyle),
                       _pdfCell(
@@ -420,7 +423,10 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                     children: [
                       _pdfCell('${i + 1}.', style: baseStyle),
                       _pdfCell(
-                          (rm.putniciCache[_dodao[i]['created_by']?.toString() ?? '']?['ime_prezime']?.toString() ??
+                          (rm.putniciCache[_dodao[i]['putnik_v3_auth_id']?.toString() ??
+                                      _dodao[i]['created_by']?.toString() ??
+                                      '']?['ime_prezime']
+                                  ?.toString() ??
                               'Nepoznato'),
                           style: baseStyle),
                       _pdfCell(
