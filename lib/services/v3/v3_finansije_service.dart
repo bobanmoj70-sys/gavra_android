@@ -608,16 +608,24 @@ class V3FinansijeService {
   }) {
     final id = vozacId.trim();
     if (id.isEmpty) return <Map<String, dynamic>>[];
+    final idLower = id.toLowerCase();
 
     final datumIso = V3DateUtils.parseIsoDatePart(dan.toIso8601String());
     final result = <Map<String, dynamic>>[];
+    final seenOperativnaIds = <String>{};
 
     for (final row in _naplataRows()) {
       final realizovane = _readRealizovaneVoznje(row);
       for (final voznja in realizovane) {
         final voznjaDatumIso = V3DateUtils.parseIsoDatePart(voznja['datum']?.toString() ?? '');
-        if (voznjaDatumIso != datumIso) continue;
-        if ((voznja['pokupljen_by']?.toString() ?? '').trim() != id) continue;
+        final pokupljenAtIso = V3DateUtils.parseIsoDatePart(voznja['pokupljen_at']?.toString() ?? '');
+        if (pokupljenAtIso != datumIso && voznjaDatumIso != datumIso) continue;
+        final pokupljenBy = (voznja['pokupljen_by']?.toString() ?? '').trim().toLowerCase();
+        if (pokupljenBy != idLower) continue;
+
+        final operativnaId = (voznja['operativna_id']?.toString() ?? '').trim();
+        if (operativnaId.isNotEmpty && !seenOperativnaIds.add(operativnaId)) continue;
+
         result.add({
           ...voznja,
           'putnik_v3_auth_id': row['putnik_v3_auth_id']?.toString(),
@@ -625,6 +633,40 @@ class V3FinansijeService {
         });
       }
     }
+
+    // Fallback: ako arhiva realizovanih vožnji kasni/ne sadrži stavke,
+    // preuzmi pokupljene vožnje direktno iz operativne cache za isti dan.
+    final operCache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
+    for (final operRow in operCache) {
+      final pokupljenBy = (operRow['pokupljen_by']?.toString() ?? '').trim().toLowerCase();
+      if (pokupljenBy != idLower) continue;
+
+      final pokupljenAtIso = V3DateUtils.parseIsoDatePart(operRow['pokupljen_at']?.toString() ?? '');
+      final operDatumIso = V3DateUtils.parseIsoDatePart(operRow['datum']?.toString() ?? '');
+      if (pokupljenAtIso != datumIso && operDatumIso != datumIso) continue;
+
+      final operativnaId = (operRow['id']?.toString() ?? '').trim();
+      if (operativnaId.isNotEmpty && !seenOperativnaIds.add(operativnaId)) continue;
+
+      result.add({
+        'operativna_id': operativnaId,
+        'datum': operRow['datum']?.toString(),
+        'pokupljen_by': operRow['pokupljen_by']?.toString(),
+        'pokupljen_at': operRow['pokupljen_at']?.toString(),
+        'dodao_by': operRow['dodao_by']?.toString(),
+        'azurirao_by': operRow['azurirao_by']?.toString(),
+        'grad': operRow['grad']?.toString(),
+        'vreme': operRow['vreme']?.toString(),
+        'putnik_v3_auth_id': operRow['created_by']?.toString(),
+        'finansije_id': null,
+      });
+    }
+
+    result.sort((a, b) {
+      final aDt = V3DateUtils.parseTs(a['pokupljen_at']?.toString()) ?? _parseNenaplacenaDatumOrEpoch(a);
+      final bDt = V3DateUtils.parseTs(b['pokupljen_at']?.toString()) ?? _parseNenaplacenaDatumOrEpoch(b);
+      return aDt.compareTo(bDt);
+    });
 
     return result;
   }
