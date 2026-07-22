@@ -316,6 +316,16 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final operativnaId = widget.entry?.id;
     if (operativnaId == null || operativnaId.isEmpty) return;
 
+    // Sigurnosna provera: ne dozvoli otkazivanje već pokupljenog putnika —
+    // otkazivanje ne poništava pokupljen_at, pa bi vožnja ostala evidentirana
+    // kao realizovana i istovremeno prikazana kao otkazana.
+    if (V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt)) {
+      if (mounted) {
+        V3AppSnackBar.warning(context, 'Putnik je već pokupljen, ne može se otkazati.');
+      }
+      return;
+    }
+
     if (_globalProcessingLock || _isProcessing) return;
     _globalProcessingLock = true;
     V3StateUtils.safeSetState(this, () => _isProcessing = true);
@@ -673,7 +683,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                       if (widget.onDodeliVozaca != null) iconBtn('👤', widget.onDodeliVozaca!),
                                       if (hasTel) iconBtn('📞', () => _pokaziKontakt(context)),
                                       if (!isOtkazan) iconBtn('💰', _handlePayment),
-                                      if (!isOtkazan) iconBtn('❌', () => _runDebounced(_handleOtkazivanje)),
+                                      // Otkazivanje nije dozvoljeno nakon što je putnik već pokupljen —
+                                      // otkazivanje ne poništava pokupljen_at, pa bi vožnja ostala
+                                      // istovremeno i naplaćena (realizovane_voznje_json) i otkazana.
+                                      if (!isOtkazan && !isPokupljen)
+                                        iconBtn('❌', () => _runDebounced(_handleOtkazivanje)),
                                     ],
                                   );
                                 },
