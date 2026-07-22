@@ -92,9 +92,12 @@ class _GorTr {
     },
     'trenutnoStanjeSeRacunaAutomatski': {
       'sr': 'Upiši novo (rastuće) očitanje sa pištolja. Trenutno stanje se automatski umanjuje za razliku (potrošnju).',
-      'en': 'Enter the new (increasing) nozzle reading. Current level is automatically reduced by the difference (consumption).',
-      'ru': 'Введите новое (возрастающее) показание пистолета. Текущий уровень автоматически уменьшается на разницу (расход).',
-      'de': 'Neuen (steigenden) Zapfpistolenstand eingeben. Der aktuelle Stand wird automatisch um die Differenz (Verbrauch) verringert.',
+      'en':
+          'Enter the new (increasing) nozzle reading. Current level is automatically reduced by the difference (consumption).',
+      'ru':
+          'Введите новое (возрастающее) показание пистолета. Текущий уровень автоматически уменьшается на разницу (расход).',
+      'de':
+          'Neuen (steigenden) Zapfpistolenstand eingeben. Der aktuelle Stand wird automatisch um die Differenz (Verbrauch) verringert.',
     },
     'cenaPoLitru': {
       'sr': 'Cena po litru (RSD)',
