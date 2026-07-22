@@ -383,13 +383,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final naplataInfo = _resolveNaplataInfo();
     final naplataStatus = naplataInfo?.status ?? V3NaplataStatus.nemaUplate;
     final bool isPlacen = naplataStatus == V3NaplataStatus.potpunoPlacen;
-    final bool delimicnoPlacen = naplataStatus == V3NaplataStatus.delimicnoPlacen;
 
     return V3StyleHelper.putnikCard(
       status: status,
       isPokupljen: isPokupljen,
       isPlacen: isPlacen,
-      delimicnoPlacen: delimicnoPlacen,
       vozacBoja: widget.vozacBoja,
     );
   }
@@ -400,12 +398,10 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final naplataInfo = _resolveNaplataInfo();
     final naplataStatus = naplataInfo?.status ?? V3NaplataStatus.nemaUplate;
     final placen = naplataStatus == V3NaplataStatus.potpunoPlacen;
-    final delimicnoPlacen = naplataStatus == V3NaplataStatus.delimicnoPlacen;
     return V3StatusPolicy.textForCard(
       status: status,
       pokupljen: pokupljen,
       placen: placen,
-      delimicnoPlacen: delimicnoPlacen,
     );
   }
 
@@ -511,14 +507,12 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final naplataInfo = _resolveNaplataInfo();
     final naplataStatus = naplataInfo?.status ?? V3NaplataStatus.nemaUplate;
     final bool isPlacen = naplataStatus == V3NaplataStatus.potpunoPlacen;
-    final bool delimicnoPlacen = naplataStatus == V3NaplataStatus.delimicnoPlacen;
     final bool imaUplatu = naplataInfo?.imaUplatu ?? false;
     final String? naplataById = naplataInfo?.paidBy;
     final DateTime? naplataAt = naplataInfo?.paidAt;
     final DateTime? poslednjaDopunaAt = naplataInfo?.uplataAt;
     final double ukupanIznos = naplataInfo?.ukupanIznos ?? 0;
     final double poslednjaDopuna = naplataInfo?.poslednjaDopuna ?? 0;
-    final double preostaliDug = naplataInfo?.dug ?? 0;
     final bool hasTel = _firstValidTelefon() != null;
     final String? adresaNaziv = _getAdresaNaziv();
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
@@ -764,24 +758,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       runSpacing: 2,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        // 1. BELA: plaćeno (potpuno ili delimično) ali nije pokupljen
-                        if ((isPlacen || delimicnoPlacen) && !isPokupljen) ...[
+                        // 1. BELA: potpuno plaćeno ali nije pokupljen
+                        if (isPlacen && !isPokupljen) ...[
                           Text(
                             () {
                               final vpl = poslednjaDopunaAt ?? naplataAt;
-                              final prefix = delimicnoPlacen ? 'Delimično: ' : '';
                               final ukupnoStr =
-                                  ukupanIznos > 0 ? '${prefix}Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
+                                  ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
                               final poslednjeStr =
                                   poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
-                              final ostatakStr = delimicnoPlacen && preostaliDug > 0
-                                  ? 'Ostatak: ${preostaliDug.toStringAsFixed(0)} RSD'
-                                  : '';
                               final dtStr = _fmt(vpl);
                               return [
                                 if (ukupnoStr.isNotEmpty) ukupnoStr,
                                 if (poslednjeStr.isNotEmpty) poslednjeStr,
-                                if (ostatakStr.isNotEmpty) ostatakStr,
                                 if (dtStr.isNotEmpty) dtStr
                               ].join(' • ');
                             }(),
@@ -790,7 +779,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                         ],
 
                         // 2. PLAVA: pokupljen, nema uplate
-                        if (isPokupljen && !isPlacen && !delimicnoPlacen) ...[
+                        if (isPokupljen && !isPlacen) ...[
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.pokupljenAt);
@@ -837,34 +826,6 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                 if (poslednjeStr.isNotEmpty) poslednjeStr,
                                 if (dtStr.isNotEmpty) dtStr
                               ].join(' • ');
-                            }(),
-                            style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-
-                        // 4. ŽUTA: pokupljen + delimično plaćen
-                        if (isPokupljen && delimicnoPlacen) ...[
-                          Text(
-                            () {
-                              final dtStr = _fmt(widget.entry?.pokupljenAt);
-                              final defaults =
-                                  _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
-                              final brojVoznji = defaults.brojVoznji;
-                              final voznjaText = brojVoznji > 1 ? 'Vožnje' : 'Vožnja';
-                              if (dtStr.isNotEmpty) {
-                                return '$voznjaText ($brojVoznji): $dtStr';
-                              } else {
-                                return '$voznjaText ($brojVoznji)';
-                              }
-                            }(),
-                            style: TextStyle(fontSize: 13, color: bojaPokupljen, fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            () {
-                              final ostatak = preostaliDug > 0 ? preostaliDug : 0.0;
-                              final ostatakStr = ostatak > 0 ? 'Ostatak: ${ostatak.toStringAsFixed(0)} RSD' : '';
-                              final dtStr = _fmt(poslednjaDopunaAt);
-                              return [ostatakStr, dtStr].where((e) => e.isNotEmpty).join(' • ');
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaNaplata, fontWeight: FontWeight.w700),
                           ),

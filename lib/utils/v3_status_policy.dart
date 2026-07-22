@@ -158,7 +158,6 @@ class V3StatusPolicy {
     String? status,
     bool pokupljen = false,
     bool placen = false,
-    bool delimicnoPlacen = false,
   }) {
     final normalized = normalizeStatus(status);
     if (normalized == 'otkazano') {
@@ -173,12 +172,6 @@ class V3StatusPolicy {
         return const V3StatusTextUi(
           primary: Color(0xFF1B5E20),
           secondary: Color(0xFF2E7D32),
-        );
-      }
-      if (delimicnoPlacen) {
-        return const V3StatusTextUi(
-          primary: Color(0xFFEF6C00),
-          secondary: Color(0xFFF57C00),
         );
       }
       return const V3StatusTextUi(

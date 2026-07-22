@@ -12,7 +12,6 @@ import 'repositories/v3_finansije_repository.dart';
 /// Status naplate putnika za konkretnu vožnju/mesec.
 enum V3NaplataStatus {
   nemaUplate,
-  delimicnoPlacen,
   potpunoPlacen,
 }
 
@@ -1388,6 +1387,6 @@ class V3FinansijeService {
     );
 
     if (dug <= 0.009) return V3NaplataStatus.potpunoPlacen;
-    return V3NaplataStatus.delimicnoPlacen;
+    return V3NaplataStatus.nemaUplate;
   }
 }
