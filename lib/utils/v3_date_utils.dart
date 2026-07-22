@@ -1,6 +1,8 @@
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../services/v3_locale_manager.dart';
+
 /// Pomoćne funkcije za parsiranje datuma/vremena iz Supabase baze.
 ///
 /// Supabase timestamptz kolone (created_at, updated_at, vreme_*) dolaze
@@ -11,7 +13,7 @@ import 'package:timezone/timezone.dart' as tz;
 class V3DateUtils {
   V3DateUtils._();
 
-  static const List<String> _meseci = [
+  static const List<String> _meseciSr = <String>[
     '',
     'Januar',
     'Februar',
@@ -25,6 +27,54 @@ class V3DateUtils {
     'Oktobar',
     'Novembar',
     'Decembar',
+  ];
+
+  static const List<String> _meseciEn = <String>[
+    '',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  static const List<String> _meseciRu = <String>[
+    '',
+    'Январь',
+    'Февраль',
+    'Март',
+    'Апрель',
+    'Май',
+    'Июнь',
+    'Июль',
+    'Август',
+    'Сентябрь',
+    'Октябрь',
+    'Ноябрь',
+    'Декабрь',
+  ];
+
+  static const List<String> _meseciDe = <String>[
+    '',
+    'Januar',
+    'Februar',
+    'März',
+    'April',
+    'Mai',
+    'Juni',
+    'Juli',
+    'August',
+    'September',
+    'Oktober',
+    'November',
+    'Dezember',
   ];
 
   static const String _belgradeTzName = 'Europe/Belgrade';
@@ -86,7 +136,16 @@ class V3DateUtils {
   }
 
   static String mesecNaziv(int mesec, {String fallback = 'Mesec'}) {
-    if (mesec >= 1 && mesec <= 12) return _meseci[mesec];
+    if (mesec >= 1 && mesec <= 12) {
+      final code = V3LocaleManager().currentLocale.languageCode;
+      final months = switch (code) {
+        'en' => _meseciEn,
+        'ru' => _meseciRu,
+        'de' => _meseciDe,
+        _ => _meseciSr,
+      };
+      return months[mesec];
+    }
     return fallback;
   }
 }
