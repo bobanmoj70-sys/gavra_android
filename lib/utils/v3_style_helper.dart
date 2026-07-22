@@ -123,6 +123,7 @@ class V3StyleHelper {
     required String status,
     bool isPokupljen = false,
     bool isPlacen = false,
+    bool delimicnoPlacen = false,
     Color? vozacBoja,
   }) {
     if (V3StatusPolicy.isCanceled(status)) {
@@ -163,6 +164,24 @@ class V3StyleHelper {
           ],
         );
       }
+      if (delimicnoPlacen) {
+        return BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFECB3), Color(0xFFFFE082)],
+          ),
+          borderRadius: radius10,
+          border: Border.all(color: const Color(0xFFFFB300), width: 0.6),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withValues(alpha: 0.15),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        );
+      }
       return BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -174,6 +193,26 @@ class V3StyleHelper {
         boxShadow: [
           BoxShadow(
             color: Colors.blue.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      );
+    }
+
+    // Delimična uplata bez pokupljanja — ista narandžasta dekoracija
+    if (delimicnoPlacen) {
+      return BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFECB3), Color(0xFFFFE082)],
+        ),
+        borderRadius: radius10,
+        border: Border.all(color: const Color(0xFFFFB300), width: 0.6),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withValues(alpha: 0.15),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

@@ -9,20 +9,35 @@ import '../../utils/v3_date_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_finansije_repository.dart';
 
+/// Status naplate putnika za konkretnu vožnju/mesec.
+enum V3NaplataStatus {
+  nemaUplate,
+  delimicnoPlacen,
+  potpunoPlacen,
+}
+
 class V3NaplataInfo {
-  final bool isPaid;
+  final V3NaplataStatus status;
   final double ukupanIznos;
   final double poslednjaDopuna;
+  final double dug;
   final DateTime? paidAt;
   final String? paidBy;
   final DateTime? updatedAt;
   final String? updatedBy;
   final DateTime? uplataAt;
 
+  /// Da li postoji bilo kakva uplata.
+  bool get imaUplatu => ukupanIznos > 0.009;
+
+  /// Da li je dug u potpunosti izmiren.
+  bool get isPaid => status == V3NaplataStatus.potpunoPlacen;
+
   const V3NaplataInfo({
-    required this.isPaid,
+    required this.status,
     required this.ukupanIznos,
     required this.poslednjaDopuna,
+    this.dug = 0.0,
     this.paidAt,
     this.paidBy,
     this.updatedAt,
@@ -316,7 +331,7 @@ class V3FinansijeService {
     final poslednjaDopuna = _readPosledjaDopuna(latest);
 
     return V3NaplataInfo(
-      isPaid: ukupanIznos > 0,
+      status: _resolveNaplataStatus(latest),
       ukupanIznos: ukupanIznos,
       poslednjaDopuna: poslednjaDopuna,
       paidAt: _naplacenoAt(latest),
@@ -359,7 +374,7 @@ class V3FinansijeService {
     final poslednjaDopuna = (latestUplata['iznos'] as num?)?.toDouble() ?? 0.0;
 
     return V3NaplataInfo(
-      isPaid: ukupanIznos > 0,
+      status: _resolveNaplataStatus(latestRow),
       ukupanIznos: ukupanIznos,
       poslednjaDopuna: poslednjaDopuna,
       paidAt: latestUplataDatum,
@@ -819,7 +834,7 @@ class V3FinansijeService {
   }
 
   /// Vraća ukupan iznos duga koji je nastao TAČNO na zadati dan (podrazumevano danas),
-  /// za putnike tipa 'dnevni' i 'posiljka' (naplata po pokupljenju/danu).
+  /// za sve putničke tipove koji imaju vožnje po danu (dnevni, pošiljka, radnik, učenik).
   ///
   /// Ovo je analogno metodi [getPazarPoVozacuZaDan] koja prikazuje samo uplate
   /// izvršene tog dana - ovde se prikazuje samo dug (nenaplaćena vožnja)
@@ -835,7 +850,7 @@ class V3FinansijeService {
 
       final putnikData = rm.putniciCache[putnikId];
       final tip = (putnikData?['tip_putnika'] as String? ?? '').toLowerCase();
-      if (tip != 'dnevni' && tip != 'posiljka') continue;
+      if (!_isPoDanuTip(tip) && tip != 'dnevni' && tip != 'posiljka') continue;
 
       for (final stavka in _readNenaplaceneVoznje(row)) {
         final datum = V3DateUtils.parseTs(stavka['datum']?.toString());
@@ -1288,7 +1303,7 @@ class V3FinansijeService {
       if (rPutnikId != safePutnikId.toLowerCase()) continue;
       final rG = _parseInternalInt(row['godina']);
       final rM = _parseInternalInt(row['mesec']);
-      if (rG != godina || rM != mesec) continue;
+      if (rG != godina || rM != mesec) return const <Map<String, dynamic>>[];
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {
@@ -1309,6 +1324,43 @@ class V3FinansijeService {
     return result;
   }
 
+  /// Vraća sve pojedinačne uplate iz jednog finansijskog reda kao V3Uplata objekte.
+  static List<V3Uplata> getUplateFromRow(Map<String, dynamic> row) {
+    final uplate = _readUplate(row);
+    final result = <V3Uplata>[];
+    for (final uplataMap in uplate) {
+      final datum = V3DateUtils.parseTs(uplataMap['datum']?.toString()) ??
+          DateTime.tryParse(uplataMap['datum']?.toString() ?? '');
+      if (datum == null) continue;
+      result.add(V3Uplata(
+        uplataId: uplataMap['uplata_id']?.toString() ?? '',
+        datum: datum,
+        iznos: (uplataMap['iznos'] as num?)?.toDouble() ?? 0,
+        naplatioBy: uplataMap['naplatio_by']?.toString(),
+        naplatioAt: V3DateUtils.parseTs(uplataMap['naplatio_at']?.toString()),
+      ));
+    }
+    return result;
+  }
+
+  /// Vraća sve realizovane vožnje iz jednog finansijskog reda sa parsiranim datumom.
+  static List<({DateTime datum, String? pokupljenBy, String? grad, String? vreme})> getRealizovaneVoznjeFromRow(
+      Map<String, dynamic> row) {
+    final voznje = _readRealizovaneVoznje(row);
+    final result = <({DateTime datum, String? pokupljenBy, String? grad, String? vreme})>[];
+    for (final v in voznje) {
+      final datum = V3DateUtils.parseTs(v['datum']?.toString()) ?? DateTime.tryParse(v['datum']?.toString() ?? '');
+      if (datum == null) continue;
+      result.add((
+        datum: datum,
+        pokupljenBy: v['pokupljen_by']?.toString(),
+        grad: v['grad']?.toString(),
+        vreme: v['vreme']?.toString(),
+      ));
+    }
+    return result;
+  }
+
   /// Broji realizovane vožnje iz arhivske JSON kolone.
   /// Za putnike tipa 'radnik'/'ucenik' naplata je po danu, pa se broje
   /// unikatni dani. Za sve ostale tipove broje se pojedinačne vožnje.
@@ -1322,5 +1374,20 @@ class V3FinansijeService {
       return dani.length;
     }
     return voznje.length;
+  }
+
+  static V3NaplataStatus _resolveNaplataStatus(Map<String, dynamic> row) {
+    final uplate = _readUplate(row);
+    final ukupnoUplaceno = uplate.fold<double>(0.0, (sum, u) => sum + ((u['iznos'] as num?)?.toDouble() ?? 0.0));
+    if (ukupnoUplaceno <= 0.009) return V3NaplataStatus.nemaUplate;
+
+    // Dug se računa iz preostalih nenaplaćenih stavki sa istorijskim cenama.
+    final dug = _readNenaplaceneVoznje(row).fold<double>(
+      0.0,
+      (sum, stavka) => sum + ((stavka['cena'] as num?)?.toDouble() ?? 0.0),
+    );
+
+    if (dug <= 0.009) return V3NaplataStatus.potpunoPlacen;
+    return V3NaplataStatus.delimicnoPlacen;
   }
 }

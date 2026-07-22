@@ -39,6 +39,7 @@ class _DugTr {
     'period': {'sr': 'Period', 'en': 'Period', 'ru': 'Период', 'de': 'Zeitraum'},
     'obracun': {'sr': 'Obračun', 'en': 'Calculation', 'ru': 'Расчёт', 'de': 'Abrechnung'},
     'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
+    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schuld'},
     'pokupio': {'sr': 'Pokupio', 'en': 'Collected by', 'ru': 'Забрал', 'de': 'Abgeholt von'},
     'naplatio': {'sr': 'Naplatio', 'en': 'Charged by', 'ru': 'Взыскал', 'de': 'Eingezogen von'},
     'naplacenoCreatedAt': {
@@ -269,7 +270,7 @@ class _DugCard extends StatelessWidget {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
     final periodStr = '${V3DateUtils.mesecNaziv(dug.mesec)} ${dug.godina}';
     final obracunStr =
-        '${dug.brojVoznji} × ${dug.cena.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
+        '${_DugTr.tr('uplaceno')} ${dug.uplaceno.toStringAsFixed(0)} + ${_DugTr.tr('dug').toLowerCase()} ${dug.iznos.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),

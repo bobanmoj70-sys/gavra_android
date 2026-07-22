@@ -193,31 +193,52 @@ _V3IzvestajData _buildIzvestaj() {
     final kategorija = (row['kategorija']?.toString() ?? '').toLowerCase();
     if (kategorija == 'dnevna_predaja') continue;
 
-    final createdStr = row['created_at'] as String?;
-    if (createdStr == null) continue;
-    final dt = V3DateUtils.parseTs(createdStr);
-    if (dt == null) continue;
-    final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
+    // Prihodi se računaju isključivo iz pojedinačnih uplata (uplate_json),
+    // jer red može biti kreiran ranije (created_at) a ažuriran kasnije.
+    final uplate = V3FinansijeService.getUplateFromRow(row);
+    for (final uplata in uplate) {
+      final dt = uplata.datum;
+      final iznos = uplata.iznos;
+      if (iznos <= 0) continue;
 
-    // Dnevni period (danas)
-    if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
-      prihodDan += iznos;
-      voznjiDan++;
+      // Dnevni period (danas)
+      if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
+        prihodDan += iznos;
+      }
+      // Nedeljni period
+      if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
+        prihodNed += iznos;
+      }
+      // Mesecni period
+      if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
+        prihodMes += iznos;
+      }
+      // Godišnji period (ova godina)
+      if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
+        prihodGod += iznos;
+      }
     }
-    // Nedeljni period
-    if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
-      prihodNed += iznos;
-      voznjiNed++;
-    }
-    // Mesecni period
-    if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
-      prihodMes += iznos;
-      voznjiMes++;
-    }
-    // Godišnji period (ova godina)
-    if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
-      prihodGod += iznos;
-      voznjiGod++;
+
+    // Broj vožnji se računa iz realizovanih vožnji (realizovane_voznje_json).
+    final voznje = V3FinansijeService.getRealizovaneVoznjeFromRow(row);
+    for (final voznja in voznje) {
+      final dt = voznja.datum;
+      // Dnevni period (danas)
+      if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
+        voznjiDan++;
+      }
+      // Nedeljni period
+      if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
+        voznjiNed++;
+      }
+      // Mesecni period
+      if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
+        voznjiMes++;
+      }
+      // Godišnji period (ova godina)
+      if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
+        voznjiGod++;
+      }
     }
   }
 

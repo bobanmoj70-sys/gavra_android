@@ -75,14 +75,17 @@ class V3Kredit {
       return result;
     }
 
+    final uplate = _parseUplate(json['uplate_json']);
+    final izracunatoUplaceno = uplate.fold<double>(0.0, (s, u) => s + u.iznos);
+
     return V3Kredit(
       id: json['id']?.toString() ?? '',
       naziv: json['naziv']?.toString() ?? '',
       ukupanIznos: (json['ukupan_iznos'] as num?)?.toDouble() ?? 0.0,
-      uplaceno: (json['uplaceno'] as num?)?.toDouble() ?? 0.0,
+      uplaceno: izracunatoUplaceno,
       napomena: json['napomena']?.toString(),
       krajKredita: V3DateUtils.parseDatum(json['kraj_kredita']?.toString()),
-      uplate: _parseUplate(json['uplate_json']),
+      uplate: uplate,
       createdAt: V3DateUtils.parseTs(json['created_at']?.toString()),
       updatedAt: V3DateUtils.parseTs(json['updated_at']?.toString()),
     );
