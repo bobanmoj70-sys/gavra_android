@@ -112,6 +112,12 @@ class _GorTr {
       'ru': 'Значения не могут быть отрицательными.',
       'de': 'Werte dürfen nicht negativ sein.',
     },
+    'brojacNeMozeBitiManji': {
+      'sr': 'Brojač pištolja ne može biti manji od trenutnog stanja.',
+      'en': 'The nozzle counter cannot be lower than the current value.',
+      'ru': 'Счётчик пистолета не может быть меньше текущего значения.',
+      'de': 'Der Zapfpistolenzähler darf nicht kleiner als der aktuelle Wert sein.',
+    },
     'podaciOGorivuSuSacuvani': {
       'sr': 'Podaci o gorivu su sačuvani.',
       'en': 'Fuel data saved.',
@@ -372,8 +378,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     final alarmCtrl = TextEditingController(
       text: (stanje?.alarmNivoLitri ?? rezervoar?.alarmNivo ?? 500).toStringAsFixed(1),
     );
+    final prethodniBrojac = stanje?.stanjeBrojacPistolj ?? 0;
     final brojacCtrl = TextEditingController(
-      text: (stanje?.stanjeBrojacPistolj ?? 0).toStringAsFixed(1),
+      text: prethodniBrojac.toStringAsFixed(1),
     );
     final cenaCtrl = TextEditingController(
       text: (stanje?.cenaPoLitru ?? 0).toStringAsFixed(2),
@@ -444,6 +451,13 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                       if (kapacitet < 0 || alarm < 0 || brojac < 0 || cena < 0 || dug < 0) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text(_GorTr.tr('vrednostiNeMoguBitiNegativne'))),
+                                        );
+                                        return;
+                                      }
+
+                                      if (brojac < prethodniBrojac) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(_GorTr.tr('brojacNeMozeBitiManji'))),
                                         );
                                         return;
                                       }
