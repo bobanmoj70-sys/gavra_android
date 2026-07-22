@@ -437,10 +437,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozacId.isEmpty) return const [];
     for (final row in cache.values) {
       final rowVozac = row['vozac_v3_auth_id']?.toString() ?? '';
+      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+      final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
       final wj = row['waypoints_json'];
       final hasOrder = wj is Map && wj['optimized_order'] is List && (wj['optimized_order'] as List).isNotEmpty;
-      debugPrint('[OSRM_SLOT]   row vozac=$rowVozac hasWj=${wj != null} hasOrder=$hasOrder');
+      debugPrint(
+          '[OSRM_SLOT]   row vozac=$rowVozac datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasWj=${wj != null} hasOrder=$hasOrder');
       if (rowVozac != vozacId) continue;
+      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
       if (wj is Map) {
         final order = wj['optimized_order'];
         if (order is List && order.isNotEmpty) {
@@ -1296,11 +1301,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
       try {
-        // Obriši sve prethodne slotove za ovog vozača
-        await V3TrenutnaDodelaSlotService.deleteAllSlotsForVozac(
-          vozacId: vozacId,
-        );
-        // Aktiviraj selektovani slot
+        // Aktiviraj selektovani slot (idempotentan upsert); ne briši druge slotove
+        // vozača jer on može imati više slotova istog dana (npr. BC 5 i VS 6).
         await V3TrenutnaDodelaSlotService.activateSlot(
           datumIso: _selectedDatumIso,
           grad: _selectedGrad,
@@ -1985,7 +1987,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
   }
 
   @override
-  void dispose() {
+  dispose() {
     _oldPinController.dispose();
     _newPinController.dispose();
     _newPinConfirmController.dispose();
