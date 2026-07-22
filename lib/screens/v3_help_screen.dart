@@ -13,8 +13,7 @@ class V3HelpScreen extends StatelessWidget {
     return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
   }
 
-  // Naslovi sekcija (SR/EN/RU/DE). Sadržaj pasusa je preveden na EN;
-  // RU/DE sadržaj trenutno koristi SR tekst (fallback) dok se ne doda pun prevod.
+  // Naslovi sekcija i sadržaj su prevedeni za SR/EN/RU/DE.
   static const Map<String, Map<String, String>> _t = {
     'appBarTitle': {
       'sr': '❓ Uputstvo za korišćenje',

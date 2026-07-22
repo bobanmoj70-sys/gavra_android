@@ -169,7 +169,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     return 'putnik_profil_${putnikId}_action_debounce';
   }
 
-  // Prevodi za profil ekran (SR/EN/RU) — isti obrazac kao welcome screen.
+  // Prevodi za profil ekran (SR/EN/RU/DE) — isti obrazac kao welcome screen.
   static const Map<String, Map<String, String>> _t = {
     'tema': {'sr': 'Tema', 'en': 'Theme', 'ru': 'Тема', 'de': 'Thema'},
     'izmeniProfil': {'sr': 'Izmeni profil', 'en': 'Edit profile', 'ru': 'Изменить профиль', 'de': 'Profil bearbeiten'},

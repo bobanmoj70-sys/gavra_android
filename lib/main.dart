@@ -370,6 +370,13 @@ void main() async {
     debugPrint('⚠️ [main] Foreground service config greška: $e');
   }
 
+  // Jezik učitamo pre prvog crteža UI-ja da ne bi bilo kratkog SR flicker-a.
+  try {
+    await V3LocaleManager().loadLocaleFromStorage().timeout(const Duration(seconds: 3));
+  } catch (e) {
+    debugPrint('⚠️ [main] Locale load timeout/greška: $e');
+  }
+
   // ODMAH POKREĆEMO UI KAKO BI IZBEGLI CRN OS EKRAN
   debugPrint('🚀 [main] 5. runApp start (Native non-blocking UI)');
   runApp(const MyApp());
@@ -438,13 +445,6 @@ Future<void> _postRunAppInitialization() async {
     debugPrint('🚀 [main] 8. loadThemeFromStorage completed');
   } catch (e) {
     debugPrint('⚠️ [main] Theme load timeout/greška: $e');
-  }
-
-  // 3b. 🌐 Jezik - učitaj sačuvani izbor SR/EN iz secure storage
-  try {
-    await V3LocaleManager().loadLocaleFromStorage().timeout(const Duration(seconds: 3));
-  } catch (e) {
-    debugPrint('⚠️ [main] Locale load timeout/greška: $e');
   }
 
   // 4. Pokreni sve ostale servise sa malom pauzom
@@ -1462,6 +1462,31 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  Locale? _resolveSupportedLocale(Locale? locale, Iterable<Locale> supportedLocales) {
+    if (locale == null) return null;
+
+    for (final supportedLocale in supportedLocales) {
+      if (supportedLocale.languageCode == locale.languageCode) {
+        return supportedLocale;
+      }
+    }
+
+    return null;
+  }
+
+  Locale? _resolveSupportedLocaleFromList(List<Locale>? locales, Iterable<Locale> supportedLocales) {
+    if (locales == null || locales.isEmpty) return null;
+
+    for (final locale in locales) {
+      final resolvedLocale = _resolveSupportedLocale(locale, supportedLocales);
+      if (resolvedLocale != null) {
+        return resolvedLocale;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1499,12 +1524,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 GlobalWidgetsLocalizations.delegate,
                 GlobalCupertinoLocalizations.delegate,
               ],
-              supportedLocales: const [
-                Locale('en', 'US'),
-                Locale('sr'),
-                Locale('ru'),
-                Locale('de'),
-              ],
+              supportedLocales: V3LocaleManager.supportedLocales,
+              localeListResolutionCallback: (locales, supportedLocales) =>
+                  _resolveSupportedLocaleFromList(locales, supportedLocales) ?? V3LocaleManager.supportedLocales.first,
+              localeResolutionCallback: (locale, supportedLocales) =>
+                  _resolveSupportedLocale(locale, supportedLocales) ?? V3LocaleManager.supportedLocales.first,
               locale: locale,
               theme: themeData,
               builder: (context, child) => V3PazarListener(child: child ?? const SizedBox.shrink()),

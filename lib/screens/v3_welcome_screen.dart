@@ -53,7 +53,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
   String _appVersion = '';
 
-  // Prevodi za welcome ekran (SR/EN/RU) — jednostavna mapa dok se ne uvede puni l10n sistem.
+  // Prevodi za welcome ekran (SR/EN/RU/DE) — jednostavna mapa dok se ne uvede puni l10n sistem.
   static const Map<String, Map<String, String>> _t = {
     'welcome': {
       'sr': 'DOBRODOŠLI',

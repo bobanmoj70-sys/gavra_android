@@ -3,7 +3,12 @@ import '../services/v3_locale_manager.dart';
 class V3PutnikProfilMessages {
   V3PutnikProfilMessages._();
 
-  static String get _lang => V3LocaleManager().currentLocale.languageCode;
+  static const Set<String> _supportedCodes = {'sr', 'en', 'ru', 'de'};
+
+  static String get _lang {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _supportedCodes.contains(code) ? code : 'sr';
+  }
 
   static String get invalidTermTime => switch (_lang) {
         'en' => '⚠️ Invalid appointment time. Please try again.',
@@ -41,7 +46,7 @@ class V3PutnikProfilMessages {
         'en' => '✅ Successfully logged out',
         'ru' => '✅ Вы успешно вышли',
         'de' => '✅ Erfolgreich abgemeldet',
-        _ => '✅ Uspešno odjavljeni',
+        _ => '✅ Uspešno ste odjavljeni',
       };
 
   static String get themeChanged => switch (_lang) {
@@ -84,6 +89,6 @@ class V3PutnikProfilMessages {
         'de' =>
           '🔒 Die Planung für $vreme ist geschlossen.\nDie neue Planung für die nächste Woche öffnet am Samstag um 03:00 Uhr ($unlockStr).',
         _ =>
-          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu od 03:00 ($unlockStr).',
+          '🔒 Zakazivanje za $vreme je zatvoreno.\nNova zakazivanja za sledeću sedmicu otvaraju se u subotu u 03:00 ($unlockStr).',
       };
 }
