@@ -227,11 +227,18 @@ class _MesecCard extends StatelessWidget {
                 children: [
                   Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                   Text(
-                    '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)} = ${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
+                    '${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
                     style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
+              if ((stats.ukupnoVoznji * stats.cena - stats.ukupnaObaveza).abs() > 0.009) ...[
+                const SizedBox(height: 2),
+                Text(
+                  '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)}',
+                  style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11),
+                ),
+              ],
               const SizedBox(height: 4),
             ],
             Row(

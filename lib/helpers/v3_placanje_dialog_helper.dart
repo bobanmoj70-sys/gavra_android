@@ -55,15 +55,11 @@ class V3PlacanjeDialogHelper {
     }
 
     double _predlozeniIznosZaMesecGodinu(int mesec, int godina) {
-      final cena = cenaPoModelu ?? 0.0;
-      if (cena <= 0) return defaultCena;
-      final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+      final preostaloZaNaplatu = V3FinansijeService.getNenaplacenIznosForPutnik(
         putnikId: putnikId,
         mesec: mesec,
         godina: godina,
       );
-      final ukupnaObaveza = cena * summary.brojVoznji;
-      final preostaloZaNaplatu = ukupnaObaveza - summary.ukupanIznos;
       return preostaloZaNaplatu > 0 ? preostaloZaNaplatu : 0.0;
     }
 
@@ -96,13 +92,14 @@ class V3PlacanjeDialogHelper {
               mesec: mesec,
               godina: _selectedYear,
             );
+            final nenaplacenIznos = V3FinansijeService.getNenaplacenIznosForPutnik(
+              putnikId: putnikId,
+              mesec: mesec,
+              godina: _selectedYear,
+            );
             final uplaceno = summary.ukupanIznos;
-            final cena = cenaPoModelu ?? 0.0;
-            if (cena > 0) {
-              final ukupnaObaveza = cena * summary.brojVoznji;
-              if (ukupnaObaveza > 0 && uplaceno + 0.009 < ukupnaObaveza) {
-                return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
-              }
+            if (nenaplacenIznos > 0.009) {
+              return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
             }
 
             if (uplaceno <= 0) {

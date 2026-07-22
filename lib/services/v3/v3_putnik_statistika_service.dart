@@ -494,6 +494,12 @@ class V3PutnikStatistikaService {
 
     return poravnanje.meseci.map(
       (stavka) {
+        final neplaceno = V3FinansijeService.getNenaplacenBrojVoznjiForPutnik(
+          putnikId: putnikId,
+          godina: stavka.godina,
+          mesec: stavka.mesec,
+        ).clamp(0, stavka.brojVoznji);
+        final placeno = (stavka.brojVoznji - neplaceno).clamp(0, stavka.brojVoznji);
         final otkazano = _countOtkazivanjaZaMesec(
           putnikId: putnikId,
           godina: stavka.godina,
@@ -510,11 +516,9 @@ class V3PutnikStatistikaService {
           mesecNaziv: stavka.mesecNaziv,
           ukupnoVoznji: stavka.brojVoznji,
           pokupljeno: stavka.brojVoznji,
-          placeno: stavka.cena > 0 ? (stavka.uplata / stavka.cena).floor() : stavka.brojVoznji,
+          placeno: placeno,
           otkazano: otkazano,
-          neplaceno: stavka.cena > 0
-              ? (stavka.brojVoznji - (stavka.uplata / stavka.cena).floor()).clamp(0, stavka.brojVoznji).toInt()
-              : 0,
+          neplaceno: neplaceno,
           naplacenoIznos: stavka.uplata,
           dugIznos: stavka.obaveza > stavka.uplata ? stavka.obaveza - stavka.uplata : 0,
           cena: stavka.cena,
@@ -568,20 +572,19 @@ class V3PutnikStatistikaService {
       }
     }
 
-    double ukupno = 0;
-    bool poceloDugovanje = false;
+    double saldo = 0;
     for (final (g, m) in uniqueMeseci) {
-      final stat = getZaMesec(putnikId: putnikId, godina: g, mesec: m);
-      if (stat.dugIznos > 0.009) {
-        poceloDugovanje = true;
-      }
-      if (poceloDugovanje) {
-        ukupno += stat.dugIznos;
-      }
+      final obracun = getMesecniObracun(
+        putnikId: putnikId,
+        godina: g,
+        mesec: m,
+      );
+      saldo += obracun.uplaceno - obracun.obaveza;
       if (g == godina && m == mesec) break;
     }
 
-    return ukupno;
+    if (saldo < -0.009) return -saldo;
+    return 0;
   }
 
   static double getUkupanDugZaSveMesece(

@@ -122,9 +122,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
 
     final brojVoznji = summary.brojVoznji;
-    final cenaPoModelu = isPoDanuModel ? widget.putnik.cenaPoDanu : widget.putnik.cenaPoPokupljenju;
-    final ukupnaObaveza = cenaPoModelu * brojVoznji;
-    final preostaloZaNaplatu = ukupnaObaveza - summary.ukupanIznos;
+    final preostaloZaNaplatu = V3FinansijeService.getNenaplacenIznosForPutnik(
+      putnikId: widget.putnik.id,
+      godina: datumRef.year,
+      mesec: datumRef.month,
+    );
 
     return (
       defaultCena: preostaloZaNaplatu > 0 ? preostaloZaNaplatu : 0.0,
