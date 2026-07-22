@@ -204,6 +204,18 @@ class V3FinansijeService {
     return updated;
   }
 
+  static bool _containsNenaplacenaForDay({
+    required List<Map<String, dynamic>> stavke,
+    required DateTime datum,
+  }) {
+    final targetDay = V3DateUtils.parseIsoDatePart(datum.toIso8601String());
+    if (targetDay.isEmpty) return false;
+    return stavke.any((stavka) {
+      final stavkaDay = V3DateUtils.parseIsoDatePart(stavka['datum']?.toString() ?? '');
+      return stavkaDay == targetDay;
+    });
+  }
+
   static List<Map<String, dynamic>> _consumeNenaplaceneVoznje({
     required List<Map<String, dynamic>> stavke,
     required double uplacenIznos,
@@ -547,6 +559,9 @@ class V3FinansijeService {
             isPoDanu: isPoDanu,
           );
           final currentNenaplacene = _readNenaplaceneVoznje(latest);
+          if (isPoDanu && _containsNenaplacenaForDay(stavke: currentNenaplacene, datum: datum)) {
+            return;
+          }
           final updatedNenaplacene = _appendNenaplacenaVoznja(
             stavke: currentNenaplacene,
             operativnaId: operativnaId,
