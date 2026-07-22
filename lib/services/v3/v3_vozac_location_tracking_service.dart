@@ -307,6 +307,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       );
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] fetchPositionAndComputeEta error: $e');
+      _optimizedPutnikIds.clear();
+      _etaSecondsCache.clear();
       return (etaMap: <String, int>{}, order: <String>[]);
     }
   }
@@ -393,6 +395,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _etaSecondsCache
         ..clear()
         ..addAll(etaMap);
+    } else {
+      _optimizedPutnikIds.clear();
+      _etaSecondsCache.clear();
     }
     return (etaMap: etaMap, order: order);
   }

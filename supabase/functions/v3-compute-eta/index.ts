@@ -142,9 +142,56 @@ Deno.serve(async (req) => {
 
     const activeSlot = (slotRows ?? []).find((s: any) => normalizeTime(s.vreme) === activeVreme);
     if (!activeSlot) {
-      await client.from("v3_eta_results").delete().eq("vozac_id", vozacId);
       return json(200, { ok: false, reason: "no_active_slot" });
     }
+
+    const buildOsrmFallbackResponse = async (
+      reason: string,
+      extra: Record<string, unknown> = {},
+    ): Promise<Response> => {
+      const waypointsJson = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
+      const existingOrderRaw = waypointsJson["optimized_order"];
+      const existingOrder = Array.isArray(existingOrderRaw)
+        ? existingOrderRaw.filter((id): id is string => typeof id === "string" && id.length > 0)
+        : [];
+
+      const { data: existingEtaRows } = await client
+        .from("v3_eta_results")
+        .select("termin_id, putnik_id, eta_seconds")
+        .eq("slot_id", activeSlot.id);
+
+      const etaRows = (existingEtaRows ?? [])
+        .map((r: any) => ({
+          termin_id: String(r?.termin_id ?? ""),
+          putnik_id: String(r?.putnik_id ?? ""),
+          eta_seconds: Number(r?.eta_seconds),
+        }))
+        .filter((r) => r.termin_id.length > 0 && r.putnik_id.length > 0 && Number.isFinite(r.eta_seconds));
+
+      const etaByPutnik = new Map<string, { termin_id: string; putnik_id: string; eta_seconds: number }>();
+      for (const row of etaRows) {
+        etaByPutnik.set(row.putnik_id, row);
+      }
+
+      const orderedEtaRows = existingOrder.length > 0
+        ? [
+            ...existingOrder
+              .map((pid) => etaByPutnik.get(pid))
+              .filter((item): item is { termin_id: string; putnik_id: string; eta_seconds: number } => !!item),
+            ...etaRows.filter((row) => !existingOrder.includes(row.putnik_id)),
+          ]
+        : etaRows;
+
+      return json(200, {
+        ok: true,
+        fallback: true,
+        reason,
+        updated: orderedEtaRows.length,
+        eta_results: orderedEtaRows,
+        optimized_order: existingOrder,
+        ...extra,
+      });
+    };
 
     const rawPassengers: PassengerEntry[] = ((activeSlot.waypoints_json as any)?.passengers ?? [])
       .filter((p: any) =>
@@ -159,7 +206,7 @@ Deno.serve(async (req) => {
       }));
 
     if (rawPassengers.length === 0) {
-      await client.from("v3_eta_results").delete().eq("vozac_id", vozacId);
+      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id);
       return json(200, { ok: true, reason: "no_passengers_in_slot", updated: 0 });
     }
 
@@ -183,7 +230,7 @@ Deno.serve(async (req) => {
     const remaining = rawPassengers.filter((p) => !completedTerminIds.has(p.termin_id));
 
     if (remaining.length === 0) {
-      await client.from("v3_eta_results").delete().eq("vozac_id", vozacId);
+      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id);
       return json(200, { ok: true, reason: "no_remaining_passengers", updated: 0 });
     }
 
@@ -192,13 +239,13 @@ Deno.serve(async (req) => {
     const { data: existingEtaRows } = await client
       .from("v3_eta_results")
       .select("putnik_id")
-      .eq("vozac_id", vozacId);
+      .eq("slot_id", activeSlot.id);
     const toDelete = (existingEtaRows ?? [])
       .map((r: any) => String(r.putnik_id ?? "").trim())
       .filter((pid: string) => pid && !remainingPutnikIds.has(pid));
     if (toDelete.length > 0) {
       await client.from("v3_eta_results").delete()
-        .eq("vozac_id", vozacId)
+        .eq("slot_id", activeSlot.id)
         .in("putnik_id", toDelete);
     }
 
@@ -218,7 +265,10 @@ Deno.serve(async (req) => {
 
     const waypointCount = remaining.length + 2;
     if (waypointCount > OSRM_MAX_WAYPOINTS) {
-      return json(200, { ok: false, reason: "osrm_too_many_waypoints", count: waypointCount, max: OSRM_MAX_WAYPOINTS });
+      return await buildOsrmFallbackResponse("osrm_too_many_waypoints", {
+        count: waypointCount,
+        max: OSRM_MAX_WAYPOINTS,
+      });
     }
 
     console.log(`[v3-compute-eta] remaining=${remaining.length} tripCoords=${tripCoords}`);
@@ -227,17 +277,23 @@ Deno.serve(async (req) => {
     try {
       osrmResponse = await fetchWithRetry(osrmUrl);
     } catch (e) {
-      return json(200, { ok: false, reason: "osrm_fetch_error", warning: e instanceof Error ? e.message : "Unknown error" });
+      return await buildOsrmFallbackResponse("osrm_fetch_error", {
+        warning: e instanceof Error ? e.message : "Unknown error",
+      });
     }
 
     if (!osrmResponse.ok) {
-      return json(200, { ok: false, reason: "osrm_http_error", status: osrmResponse.status });
+      return await buildOsrmFallbackResponse("osrm_http_error", {
+        status: osrmResponse.status,
+      });
     }
 
     const osrmData = await osrmResponse.json();
 
     if (osrmData.code !== "Ok") {
-      return json(200, { ok: false, reason: "osrm_code_error", code: osrmData.code });
+      return await buildOsrmFallbackResponse("osrm_code_error", {
+        code: osrmData.code,
+      });
     }
 
     // 5. Parsiraj optimizovani redosled
@@ -247,15 +303,18 @@ Deno.serve(async (req) => {
     const expectedWaypointCount = remaining.length + 2; // vozač + putnici + destinacija
     if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
       console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
-      return json(200, { ok: false, reason: "osrm_waypoints_mismatch", expected: expectedWaypointCount, got: rawWaypoints?.length });
+      return await buildOsrmFallbackResponse("osrm_waypoints_mismatch", {
+        expected: expectedWaypointCount,
+        got: rawWaypoints?.length,
+      });
     }
     if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
-      return json(200, { ok: false, reason: "osrm_no_trips" });
+      return await buildOsrmFallbackResponse("osrm_no_trips");
     }
 
     const legs = rawTrips[0].legs;
     if (!Array.isArray(legs)) {
-      return json(200, { ok: false, reason: "osrm_no_legs" });
+      return await buildOsrmFallbackResponse("osrm_no_legs");
     }
 
     const passengerWaypoints = rawWaypoints
