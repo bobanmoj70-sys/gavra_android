@@ -91,10 +91,10 @@ class _GorTr {
       'de': 'Zapfpistolenzähler (L)',
     },
     'trenutnoStanjeSeRacunaAutomatski': {
-      'sr': 'Trenutno stanje se računa automatski u bazi: kapacitet - brojač.',
-      'en': 'Current level is calculated automatically in the database: capacity - counter.',
-      'ru': 'Текущий уровень рассчитывается автоматически в базе: ёмкость - счётчик.',
-      'de': 'Der aktuelle Stand wird automatisch in der Datenbank berechnet: Kapazität - Zähler.',
+      'sr': 'Upiši novo (rastuće) očitanje sa pištolja. Trenutno stanje se automatski umanjuje za razliku (potrošnju).',
+      'en': 'Enter the new (increasing) nozzle reading. Current level is automatically reduced by the difference (consumption).',
+      'ru': 'Введите новое (возрастающее) показание пистолета. Текущий уровень автоматически уменьшается на разницу (расход).',
+      'de': 'Neuen (steigenden) Zapfpistolenstand eingeben. Der aktuelle Stand wird automatisch um die Differenz (Verbrauch) verringert.',
     },
     'cenaPoLitru': {
       'sr': 'Cena po litru (RSD)',
