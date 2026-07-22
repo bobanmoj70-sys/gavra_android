@@ -62,9 +62,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // Globalni lock — blokira duple klikove dok se jedna operacija završi
   static bool _globalProcessingLock = false;
 
+  // Debounce ključ za akcije na kartici (npr. otkazivanje)
+  String get _debounceKey => 'putnik_card_${widget.putnik.id}_action_debounce';
+
   @override
   void dispose() {
     V3StreamUtils.cancelTimer('putnik_card_${widget.putnik.id}_longpress');
+    V3StreamUtils.cancelTimer(_debounceKey);
     super.dispose();
   }
 
@@ -345,6 +349,17 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
     }
+  }
+
+  /// Debounce wrapper za akcije na kartici — ignoriše klikove u narednih [duration].
+  void _runDebounced(VoidCallback action, {Duration duration = const Duration(milliseconds: 400)}) {
+    if (V3StreamUtils.isTimerActive(_debounceKey)) return;
+    V3StreamUtils.createTimer(
+      key: _debounceKey,
+      duration: duration,
+      callback: () => V3StreamUtils.cancelTimer(_debounceKey),
+    );
+    action();
   }
 
   // ─── Boje kartice po statusu ───────────────────────────────────
@@ -658,7 +673,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                                       if (widget.onDodeliVozaca != null) iconBtn('👤', widget.onDodeliVozaca!),
                                       if (hasTel) iconBtn('📞', () => _pokaziKontakt(context)),
                                       if (!isOtkazan) iconBtn('💰', _handlePayment),
-                                      if (!isOtkazan) iconBtn('❌', _handleOtkazivanje),
+                                      if (!isOtkazan) iconBtn('❌', () => _runDebounced(_handleOtkazivanje)),
                                     ],
                                   );
                                 },

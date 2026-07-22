@@ -241,6 +241,20 @@ class V3ZahtevService {
     final datumIso = _datumKey(datum);
     final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
     final otkazanoAt = DateTime.now().toIso8601String();
+
+    // Pre nego što ažuriramo, proverimo da li uopšte ima aktivnih redova.
+    // Ako ih nema, verovatno je već otkazano u međuvremenu — ne radimo ništa.
+    final aktivniOperativni = await _operativnaRepository.selectByPutnikDatumGradAktivni(
+      putnikId: putnikId,
+      datumIso: datumIso,
+      grad: targetGrad,
+    );
+    if (aktivniOperativni.isEmpty) {
+      debugPrint('[V3ZahtevService] Preskačem otkazivanje — nema aktivnih operativnih redova za '
+          'putnikId=$putnikId, datum=$datumIso, grad=$targetGrad.');
+      return;
+    }
+
     final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
       putnikId: putnikId,
       datumIso: datumIso,
@@ -309,16 +323,24 @@ class V3ZahtevService {
           'otkazano_at': otkazanoAt,
           if (updBy != null) 'updated_by': updBy,
         };
-        if (operativnaId != null && operativnaId.isNotEmpty) {
-          final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
-          await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
-            operativnaRow: row,
-            updatedBy: updBy,
-          );
-        } else {
+        if (operativnaId == null || operativnaId.isEmpty) {
           throw Exception('operativnaId je obavezan za otkazivanje');
         }
+
+        // Sigurnosna provera: ne dozvoli duplo otkazivanje istog operativnog reda
+        final existingOperativna =
+            await supabase.from('v3_operativna_nedelja').select('otkazano_at').eq('id', operativnaId).maybeSingle();
+        if (existingOperativna != null && existingOperativna['otkazano_at'] != null) {
+          debugPrint('[V3ZahtevService] Preskačem otkazivanje — operativnaId=$operativnaId je već otkazana.');
+          return;
+        }
+
+        final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
+        await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+          operativnaRow: row,
+          updatedBy: updBy,
+        );
       } else {
         // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovde
         final safeZahtevId = id.trim();
@@ -341,6 +363,14 @@ class V3ZahtevService {
           if (updBy != null) 'updated_by': updBy,
         };
         if (operativnaId != null && operativnaId.isNotEmpty) {
+          // Sigurnosna provera: ne dozvoli duplo otkazivanje istog operativnog reda
+          final existingOperativna =
+              await supabase.from('v3_operativna_nedelja').select('otkazano_at').eq('id', operativnaId).maybeSingle();
+          if (existingOperativna != null && existingOperativna['otkazano_at'] != null) {
+            debugPrint('[V3ZahtevService] Preskačem otkazivanje — operativnaId=$operativnaId je već otkazana.');
+            return;
+          }
+
           final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row2);
           await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(

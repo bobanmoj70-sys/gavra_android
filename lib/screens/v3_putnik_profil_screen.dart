@@ -163,6 +163,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
 
+  /// Debounce ključ za akcije otkazivanja/sačuvaj u profilu.
+  String get _actionDebounceKey {
+    final putnikId = _putnikData['id']?.toString() ?? 'unknown';
+    return 'putnik_profil_${putnikId}_action_debounce';
+  }
+
   // Prevodi za profil ekran (SR/EN/RU) — isti obrazac kao welcome screen.
   static const Map<String, Map<String, String>> _t = {
     'tema': {'sr': 'Tema', 'en': 'Theme', 'ru': 'Тема', 'de': 'Thema'},
@@ -342,6 +348,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
+    V3StreamUtils.cancelTimer(_actionDebounceKey);
     _weatherTimer?.cancel();
     super.dispose();
   }
@@ -520,6 +527,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       {_ZahtevInfo? trenutniInfo, bool koristiSekundarnu = false}) async {
     final putnikId = _putnikData['id']?.toString();
     if (putnikId == null) return;
+
+    // Debounce: ignoriši dvostruki klik u roku od 500 ms
+    if (V3StreamUtils.isTimerActive(_actionDebounceKey)) return;
+    V3StreamUtils.createTimer(
+      key: _actionDebounceKey,
+      duration: const Duration(milliseconds: 500),
+      callback: () => V3StreamUtils.cancelTimer(_actionDebounceKey),
+    );
+
     final validNovoVreme = _normalizeValidTime(novoVreme);
     final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
       dan,
