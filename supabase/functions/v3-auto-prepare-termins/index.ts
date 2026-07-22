@@ -7,6 +7,11 @@ const OSRM_MAX_RETRIES = 3;
 const OSRM_BASE_DELAY_MS = 1000;
 const OSRM_REQUEST_TIMEOUT_MS = 12000;
 
+/// Ako je poslednja poznata pozicija vozača starija od ovoga, smatra se
+/// zastarelom i ne koristi se kao startna tačka za OSRM (fallback na
+/// DEFAULT_START po gradu).
+const DRIVER_LOCATION_MAX_AGE_MS = 30 * 60 * 1000;
+
 const DEFAULT_START: Record<string, { lat: number; lng: number }> = {
   BC: { lat: 44.90281796231954, lng: 21.424364904529384 },
   VS: { lat: 45.118736452002345, lng: 21.301195520159723 },
@@ -52,6 +57,51 @@ function normalizeTime(value: unknown): string {
 
 function coordStr(lat: number, lng: number): string {
   return `${lng},${lat}`;
+}
+
+/// Pokušava da pronađe poslednju poznatu (dovoljno svežu) GPS poziciju
+/// vozača, tražeći kroz waypoints_json.location svih njegovih slotova za
+/// dati datum — bez obzira na grad/vreme — jer je to najbolja dostupna
+/// aproksimacija njegove trenutne lokacije u trenutku kad cron radi
+/// (edge funkcija nema direktan pristup live GPS-u van onog što je vozačev
+/// telefon već upisao preko v3-compute-eta).
+async function findDriverLastLocation(
+  client: ReturnType<typeof createClient>,
+  vozacId: string,
+  datumIso: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const { data: rows, error } = await client
+    .from("v3_trenutna_dodela_slot")
+    .select("waypoints_json, updated_at")
+    .eq("vozac_v3_auth_id", vozacId)
+    .eq("datum", datumIso);
+
+  if (error || !rows || rows.length === 0) return null;
+
+  let best: { lat: number; lng: number; timestamp: number } | null = null;
+
+  for (const row of rows) {
+    const loc = (row.waypoints_json as Record<string, unknown> | null)?.["location"] as
+      | { lat?: unknown; lng?: unknown; timestamp?: unknown }
+      | undefined;
+    if (!loc) continue;
+
+    const lat = Number(loc.lat);
+    const lng = Number(loc.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+    const tsRaw = loc.timestamp;
+    const ts = typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
+    if (!Number.isFinite(ts)) continue;
+
+    if (Date.now() - ts > DRIVER_LOCATION_MAX_AGE_MS) continue;
+
+    if (!best || ts > best.timestamp) {
+      best = { lat, lng, timestamp: ts };
+    }
+  }
+
+  return best ? { lat: best.lat, lng: best.lng } : null;
 }
 
 /// Vraća YYYY-MM-DD za dati instant u Europe/Belgrade zoni (poštuje DST).
@@ -175,7 +225,7 @@ Deno.serve(async (req) => {
 
       const { data: existingSlots, error: slotError } = await client
         .from("v3_trenutna_dodela_slot")
-        .select("id, waypoints_json, auto_prepared_at, auto_notified_at")
+        .select("id, waypoints_json, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
         .eq("datum", datumIso)
         .eq("grad", grad)
         .eq("vreme", vreme)
@@ -190,6 +240,7 @@ Deno.serve(async (req) => {
       let slotWaypoints: Record<string, unknown> = {};
       let autoPreparedAt: string | null = null;
       let autoNotifiedAt: string | null = null;
+      let autoDriverNotifiedAt: string | null = null;
 
       if (existingSlots && existingSlots.length > 0) {
         const existing = existingSlots[0];
@@ -197,6 +248,7 @@ Deno.serve(async (req) => {
         slotWaypoints = (existing.waypoints_json as Record<string, unknown>) ?? {};
         autoPreparedAt = existing.auto_prepared_at;
         autoNotifiedAt = existing.auto_notified_at;
+        autoDriverNotifiedAt = existing.auto_driver_notified_at;
       } else {
         const { data: newSlot, error: insertError } = await client
           .from("v3_trenutna_dodela_slot")
@@ -324,10 +376,58 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Compute optimized order via OSRM if not already populated
+      // Izbaci otkazane/pokupljene putnike iz passengers[] — bitno i za
+      // sveže izgrađenu listu i za listu ponovo korišćenu iz postojećeg
+      // slota (hasPassengers=true), jer je otkazivanje moglo da se desi
+      // NAKON prve pripreme slota, kad ovaj termin vise ne dolazi kroz
+      // v3_find_termins_for_auto_prepare (jer taj RPC filtrira otkazano/
+      // pokupljeno) pa se passengers[] bez ove provere nikad ne bi ocistio.
+      const passengerTerminIds = passengers.map((p) => p.termin_id);
+      let removedAny = false;
+      if (passengerTerminIds.length > 0) {
+        const { data: statusRows, error: statusError } = await client
+          .from("v3_operativna_nedelja")
+          .select("id, pokupljen_at, otkazano_at")
+          .in("id", passengerTerminIds);
+
+        if (statusError) {
+          console.error(`[v3-auto-prepare-termins] Status lookup error: ${statusError.message}`);
+        } else {
+          const completedTerminIds = new Set<string>(
+            (statusRows ?? [])
+              .filter((r: any) => r.pokupljen_at || r.otkazano_at)
+              .map((r: any) => String(r.id))
+          );
+          if (completedTerminIds.size > 0) {
+            const before = passengers.length;
+            passengers = passengers.filter((p) => !completedTerminIds.has(p.termin_id));
+            removedAny = passengers.length !== before;
+          }
+        }
+      }
+
+      if (passengers.length === 0) {
+        console.warn(`[v3-auto-prepare-termins] All passengers cancelled/picked-up for slot ${key}`);
+        continue;
+      }
+
+      // Compute optimized order via OSRM if not already populated, ili ako
+      // je gore izbacen bilo koji otkazan/pokupljen putnik (redosled se mora
+      // preracunati da odrazi preostale putnike).
       let optimizedOrder: string[] = [];
-      if (!hasPassengers) {
-        const start = DEFAULT_START[grad];
+      const needsOsrmRecompute = !hasPassengers || removedAny;
+
+      // Startna tačka za OSRM: koristi poslednju poznatu (svežu) GPS
+      // poziciju vozača ako postoji, u suprotnom fiksnu DEFAULT_START
+      // koordinatu po gradu (fallback za slučaj da vozač jos nije nikad
+      // slao lokaciju danas).
+      const driverLastLocation = needsOsrmRecompute
+        ? await findDriverLastLocation(client, vozacId, datumIso)
+        : null;
+      const effectiveStart = driverLastLocation ?? DEFAULT_START[grad];
+
+      if (needsOsrmRecompute) {
+        const start = effectiveStart;
         const dest = DEFAULT_DEST[grad];
         if (!start || !dest) {
           console.warn(`[v3-auto-prepare-termins] Unknown grad ${grad}`);
@@ -379,16 +479,17 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update slot waypoints_json if we populated passengers
-      if (!hasPassengers) {
+      // Update slot waypoints_json ako smo prvi put popunili putnike, ili
+      // ako smo izbacili otkazane/pokupljene putnike iz postojece liste.
+      if (!hasPassengers || removedAny) {
         const nowIso = new Date().toISOString();
         const updatedWaypoints = {
           ...slotWaypoints,
-          location: {
-            lat: DEFAULT_START[grad].lat,
-            lng: DEFAULT_START[grad].lng,
+          location: (slotWaypoints["location"] as Record<string, unknown> | undefined) ?? {
+            lat: effectiveStart.lat,
+            lng: effectiveStart.lng,
             timestamp: nowIso,
-            note: "auto_prepare_default_start",
+            note: driverLastLocation ? "auto_prepare_last_known_driver_location" : "auto_prepare_default_start",
           },
           passengers,
           optimized_order: optimizedOrder,
@@ -396,10 +497,11 @@ Deno.serve(async (req) => {
 
         const { error: updateError } = await client
           .from("v3_trenutna_dodela_slot")
-          .update({
-            waypoints_json: updatedWaypoints,
-            auto_prepared_at: nowIso,
-          })
+          .update(
+            !hasPassengers
+              ? { waypoints_json: updatedWaypoints, auto_prepared_at: nowIso }
+              : { waypoints_json: updatedWaypoints },
+          )
           .eq("id", slotId);
 
         if (updateError) {
@@ -407,8 +509,12 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        preparedCount++;
-        console.log(`[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers`);
+        if (!hasPassengers) {
+          preparedCount++;
+          console.log(`[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers`);
+        } else {
+          console.log(`[v3-auto-prepare-termins] Slot ${key} waypoints refreshed after removing cancelled/picked-up passengers (${passengers.length} remaining)`);
+        }
       } else if (!autoPreparedAt) {
         // Slot already existed (e.g. manual start) but auto_prepared_at not set
         const { error: markError } = await client
@@ -422,7 +528,10 @@ Deno.serve(async (req) => {
       }
 
       // Send push notification to driver to auto-start tracking
-      if (!autoNotifiedAt) {
+      // NAPOMENA: koristi SVOJ flag (auto_driver_notified_at), odvojen od
+      // auto_notified_at (putnici) — sprečava dupliran push vozaču ako RPC
+      // za putnike ispod baci grešku pre upisa auto_notified_at.
+      if (!autoDriverNotifiedAt) {
         try {
           const { data: vozacAuth, error: vozacError } = await client
             .from("v3_auth")
@@ -456,6 +565,13 @@ Deno.serve(async (req) => {
               console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);
             }
           }
+
+          // Upiši odmah nakon uspešnog slanja (ili best-effort pokušaja),
+          // pre nego što ispod eventualno pukne notifikacija za putnike.
+          await client
+            .from("v3_trenutna_dodela_slot")
+            .update({ auto_driver_notified_at: new Date().toISOString() })
+            .eq("id", slotId);
         } catch (e) {
           console.error(`[v3-auto-prepare-termins] Driver notify error: ${e instanceof Error ? e.message : String(e)}`);
         }

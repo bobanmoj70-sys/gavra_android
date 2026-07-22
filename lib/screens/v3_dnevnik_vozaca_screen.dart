@@ -92,6 +92,10 @@ class _DnevTr {
       'ru': '❌ Ошибка экспорта PDF',
       'de': '❌ Fehler beim PDF-Export',
     },
+    'pokupljeni': {'sr': 'Pokupljeni', 'en': 'Picked up', 'ru': 'Забрано', 'de': 'Abgeholt'},
+    'otkazani': {'sr': 'Otkazani', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert'},
+    'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen'},
+    'dodati': {'sr': 'Dodati', 'en': 'Added', 'ru': 'Добавлено', 'de': 'Hinzugefügt'},
   };
 
   static String tr(String key) {
@@ -676,6 +680,16 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
               ),
 
               // ─── Sadržaj ──────────────────────────────────────────
+              if (_selectedVozacId != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: _StatsRow(
+                    pokupljeno: _pokupio.length,
+                    otkazano: _otkazao.length,
+                    naplaceno: _naplate.length,
+                    dodato: _dodao.length,
+                  ),
+                ),
               Expanded(
                 child: _selectedVozacId == null
                     ? Center(
@@ -753,6 +767,102 @@ class _VozacItem {
 }
 
 // ─── Widgets ──────────────────────────────────────────────────────────────────
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({
+    required this.pokupljeno,
+    required this.otkazano,
+    required this.naplaceno,
+    required this.dodato,
+  });
+
+  final int pokupljeno;
+  final int otkazano;
+  final int naplaceno;
+  final int dodato;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _StatChip(
+            icon: '🚐',
+            label: _DnevTr.tr('pokupljeni'),
+            value: pokupljeno,
+            color: Colors.blueAccent,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatChip(
+            icon: '❌',
+            label: _DnevTr.tr('otkazani'),
+            value: otkazano,
+            color: Colors.redAccent,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatChip(
+            icon: '💰',
+            label: _DnevTr.tr('naplaceno'),
+            value: naplaceno,
+            color: Colors.greenAccent,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _StatChip(
+            icon: '➕',
+            label: _DnevTr.tr('dodati'),
+            value: dodato,
+            color: Colors.orangeAccent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String icon;
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        children: [
+          Text('$icon $value', style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white54, fontSize: 10),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _PokupioCard extends StatelessWidget {
   const _PokupioCard({required this.p, required this.index});
