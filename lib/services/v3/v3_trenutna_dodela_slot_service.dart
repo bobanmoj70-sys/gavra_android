@@ -321,15 +321,14 @@ class V3TrenutnaDodelaSlotService {
   static Future<Map<String, String>> loadAllVozacBySlotKey({
     String? datumIso,
   }) async {
-    dynamic query = supabase
-        .from(tableName)
-        .select('$colDatum, $colGrad, $colVreme, $colVozacId, updated_at')
-        .order('updated_at', ascending: false);
+    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVozacId, updated_at');
 
     final trimmedDatum = _normalizeDatumIso(datumIso);
     if (trimmedDatum.isNotEmpty) {
       query = query.eq(colDatum, trimmedDatum);
     }
+
+    query = query.order('updated_at', ascending: false);
 
     final rows = await query;
 

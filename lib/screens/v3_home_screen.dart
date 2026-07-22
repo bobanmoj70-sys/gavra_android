@@ -1667,7 +1667,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
           getKapacitet: getKapacitet,
           showVozacBoja: true,
           getVozacColor: getVozacColor,
-          getVozacColors: getVozacColors,
           bcVremena: _bcVremena,
           vsVremena: _vsVremena,
         );

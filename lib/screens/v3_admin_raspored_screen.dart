@@ -23,7 +23,6 @@ import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_policy.dart';
-import '../utils/v3_string_utils.dart';
 import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
@@ -409,53 +408,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   Color? _getVozacBoja(String grad, String vreme) {
     final v = _getVozacZaTermin(grad, vreme);
     return v != null ? V3CardColorPolicy.vozacColorOr(v.boja) : null;
-  }
-
-  List<Color> _getVozacBoje(String grad, String vreme) {
-    final rm = V3MasterRealtimeManager.instance;
-    final boje = <Color>[];
-
-    // Proveri slot dodelu
-    final slotVozacId = V3DodelaResolverService.resolveVozacIdForSlot(
-      datumIso: _selectedDatumIso,
-      grad: grad,
-      vreme: vreme,
-      activeVozacBySlotKey: _activeVozacBySlotKey,
-    );
-    if (slotVozacId.isNotEmpty) {
-      final slotVozac = V3VozacService.getVozacById(slotVozacId);
-      if (slotVozac != null) {
-        boje.add(V3CardColorPolicy.vozacColorOr(slotVozac.boja));
-      }
-    }
-
-    // Proveri individualne dodele za slot
-    for (final dodela in rm.trenutnaDodelaCache.values) {
-      final terminId = dodela['termin_id']?.toString();
-      if (terminId == null || terminId.isEmpty) continue;
-
-      final operativnaRow = rm.operativnaNedeljaCache[terminId];
-      if (operativnaRow == null) continue;
-
-      final rowDatum = V3DateUtils.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
-      final rowGrad = (operativnaRow['grad']?.toString() ?? '').trim().toUpperCase();
-      final rowVreme = V3StringUtils.trimTimeToHhMm(operativnaRow['polazak_at']?.toString() ?? '');
-
-      if (rowDatum == _selectedDatumIso && rowGrad == grad && rowVreme == vreme) {
-        final vozacId = dodela['vozac_v3_auth_id']?.toString();
-        if (vozacId != null && vozacId.isNotEmpty) {
-          final vozac = V3VozacService.getVozacById(vozacId);
-          if (vozac != null) {
-            final boja = V3CardColorPolicy.vozacColorOr(vozac.boja);
-            if (!boje.contains(boja)) {
-              boje.add(boja);
-            }
-          }
-        }
-      }
-    }
-
-    return boje;
   }
 
   // ─── DB operacije ─────────────────────────────────────────────────────────
@@ -986,7 +938,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 getKapacitet: commonProps.getKapacitet,
                 showVozacBoja: true,
                 getVozacColor: _getVozacBoja,
-                getVozacColors: _getVozacBoje,
                 bcVremena: _bcVremena,
                 vsVremena: _vsVremena,
               );
