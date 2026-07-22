@@ -6,6 +6,8 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 const OSRM_MAX_RETRIES = 3;
 const OSRM_BASE_DELAY_MS = 1000;
 const OSRM_REQUEST_TIMEOUT_MS = 12000;
+/// OSRM /trip endpoint po default-u odbija vise od 100 waypoint-a
+const OSRM_MAX_WAYPOINTS = 100;
 
 /// Ako je poslednja poznata pozicija vozača starija od ovoga, smatra se
 /// zastarelom i ne koristi se kao startna tačka za OSRM (fallback na
@@ -434,43 +436,52 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const tripCoords = [
-          coordStr(start.lat, start.lng),
-          ...passengers.map((p) => coordStr(p.lat, p.lng)),
-          coordStr(dest.lat, dest.lng),
-        ].join(";");
+        const waypointCount = passengers.length + 2;
+        if (waypointCount > OSRM_MAX_WAYPOINTS) {
+          console.warn(
+            `[v3-auto-prepare-termins] OSRM skipped: too many waypoints (${waypointCount} > ${OSRM_MAX_WAYPOINTS}) for slot ${key}`,
+          );
+          optimizedOrder = passengers.map((p) => p.putnik_id);
+        } else {
 
-        const osrmUrl =
-          `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
-          `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
+          const tripCoords = [
+            coordStr(start.lat, start.lng),
+            ...passengers.map((p) => coordStr(p.lat, p.lng)),
+            coordStr(dest.lat, dest.lng),
+          ].join(";");
 
-        try {
-          const osrmResponse = await fetchWithRetry(osrmUrl);
-          const osrmData = await osrmResponse.json();
+          const osrmUrl =
+            `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
+            `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
 
-          if (osrmData.code === "Ok" && Array.isArray(osrmData.waypoints) && Array.isArray(osrmData.trips?.[0]?.legs)) {
-            const rawWaypoints = osrmData.waypoints;
-            const expectedCount = passengers.length + 2;
+          try {
+            const osrmResponse = await fetchWithRetry(osrmUrl);
+            const osrmData = await osrmResponse.json();
 
-            if (rawWaypoints.length === expectedCount) {
-              const passengerWaypoints = rawWaypoints
-                .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
-                .slice(1, -1)
-                .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
+            if (osrmData.code === "Ok" && Array.isArray(osrmData.waypoints) && Array.isArray(osrmData.trips?.[0]?.legs)) {
+              const rawWaypoints = osrmData.waypoints;
+              const expectedCount = passengers.length + 2;
 
-              const originalIndexToEntry: Record<number, PassengerEntry> = {};
-              for (let i = 0; i < passengers.length; i++) {
-                originalIndexToEntry[i + 1] = passengers[i];
-              }
+              if (rawWaypoints.length === expectedCount) {
+                const passengerWaypoints = rawWaypoints
+                  .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
+                  .slice(1, -1)
+                  .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
 
-              for (const pw of passengerWaypoints) {
-                const entry = originalIndexToEntry[pw.inputIndex];
-                if (entry) optimizedOrder.push(entry.putnik_id);
+                const originalIndexToEntry: Record<number, PassengerEntry> = {};
+                for (let i = 0; i < passengers.length; i++) {
+                  originalIndexToEntry[i + 1] = passengers[i];
+                }
+
+                for (const pw of passengerWaypoints) {
+                  const entry = originalIndexToEntry[pw.inputIndex];
+                  if (entry) optimizedOrder.push(entry.putnik_id);
+                }
               }
             }
+          } catch (e) {
+            console.error(`[v3-auto-prepare-termins] OSRM error: ${e instanceof Error ? e.message : String(e)}`);
           }
-        } catch (e) {
-          console.error(`[v3-auto-prepare-termins] OSRM error: ${e instanceof Error ? e.message : String(e)}`);
         }
       } else {
         const existingOrder = slotWaypoints["optimized_order"];
