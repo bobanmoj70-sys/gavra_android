@@ -396,6 +396,77 @@ class V3FinansijeService {
     return (brojVoznji: brojVoznjiRealizacija, ukupanIznos: ukupanIznos);
   }
 
+  /// Vraća stvarni nenaplaćeni iznos (dug) za putnika u zadatom periodu,
+  /// izveden iz istorijskih cena po vožnji sačuvanih u nenaplacene_voznje_json.
+  ///
+  /// Ovo je precizniji izvor za dug od "brojVoznji * trenutnaCena", jer svaka
+  /// stavka čuva cenu koja je bila važeća u trenutku pokupljanja te vožnje.
+  /// Ako se cena putnika promeni tokom meseca, ovaj obračun ostaje ispravan.
+  static double getNenaplacenIznosForPutnik({
+    required String putnikId,
+    int? godina,
+    int? mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0.0;
+
+    final naplataRows = _naplataRows().where((row) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnik.toLowerCase()) return false;
+      if (godina != null) {
+        final rowGodina = _parseInternalInt(row['godina']);
+        if (rowGodina != godina) return false;
+      }
+      if (mesec != null) {
+        final rowMesec = _parseInternalInt(row['mesec']);
+        if (rowMesec != mesec) return false;
+      }
+      return true;
+    });
+
+    var ukupno = 0.0;
+    for (final row in naplataRows) {
+      for (final stavka in _readNenaplaceneVoznje(row)) {
+        ukupno += (stavka['cena'] as num?)?.toDouble() ?? 0.0;
+      }
+    }
+    return ukupno;
+  }
+
+  /// Vraća broj preostalih nenaplaćenih vožnji (stavki) za putnika u periodu.
+  /// Svaka stavka u nenaplacene_voznje_json odgovara jednoj vožnji (ili jednom
+  /// danu za tip radnik/ucenik, pošto se za taj model dodaje samo jedna
+  /// stavka po danu). Ovo je precizniji brojač od "brojVoznji - uplaceno/cena",
+  /// jer se ne oslanja na prosečnu/trenutnu cenu.
+  static int getNenaplacenBrojVoznjiForPutnik({
+    required String putnikId,
+    int? godina,
+    int? mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0;
+
+    final naplataRows = _naplataRows().where((row) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnik.toLowerCase()) return false;
+      if (godina != null) {
+        final rowGodina = _parseInternalInt(row['godina']);
+        if (rowGodina != godina) return false;
+      }
+      if (mesec != null) {
+        final rowMesec = _parseInternalInt(row['mesec']);
+        if (rowMesec != mesec) return false;
+      }
+      return true;
+    });
+
+    var ukupno = 0;
+    for (final row in naplataRows) {
+      ukupno += _readNenaplaceneVoznje(row).length;
+    }
+    return ukupno;
+  }
+
   static Future<void> evidentirajRealizacijuPriPokupljanju({
     required String putnikId,
     required String tipPutnika,
@@ -797,9 +868,16 @@ class V3FinansijeService {
           }
         }
 
-        final ukupnaObaveza = brojVoznji * cena;
+        // Dug se računa iz stvarnih (istorijskih) cena po vožnji sačuvanih u
+        // nenaplacene_voznje_json, umesto brojVoznji * trenutnaCena — ostaje
+        // ispravan i kada se cena putnika promeni tokom meseca.
         final uplaceno = summary.ukupanIznos;
-        final dugIznos = ukupnaObaveza - uplaceno;
+        final dugIznos = getNenaplacenIznosForPutnik(
+          putnikId: putnikId,
+          godina: godina,
+          mesec: mesec,
+        );
+        final ukupnaObaveza = uplaceno + dugIznos;
         if (dugIznos <= 0) continue;
 
         dugovi.add(

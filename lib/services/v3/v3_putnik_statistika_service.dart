@@ -214,9 +214,17 @@ class V3PutnikStatistikaService {
 
     final brojVoznji = summary.brojVoznji;
     final cena = tipICena.cena;
-    final obaveza = brojVoznji * cena;
     final uplaceno = summary.ukupanIznos;
-    final dug = obaveza > uplaceno ? (obaveza - uplaceno) : 0.0;
+    // Dug se računa iz stvarnih (istorijskih) cena po vožnji sačuvanih u
+    // nenaplacene_voznje_json, umesto brojVoznji * trenutnaCena. Time obračun
+    // ostaje ispravan i kada se cena putnika promeni tokom meseca — svaka
+    // vožnja nosi cenu koja je važila u trenutku pokupljanja.
+    final dug = V3FinansijeService.getNenaplacenIznosForPutnik(
+      putnikId: safePutnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+    final obaveza = uplaceno + dug;
 
     return V3MesecniObracun(
       godina: godina,
@@ -610,16 +618,15 @@ class V3PutnikStatistikaService {
       return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
     }
 
-    int placeno;
-    if (obracun.cena > 0) {
-      placeno = (obracun.uplaceno / obracun.cena).floor();
-      if (placeno > obracun.brojVoznji) placeno = obracun.brojVoznji;
-      if (placeno < 0) placeno = 0;
-    } else {
-      placeno = obracun.brojVoznji;
-    }
-
-    final neplaceno = (obracun.brojVoznji - placeno).clamp(0, obracun.brojVoznji);
+    // Neplaćeno se izvodi iz stvarnog broja preostalih nenaplaćenih stavki
+    // (nenaplacene_voznje_json), umesto deljenja uplaceno/cena — precizno je
+    // i kad se cena putnika promeni tokom meseca.
+    final neplaceno = V3FinansijeService.getNenaplacenBrojVoznjiForPutnik(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    ).clamp(0, obracun.brojVoznji);
+    final placeno = (obracun.brojVoznji - neplaceno).clamp(0, obracun.brojVoznji);
     final otkazano = _countOtkazivanjaZaMesec(
       putnikId: putnikId,
       godina: godina,
