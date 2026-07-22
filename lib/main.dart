@@ -1070,20 +1070,39 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
 
   debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
-  // Osiguraj da slot red postoji (idempotentan upsert, ne diraj waypoints_json
+  // Osiguraj da slot red postoji sa retry logikom (idempotentan upsert, ne diraj waypoints_json
   // ako ga je kron već popunio) — sprečava 'no_active_slot' race ako push
   // stigne pre nego što je kron-ova transakcija vidljiva, ili ako je
   // prethodni ručni start obrisao slot.
-  try {
-    await V3TrenutnaDodelaSlotService.activateSlot(
-      datumIso: datumIso,
-      grad: grad,
-      vreme: vreme,
-      vozacId: vozacId,
-      updatedBy: vozacId,
-    );
-  } catch (e) {
-    debugPrint('⚠️ [AUTO-START] activateSlot greška (nastavljam): $e');
+  //
+  // RETRY LOGIC: Pokušaj do 3 puta sa exponential backoff jer Supabase može biti
+  // u middle of replication/consistency — nakon 500ms delay, pokušaj ponovo.
+  int retryCount = 0;
+  const maxRetries = 3;
+  const initialDelayMs = 500;
+
+  while (retryCount < maxRetries) {
+    try {
+      await V3TrenutnaDodelaSlotService.activateSlot(
+        datumIso: datumIso,
+        grad: grad,
+        vreme: vreme,
+        vozacId: vozacId,
+        updatedBy: vozacId,
+      );
+      debugPrint('[AUTO-START] ✅ activateSlot uspešan (attempt ${retryCount + 1})');
+      break;
+    } catch (e) {
+      retryCount++;
+      if (retryCount >= maxRetries) {
+        debugPrint('⚠️ [AUTO-START] activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam)');
+        break;
+      }
+      final delayMs = initialDelayMs * (1 << (retryCount - 1)); // exponential: 500, 1000, 2000
+      debugPrint(
+          '⚠️ [AUTO-START] activateSlot pokušaj $retryCount/${maxRetries - 1} failed: $e, retry za ${delayMs}ms');
+      await Future.delayed(Duration(milliseconds: delayMs));
+    }
   }
 
   V3VozacLocationTrackingService.instance.setActiveTermin(

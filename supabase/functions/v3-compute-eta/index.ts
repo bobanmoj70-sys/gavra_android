@@ -274,6 +274,7 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
     const upsertRows: Array<{
+      slot_id: string;
       termin_id: string;
       putnik_id: string;
       vozac_id: string;
@@ -300,6 +301,7 @@ Deno.serve(async (req) => {
       }
 
       upsertRows.push({
+        slot_id: activeSlot.id,
         termin_id: entry.termin_id,
         putnik_id: entry.putnik_id,
         vozac_id: vozacId,
@@ -312,10 +314,11 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, reason: "no_eta_rows", updated: 0 });
     }
 
-    // 6. Upsert v3_eta_results
+    // 6. Upsert v3_eta_results — użyj slot_id zamiast termin_id za conflict resolution
+    // To sprečava problem kada isti putnik_id bude u više slotova — svaki slot ima svoju ETA
     const { error: upsertError } = await client
       .from("v3_eta_results")
-      .upsert(upsertRows, { onConflict: "termin_id,putnik_id" });
+      .upsert(upsertRows, { onConflict: "slot_id,putnik_id" });
 
     if (upsertError) {
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });

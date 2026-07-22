@@ -13,11 +13,9 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
-import '../services/v3/v3_driver_push_notification_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_push_token_edge_service.dart';
-import '../services/v3/v3_putnik_adresa_resolver_service.dart';
 import '../services/v3/v3_route_models.dart';
 import '../services/v3/v3_route_waypoint_resolver_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
@@ -633,28 +631,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return false;
   }
 
-  Future<void> _startDriverLocationTracking() async {
-    final vozacId = (V3VozacService.currentVozac?.id ?? '').toString().trim();
-    if (vozacId.isEmpty) return;
-
-    // Ako termin još nije izabran, pokušaj automatski izbor
-    if (_selectedVreme.isEmpty) {
-      _selectFirstTermin();
-    }
-    if (_selectedVreme.isEmpty) {
-      debugPrint('[V3VozacScreen] Nemam termin za tracking, preskačem');
-      return;
-    }
-
-    // Postavi aktivni termin pre pokretanja tracking-a
-    V3VozacLocationTrackingService.instance.setActiveTermin(
-      datumIso: _selectedDatumIso,
-      grad: _selectedGrad,
-      vreme: _selectedVreme,
-    );
-
-    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
-  }
+  // _startDriverLocationTracking() je uklonjena jer se tracking aktivira samo automatski preko push-a
 
   bool _isPutnikEntryCompleted(_PutnikEntry item) {
     final entry = item.entry;
@@ -1062,18 +1039,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     );
   }
 
-  String? _resolveAdresaIdForEntry(_PutnikEntry item) {
-    final entry = item.entry;
-    final grad = (entry?.grad ?? _selectedGrad).trim().toUpperCase();
-    final koristiSekundarnu = entry?.koristiSekundarnu ?? false;
-    final override = (entry?.adresaIdOverride ?? '').trim();
-    return V3PutnikAdresaResolverService.resolveAdresaIdFromPutnikModel(
-      putnik: item.putnik,
-      grad: grad,
-      koristiSekundarnu: koristiSekundarnu,
-      adresaIdOverride: override,
-    );
-  }
+  // _resolveAdresaIdForEntry() je uklonjena jer se koristi samo u ručnom START-u koji je onemogućen
 
   String _passengersSignature() {
     final preostali = _mojiPutnici.where((p) => !_isPutnikEntryCompleted(p));
@@ -1269,120 +1235,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  Future<void> _handleStartNavigation() async {
-    debugPrint('[START] _handleStartNavigation called');
-    debugPrint('[START] _mojiPutnici.length = ${_mojiPutnici.length}');
-    debugPrint('[START] _selectedGrad=$_selectedGrad _selectedVreme=$_selectedVreme _selectedDay=$_selectedDay');
-
-    if (_mojiPutnici.isEmpty) {
-      debugPrint('[START] => early return: nema putnika');
-      if (mounted) V3AppSnackBar.warning(context, _tr('nemaPutnikaZaTermin'));
-      return;
-    }
-
-    for (final p in _mojiPutnici) {
-      final adresaId = _resolveAdresaIdForEntry(p);
-      debugPrint('[START] putnik=${p.putnik.imePrezime} adresaId=$adresaId');
-    }
-
-    final gpsReady = await _ensureGpsPermissionForStart();
-    if (!gpsReady) return;
-
-    // Prvo postavi termin (grad+vreme) pa onda pokreni tracking —
-    // _sendCurrentLocation() unutar start() koristi ove vrednosti.
-    V3VozacLocationTrackingService.instance.setActiveTermin(
-      datumIso: _selectedDatumIso,
-      grad: _selectedGrad,
-      vreme: _selectedVreme,
-    );
-
-    await _startDriverLocationTracking();
-
-    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
-      try {
-        // Aktiviraj selektovani slot (idempotentan upsert); ne briši druge slotove
-        // vozača jer on može imati više slotova istog dana (npr. BC 5 i VS 6).
-        await V3TrenutnaDodelaSlotService.activateSlot(
-          datumIso: _selectedDatumIso,
-          grad: _selectedGrad,
-          vreme: _selectedVreme,
-          vozacId: vozacId,
-          updatedBy: vozacId,
-        );
-      } catch (e) {
-        debugPrint('[START] activate slot error: $e');
-      }
-    }
-
-    // Upiši putnike u slot pre OSRM/ETA poziva — edge funkcija čita iz slota
-    await _syncPassengersToSlot();
-
-    // Optimizuj redosled putnika OSRM-om tek pošto su slot i putnici upisani u DB
-    try {
-      final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
-      debugPrint('[START] ETA order: ${etaResult.order}');
-      if (etaResult.order.isNotEmpty) {
-        _refreshPutniciOrderFromEtaCache();
-      }
-    } catch (e) {
-      debugPrint('[START] ETA optimization error: $e');
-    }
-
-    final preparedRoute = await _buildHereRouteWaypoints();
-    debugPrint('[START] prepared route result: $preparedRoute');
-    if (preparedRoute == null || !mounted) {
-      debugPrint('[START] => prepared route null or not mounted, returning');
-      await V3VozacLocationTrackingService.instance.stop();
-      return;
-    }
-
-    if (kDisableDriverStartPushForTesting) {
-      debugPrint('[START] Push notifikacija PRESKOČENA (test mode - kDisableDriverStartPushForTesting=true)');
-    } else if (vozacId.isNotEmpty && _selectedGrad.trim().isNotEmpty && _selectedVreme.trim().isNotEmpty) {
-      try {
-        await V3DriverPushNotificationService.notifyPassengersDriverStarted(
-          vozacId: vozacId,
-          datumIso: _selectedDatumIso,
-          grad: _selectedGrad,
-          vreme: _selectedVreme,
-        );
-      } catch (e) {
-        debugPrint('[START] notify passengers error: $e');
-      }
-    }
-
-    debugPrint(
-        '[START] waypoints.length=${preparedRoute.waypointsToOpen.length} unresolvedCount=${preparedRoute.unresolvedCount}');
-    V3AppSnackBar.success(context, _tr('rutaPripremljena'));
-    if (mounted) {
-      setState(() {
-        _isNavigating = true;
-        _osrmUnavailableShown = false;
-      });
-    }
-    _resetMapSyncState();
-    unawaited(_syncMapRouteIfNeeded(reason: 'start_navigation'));
-
-    if (preparedRoute.unresolvedCount > 0) {
-      V3AppSnackBar.warning(
-        context,
-        'Preskočeno adresa bez koordinata: ${preparedRoute.unresolvedCount}.',
-      );
-    }
-  }
-
-  // Manual stop funkcija uklonjena - tracking se zaustavlja SAMO automatski
-// kada su svi putnici pokupljeni/otkazani ili kad je app ubijena
+  // Manual start funkcija uklonjena - tracking se pokreće SAMO automatski preko push notifikacije
+  // _handleStartNavigation() je uklonjeno jer je ručno pokretanje onemogućeno
 
   void _handleStartTap() {
-    // SAMO START - manualni STOP je uklonjen
-    if (V3VozacLocationTrackingService.instance.isRunning) {
-      V3AppSnackBar.info(context, _tr('trackingVecPokrenut'));
-      return;
-    }
-
-    _handleStartNavigation();
+    // Manualni START je ONEMOGUĆEN - tracking se pokreće SAMO automatski preko push notifikacije
+    // To sprečava problema sa promenom slota tokom vožnje
+    V3AppSnackBar.warning(
+      context,
+      'Tracking se automatski pokreće preko push notifikacije. Prosledi vozaču obaveštenje za termin da bi se GPS praćenje aktiviralo.',
+    );
   }
 
   @override
@@ -1503,14 +1365,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                           // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
                           Row(
                             children: [
-                              // START
+                              // STATUS: Tracking (samo auto-start)
                               Expanded(
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label:
-                                      V3VozacLocationTrackingService.instance.isRunning ? 'TRACKING AKTIVAN' : 'START',
-                                  color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.green,
+                                  label: V3VozacLocationTrackingService.instance.isRunning ? '🟢 AKTIVNO' : '⚫ ČEKA',
+                                  color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.grey,
                                   height: appBarButtonHeight,
                                   onTap: () {
                                     _handleStartTap();
@@ -1518,20 +1379,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              // MAPA
+                              // MAPA — dostupna kada je tracking aktivan
                               Expanded(
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
                                   label: 'MAPA',
                                   color: (!_isNavigating)
-                                      ? Colors.grey // Inaktivno dok se ne klikne START
+                                      ? Colors.grey // Inaktivno dok tracking nije aktivan
                                       : Colors.blue,
                                   height: appBarButtonHeight,
                                   onTap: () {
                                     if (!_isNavigating) {
                                       V3AppSnackBar.warning(context,
-                                          'Prvo kliknite START za izabrani termin da ruta bude prosleđena na mapu.');
+                                          'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.');
                                       return;
                                     }
                                     _handleOpenMap();
