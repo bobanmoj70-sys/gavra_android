@@ -763,8 +763,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final vpl = poslednjaDopunaAt ?? naplataAt;
-                              final ukupnoStr =
-                                  ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
+                              final ukupnoStr = ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
                               final poslednjeStr =
                                   poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
                               final dtStr = _fmt(vpl);

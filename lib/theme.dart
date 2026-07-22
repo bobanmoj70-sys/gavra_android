@@ -27,6 +27,9 @@ class SerbianTextStyle {
     'Roboto',
     'NotoSans',
     'Arial Unicode MS',
+    'Noto Color Emoji',
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
     'sans-serif',
   ];
 
@@ -359,6 +362,7 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
   colorScheme: tripleBlueFashionColorScheme,
   useMaterial3: true,
   fontFamily: 'Inter', // Primarni font sa podrškom za latin-ext
+  fontFamilyFallback: SerbianTextStyle._fallbackFonts, // Emoji + dijakritika fallback
   textTheme: createSerbianTextTheme(), // SRPSKA DJAKRITIKA PODRŠKA
   scaffoldBackgroundColor: const Color(0xFFF0F9FF),
   appBarTheme: AppBarTheme(
@@ -379,6 +383,7 @@ final ThemeData darkSteelGreyTheme = ThemeData(
   colorScheme: darkSteelGreyColorScheme,
   useMaterial3: true,
   fontFamily: 'Inter',
+  fontFamilyFallback: SerbianTextStyle._fallbackFonts,
   textTheme: createSerbianTextTheme(),
   scaffoldBackgroundColor: const Color(0xFF1A1A1A),
   appBarTheme: AppBarTheme(
@@ -399,6 +404,7 @@ final ThemeData passionateRoseTheme = ThemeData(
   colorScheme: passionateRoseColorScheme,
   useMaterial3: true,
   fontFamily: 'Inter',
+  fontFamilyFallback: SerbianTextStyle._fallbackFonts,
   textTheme: createSerbianTextTheme(),
   scaffoldBackgroundColor: const Color(0xFFFFF8F9),
   appBarTheme: AppBarTheme(
@@ -419,6 +425,7 @@ final ThemeData darkPinkTheme = ThemeData(
   colorScheme: darkPinkColorScheme,
   useMaterial3: true,
   fontFamily: 'Inter',
+  fontFamilyFallback: SerbianTextStyle._fallbackFonts,
   textTheme: createSerbianTextTheme(),
   scaffoldBackgroundColor: const Color(0xFF1A0A14),
   appBarTheme: AppBarTheme(
