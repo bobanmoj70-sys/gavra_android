@@ -71,6 +71,18 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
   }
 
+  /// Pronalazi ETA red za dati termin+putnik skeniranjem cache-a po vrednostima.
+  /// Neophodno jer je cache ključ za v3_eta_results sada slot_id:putnik_id
+  /// (kada je slot_id dostupan), a ne više uvek termin_id:putnik_id.
+  Map<String, dynamic>? _findEtaRow(String terminId, String putnikId) {
+    for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
+      if (row['termin_id']?.toString() == terminId && row['putnik_id']?.toString() == putnikId) {
+        return row;
+      }
+    }
+    return null;
+  }
+
   ({int? etaSeconds, bool isStale, String? vozacId, String? terminId}) _readEtaState(Map<String, dynamic>? row) {
     if (row == null) {
       return (etaSeconds: null, isStale: false, vozacId: null, terminId: null);
@@ -152,8 +164,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       final departure = _parseDepartureDateTime(row);
       if (departure == null) continue;
       final terminId = row['id']?.toString();
-      final hasActiveEta =
-          terminId != null && V3MasterRealtimeManager.instance.etaResultsCache.containsKey('$terminId:$putnikId');
+      final hasActiveEta = terminId != null && _findEtaRow(terminId, putnikId) != null;
       if (departure.isBefore(now) && !hasActiveEta) continue;
       if (departure.isBefore(now.subtract(const Duration(minutes: 60)))) continue;
       String? vozacId;
@@ -317,8 +328,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           final nextTerminId = nextRide?.row['id']?.toString();
           final assignedVozacId = nextRide?.vozacId;
 
-          final cacheKey = nextTerminId != null ? '$nextTerminId:$putnikId' : null;
-          final row = cacheKey != null ? V3MasterRealtimeManager.instance.etaResultsCache[cacheKey] : null;
+          final row = nextTerminId != null ? _findEtaRow(nextTerminId, putnikId) : null;
           final etaState = _readEtaState(row);
           final eta = etaState.etaSeconds;
           final isStale = etaState.isStale;

@@ -21,9 +21,19 @@ class V3CacheStore {
 
   String? _resolveCacheKey(String table, Map<String, dynamic> row) {
     if (table == 'v3_eta_results') {
-      final terminId = row['termin_id']?.toString();
       final putnikId = row['putnik_id']?.toString();
-      if (terminId != null && terminId.isNotEmpty && putnikId != null && putnikId.isNotEmpty) {
+      if (putnikId == null || putnikId.isEmpty) return null;
+
+      // Prioritet: slot_id — usklađeno sa UNIQUE(slot_id, putnik_id) constraint-om
+      // u bazi (isti termin_id/putnik_id par može postojati u više slotova).
+      final slotId = row['slot_id']?.toString();
+      if (slotId != null && slotId.isNotEmpty) {
+        return 'slot:$slotId:$putnikId';
+      }
+
+      // Fallback za redove bez slot_id (stariji podaci / edge slučajevi).
+      final terminId = row['termin_id']?.toString();
+      if (terminId != null && terminId.isNotEmpty) {
         return '$terminId:$putnikId';
       }
       return null;

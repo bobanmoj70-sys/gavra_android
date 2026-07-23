@@ -1822,6 +1822,12 @@ class _WeatherMiniCell extends StatelessWidget {
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
+            fontFamilyFallback: [
+              'Segoe UI Emoji',
+              'Noto Color Emoji',
+              'Apple Color Emoji',
+              'sans-serif',
+            ],
           ),
         ),
         const SizedBox(width: 4),
