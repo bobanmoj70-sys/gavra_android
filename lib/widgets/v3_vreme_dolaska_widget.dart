@@ -74,12 +74,34 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   /// Pronalazi ETA red za dati termin+putnik skeniranjem cache-a po vrednostima.
   /// Neophodno jer je cache ključ za v3_eta_results sada slot_id:putnik_id
   /// (kada je slot_id dostupan), a ne više uvek termin_id:putnik_id.
+  ///
+  /// Ako cache sadrži više redova za isti termin_id+putnik_id (npr. stari
+  /// fallback ključ termin_id:putnik_id nije obrisan realtime delete-om
+  /// zbog propuštenog eventa, dok postoji i novi slot:slotId:putnik_id),
+  /// UVEK vraćamo red sa najnovijim computed_at — nikad prvi po redosledu
+  /// iteracije Mape, koji je nedeterministički i može biti zastareo.
   Map<String, dynamic>? _findEtaRow(String terminId, String putnikId) {
+    Map<String, dynamic>? best;
+    DateTime? bestComputedAt;
+
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
-      if (row['termin_id']?.toString() == terminId && row['putnik_id']?.toString() == putnikId) {
-        return row;
+      if (row['termin_id']?.toString() != terminId || row['putnik_id']?.toString() != putnikId) {
+        continue;
+      }
+
+      final computedAt = _parseComputedAt(row[_colComputedAt]);
+      if (best == null || (computedAt != null && (bestComputedAt == null || computedAt.isAfter(bestComputedAt)))) {
+        best = row;
+        bestComputedAt = computedAt;
       }
     }
+
+    return best;
+  }
+
+  DateTime? _parseComputedAt(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
     return null;
   }
 
@@ -89,13 +111,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     }
 
     final eta = (row[_colEtaSeconds] as num?)?.toInt();
-    final computedAtRaw = row[_colComputedAt];
-    DateTime? computedAt;
-    if (computedAtRaw is DateTime) {
-      computedAt = computedAtRaw;
-    } else if (computedAtRaw is String) {
-      computedAt = DateTime.tryParse(computedAtRaw);
-    }
+    final computedAt = _parseComputedAt(row[_colComputedAt]);
     final stale = computedAt == null || DateTime.now().difference(computedAt) > etaStaleThreshold;
     final vozacId = row[_colVozacId]?.toString();
     final terminId = row['termin_id']?.toString();
