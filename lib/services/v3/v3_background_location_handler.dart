@@ -119,7 +119,7 @@ bool _bgIsTimestampSet(Object? value) {
   return true;
 }
 
-/// Proverava da li su svi putnici za aktivni termin završeni
+/// Proverava da li su svi putnici za aktivni slot završeni
 /// (pokupljeni ili otkazani). Vraća false ako nema putnika ili ako
 /// postoji bar jedan koji nije završen.
 Future<bool> _bgAllPassengersCompleted() async {
@@ -129,12 +129,34 @@ Future<bool> _bgAllPassengersCompleted() async {
   if (client == null) return false;
 
   try {
+    // Učitaj aktivni slot da znamo tačno koje putnike ovaj vozač treba da pokupi.
+    final slotRows = await client
+        .from('v3_trenutna_dodela_slot')
+        .select('id, waypoints_json')
+        .eq('vozac_v3_auth_id', _bgVozacId as Object)
+        .eq('datum', _bgDatumIso)
+        .eq('grad', _bgGrad)
+        .eq('vreme', _bgVreme);
+
+    final activeSlot = (slotRows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
+    if (activeSlot == null) return false;
+
+    final waypointsJson = activeSlot['waypoints_json'] as Map<String, dynamic>?;
+    final passengers = waypointsJson?['passengers'] as List<dynamic>?;
+    if (passengers == null || passengers.isEmpty) return false;
+
+    final slotTerminIds = passengers
+        .whereType<Map<String, dynamic>>()
+        .map((p) => p['termin_id']?.toString())
+        .where((id) => id != null && id.isNotEmpty)
+        .toSet();
+
+    if (slotTerminIds.isEmpty) return false;
+
     final rows = await client
         .from('v3_operativna_nedelja')
         .select('id, pokupljen_at, otkazano_at')
-        .eq('datum', _bgDatumIso)
-        .eq('grad', _bgGrad)
-        .eq('polazak_at', _bgVreme);
+        .inFilter('id', slotTerminIds.toList());
 
     if (rows.isEmpty) return false;
 

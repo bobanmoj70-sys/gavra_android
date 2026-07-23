@@ -149,7 +149,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     return true;
   }
 
-  /// Proverava da li su svi putnici za aktivni termin završeni
+  /// Proverava da li su svi putnici za aktivni slot završeni
   /// (pokupljeni ili otkazani). Vraća false ako nema putnika.
   Future<bool> _allPassengersCompleted() async {
     if (_activeVozacId.isEmpty || _activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
@@ -157,12 +157,34 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
 
     try {
+      // Učitaj aktivni slot da znamo tačno koje putnike ovaj vozač treba da pokupi.
+      final slotRows = await Supabase.instance.client
+          .from('v3_trenutna_dodela_slot')
+          .select('id, waypoints_json')
+          .eq('vozac_v3_auth_id', _activeVozacId)
+          .eq('datum', _activeDatumIso)
+          .eq('grad', _activeGrad)
+          .eq('vreme', _activeVreme);
+
+      final activeSlot = (slotRows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
+      if (activeSlot == null) return false;
+
+      final waypointsJson = activeSlot['waypoints_json'] as Map<String, dynamic>?;
+      final passengers = waypointsJson?['passengers'] as List<dynamic>?;
+      if (passengers == null || passengers.isEmpty) return false;
+
+      final slotTerminIds = passengers
+          .whereType<Map<String, dynamic>>()
+          .map((p) => p['termin_id']?.toString())
+          .where((id) => id != null && id.isNotEmpty)
+          .toSet();
+
+      if (slotTerminIds.isEmpty) return false;
+
       final rows = await Supabase.instance.client
           .from('v3_operativna_nedelja')
           .select('id, pokupljen_at, otkazano_at')
-          .eq('datum', _activeDatumIso)
-          .eq('grad', _activeGrad)
-          .eq('polazak_at', _activeVreme);
+          .inFilter('id', slotTerminIds.toList());
 
       if (rows.isEmpty) return false;
 

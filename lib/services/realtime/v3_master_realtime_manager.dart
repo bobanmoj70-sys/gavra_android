@@ -676,7 +676,7 @@ class V3MasterRealtimeManager {
   void v3UpsertToCache(String table, Map<String, dynamic> row) {
     final normalizedRow = _normalizeRowForTable(table, row);
 
-    // v3_eta_results koristi kompozitni ključ termin_id:putnik_id — nema 'id' kolonu
+    // v3_eta_results koristi kompozitni ključ slot_id:putnik_id — nema 'id' kolonu
     if (table != 'v3_eta_results') {
       final id = normalizedRow['id']?.toString();
       if (id == null) return;
