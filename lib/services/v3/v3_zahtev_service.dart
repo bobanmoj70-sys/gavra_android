@@ -5,12 +5,10 @@ import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
 import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_status_policy.dart';
-import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
 import 'v3_operativna_nedelja_service.dart';
-import 'v3_trenutna_dodela_slot_service.dart';
 import 'v3_vozac_service.dart';
 import 'zahtevi/v3_zahtev_domain_service.dart';
 import 'zahtevi/v3_zahtev_repository.dart';
@@ -162,54 +160,20 @@ class V3ZahtevService {
     );
     await createZahtev(zahtev, createdBy: updatedBy);
 
-    // Proveri da li postoji slot dodela za ovo vreme - ako da, automatski kreiraj operativna red
-    final datumIso = _datumKey(datum);
-    final slotAssignments = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(
-      datumIso: datumIso,
-    );
-    final slotKey = V3TrenutnaDodelaSlotService.slotKey(
-      datumIso: datumIso,
+    // NAPOMENA: Namerno NE proveravamo/kreiramo operativni red ovde čak i ako
+    // slot već ima dodeljenog vozača. Zahtev MORA proći kroz server-side
+    // kron dispečer (process_pending_zahtevi / process_pending_zahtevi_slots),
+    // koji poštuje scheduled_at (vreme čekanja po tipu putnika) i proverava
+    // kapacitet (v3_kapacitet_slots). Ranije je ovde postojao bypass koji je
+    // odmah (sinhrono, iz klijenta) postavljao status='odobreno' zaobilazeći
+    // i čekanje i proveru kapaciteta čim je slot već imao dodeljenog vozača —
+    // to je uklonjeno.
+    await _syncOperativnaAssignmentsForContext(
+      putnikId: putnikId,
+      datum: datum,
       grad: targetGrad,
-      vreme: novoVreme,
+      updatedBy: updatedBy,
     );
-    final assignedVozacId = (slotAssignments[slotKey] ?? '').trim();
-
-    // Učitaj sve slotove za datum (bez status filtera) da pokupimo i neaktivne zauzete termine
-    final allSlotsForDatum = await supabase
-        .from('v3_trenutna_dodela_slot')
-        .select('datum, grad, vreme, vozac_v3_auth_id')
-        .eq('datum', datumIso);
-    final allSlotAssignments = <String, String>{};
-    for (final row in (allSlotsForDatum as List<dynamic>)) {
-      final mapped = row as Map<String, dynamic>;
-      final slotDatum = V3DateUtils.parseIsoDatePart(mapped['datum']?.toString());
-      final slotGrad = (mapped['grad']?.toString() ?? '').trim().toUpperCase();
-      final slotVreme = V3StringUtils.trimTimeToHhMm(mapped['vreme']?.toString() ?? '');
-      final slotVozacId = (mapped['vozac_v3_auth_id']?.toString() ?? '').trim();
-      if (slotDatum.isNotEmpty && slotGrad.isNotEmpty && slotVreme.isNotEmpty && slotVozacId.isNotEmpty) {
-        allSlotAssignments['$slotDatum|$slotGrad|$slotVreme'] = slotVozacId;
-      }
-    }
-    final assignedVozacIdFromAll = (allSlotAssignments[slotKey] ?? '').trim();
-
-    if (assignedVozacIdFromAll.isNotEmpty) {
-      // Postoji slot dodela - kreiraj operativna red automatski
-      await V3OperativnaNedeljaService.createOrUpdateByVozac(
-        putnikId: putnikId,
-        datum: datumIso,
-        grad: targetGrad,
-        polazakAt: novoVreme,
-        createdBy: updatedBy,
-        koristiSekundarnu: koristiSekundarnu,
-      );
-    } else {
-      await _syncOperativnaAssignmentsForContext(
-        putnikId: putnikId,
-        datum: datum,
-        grad: targetGrad,
-        updatedBy: updatedBy,
-      );
-    }
   }
 
   static Future<void> otkaziPolazakPutnikaPoKontekstu({
