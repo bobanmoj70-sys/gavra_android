@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -556,23 +555,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     String vreme = V3TimeUtils.normalizeToHHmm(widget.autoStartVreme ?? _selectedVreme);
     String datumIso = (widget.autoStartDatumIso ?? _selectedDatumIso).trim();
 
-    // Ako nije prosledjen termin, pokusaj da nadjes prvi aktivni termin vozaca
-    if (grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
-      final firstTerm = _mojiTermini.firstWhereOrNull((t) {
-        final tGrad = (t['grad']?.toString() ?? '').toUpperCase();
-        final tVreme = V3TimeUtils.normalizeToHHmm(t['vreme']?.toString() ?? '');
-        final tDatum = (t['datum']?.toString() ?? '').trim();
-        return tGrad.isNotEmpty && tVreme.isNotEmpty && tDatum.isNotEmpty;
-      });
-      if (firstTerm != null) {
-        grad = (firstTerm['grad']?.toString() ?? '').toUpperCase();
-        vreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme']?.toString() ?? '');
-        datumIso = (firstTerm['datum']?.toString() ?? '').trim();
-      }
-    }
-
     if (grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
       debugPrint('[V3VozacScreen] Auto-start: nema validnog termina');
+      return;
+    }
+
+    // Ako je tracking već aktivan za istog vozača, samo ažuriraj termin.
+    if (V3VozacLocationTrackingService.instance.isRunning &&
+        V3VozacLocationTrackingService.instance.activeVozacId == vozacId) {
+      V3VozacLocationTrackingService.instance.setActiveTermin(
+        datumIso: datumIso,
+        grad: grad,
+        vreme: vreme,
+      );
+      V3StateUtils.safeSetState(this, () {
+        _selectedGrad = grad;
+        _selectedVreme = vreme;
+        try {
+          _selectedDate = DateTime.parse(datumIso);
+        } catch (_) {}
+      });
       return;
     }
 
@@ -600,7 +602,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
 
     if (mounted) {
-      V3StateUtils.safeSetState(this, () => _isNavigating = true);
+      V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
     }
   }
 
@@ -650,6 +652,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (!V3VozacLocationTrackingService.instance.isRunning) return;
     if (_autoStopInProgress) return;
     if (!_shouldAutoStopTracking(putnici)) return;
+
+    // Autostop samo ako je trenutno prikazani termin isti kao aktivni tracking termin.
+    final activeGrad = V3VozacLocationTrackingService.instance.activeGrad;
+    final activeVreme = V3VozacLocationTrackingService.instance.activeVreme;
+    if (activeGrad != _selectedGrad || activeVreme != _selectedVreme) return;
 
     _autoStopInProgress = true;
     unawaited(() async {
@@ -744,7 +751,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
       final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
-      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != selectedVNorm) continue;
+      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
       if (raw['created_by'] == null) continue;
 
       final entryId = raw['id']?.toString() ?? '';
@@ -1706,12 +1713,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         child: Center(
           child: Text(
             label,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),

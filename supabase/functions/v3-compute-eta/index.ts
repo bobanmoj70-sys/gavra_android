@@ -128,11 +128,12 @@ Deno.serve(async (req) => {
     const staleThreshold = new Date(Date.now() - ETA_STALE_THRESHOLD_SECONDS * 1000).toISOString();
     await client.from("v3_eta_results").delete().lt("computed_at", staleThreshold);
 
-    // 2. Dohvati aktivan slot za ovog vozača + grad + datum → čitaj passengers[] iz waypoints_json
+    // 2. Dohvati aktivan slot za grad + datum + vreme (fizički ključ, NE po vozaču)
+    //    → jer override vozač (assignPutnikOverride) vozi termin čiji je slot
+    //    fizički vlasnički vezan za drugog (default) vozača.
     const { data: slotRows, error: slotError } = await client
       .from("v3_trenutna_dodela_slot")
-      .select("id, vreme, waypoints_json")
-      .eq("vozac_v3_auth_id", vozacId)
+      .select("id, vreme, vozac_v3_auth_id, waypoints_json")
       .eq("grad", activeGrad)
       .eq("datum", activeDatumIso);
 
@@ -145,12 +146,18 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "no_active_slot" });
     }
 
+    // Ako je pozivajući vozač override na neki od putnika ovog slota (a nije
+    // fizički vlasnik slota), i dalje mu vraćamo ETA za putnike koje on vozi —
+    // provera "da li vozacId zapravo vozi nekog putnika iz ovog slota" se radi
+    // dole kroz v3_trenutna_dodela (isti pattern kao auto-prepare fix).
+
     const buildOsrmFallbackResponse = async (
       reason: string,
       extra: Record<string, unknown> = {},
     ): Promise<Response> => {
       const waypointsJson = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
-      const existingOrderRaw = waypointsJson["optimized_order"];
+      const orderByVozacRaw = (waypointsJson["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
+      const existingOrderRaw = orderByVozacRaw[vozacId];
       const existingOrder = Array.isArray(existingOrderRaw)
         ? existingOrderRaw.filter((id): id is string => typeof id === "string" && id.length > 0)
         : [];
@@ -158,7 +165,8 @@ Deno.serve(async (req) => {
       const { data: existingEtaRows } = await client
         .from("v3_eta_results")
         .select("termin_id, putnik_id, eta_seconds")
-        .eq("slot_id", activeSlot.id);
+        .eq("slot_id", activeSlot.id)
+        .eq("vozac_id", vozacId);
 
       const etaRows = (existingEtaRows ?? [])
         .map((r: any) => ({
@@ -193,7 +201,7 @@ Deno.serve(async (req) => {
       });
     };
 
-    const rawPassengers: PassengerEntry[] = ((activeSlot.waypoints_json as any)?.passengers ?? [])
+    const rawSlotPassengers: PassengerEntry[] = ((activeSlot.waypoints_json as any)?.passengers ?? [])
       .filter((p: any) =>
         p?.putnik_id && p?.termin_id &&
         Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lng))
@@ -205,9 +213,37 @@ Deno.serve(async (req) => {
         lng: Number(p.lng),
       }));
 
-    if (rawPassengers.length === 0) {
-      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id);
+    if (rawSlotPassengers.length === 0) {
+      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
       return json(200, { ok: true, reason: "no_passengers_in_slot", updated: 0 });
+    }
+
+    // 2.5. Slot je fizički zajednički (grad+datum+vreme), ali putnici unutar njega
+    // mogu biti pojedinačno override-ovani na DRUGE vozače (assignPutnikOverride).
+    // Zato MORAMO filtrirati samo putnike čiji je stvarni vozač (v3_trenutna_dodela
+    // .vozac_v3_auth_id za taj termin) == pozivajući vozacId — inače bi vozač A
+    // dobio rutu/ETA i za putnike vozača B.
+    const slotTerminIds = rawSlotPassengers.map((p) => p.termin_id);
+    const { data: dodelaRows, error: dodelaError } = await client
+      .from("v3_trenutna_dodela")
+      .select("termin_id, vozac_v3_auth_id")
+      .in("termin_id", slotTerminIds);
+
+    if (dodelaError) {
+      return json(200, { ok: false, reason: "dodela_lookup_error", warning: dodelaError.message });
+    }
+
+    const vozacByTermin = new Map<string, string>(
+      (dodelaRows ?? []).map((r: any) => [String(r.termin_id), String(r.vozac_v3_auth_id ?? "")]),
+    );
+
+    const rawPassengers: PassengerEntry[] = rawSlotPassengers.filter(
+      (p) => vozacByTermin.get(p.termin_id) === vozacId,
+    );
+
+    if (rawPassengers.length === 0) {
+      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
+      return json(200, { ok: true, reason: "no_passengers_for_this_vozac", updated: 0 });
     }
 
     // 3. Filter pokupljeni/otkazani — jedan .in() query
@@ -216,6 +252,7 @@ Deno.serve(async (req) => {
       .from("v3_operativna_nedelja")
       .select("id, pokupljen_at, otkazano_at")
       .in("id", terminIds);
+
 
     if (operativnaError) {
       console.warn(`[v3-compute-eta] operativna status lookup error: ${operativnaError.message}`);
@@ -230,22 +267,25 @@ Deno.serve(async (req) => {
     const remaining = rawPassengers.filter((p) => !completedTerminIds.has(p.termin_id));
 
     if (remaining.length === 0) {
-      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id);
+      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
       return json(200, { ok: true, reason: "no_remaining_passengers", updated: 0 });
     }
 
-    // Obriši ETA za putnike koji više nisu u listi
+    // Obriši ETA za putnike ovog vozača koji više nisu u njegovoj listi
+    // (scope po vozac_id, jer isti slot_id može imati putnike drugih vozača)
     const remainingPutnikIds = new Set<string>(remaining.map((p) => p.putnik_id));
     const { data: existingEtaRows } = await client
       .from("v3_eta_results")
       .select("putnik_id")
-      .eq("slot_id", activeSlot.id);
+      .eq("slot_id", activeSlot.id)
+      .eq("vozac_id", vozacId);
     const toDelete = (existingEtaRows ?? [])
       .map((r: any) => String(r.putnik_id ?? "").trim())
       .filter((pid: string) => pid && !remainingPutnikIds.has(pid));
     if (toDelete.length > 0) {
       await client.from("v3_eta_results").delete()
         .eq("slot_id", activeSlot.id)
+        .eq("vozac_id", vozacId)
         .in("putnik_id", toDelete);
     }
 
@@ -383,13 +423,30 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
     }
 
-    // 7. Update slot waypoints_json — čuvaj passengers[], dodaj location + optimized_order
+    // 7. Update slot waypoints_json — čuvaj passengers[], dodaj po-vozacu location + optimized_order
+    // (isti fizički slot može imati više vozača sa različitim putnicima — override po putniku,
+    // zato NE prepisujemo global location/optimized_order za sve, već ih čuvamo po vozac_id).
+    // Flat "location"/"optimized_order" ključevi se ažuriraju SAMO kad je pozivajući vozač
+    // fizički vlasnik slota — zbog starog UI fallback-a (_getOsrmOrderFromSlot) koji čita
+    // te flat ključeve filtrirano po vozac_v3_auth_id na samom slotu.
     const optimizedOrder = upsertRows.map((r) => r.putnik_id);
     const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
+    const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
+    const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
+    const isSlotOwner = String(activeSlot.vozac_v3_auth_id ?? "") === vozacId;
     const updatedWaypoints = {
       ...currentWaypoints,
-      location: { lat: driverLat, lng: driverLng, timestamp: now },
-      optimized_order: optimizedOrder,
+      ...(isSlotOwner
+        ? { location: { lat: driverLat, lng: driverLng, timestamp: now }, optimized_order: optimizedOrder }
+        : {}),
+      optimized_order_by_vozac: {
+        ...currentOrderByVozac,
+        [vozacId]: optimizedOrder,
+      },
+      location_by_vozac: {
+        ...currentLocationByVozac,
+        [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
+      },
     };
     const { error: slotUpdateError } = await client
       .from("v3_trenutna_dodela_slot")

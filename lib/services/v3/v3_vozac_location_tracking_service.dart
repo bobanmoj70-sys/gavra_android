@@ -149,19 +149,17 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     return true;
   }
 
-  /// Proverava da li su svi putnici za aktivni slot završeni
+  /// Proverava da li su svi putnici u aktivnom slotu završeni
   /// (pokupljeni ili otkazani). Vraća false ako nema putnika.
   Future<bool> _allPassengersCompleted() async {
-    if (_activeVozacId.isEmpty || _activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
+    if (_activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
       return false;
     }
 
     try {
-      // Učitaj aktivni slot da znamo tačno koje putnike ovaj vozač treba da pokupi.
       final slotRows = await Supabase.instance.client
           .from('v3_trenutna_dodela_slot')
           .select('id, waypoints_json')
-          .eq('vozac_v3_auth_id', _activeVozacId)
           .eq('datum', _activeDatumIso)
           .eq('grad', _activeGrad)
           .eq('vreme', _activeVreme);
@@ -204,14 +202,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     final normalizedVozacId = vozacId.trim();
     if (normalizedVozacId.isEmpty) return;
 
+    // Jedan vozač može imati samo jedan aktivan tracking.
+    // Ako je već aktivan za istog vozača, samo ažuriraj termin u background servisu.
     if (_activeVozacId == normalizedVozacId && _isRunning) {
-      // Servis je već aktivan za ovog vozača — ipak ponovo pošalji svež
-      // termin background isolate-u, jer je prethodni invoke mogao propasti
-      // (npr. poslat pre nego što je isolate registrovao listener).
       final service = FlutterBackgroundService();
       if (await service.isRunning()) {
         debugPrint(
-            '[V3VozacLocationTrackingService] Već aktivno — ponovo šaljem termin: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
+            '[V3VozacLocationTrackingService] Već aktivno za istog vozača — ažuriram termin: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
         service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
         service.invoke('set_vozac_id', {
           'vozac_id': normalizedVozacId,
@@ -223,21 +220,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       return;
     }
 
-    // Ako je drugi vozač — stop pre nego što pokrenemo novi.
-    // NAPOMENA: stop() briše _activeDatumIso/_activeGrad/_activeVreme, pa moramo
-    // sačuvati termin postavljen kroz setActiveTermin() i vratiti ga posle stop()-a,
-    // inače background servis i computeEta() dobijaju prazan termin.
-    if (_activeVozacId != normalizedVozacId) {
-      final preservedDatumIso = _activeDatumIso;
-      final preservedGrad = _activeGrad;
-      final preservedVreme = _activeVreme;
+    // Ako je aktivan bilo koji tracking (isti ili drugi vozač), prvo ga zaustavi.
+    if (_isRunning || _activeVozacId.isNotEmpty) {
       await stop();
-      _activeDatumIso = preservedDatumIso;
-      _activeGrad = preservedGrad;
-      _activeVreme = preservedVreme;
     }
+
     _activeVozacId = normalizedVozacId;
-    _trackingStartedAt ??= DateTime.now();
+    _trackingStartedAt = DateTime.now();
     unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _trackingStartedAt!.toIso8601String()));
     unawaited(_secureStorage.write(key: _kStorageVozacId, value: normalizedVozacId));
     unawaited(_secureStorage.write(key: _kStorageDatumIso, value: _activeDatumIso));
@@ -247,13 +236,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     final prereqStatus = await checkLocationPrerequisites();
     if (prereqStatus != V3LocationPrereqStatus.ok) {
       debugPrint('[V3VozacLocationTrackingService] start() prekinut, prereq status=$prereqStatus');
-      _activeVozacId = '';
-      _trackingStartedAt = null;
-      unawaited(_secureStorage.delete(key: _kStorageStartedAt));
-      unawaited(_secureStorage.delete(key: _kStorageVozacId));
-      unawaited(_secureStorage.delete(key: _kStorageDatumIso));
-      unawaited(_secureStorage.delete(key: _kStorageGrad));
-      unawaited(_secureStorage.delete(key: _kStorageVreme));
+      await stop();
       return;
     }
 
@@ -268,16 +251,14 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       try {
         await service.startService();
       } catch (e) {
-        _activeVozacId = '';
-        _isRunning = false;
         debugPrint('[V3VozacLocationTrackingService] Failed to start background service: $e');
+        await stop();
         return;
       }
       isServiceRunning = await service.isRunning();
       if (!isServiceRunning) {
-        _activeVozacId = '';
-        _isRunning = false;
         debugPrint('[V3VozacLocationTrackingService] Background service did not start.');
+        await stop();
         return;
       }
     }
@@ -286,14 +267,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     _isRunning = true;
 
-    // Prosledi termin background servisu ako je setovan
-    if (_activeDatumIso.isNotEmpty || _activeGrad.isNotEmpty || _activeVreme.isNotEmpty) {
-      debugPrint(
-          '[V3VozacLocationTrackingService] Šaljem termin background servisu: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
-      service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
-    }
-
-    // Prosledi vozac_id background servisu (+ fallback aktivni termin)
+    service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
     service.invoke('set_vozac_id', {
       'vozac_id': normalizedVozacId,
       'datum_iso': _activeDatumIso,

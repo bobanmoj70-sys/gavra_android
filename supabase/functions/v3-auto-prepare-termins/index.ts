@@ -225,13 +225,21 @@ Deno.serve(async (req) => {
 
       console.log(`[v3-auto-prepare-termins] Processing slot ${key}`);
 
+      // NAPOMENA: v3_trenutna_dodela_slot ima UNIQUE constraint samo na
+      // (datum, grad, vreme) — BEZ vozac_v3_auth_id (vidi migraciju
+      // 20260722193000_fix_slot_uniqueness_by_term.sql). Ako bismo ovde
+      // filtrirali i po vozacId, a slot je već kreiran sa drugim vozačem
+      // (npr. usled individualnog "putnik override"-a na drugog vozača),
+      // ne bismo pronašli postojeći red i insert ispod bi pucao na
+      // UNIQUE constraint — ceo slot bi se tiho preskočio (continue),
+      // bez OSRM pripreme i bez notifikacija. Zato ovde tražimo isključivo
+      // po fizičkom ključu slota.
       const { data: existingSlots, error: slotError } = await client
         .from("v3_trenutna_dodela_slot")
-        .select("id, waypoints_json, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
+        .select("id, vozac_v3_auth_id, waypoints_json, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
         .eq("datum", datumIso)
         .eq("grad", grad)
-        .eq("vreme", vreme)
-        .eq("vozac_v3_auth_id", vozacId);
+        .eq("vreme", vreme);
 
       if (slotError) {
         console.error(`[v3-auto-prepare-termins] Slot lookup error: ${slotError.message}`);
@@ -251,18 +259,41 @@ Deno.serve(async (req) => {
         autoPreparedAt = existing.auto_prepared_at;
         autoNotifiedAt = existing.auto_notified_at;
         autoDriverNotifiedAt = existing.auto_driver_notified_at;
+
+        if (existing.vozac_v3_auth_id && existing.vozac_v3_auth_id !== vozacId) {
+          // Slot fizicki vec postoji sa drugim "vlasnikom" (najcesce zbog
+          // individualnog override-a putnika na drugog vozaca). Ne
+          // prepisujemo vozac_v3_auth_id slota (da ne bismo pokvarili
+          // notifikacije/tracking za onog vozaca koji je vec obradjen u
+          // ovom ili prethodnom cron prolazu) — samo logujemo upozorenje i
+          // nastavljamo da spajamo putnike u isti fizicki slot.
+          console.warn(
+            `[v3-auto-prepare-termins] Slot ${key} already owned by vozac=${existing.vozac_v3_auth_id}, ` +
+              `but termin group has vozac=${vozacId} (putnik override?). Merging passengers into shared slot ` +
+              `without changing slot owner.`,
+          );
+        }
       } else {
+        // upsert (umesto plain insert) kao dodatna zastita od race-a: ako
+        // dva razlicita "slot" kljuca (razliciti vozac_id iz grupisanja
+        // po slotTermins) ciljaju isti fizicki (datum,grad,vreme) red koji
+        // je upravo kreiran u paralelnom pozivu/prethodnoj iteraciji ove
+        // petlje, upsert ce vratiti postojeci red umesto da baci
+        // UNIQUE constraint gresku.
         const { data: newSlot, error: insertError } = await client
           .from("v3_trenutna_dodela_slot")
-          .insert({
-            datum: datumIso,
-            grad: grad,
-            vreme: vreme,
-            vozac_v3_auth_id: vozacId,
-            updated_by: vozacId,
-            waypoints_json: {},
-          })
-          .select("id")
+          .upsert(
+            {
+              datum: datumIso,
+              grad: grad,
+              vreme: vreme,
+              vozac_v3_auth_id: vozacId,
+              updated_by: vozacId,
+              waypoints_json: {},
+            },
+            { onConflict: "datum,grad,vreme", ignoreDuplicates: false },
+          )
+          .select("id, waypoints_json, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
           .single();
 
         if (insertError || !newSlot) {
@@ -270,6 +301,12 @@ Deno.serve(async (req) => {
           continue;
         }
         slotId = newSlot.id;
+        // Ako je upsert zapravo pogodio postojeci red (race), preuzmi
+        // njegovo trenutno stanje umesto podrazumevanih praznih vrednosti.
+        slotWaypoints = (newSlot.waypoints_json as Record<string, unknown>) ?? {};
+        autoPreparedAt = newSlot.auto_prepared_at ?? null;
+        autoNotifiedAt = newSlot.auto_notified_at ?? null;
+        autoDriverNotifiedAt = newSlot.auto_driver_notified_at ?? null;
       }
 
       // Ensure individual dodela exists and is linked to slot
@@ -373,6 +410,84 @@ Deno.serve(async (req) => {
           }));
       }
 
+      // Ako je fizicki slot deljen izmedju vise vozac-grupa (putnik
+      // override na drugog vozaca dok je ostatak termina kod default
+      // vozaca), passengers[] moze vec postojati ali BEZ termina iz OVE
+      // grupe (jer ih je popunila prethodna iteracija/prolaz za drugog
+      // vozaca). Dopuni nedostajuce termine iz slotTermins pre nego sto
+      // nastavimo — inace bi override-ovan putnik trajno ostao van rute.
+      const passengerTerminIdSet = new Set(passengers.map((p) => p.termin_id));
+      const missingSlotTermins = slotTermins.filter((t) => !passengerTerminIdSet.has(t.id));
+      let mergedMissingPassengers = false;
+
+      if (missingSlotTermins.length > 0) {
+        const missingPutnikIds = [...new Set(missingSlotTermins.map((t) => t.created_by))];
+        const { data: missingAuthRows, error: missingAuthError } = await client
+          .from("v3_auth")
+          .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
+          .in("id", missingPutnikIds);
+
+        if (missingAuthError) {
+          console.error(`[v3-auto-prepare-termins] Auth lookup error (merge missing): ${missingAuthError.message}`);
+        } else {
+          const missingAuthById = new Map((missingAuthRows ?? []).map((a) => [a.id, a]));
+          const missingAdresaIds: string[] = [];
+          const missingAdresaMap = new Map<string, { terminId: string; putnikId: string }>();
+
+          for (const t of missingSlotTermins) {
+            const auth = missingAuthById.get(t.created_by);
+            if (!auth) continue;
+
+            let adresaId: string | null = null;
+            if (t.adresa_override_id) {
+              adresaId = t.adresa_override_id;
+            } else if (grad === "BC") {
+              adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id;
+            } else if (grad === "VS") {
+              adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id;
+            }
+
+            if (adresaId) {
+              missingAdresaIds.push(adresaId);
+              missingAdresaMap.set(adresaId, { terminId: t.id, putnikId: t.created_by });
+            }
+          }
+
+          if (missingAdresaIds.length > 0) {
+            const { data: missingAdresaRows, error: missingAdresaError } = await client
+              .from("v3_adrese")
+              .select("id, gps_lat, gps_lng")
+              .in("id", [...new Set(missingAdresaIds)]);
+
+            if (missingAdresaError) {
+              console.error(`[v3-auto-prepare-termins] Adresa lookup error (merge missing): ${missingAdresaError.message}`);
+            } else {
+              for (const a of missingAdresaRows ?? []) {
+                const mapping = missingAdresaMap.get(a.id);
+                if (!mapping) continue;
+                const lat = Number(a.gps_lat);
+                const lng = Number(a.gps_lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+                passengers.push({
+                  putnik_id: mapping.putnikId,
+                  termin_id: mapping.terminId,
+                  lat,
+                  lng,
+                });
+                mergedMissingPassengers = true;
+              }
+            }
+          }
+        }
+
+        if (mergedMissingPassengers) {
+          console.log(
+            `[v3-auto-prepare-termins] Slot ${key}: merged ${missingSlotTermins.length} missing termin(s) ` +
+              `(likely putnik override) into shared slot passengers[]`,
+          );
+        }
+      }
+
       if (passengers.length === 0) {
         console.warn(`[v3-auto-prepare-termins] No passengers with coordinates for slot ${key}`);
         continue;
@@ -417,7 +532,7 @@ Deno.serve(async (req) => {
       // je gore izbacen bilo koji otkazan/pokupljen putnik (redosled se mora
       // preracunati da odrazi preostale putnike).
       let optimizedOrder: string[] = [];
-      const needsOsrmRecompute = !hasPassengers || removedAny;
+      const needsOsrmRecompute = !hasPassengers || removedAny || mergedMissingPassengers;
 
       // Startna tačka za OSRM: koristi poslednju poznatu (svežu) GPS
       // poziciju vozača ako postoji, u suprotnom fiksnu DEFAULT_START
@@ -491,8 +606,10 @@ Deno.serve(async (req) => {
       }
 
       // Update slot waypoints_json ako smo prvi put popunili putnike, ili
-      // ako smo izbacili otkazane/pokupljene putnike iz postojece liste.
-      if (!hasPassengers || removedAny) {
+      // ako smo izbacili otkazane/pokupljene putnike iz postojece liste,
+      // ili ako smo dospojili nedostajuce termine (putnik override na
+      // drugog vozaca u deljenom fizickom slotu).
+      if (!hasPassengers || removedAny || mergedMissingPassengers) {
         const nowIso = new Date().toISOString();
         const updatedWaypoints = {
           ...slotWaypoints,

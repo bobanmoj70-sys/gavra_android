@@ -119,9 +119,8 @@ bool _bgIsTimestampSet(Object? value) {
   return true;
 }
 
-/// Proverava da li su svi putnici za aktivni slot završeni
-/// (pokupljeni ili otkazani). Vraća false ako nema putnika ili ako
-/// postoji bar jedan koji nije završen.
+/// Proverava da li su svi putnici u aktivnom slotu završeni
+/// (pokupljeni ili otkazani). Vraća false ako nema putnika.
 Future<bool> _bgAllPassengersCompleted() async {
   if (!_bgCanSendLocation) return false;
 
@@ -129,11 +128,9 @@ Future<bool> _bgAllPassengersCompleted() async {
   if (client == null) return false;
 
   try {
-    // Učitaj aktivni slot da znamo tačno koje putnike ovaj vozač treba da pokupi.
     final slotRows = await client
         .from('v3_trenutna_dodela_slot')
         .select('id, waypoints_json')
-        .eq('vozac_v3_auth_id', _bgVozacId as Object)
         .eq('datum', _bgDatumIso)
         .eq('grad', _bgGrad)
         .eq('vreme', _bgVreme);
