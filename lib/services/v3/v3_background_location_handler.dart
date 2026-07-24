@@ -162,6 +162,31 @@ Future<bool> _bgConsumeNativePendingPayloadIfAny() async {
     unawaited(_secureStorage.write(key: _kStorageGrad, value: grad));
     unawaited(_secureStorage.write(key: _kStorageVreme, value: vreme));
 
+    // Učitaj Supabase config iz SecureStorage odmah — potreban za activateSlot
+    // koji se poziva ispod. Bez ovoga, cold-start BG isolate nema client jer
+    // main isolate još nije poslao `set_supabase_config` MethodChannel event.
+    if (_bgSupabaseUrl.isEmpty || _bgSupabaseAnonKey.isEmpty) {
+      try {
+        final allValues = await _secureStorage.readAll();
+        final persistedUrl = (allValues[_kStorageSupabaseUrl] ?? '').trim();
+        final persistedKey = (allValues[_kStorageSupabaseAnonKey] ?? '').trim();
+        if (persistedUrl.isNotEmpty && persistedKey.isNotEmpty) {
+          _bgSupabaseUrl = persistedUrl;
+          _bgSupabaseAnonKey = persistedKey;
+          _bgTryInitSupabaseClient();
+          if (_bgSupabaseClient != null) {
+            _bgConfigReady = true;
+            debugPrint('[BG] Supabase config učitan iz SecureStorage u native payload consumer');
+          }
+        } else {
+          debugPrint(
+              '[BG] ⚠️ Supabase config nije pronađen u SecureStorage — activateSlot će čekati na set_supabase_config');
+        }
+      } catch (e) {
+        debugPrint('[BG] Greška pri učitavanju Supabase config u native payload consumer: $e');
+      }
+    }
+
     // Aktiviraj slot red (idempotentan upsert) direktno preko background
     // Supabase klijenta — ekvivalent `V3TrenutnaDodelaSlotService.activateSlot`,
     // ali bez zavisnosti od main isolate `globals.dart` supabase getter-a.
