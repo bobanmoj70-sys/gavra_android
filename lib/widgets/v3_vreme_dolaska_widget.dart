@@ -180,8 +180,10 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       final departure = _parseDepartureDateTime(row);
       if (departure == null) continue;
       final terminId = row['id']?.toString();
-      final hasActiveEta = terminId != null && _findEtaRow(terminId, putnikId) != null;
-      if (departure.isBefore(now) && !hasActiveEta) continue;
+      final etaRow = terminId != null ? _findEtaRow(terminId, putnikId) : null;
+      final etaState = _readEtaState(etaRow);
+      final hasFreshEta = etaState.etaSeconds != null && !etaState.isStale;
+      if (departure.isBefore(now) && !hasFreshEta) continue;
       if (departure.isBefore(now.subtract(const Duration(minutes: 60)))) continue;
       String? vozacId;
 

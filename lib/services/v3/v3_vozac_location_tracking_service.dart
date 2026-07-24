@@ -521,6 +521,22 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       },
     );
 
+    // Prvi ETA odmah po startu (bez čekanja na prvi stream event),
+    // koristeći trenutnu GPS poziciju vozača.
+    unawaited(() async {
+      try {
+        final initialPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 12),
+          ),
+        );
+        await _handleIosPosition(initialPosition);
+      } catch (e) {
+        debugPrint('[V3VozacLocationTrackingService][iOS] initial position error: $e');
+      }
+    }());
+
     // GPS stream sam po sebi ne throttluje po vremenu (može javljati poziciju
     // i svake 1-2s), pa se throttlovanje ka computeEta()/OSRM radi u kodu,
     // u _handleIosPosition, tačno kao Android-ov fiksni Timer.periodic(20s).
