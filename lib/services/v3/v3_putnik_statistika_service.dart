@@ -134,6 +134,23 @@ class V3PutnikGodisnjiPoravnanje {
   bool get uskladjenoGodisnje => saldoNaKrajuGodine.abs() <= 0.009;
 }
 
+/// Jedna otkazana vožnja u okviru dana za putnika.
+class V3PutnikOtkazivanjeStavka {
+  final String? grad;
+  final String? vreme;
+  final String? otkazaoImePrezime;
+  final bool otkazaoVozac;
+  final DateTime? otkazanoAt;
+
+  const V3PutnikOtkazivanjeStavka({
+    this.grad,
+    this.vreme,
+    this.otkazaoImePrezime,
+    this.otkazaoVozac = false,
+    this.otkazanoAt,
+  });
+}
+
 /// Pregled jednog dana u mesecu za putnika: vožnje i eventualna uplata.
 class V3PutnikDnevnaStavka {
   final DateTime datum;
@@ -143,6 +160,7 @@ class V3PutnikDnevnaStavka {
   final double uplataIznos;
   final String? uplatioVozac;
   final String? uplataVreme;
+  final List<V3PutnikOtkazivanjeStavka> otkazivanja;
 
   const V3PutnikDnevnaStavka({
     required this.datum,
@@ -152,9 +170,11 @@ class V3PutnikDnevnaStavka {
     this.uplataIznos = 0,
     this.uplatioVozac,
     this.uplataVreme,
+    this.otkazivanja = const <V3PutnikOtkazivanjeStavka>[],
   });
 
   bool get imaUplatu => uplataIznos > 0.009;
+  bool get imaOtkazivanja => otkazivanja.isNotEmpty;
 }
 
 class V3PutnikStatistikaService {
@@ -286,17 +306,6 @@ class V3PutnikStatistikaService {
 
     final tipICena = _tipICena(safePutnikId);
     final cena = tipICena.cena;
-    if (cena <= 0) {
-      return V3PutnikGodisnjiPoravnanje(
-        godina: godina,
-        meseci: const <V3PutnikMesecnoPoravnanje>[],
-        saldoNaPocetkuGodine: 0,
-        saldoNaKrajuGodine: 0,
-        ukupnoVoznji: 0,
-        ukupnaObaveza: 0,
-        ukupnoUplaceno: 0,
-      );
-    }
     var saldo = _saldoDoGodine(
       putnikId: safePutnikId,
       preGodine: godina,
@@ -688,6 +697,12 @@ class V3PutnikStatistikaService {
       mesec: mesec,
     );
 
+    final otkazane = V3FinansijeService.getOtkazaneVoznjeZaMesec(
+      putnikId: safePutnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
     final poDanu = <DateTime, _DnevniAgregat>{};
 
     for (final v in voznje) {
@@ -732,9 +747,37 @@ class V3PutnikStatistikaService {
       agregat.uplataVreme = '$h:$m';
     }
 
+    for (final o in otkazane) {
+      final dt = o['_datum_parsed'] as DateTime;
+      final dan = DateTime(dt.year, dt.month, dt.day);
+      final agregat = poDanu.putIfAbsent(dan, () => _DnevniAgregat());
+
+      final tipOtkazivanja = (o['tip_otkazivanja']?.toString() ?? '').trim().toLowerCase();
+      final otkazaoVozac = tipOtkazivanja == 'vozac';
+      final otkazaoById = (o['otkazao_by']?.toString() ?? '').trim();
+      final otkazaoIme = otkazaoVozac ? _imeVozaca(otkazaoById) : null;
+      final otkazanoAt = V3DateUtils.parseTs(o['otkazano_at']?.toString());
+
+      agregat.otkazivanja.add(
+        V3PutnikOtkazivanjeStavka(
+          grad: (o['grad']?.toString() ?? '').trim().isEmpty ? null : o['grad'].toString().trim(),
+          vreme: (o['vreme']?.toString() ?? '').trim().isEmpty ? null : o['vreme'].toString().trim(),
+          otkazaoImePrezime: otkazaoIme,
+          otkazaoVozac: otkazaoVozac,
+          otkazanoAt: otkazanoAt,
+        ),
+      );
+    }
+
     final dani = poDanu.keys.toList()..sort();
     return dani.map((dan) {
       final a = poDanu[dan]!;
+      final sortedOtkazivanja = List<V3PutnikOtkazivanjeStavka>.from(a.otkazivanja)
+        ..sort((x, y) {
+          final xv = x.vreme ?? '';
+          final yv = y.vreme ?? '';
+          return xv.compareTo(yv);
+        });
       return V3PutnikDnevnaStavka(
         datum: dan,
         brojVoznji: isPoDanu ? a.daniSaVoznjom.length : a.brojVoznji,
@@ -743,6 +786,7 @@ class V3PutnikStatistikaService {
         uplataIznos: a.uplataIznos,
         uplatioVozac: _imeVozaca(a.uplatioVozacId),
         uplataVreme: a.uplataVreme,
+        otkazivanja: sortedOtkazivanja,
       );
     }).toList(growable: false);
   }
@@ -764,4 +808,5 @@ class _DnevniAgregat {
   double uplataIznos = 0;
   String? uplatioVozacId;
   String? uplataVreme;
+  final List<V3PutnikOtkazivanjeStavka> otkazivanja = <V3PutnikOtkazivanjeStavka>[];
 }

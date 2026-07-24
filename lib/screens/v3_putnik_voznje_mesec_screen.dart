@@ -30,6 +30,19 @@ class _VoznjeMesecTr {
     'pokupio': {'sr': 'Pokupio', 'en': 'Picked up', 'ru': 'Подобрал', 'de': 'Abgeholt'},
     'vreme': {'sr': 'vreme', 'en': 'time', 'ru': 'время', 'de': 'Zeit'},
     'ukupno': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt'},
+    'otkazano': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert'},
+    'otkazaoPutnik': {
+      'sr': 'Otkazao putnik',
+      'en': 'Canceled by passenger',
+      'ru': 'Отменил пассажир',
+      'de': 'Vom Fahrgast storniert'
+    },
+    'otkazaoVozac': {
+      'sr': 'Otkazao vozač',
+      'en': 'Canceled by driver',
+      'ru': 'Отменил водитель',
+      'de': 'Vom Fahrer storniert'
+    },
   };
 
   static String tr(String key) {
@@ -92,6 +105,7 @@ class _V3PutnikVoznjeMesecScreenState extends State<V3PutnikVoznjeMesecScreen> {
 
         final ukupnoVoznji = stavke.fold<int>(0, (sum, s) => sum + s.brojVoznji);
         final ukupnoUplata = stavke.fold<double>(0, (sum, s) => sum + s.uplataIznos);
+        final ukupnoOtkazano = stavke.fold<int>(0, (sum, s) => sum + s.otkazivanja.length);
 
         return Scaffold(
           extendBodyBehindAppBar: true,
@@ -157,6 +171,14 @@ class _V3PutnikVoznjeMesecScreenState extends State<V3PutnikVoznjeMesecScreen> {
                                   label: _VoznjeMesecTr.tr('uplata'),
                                   value: '${ukupnoUplata.toStringAsFixed(0)} RSD',
                                   color: Colors.blueAccent,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _HeaderKpi(
+                                  label: _VoznjeMesecTr.tr('otkazano'),
+                                  value: '$ukupnoOtkazano',
+                                  color: Colors.redAccent,
                                 ),
                               ),
                             ],
@@ -353,6 +375,74 @@ class _DnevnaStavkaRow extends StatelessWidget {
                     ],
                   ),
                 ],
+              ),
+            ),
+          ],
+          if (stavka.imaOtkazivanja) ...[
+            const SizedBox(height: 8),
+            ...stavka.otkazivanja.map(
+              (o) => Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.30)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cancel_outlined, size: 14, color: Colors.redAccent.withValues(alpha: 0.85)),
+                        const SizedBox(width: 6),
+                        Text(
+                          _VoznjeMesecTr.tr('otkazano'),
+                          style: TextStyle(
+                            color: Colors.redAccent.withValues(alpha: 0.9),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (o.grad != null) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '(${o.grad})',
+                            style: TextStyle(
+                              color: Colors.redAccent.withValues(alpha: 0.75),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (o.vreme != null)
+                          Text(
+                            o.vreme!,
+                            style: TextStyle(
+                              color: Colors.redAccent.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        Text(
+                          o.otkazaoVozac
+                              ? '${_VoznjeMesecTr.tr('otkazaoVozac')}${o.otkazaoImePrezime != null ? ' (${o.otkazaoImePrezime})' : ''}'
+                              : _VoznjeMesecTr.tr('otkazaoPutnik'),
+                          style: TextStyle(
+                            color: Colors.redAccent.withValues(alpha: 0.75),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

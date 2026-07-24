@@ -1302,7 +1302,7 @@ class V3FinansijeService {
       if (rPutnikId != safePutnikId.toLowerCase()) continue;
       final rG = _parseInternalInt(row['godina']);
       final rM = _parseInternalInt(row['mesec']);
-      if (rG != godina || rM != mesec) return const <Map<String, dynamic>>[];
+      if (rG != godina || rM != mesec) continue;
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {
@@ -1310,6 +1310,45 @@ class V3FinansijeService {
         if (datum == null) continue;
         result.add({
           ...v,
+          '_datum_parsed': datum,
+        });
+      }
+    }
+
+    result.sort((a, b) {
+      final aDt = a['_datum_parsed'] as DateTime;
+      final bDt = b['_datum_parsed'] as DateTime;
+      return aDt.compareTo(bDt);
+    });
+    return result;
+  }
+
+  /// Vraća sve otkazane vožnje za putnika u zadatom mesecu, sa parsiranim datumom.
+  static List<Map<String, dynamic>> getOtkazaneVoznjeZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final safePutnikId = putnikId.trim();
+    if (safePutnikId.isEmpty) return const <Map<String, dynamic>>[];
+
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    final result = <Map<String, dynamic>>[];
+
+    for (final row in cache) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != safePutnikId.toLowerCase()) continue;
+      final rG = _parseInternalInt(row['godina']);
+      final rM = _parseInternalInt(row['mesec']);
+      if (rG != godina || rM != mesec) continue;
+
+      final otkazane = _readOtkazaneVoznje(row);
+      for (final o in otkazane) {
+        final datum = V3DateUtils.parseTs(o['datum']?.toString()) ?? DateTime.tryParse(o['datum']?.toString() ?? '');
+        if (datum == null) continue;
+        if (datum.year != godina || datum.month != mesec) continue;
+        result.add({
+          ...o,
           '_datum_parsed': datum,
         });
       }
