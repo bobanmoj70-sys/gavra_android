@@ -26,7 +26,6 @@ import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
 import 'services/v3/v3_role_permission_service.dart';
-import 'services/v3/v3_trenutna_dodela_slot_service.dart';
 import 'services/v3/v3_vozac_location_tracking_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3_locale_manager.dart';
@@ -737,15 +736,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
       debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
-      // Osiguraj da slot red postoji (idempotentno) pre pokretanja trackinga.
-      await _activateSlotWithRetry(
-        datumIso: datumIso,
-        grad: grad,
-        vreme: vreme,
-        vozacId: vozacId,
-        logTag: '[FCM][BG]',
-      );
-
+      // NAPOMENA: activateSlot se sada radi INTERNO u
+      // V3VozacLocationTrackingService.start() (jedan izvor istine, deljen sa
+      // Android background isolate-om preko v3_slot_activation.dart) — nema
+      // potrebe da se ovde poziva odvojeno.
       await V3VozacLocationTrackingService.instance.startFromPayload(
         vozacId: vozacId,
         datumIso: datumIso,
@@ -1116,69 +1110,15 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
 
   debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
-  // Osiguraj da slot red postoji sa retry logikom (idempotentan upsert, ne diraj waypoints_json
-  // ako ga je kron već popunio) — sprečava 'no_active_slot' race ako push
-  // stigne pre nego što je kron-ova transakcija vidljiva, ili ako je
-  // prethodni ručni start obrisao slot.
-  await _activateSlotWithRetry(
-    datumIso: datumIso,
-    grad: grad,
-    vreme: vreme,
-    vozacId: vozacId,
-    logTag: '[AUTO-START]',
-  );
-
+  // NAPOMENA: activateSlot (idempotentan upsert sa retry logikom) se sada radi
+  // INTERNO u V3VozacLocationTrackingService.start() — JEDAN IZVOR ISTINE,
+  // deljen i sa Android background isolate-om preko v3_slot_activation.dart.
   await V3VozacLocationTrackingService.instance.startFromPayload(
     vozacId: vozacId,
     datumIso: datumIso,
     grad: grad,
     vreme: vreme,
   );
-}
-
-/// Zajednička retry-helper funkcija za idempotentan upsert u
-/// `v3_trenutna_dodela_slot` (activateSlot) — koristi exponential backoff
-/// (500ms, 1000ms, 2000ms) jer Supabase može biti u sred replikacije kad push
-/// stigne odmah nakon kron job-a. Deljena između iOS background handlera i
-/// `_autoStartVozacTrackingFromPush` da se izbegne duplirana logika.
-///
-/// NAPOMENA: Android background isolate (`v3_background_location_handler.dart`)
-/// ima svoju sopstvenu verziju ove funkcije (`_bgActivateSlotWithRetry`) jer
-/// radi u posebnom headless isolate-u bez pristupa main isolate `globals.dart`
-/// supabase getter-u koji `V3TrenutnaDodelaSlotService` koristi.
-Future<void> _activateSlotWithRetry({
-  required String datumIso,
-  required String grad,
-  required String vreme,
-  required String vozacId,
-  required String logTag,
-}) async {
-  const maxRetries = 3;
-  const initialDelayMs = 500;
-  var retryCount = 0;
-
-  while (retryCount < maxRetries) {
-    try {
-      await V3TrenutnaDodelaSlotService.activateSlot(
-        datumIso: datumIso,
-        grad: grad,
-        vreme: vreme,
-        vozacId: vozacId,
-        updatedBy: vozacId,
-      );
-      debugPrint('$logTag ✅ activateSlot uspešan (attempt ${retryCount + 1})');
-      return;
-    } catch (e) {
-      retryCount++;
-      if (retryCount >= maxRetries) {
-        debugPrint('⚠️ $logTag activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam)');
-        return;
-      }
-      final delayMs = initialDelayMs * (1 << (retryCount - 1));
-      debugPrint('⚠️ $logTag activateSlot pokušaj $retryCount/${maxRetries - 1} failed: $e, retry za ${delayMs}ms');
-      await Future.delayed(Duration(milliseconds: delayMs));
-    }
-  }
 }
 
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)

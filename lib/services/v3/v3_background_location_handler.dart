@@ -8,42 +8,60 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_time_utils.dart';
+import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
-/// Konstante za background servis
-const String _kVozacId = 'vozac_id';
-const String _kSetSupabaseConfig = 'set_supabase_config';
-const String _kSetStartPayload = 'set_start_payload';
+/// ============================================================================
+/// JEDAN IZVOR ISTINE za "šta bi background tracking trebalo da radi":
+///
+/// Ceo auto-start/tracking sistem se svodi na JEDNO "željeno stanje" upisano
+/// u obični `SharedPreferences` fajl (isti koji `package:shared_preferences`
+/// koristi na Dart strani, sa `flutter.` prefiksom na ključevima). To stanje
+/// upisuju DVA pisca:
+///   1. `GavraFcmService.kt` (native, Kotlin) — kad stigne
+///      `vozac_auto_start_tracking` push, BEZ OBZIRA na to da li je Flutter
+///      engine živ (radi i kad je app potpuno ubijena).
+///   2. `V3VozacLocationTrackingService` (Dart, main isolate) — kad korisnik
+///      ručno pokrene/promeni/zaustavi tracking dok je app otvorena.
+///
+/// Ovaj background isolate (headless, pokreće ga `flutter_background_service`)
+/// ima JEDAN posao: svakih 20s (i odmah pri startu) PROČITA to željeno stanje
+/// i primeni razliku u odnosu na ono što trenutno radi:
+///   - vozac_id prazan            → zaustavi tracking
+///   - vozac_id nov/različit      → aktiviraj slot (upsert) + resetuj timer trajanja
+///   - isti vozac, drugi termin   → aktiviraj slot za novi termin (bez resetovanja timera)
+///   - ništa promenjeno           → samo pošalji GPS lokaciju kao i do sad
+///
+/// Zašto polling umesto event-a: ako se servis već izvršava (npr. prati
+/// prethodni termin), `flutter_background_service`-ov Android sloj NE
+/// restartuje headless Dart engine na sledeći `startForegroundService()` poziv
+/// (`BackgroundService.java#runService` rano izlazi ako `isRunning`) — pa se
+/// jednokratni "pending payload" event nikad ne bi pokupio za drugi termin.
+/// Polling svakih 20s to rešava bez ikakve dodatne native logike: čim native
+/// upiše novo stanje, sledeći tick ga vidi i primeni, bez obzira da li je
+/// Android servis "restartovan" ili ne.
+/// ============================================================================
+
 const String _kActionStop = 'stop';
 const String _kReady = 'ready';
-const String _kRequestState = 'request_state';
 const Duration _kInterval = Duration(seconds: 20);
 
-/// Ključevi za perzistentno čuvanje aktivnog stanja (koristi se ako se
-/// background isolate restartuje dok main isolate nije dostupan).
-const String _kStorageVozacId = 'bg_tracking_vozac_id';
-const String _kStorageDatumIso = 'bg_tracking_datum_iso';
-const String _kStorageGrad = 'bg_tracking_grad';
-const String _kStorageVreme = 'bg_tracking_vreme';
-const String _kStorageStartedAt = 'bg_tracking_started_at';
+/// Ključevi "željenog stanja" — MORAJU biti identični sa
+/// `GavraFcmService.KEY_ACTIVE_*` konstantama na native (Kotlin) strani
+/// (bez `flutter.` prefiksa ovde jer ga `package:shared_preferences` dodaje
+/// sam; Kotlin strana ga mora dodati ručno).
+const String _kKeyVozacId = 'bg_active_vozac_id';
+const String _kKeyDatumIso = 'bg_active_datum_iso';
+const String _kKeyGrad = 'bg_active_grad';
+const String _kKeyVreme = 'bg_active_vreme';
+const String _kKeyStartedAt = 'bg_active_started_at';
+
+/// Supabase kredencijali i dalje idu preko `flutter_secure_storage` (osetljivi
+/// podaci) — jedini deo koji Kotlin ne piše, već ih main isolate perzistuje
+/// pre prvog starta servisa da bi cold-start (killed app) background isolate
+/// imao pristup Supabase-u bez čekanja na main isolate.
 const String _kStorageSupabaseUrl = 'bg_tracking_supabase_url';
 const String _kStorageSupabaseAnonKey = 'bg_tracking_supabase_anon_key';
-
-/// Ključevi za native→Dart "pending" payload koji `GavraFcmService.kt` upisuje
-/// direktno u SharedPreferences kada stigne `vozac_auto_start_tracking` push,
-/// BEZ obzira na Flutter engine stanje (radi i kad je app potpuno ubijena).
-/// Moraju biti identični sa `GavraFcmService.KEY_PENDING_*` konstantama (bez
-/// `flutter.` prefiksa ovde, jer ga `package:shared_preferences` dodaje sam).
-const String _kPendingVozacId = 'bg_pending_vozac_id';
-const String _kPendingDatumIso = 'bg_pending_datum_iso';
-const String _kPendingGrad = 'bg_pending_grad';
-const String _kPendingVreme = 'bg_pending_vreme';
-const String _kPendingTimestamp = 'bg_pending_timestamp';
-
-/// Payload se smatra "svežim" najviše 10 minuta — sprečava da se stari,
-/// već obrađeni native payload ponovo pokrene ako iz nekog razloga ostane
-/// u SharedPreferences (npr. servis se restartuje iz drugog razloga).
-const Duration _kPendingPayloadMaxAge = Duration(minutes: 10);
 
 const _secureStorage = FlutterSecureStorage(
   aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -55,234 +73,15 @@ String _bgDatumIso = '';
 String _bgGrad = '';
 String _bgVreme = '';
 DateTime? _bgTrackingStartedAt;
-Timer? _bgTimer;
+Timer? _bgMainTimer;
 bool _bgInFlight = false;
 SupabaseClient? _bgSupabaseClient;
 String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
-bool _bgConfigReady = false;
 ServiceInstance? _bgService;
 
 bool get _bgCanSendLocation =>
     _bgVozacId != null && _bgVozacId!.isNotEmpty && _bgDatumIso.isNotEmpty && _bgGrad.isNotEmpty && _bgVreme.isNotEmpty;
-
-Future<void> _bgLoadPersistedState() async {
-  try {
-    final values = await _secureStorage.readAll();
-    final vozacId = (values[_kStorageVozacId] ?? '').trim();
-    final datumIso = (values[_kStorageDatumIso] ?? '').trim();
-    final grad = (values[_kStorageGrad] ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(values[_kStorageVreme] ?? '');
-    final startedAtRaw = (values[_kStorageStartedAt] ?? '').trim();
-    if (vozacId.isNotEmpty) _bgVozacId = vozacId;
-    if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
-    if (grad.isNotEmpty) _bgGrad = grad;
-    if (vreme.isNotEmpty) _bgVreme = vreme;
-    if (startedAtRaw.isNotEmpty) {
-      _bgTrackingStartedAt = DateTime.tryParse(startedAtRaw);
-    }
-
-    // Supabase config — potreban da background isolate radi i kad je
-    // pokrenut direktno iz native koda (GavraFcmService), bez main isolate-a
-    // koji bi inače poslao `set_supabase_config`.
-    if (_bgSupabaseUrl.isEmpty || _bgSupabaseAnonKey.isEmpty) {
-      final persistedUrl = (values[_kStorageSupabaseUrl] ?? '').trim();
-      final persistedAnonKey = (values[_kStorageSupabaseAnonKey] ?? '').trim();
-      if (persistedUrl.isNotEmpty && persistedAnonKey.isNotEmpty) {
-        _bgSupabaseUrl = persistedUrl;
-        _bgSupabaseAnonKey = persistedAnonKey;
-        _bgTryInitSupabaseClient();
-        if (_bgSupabaseClient != null) {
-          _bgConfigReady = true;
-        }
-      }
-    }
-
-    debugPrint(
-        '[BG] Učitano perzistentno stanje: vozacId=$vozacId datum=$datumIso grad=$grad vreme=$vreme startedAt=$startedAtRaw');
-  } catch (e) {
-    debugPrint('[BG] Greška pri učitavanju perzistentnog stanja: $e');
-  }
-}
-
-/// Čita "pending" payload koji je `GavraFcmService.kt` upisao direktno u
-/// nativni SharedPreferences fajl (isti koji `package:shared_preferences`
-/// koristi), kada je stigao `vozac_auto_start_tracking` push — BEZ obzira
-/// na to da li je Flutter main engine bio aktivan.
-///
-/// Ovo je "čisto" rešenje za auto-start: background isolate (headless,
-/// pokrenut direktno iz native koda) sam pročita payload i sam pokreće
-/// tracking, bez potrebe za tap-om na notifikaciju ili aktivnim main
-/// isolate-om. Payload se briše nakon čitanja (idempotentno konzumiran).
-///
-/// Vraća true ako je pending payload pronađen i primenjen (setovao je
-/// _bgVozacId/_bgDatumIso/_bgGrad/_bgVreme).
-Future<bool> _bgConsumeNativePendingPayloadIfAny() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final vozacId = (prefs.getString(_kPendingVozacId) ?? '').trim();
-    final datumIso = (prefs.getString(_kPendingDatumIso) ?? '').trim();
-    final grad = (prefs.getString(_kPendingGrad) ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(prefs.getString(_kPendingVreme) ?? '');
-    final timestampMs = prefs.getInt(_kPendingTimestamp) ?? 0;
-
-    if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
-      return false;
-    }
-
-    // Konzumiraj (obriši) odmah da izbegnemo ponovnu obradu istog payload-a
-    // pri sledećem restartu servisa.
-    await prefs.remove(_kPendingVozacId);
-    await prefs.remove(_kPendingDatumIso);
-    await prefs.remove(_kPendingGrad);
-    await prefs.remove(_kPendingVreme);
-    await prefs.remove(_kPendingTimestamp);
-
-    if (timestampMs > 0) {
-      final age = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestampMs));
-      if (age > _kPendingPayloadMaxAge) {
-        debugPrint('[BG] Native pending payload je zastareo (age=${age.inMinutes}min), ignorišem.');
-        return false;
-      }
-    }
-
-    debugPrint('[BG] Native pending payload pronađen: vozac=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
-
-    _bgVozacId = vozacId;
-    _bgDatumIso = datumIso;
-    _bgGrad = grad;
-    _bgVreme = vreme;
-
-    if (_bgTrackingStartedAt == null) {
-      _bgTrackingStartedAt = DateTime.now();
-      unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _bgTrackingStartedAt!.toIso8601String()));
-    }
-    unawaited(_secureStorage.write(key: _kStorageVozacId, value: vozacId));
-    unawaited(_secureStorage.write(key: _kStorageDatumIso, value: datumIso));
-    unawaited(_secureStorage.write(key: _kStorageGrad, value: grad));
-    unawaited(_secureStorage.write(key: _kStorageVreme, value: vreme));
-
-    // Učitaj Supabase config iz SecureStorage odmah — potreban za activateSlot
-    // koji se poziva ispod. Bez ovoga, cold-start BG isolate nema client jer
-    // main isolate još nije poslao `set_supabase_config` MethodChannel event.
-    if (_bgSupabaseUrl.isEmpty || _bgSupabaseAnonKey.isEmpty) {
-      try {
-        final allValues = await _secureStorage.readAll();
-        final persistedUrl = (allValues[_kStorageSupabaseUrl] ?? '').trim();
-        final persistedKey = (allValues[_kStorageSupabaseAnonKey] ?? '').trim();
-        if (persistedUrl.isNotEmpty && persistedKey.isNotEmpty) {
-          _bgSupabaseUrl = persistedUrl;
-          _bgSupabaseAnonKey = persistedKey;
-          _bgTryInitSupabaseClient();
-          if (_bgSupabaseClient != null) {
-            _bgConfigReady = true;
-            debugPrint('[BG] Supabase config učitan iz SecureStorage u native payload consumer');
-          }
-        } else {
-          debugPrint(
-              '[BG] ⚠️ Supabase config nije pronađen u SecureStorage — activateSlot će čekati na set_supabase_config');
-        }
-      } catch (e) {
-        debugPrint('[BG] Greška pri učitavanju Supabase config u native payload consumer: $e');
-      }
-    }
-
-    // Aktiviraj slot red (idempotentan upsert) direktno preko background
-    // Supabase klijenta — ekvivalent `V3TrenutnaDodelaSlotService.activateSlot`,
-    // ali bez zavisnosti od main isolate `globals.dart` supabase getter-a.
-    unawaited(_bgActivateSlotWithRetry(vozacId: vozacId, datumIso: datumIso, grad: grad, vreme: vreme));
-
-    return true;
-  } catch (e) {
-    debugPrint('[BG] Greška pri čitanju native pending payload-a: $e');
-    return false;
-  }
-}
-
-/// Idempotentan upsert u `v3_trenutna_dodela_slot` — ekvivalent
-/// `V3TrenutnaDodelaSlotService.activateSlot`, sa retry logikom (isti
-/// pattern kao main isolate `_autoStartVozacTrackingFromPush`), samo
-/// implementiran direktno preko background Supabase client-a jer
-/// `V3TrenutnaDodelaSlotService` zavisi od main isolate `globals.dart`.
-Future<void> _bgActivateSlotWithRetry({
-  required String vozacId,
-  required String datumIso,
-  required String grad,
-  required String vreme,
-}) async {
-  _bgTryInitSupabaseClient();
-  var client = _bgSupabaseClient;
-
-  // Supabase config možda još nije stigao (npr. cold-start iz native koda
-  // bez main isolate-a) — sačekaj do 5s da `set_supabase_config`/persisted
-  // config postane dostupan.
-  for (var i = 0; i < 10 && client == null; i++) {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    _bgTryInitSupabaseClient();
-    client = _bgSupabaseClient;
-  }
-
-  if (client == null) {
-    debugPrint('[BG] activateSlot: Supabase client nije dostupan nakon čekanja, odustajem.');
-    return;
-  }
-
-  const maxRetries = 3;
-  const initialDelayMs = 500;
-  var retryCount = 0;
-
-  while (retryCount < maxRetries) {
-    try {
-      await client.from('v3_trenutna_dodela_slot').upsert(
-        <String, dynamic>{
-          'datum': datumIso,
-          'grad': grad,
-          'vreme': vreme,
-          'vozac_v3_auth_id': vozacId,
-          'updated_by': vozacId,
-        },
-        onConflict: 'datum,grad,vreme',
-      );
-      debugPrint('[BG] ✅ activateSlot uspešan (attempt ${retryCount + 1})');
-      return;
-    } catch (e) {
-      retryCount++;
-      if (retryCount >= maxRetries) {
-        debugPrint('⚠️ [BG] activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam bez slota)');
-        return;
-      }
-      final delayMs = initialDelayMs * (1 << (retryCount - 1));
-      await Future<void>.delayed(Duration(milliseconds: delayMs));
-    }
-  }
-}
-
-Future<void> _bgClearPersistedState() async {
-  try {
-    await _secureStorage.delete(key: _kStorageVozacId);
-    await _secureStorage.delete(key: _kStorageDatumIso);
-    await _secureStorage.delete(key: _kStorageGrad);
-    await _secureStorage.delete(key: _kStorageVreme);
-    await _secureStorage.delete(key: _kStorageStartedAt);
-  } catch (e) {
-    debugPrint('[BG] Greška pri brisanju perzistentnog stanja: $e');
-  }
-}
-
-Future<void> _bgClearEtaForVozac(String vozacId) async {
-  final normalized = vozacId.trim();
-  if (normalized.isEmpty) return;
-
-  _bgTryInitSupabaseClient();
-  final client = _bgSupabaseClient;
-  if (client == null) return;
-
-  try {
-    await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
-  } catch (e) {
-    debugPrint('[BG] ETA cleanup error: $e');
-  }
-}
 
 void _bgTryInitSupabaseClient() {
   if (_bgSupabaseClient != null) return;
@@ -295,7 +94,127 @@ void _bgTryInitSupabaseClient() {
       autoRefreshToken: false,
     ),
   );
-  debugPrint('[BG] Supabase client inicijalizovan iz main isolate konfiguracije');
+  debugPrint('[BG] Supabase client inicijalizovan.');
+}
+
+/// Učitava Supabase URL/anon key iz SecureStorage (upisano od strane main
+/// isolate-a) i pokušava da inicijalizuje klijenta. Sačeka do 5s ako
+/// konfiguracija još nije stigla (cold-start race).
+Future<void> _bgEnsureSupabaseClientReady() async {
+  _bgTryInitSupabaseClient();
+  if (_bgSupabaseClient != null) return;
+
+  for (var i = 0; i < 10 && _bgSupabaseClient == null; i++) {
+    try {
+      final values = await _secureStorage.readAll();
+      final url = (values[_kStorageSupabaseUrl] ?? '').trim();
+      final anonKey = (values[_kStorageSupabaseAnonKey] ?? '').trim();
+      if (url.isNotEmpty && anonKey.isNotEmpty) {
+        _bgSupabaseUrl = url;
+        _bgSupabaseAnonKey = anonKey;
+        _bgTryInitSupabaseClient();
+      }
+    } catch (e) {
+      debugPrint('[BG] Greška pri čitanju Supabase config: $e');
+    }
+    if (_bgSupabaseClient != null) break;
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+  }
+
+  if (_bgSupabaseClient == null) {
+    debugPrint('[BG] ⚠️ Supabase client nije dostupan nakon čekanja.');
+  }
+}
+
+/// Čita "željeno stanje" iz SharedPreferences i primeni razliku u odnosu na
+/// trenutno stanje background isolate-a. Ovo je JEDINA funkcija koja odlučuje
+/// šta treba da se promeni — poziva se odmah pri startu servisa i zatim na
+/// svakih 20s (isti tick koji šalje i GPS lokaciju).
+Future<void> _bgSyncDesiredStateFromPrefs() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final vozacId = (prefs.getString(_kKeyVozacId) ?? '').trim();
+
+    if (vozacId.isEmpty) {
+      if (_bgVozacId != null) {
+        await _bgStopTracking(reason: 'desired_state_cleared');
+      }
+      return;
+    }
+
+    final datumIso = (prefs.getString(_kKeyDatumIso) ?? '').trim();
+    final grad = (prefs.getString(_kKeyGrad) ?? '').trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(prefs.getString(_kKeyVreme) ?? '');
+    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+      debugPrint('[BG] Željeno stanje nepotpuno, ignorišem: vozac=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
+      return;
+    }
+
+    final isNewVozac = _bgVozacId == null || _bgVozacId != vozacId;
+    final isTerminChanged = !isNewVozac && (_bgDatumIso != datumIso || _bgGrad != grad || _bgVreme != vreme);
+
+    if (!isNewVozac && !isTerminChanged) {
+      return; // ništa se nije promenilo
+    }
+
+    _bgVozacId = vozacId;
+    _bgDatumIso = datumIso;
+    _bgGrad = grad;
+    _bgVreme = vreme;
+
+    if (isNewVozac) {
+      final startedAtMs = prefs.getInt(_kKeyStartedAt) ?? 0;
+      _bgTrackingStartedAt = startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : DateTime.now();
+      debugPrint('[BG] Novi vozač za tracking: $vozacId (grad=$grad vreme=$vreme datum=$datumIso)');
+    } else {
+      debugPrint('[BG] Termin promenjen za istog vozača: grad=$grad vreme=$vreme datum=$datumIso');
+    }
+
+    await _bgEnsureSupabaseClientReady();
+    final client = _bgSupabaseClient;
+    if (client != null) {
+      unawaited(activateSlotWithRetry(
+        client: client,
+        vozacId: vozacId,
+        datumIso: datumIso,
+        grad: grad,
+        vreme: vreme,
+        logTag: '[BG]',
+        log: debugPrint,
+      ));
+    } else {
+      debugPrint('[BG] ⚠️ activateSlot preskočen: Supabase client nije dostupan.');
+    }
+  } catch (e) {
+    debugPrint('[BG] Greška pri sinhronizaciji željenog stanja: $e');
+  }
+}
+
+Future<void> _bgClearDesiredState() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kKeyVozacId);
+    await prefs.remove(_kKeyDatumIso);
+    await prefs.remove(_kKeyGrad);
+    await prefs.remove(_kKeyVreme);
+    await prefs.remove(_kKeyStartedAt);
+  } catch (e) {
+    debugPrint('[BG] Greška pri brisanju željenog stanja: $e');
+  }
+}
+
+Future<void> _bgClearEtaForVozac(String vozacId) async {
+  final normalized = vozacId.trim();
+  if (normalized.isEmpty) return;
+
+  final client = _bgSupabaseClient;
+  if (client == null) return;
+
+  try {
+    await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
+  } catch (e) {
+    debugPrint('[BG] ETA cleanup error: $e');
+  }
 }
 
 /// Proverava da li je vrednost timestamp setovana (string nije prazan ili nije null).
@@ -360,17 +279,17 @@ Future<void> _bgStopTracking({String reason = 'unspecified'}) async {
   debugPrint('[BG] stop reason=$reason');
   final service = _bgService;
   final vozacIdToClean = _bgVozacId;
-  _bgTimer?.cancel();
-  _bgTimer = null;
   _bgVozacId = null;
   _bgDatumIso = '';
   _bgGrad = '';
   _bgVreme = '';
   _bgTrackingStartedAt = null;
-  await _bgClearPersistedState();
+  await _bgClearDesiredState();
   if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
     await _bgClearEtaForVozac(vozacIdToClean);
   }
+  _bgMainTimer?.cancel();
+  _bgMainTimer = null;
   _bgSupabaseUrl = '';
   _bgSupabaseAnonKey = '';
   _bgSupabaseClient = null;
@@ -378,187 +297,48 @@ Future<void> _bgStopTracking({String reason = 'unspecified'}) async {
 }
 
 /// Top-level callback za flutter_background_service.
-/// Pokreće se u posebnom isolate-u i šalje GPS lokaciju svakih 30 sekundi.
+/// Pokreće se u posebnom isolate-u. Svakih 20s: (1) sinhronizuje željeno
+/// stanje, (2) proverava watchdog (max trajanje), (3) šalje GPS lokaciju.
 @pragma('vm:entry-point')
 Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   _bgService = service;
-
-  // Supabase konfiguraciju očekujemo iz main isolate-a preko service.invoke.
-  service.on(_kSetSupabaseConfig).listen((event) {
-    _bgSupabaseUrl = (event?['url'] ?? '').toString().trim();
-    _bgSupabaseAnonKey = (event?['anon_key'] ?? '').toString().trim();
-    _bgSupabaseClient = null;
-    _bgConfigReady = false;
-    _bgTryInitSupabaseClient();
-    if (_bgSupabaseClient != null) {
-      _bgConfigReady = true;
-      if (_bgCanSendLocation) {
-        _bgStartTimerIfReady();
-      }
-    }
-  });
-
-  service.on(_kSetStartPayload).listen((event) {
-    final id = (event?[_kVozacId] ?? '').toString().trim();
-    final datumIso = (event?['datum_iso'] ?? '').toString().trim();
-    final grad = (event?['grad'] ?? '').toString().trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm((event?['vreme'] ?? '').toString());
-    final startedAtRaw = (event?['started_at'] ?? '').toString().trim();
-    final supabaseUrl = (event?['supabase_url'] ?? '').toString().trim();
-    final supabaseAnonKey = (event?['supabase_anon_key'] ?? '').toString().trim();
-
-    if (id.isNotEmpty) {
-      _bgVozacId = id;
-    }
-    if (datumIso.isNotEmpty) {
-      _bgDatumIso = datumIso;
-    }
-    if (grad.isNotEmpty) {
-      _bgGrad = grad;
-    }
-    if (vreme.isNotEmpty) {
-      _bgVreme = vreme;
-    }
-
-    if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
-      _bgSupabaseUrl = supabaseUrl;
-      _bgSupabaseAnonKey = supabaseAnonKey;
-      _bgSupabaseClient = null;
-      _bgConfigReady = false;
-      _bgTryInitSupabaseClient();
-      if (_bgSupabaseClient != null) {
-        _bgConfigReady = true;
-      }
-    }
-
-    if (_bgTrackingStartedAt == null) {
-      _bgTrackingStartedAt = DateTime.tryParse(startedAtRaw) ?? DateTime.now();
-      unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _bgTrackingStartedAt!.toIso8601String()));
-    }
-
-    debugPrint(
-        '[BG] Unified start payload primljen: vozac=$_bgVozacId datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme configReady=$_bgConfigReady');
-    _bgStartTimerIfReady();
-  });
 
   service.on(_kActionStop).listen((event) async {
     await _bgStopTracking(reason: 'external_stop_event');
   });
 
-  // Glavni isolate šalje vozac_id preko invoke
-  service.on('set_vozac_id').listen((event) {
-    final id = (event?[_kVozacId] as String?)?.trim();
-    debugPrint('[BG] set_vozac_id event received: id=$id');
-    if (id != null && id.isNotEmpty) {
-      _bgVozacId = id;
-      final datumIso = (event?['datum_iso'] ?? '').toString().trim();
-      final grad = (event?['grad'] ?? '').toString().trim().toUpperCase();
-      final vreme = V3TimeUtils.normalizeToHHmm((event?['vreme'] ?? '').toString());
-      debugPrint('[BG] set_vozac_id termin: datum=$datumIso grad=$grad vreme=$vreme');
-      if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
-      if (grad.isNotEmpty) _bgGrad = grad;
-      if (vreme.isNotEmpty) _bgVreme = vreme;
-      if (_bgTrackingStartedAt == null) {
-        _bgTrackingStartedAt = DateTime.now();
-        unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _bgTrackingStartedAt!.toIso8601String()));
-      }
-      _bgStartTimerIfReady();
-    }
-  });
-
-  // Glavni isolate šalje aktivni termin (grad+vreme)
-  service.on('set_termin').listen((event) {
-    final datumIso = (event?['datum_iso'] ?? '').toString().trim();
-    final grad = (event?['grad'] ?? '').toString().trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm((event?['vreme'] ?? '').toString());
-    if (datumIso.isNotEmpty) _bgDatumIso = datumIso;
-    if (grad.isNotEmpty) _bgGrad = grad;
-    if (vreme.isNotEmpty) _bgVreme = vreme;
-    debugPrint('[BG] Termin ažuriran: datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme');
-    _bgStartTimerIfReady();
-  });
-
-  // Glavni isolate traži ponovno slanje stanja (npr. nakon resume)
-  service.on(_kRequestState).listen((event) async {
-    await _bgLoadPersistedState();
-    _bgStartTimerIfReady();
-    debugPrint('[BG] Stanje osveženo na zahtev: datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme');
-  });
-
-  // Obavesti main isolate da su listener-i registrovani i da je stanje učitano
-  // Native pending payload (upisan direktno iz GavraFcmService.kt) ima
-  // prioritet nad perzistentnim stanjem — to je "čisto" auto-start rešenje
-  // koje radi i kad je app potpuno ubijena (bez tap-a na notifikaciju).
-  final consumedNative = await _bgConsumeNativePendingPayloadIfAny();
-  if (!consumedNative) {
-    await _bgLoadPersistedState();
-  }
-  _bgStartTimerIfReady();
+  await _bgEnsureSupabaseClientReady();
+  await _bgSyncDesiredStateFromPrefs();
   service.invoke(_kReady, {});
   debugPrint('[BG] Background servis spreman');
 
-  // Auto-stop watchdog: proverava svakih 20s da li je pređeno max trajanje trackinga.
-  Timer.periodic(_kInterval, (_) {
+  Future<void> tick() async {
+    await _bgSyncDesiredStateFromPrefs();
+
     final startedAt = _bgTrackingStartedAt;
-    if (startedAt == null) return;
-    if (DateTime.now().difference(startedAt) < v3TrackingMaxDuration) return;
-
-    debugPrint('[BG] stop reason=timeout source=watchdog duration_minutes=${v3TrackingMaxDuration.inMinutes}');
-    unawaited(_bgStopTracking(reason: 'timeout'));
-  });
-}
-
-void _bgStartTimerIfReady() {
-  if (_bgCanSendLocation) {
-    if (_bgTimer == null || !_bgTimer!.isActive) {
-      _bgStartTimer();
+    if (startedAt != null && DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
+      debugPrint('[BG] stop reason=timeout duration_minutes=${v3TrackingMaxDuration.inMinutes}');
+      await _bgStopTracking(reason: 'timeout');
+      return;
     }
-  } else {
-    _bgTimer?.cancel();
-    _bgTimer = null;
-    debugPrint('[BG] Timer zaustavljen: nedostaju podaci za slanje lokacije');
-  }
-}
 
-void _bgStartTimer() {
-  _bgTimer?.cancel();
-  _bgTimer = Timer.periodic(_kInterval, (_) {
-    unawaited(_bgSendLocation());
-  });
-  // Prvo slanje odmah, ali samo ako su svi uslovi ispunjeni
-  if (_bgCanSendLocation && _bgConfigReady) {
-    unawaited(_bgSendLocation());
-  } else {
-    debugPrint('[BG] Odlažem prvo slanje: canSend=$_bgCanSendLocation configReady=$_bgConfigReady');
+    if (_bgCanSendLocation) {
+      await _bgSendLocation();
+    }
   }
+
+  _bgMainTimer?.cancel();
+  _bgMainTimer = Timer.periodic(_kInterval, (_) => unawaited(tick()));
 }
 
 Future<void> _bgSendLocation() async {
   final vozacId = _bgVozacId;
   if (vozacId == null || vozacId.isEmpty || _bgInFlight) return;
+  if (!_bgCanSendLocation) return;
 
-  if (!_bgCanSendLocation) {
-    // Očekivano stanje dok se termin ne postavi — ne logujemo kao grešku
-    return;
-  }
-
-  if (!_bgConfigReady) {
-    _bgTryInitSupabaseClient();
-    if (_bgSupabaseClient != null) {
-      _bgConfigReady = true;
-    } else {
-      debugPrint('[BG] Supabase config još nije spreman, preskačem slanje');
-      return;
-    }
-  }
-
+  await _bgEnsureSupabaseClientReady();
   final client = _bgSupabaseClient;
   if (client == null) {
-    _bgTryInitSupabaseClient();
-  }
-
-  final activeClient = _bgSupabaseClient;
-  if (activeClient == null) {
     debugPrint('[BG] Supabase client nije inicijalizovan u background isolate-u');
     return;
   }
@@ -584,7 +364,7 @@ Future<void> _bgSendLocation() async {
       ),
     );
 
-    final etaResponse = await activeClient.functions.invoke(
+    final etaResponse = await client.functions.invoke(
       'v3-compute-eta',
       body: <String, dynamic>{
         'vozac_id': vozacId,

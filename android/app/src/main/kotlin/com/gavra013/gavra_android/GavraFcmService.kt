@@ -22,11 +22,13 @@ import io.flutter.plugin.common.MethodChannel
  *      → Flutter prikazuje lokalnu notifikaciju + budi ekran
  *    → ako engine NIJE aktivan (background, ali ne killed): prikazuje nativnu Android notifikaciju
  *      direktno iz Kotlin-a bez Fluttera
- * 2. vozac_auto_start_tracking — UVEK (bez obzira na Flutter engine stanje) upisuje payload
- *    u nativni SharedPreferences fajl koji Dart `shared_preferences` paket čita, i direktno
- *    pokreće `flutter_background_service`-ov headless servis (BackgroundService), koji sadrži
- *    sopstveni, potpuno nezavisan Flutter engine (odvojen od `main_engine` cache-a). Tako se
- *    tracking pokreće automatski i kad je app potpuno ubijena (killed), bez potrebe za tap-om.
+ * 2. vozac_auto_start_tracking — UVEK (bez obzira na Flutter engine stanje) upisuje "željeno
+ *    stanje" (JEDAN IZVOR ISTINE, deljen sa Dart stranom) u nativni SharedPreferences fajl koji
+ *    Dart `shared_preferences` paket čita, i pokreće `flutter_background_service`-ov headless
+ *    servis (BackgroundService) ako već ne radi. Taj servis (Android background isolate) sam
+ *    čita ovo stanje svakih 20s (polling — vidi `v3_background_location_handler.dart`), pa
+ *    radi ispravno i kad je već pokrenut za prethodni termin (ne treba mu restart), i kad je
+ *    app potpuno ubijena (killed).
  *
  * 3. onNewToken — FCM token se regenerisao:
  *    → prosleđuje novi token Flutteru da se sync-uje sa Supabase
@@ -52,13 +54,14 @@ class GavraFcmService : FirebaseMessagingService() {
         // koristi za sve ključeve (vidi shared_preferences_legacy.dart `_prefix`).
         private const val FLUTTER_PREFS_PREFIX = "flutter."
 
-        // Ključevi za native→Dart payload za auto-start tracking (čita ih background isolate
-        // u v3_background_location_handler.dart pri pokretanju headless servisa).
-        private const val KEY_PENDING_VOZAC_ID = "${FLUTTER_PREFS_PREFIX}bg_pending_vozac_id"
-        private const val KEY_PENDING_DATUM_ISO = "${FLUTTER_PREFS_PREFIX}bg_pending_datum_iso"
-        private const val KEY_PENDING_GRAD = "${FLUTTER_PREFS_PREFIX}bg_pending_grad"
-        private const val KEY_PENDING_VREME = "${FLUTTER_PREFS_PREFIX}bg_pending_vreme"
-        private const val KEY_PENDING_TIMESTAMP = "${FLUTTER_PREFS_PREFIX}bg_pending_timestamp"
+        // JEDAN IZVOR ISTINE za "šta bi background tracking trebalo da radi" — moraju biti
+        // identični sa `_kKey*` konstantama u `v3_background_location_handler.dart` i
+        // `V3VozacLocationTrackingService` (Dart strana).
+        private const val KEY_ACTIVE_VOZAC_ID = "${FLUTTER_PREFS_PREFIX}bg_active_vozac_id"
+        private const val KEY_ACTIVE_DATUM_ISO = "${FLUTTER_PREFS_PREFIX}bg_active_datum_iso"
+        private const val KEY_ACTIVE_GRAD = "${FLUTTER_PREFS_PREFIX}bg_active_grad"
+        private const val KEY_ACTIVE_VREME = "${FLUTTER_PREFS_PREFIX}bg_active_vreme"
+        private const val KEY_ACTIVE_STARTED_AT = "${FLUTTER_PREFS_PREFIX}bg_active_started_at"
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -83,8 +86,11 @@ class GavraFcmService : FirebaseMessagingService() {
         }
 
         if (type == "vozac_auto_start_tracking") {
-            handleAutoStartTracking(data)
-            return
+            // Upiši željeno stanje + pokreni servis ako ne radi. NE vraćamo se (return) ovde —
+            // padamo dalje u generički forward-ka-Flutteru kod ispod (isti mehanizam kao za sve
+            // ostale tipove poruka), jer je to jedini način da main isolate (ako je živ) sazna
+            // za ovu poruku. Background isolate ionako sam pokupi promenu preko pollinga.
+            writeDesiredTrackingState(data)
         }
 
         // Prosledi Flutteru via MethodChannel (radi samo ako je engine aktivan)
@@ -108,6 +114,9 @@ class GavraFcmService : FirebaseMessagingService() {
             // Engine nije aktivan (background bez keširanog engine-a).
             // Prikaži nativnu Android notifikaciju samo za data-only poruke.
             // Za poruke sa `notification` payload-om Android već prikazuje system notifikaciju.
+            // vozac_auto_start_tracking nema title/body (data-only push), pa se ovde ništa
+            // ne prikazuje za njega — Android sam prikazuje trajnu "GPS Tracking" notifikaciju
+            // preko foreground servisa pokrenutog ispod.
             android.util.Log.w(TAG, "Flutter engine nije aktivan, prikazujem nativnu notifikaciju.")
             if (remoteMessage.notification == null && (title.isNotEmpty() || body.isNotEmpty())) {
                 showNativeNotification(title, body, type, data)
@@ -116,25 +125,17 @@ class GavraFcmService : FirebaseMessagingService() {
     }
 
     /**
-     * Pokreće GPS tracking automatski, bez obzira na Flutter engine stanje.
+     * Upisuje "željeno stanje" tracking-a u nativni SharedPreferences (isti fajl koji Dart
+     * `shared_preferences` koristi) i pokreće background GPS servis ako već ne radi.
      *
-     * Zašto ovo radi i kad je app potpuno ubijena: umesto da se osloni na `main_engine`
-     * cache (koji je null kad je Activity/Flutter engine mrtav), ovaj metod:
-     *  1) Upisuje payload direktno u nativni `FlutterSharedPreferences` fajl (isti koji
-     *     `package:shared_preferences` koristi na Dart strani), sa `flutter.` prefiksom.
-     *  2) Pokreće `id.flutter.flutter_background_service.BackgroundService` — koji ima
-     *     SOPSTVENI headless Flutter engine, potpuno nezavisan od MainActivity/main_engine,
-     *     konfigurisan preko `flutter_background_service`-ovog `background_handle` (upisan
-     *     ranije u main isolate-u pri `service.configure()`).
-     *  3) `onBackgroundServiceStart` (Dart) pri startu čita ovaj payload i sam pokreće
-     *     activateSlot + GPS tracking — bez tap-a, bez UI-ja, bez `main_engine`.
-     *
-     * Ako je Flutter engine ipak aktivan (foreground), ovo je samo redundantno-bezbedan
-     * fallback — postojeći main isolate flow (`_autoStartVozacTrackingFromPush`) i dalje radi
-     * normalno i preko `onMessage` MethodChannel-a, a `start()` u
-     * `V3VozacLocationTrackingService` je idempotentan za istog vozača.
+     * Ovo je JEDINI posao ove funkcije — ne zna i ne treba da zna da li je servis već radio
+     * za prethodni termin: Dart background isolate (`v3_background_location_handler.dart`)
+     * sam čita ovo stanje svakih 20s i primenjuje razliku (novi vozač/termin), bez obzira da
+     * li je servis "restartovan" ili ne. Ovim se eliminiše prethodni bug gde bi drugi termin
+     * (dok je prvi još u toku) bio tiho ignorisan jer Android servisni sloj ne restartuje
+     * headless Dart engine kad je već pokrenut.
      */
-    private fun handleAutoStartTracking(data: Map<String, String>) {
+    private fun writeDesiredTrackingState(data: Map<String, String>) {
         val vozacId = (data["v3_auth_id"] ?: data["vozac_id"] ?: "").trim()
         val grad = (data["grad"] ?: "").trim().uppercase()
         val vreme = (data["vreme"] ?: "").trim()
@@ -153,51 +154,38 @@ class GavraFcmService : FirebaseMessagingService() {
                 PREFS_FILE_NAME,
                 Context.MODE_PRIVATE,
             )
-            prefs.edit()
-                .putString(KEY_PENDING_VOZAC_ID, vozacId)
-                .putString(KEY_PENDING_DATUM_ISO, datumIso)
-                .putString(KEY_PENDING_GRAD, grad)
-                .putString(KEY_PENDING_VREME, vreme)
-                .putLong(KEY_PENDING_TIMESTAMP, System.currentTimeMillis())
-                .apply()
+
+            // started_at se resetuje SAMO kad je u pitanju novi/drugi vozač — ako je isti vozač
+            // samo dobija novi termin (drugi grad/vreme istog dana), watchdog timer (max trajanje)
+            // se ne restartuje, isto kao što je ranije radio main isolate `setActiveTermin`.
+            val previousVozacId = prefs.getString(KEY_ACTIVE_VOZAC_ID, "") ?: ""
+            val editor = prefs.edit()
+                .putString(KEY_ACTIVE_VOZAC_ID, vozacId)
+                .putString(KEY_ACTIVE_DATUM_ISO, datumIso)
+                .putString(KEY_ACTIVE_GRAD, grad)
+                .putString(KEY_ACTIVE_VREME, vreme)
+            if (previousVozacId != vozacId) {
+                editor.putLong(KEY_ACTIVE_STARTED_AT, System.currentTimeMillis())
+            }
+            editor.apply()
 
             android.util.Log.d(
                 TAG,
-                "Auto-start payload upisan u native prefs: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso",
+                "Željeno stanje upisano: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso (noviVozac=${previousVozacId != vozacId})",
             )
 
-            // Direktno pokreni background service (foreground GPS servis) — headless,
-            // bez potrebe za MainActivity/main_engine. Isti servis koji koristi
-            // `flutter_background_service`, samo pokrenut iz native koda umesto Dart-a.
+            // Pokreni background service (foreground GPS servis) ako već ne radi — headless,
+            // bez potrebe za MainActivity/main_engine. Ako već radi (prati prethodni termin),
+            // ovaj poziv je no-op na Android servisnom sloju, ALI Dart polling ionako pokupi
+            // novo stanje na sledećem tick-u (do 20s), pa nema potrebe da se servis restartuje.
             val serviceIntent = Intent()
             serviceIntent.setClassName(
                 applicationContext,
                 "id.flutter.flutter_background_service.BackgroundService",
             )
             ContextCompat.startForegroundService(applicationContext, serviceIntent)
-
-            android.util.Log.d(TAG, "BackgroundService pokrenut direktno iz GavraFcmService (auto-start tracking)")
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "handleAutoStartTracking greška: ${e.message}", e)
-        }
-
-        // Ako je Flutter main engine ipak aktivan (foreground), prosledi i njemu —
-        // main isolate flow ostaje kao redundantan/idempotentan fallback.
-        val engine = FlutterEngineCache.getInstance().get("main_engine")
-        if (engine != null) {
-            val channel = MethodChannel(engine.dartExecutor.binaryMessenger, FCM_CHANNEL)
-            val handler = android.os.Handler(android.os.Looper.getMainLooper())
-            handler.post {
-                channel.invokeMethod(
-                    "onMessage",
-                    mapOf(
-                        "title" to "",
-                        "body" to "",
-                        "type" to "vozac_auto_start_tracking",
-                        "data" to data,
-                    ),
-                )
-            }
+            android.util.Log.e(TAG, "writeDesiredTrackingState greška: ${e.message}", e)
         }
     }
 

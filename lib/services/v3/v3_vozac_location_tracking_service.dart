@@ -5,11 +5,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_time_utils.dart';
+import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
 enum V3LocationPrereqStatus {
@@ -47,17 +49,24 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   DateTime? _iosLastEtaComputedAt;
   static const Duration _iosForcedRefreshInterval = Duration(seconds: 20);
 
+  // Supabase kredencijali i dalje idu preko SecureStorage (osetljivi podaci).
+  // Mora biti identično sa konstantama u v3_background_location_handler.dart
   static const _secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  static const String _kStorageStartedAt = 'vozac_tracking_started_at';
-  static const String _kStorageVozacId = 'vozac_tracking_vozac_id';
-  static const String _kStorageDatumIso = 'vozac_tracking_datum_iso';
-  static const String _kStorageGrad = 'vozac_tracking_grad';
-  static const String _kStorageVreme = 'vozac_tracking_vreme';
-  // Mora biti identično sa konstantama u v3_background_location_handler.dart
   static const String _kStorageSupabaseUrl = 'bg_tracking_supabase_url';
   static const String _kStorageSupabaseAnonKey = 'bg_tracking_supabase_anon_key';
+
+  // JEDAN IZVOR ISTINE za "šta bi background tracking trebalo da radi" —
+  // obična SharedPreferences (ne secure storage), jer isti fajl piše i
+  // GavraFcmService.kt (native, cold-start bez main isolate-a). Ključevi
+  // MORAJU biti identični sa `_kKey*` konstantama u
+  // v3_background_location_handler.dart i `KEY_ACTIVE_*` u GavraFcmService.kt.
+  static const String _kKeyVozacId = 'bg_active_vozac_id';
+  static const String _kKeyDatumIso = 'bg_active_datum_iso';
+  static const String _kKeyGrad = 'bg_active_grad';
+  static const String _kKeyVreme = 'bg_active_vreme';
+  static const String _kKeyStartedAt = 'bg_active_started_at';
 
   /// Optimizovani redosled putnika (deljen između ekrana)
   final List<String> _optimizedPutnikIds = [];
@@ -91,86 +100,49 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     return value.split('T').first;
   }
 
-  Future<void> _syncBackgroundSupabaseConfig(FlutterBackgroundService service) async {
-    try {
-      if (!configService.isInitialized) {
-        await configService.initializeBasic();
-      }
-      final url = configService.getSupabaseUrl().trim();
-      final anonKey = configService.getSupabaseAnonKey().trim();
-      if (url.isEmpty || anonKey.isEmpty) {
-        debugPrint('[V3VozacLocationTrackingService] Supabase config empty, cannot sync to background');
-        return;
-      }
-      service.invoke('set_supabase_config', {'url': url, 'anon_key': anonKey});
-    } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] Failed to sync Supabase config to background: $e');
-    }
-  }
-
-  Future<Map<String, String>> _loadSupabaseConfigForBackground() async {
+  /// Upisuje "željeno stanje" u obični SharedPreferences fajl — JEDINO mesto
+  /// gde main isolate govori background isolate-u šta treba da prati. Background
+  /// isolate (Android) ovo čita svakih 20s (polling), pa nema potrebe za bilo
+  /// kakvim `service.invoke()` event-ima za prenos termina/vozača/kredencijala.
+  Future<void> _writeDesiredState({required String vozacId}) async {
     if (!configService.isInitialized) {
       await configService.initializeBasic();
     }
     final url = configService.getSupabaseUrl().trim();
     final anonKey = configService.getSupabaseAnonKey().trim();
-    return <String, String>{
-      'url': url,
-      'anon_key': anonKey,
-    };
-  }
-
-  Future<void> _syncBackgroundStartPayload({
-    required FlutterBackgroundService service,
-    required String vozacId,
-  }) async {
-    try {
-      final supabaseConfig = await _loadSupabaseConfigForBackground();
-      final url = supabaseConfig['url'] ?? '';
-      final anonKey = supabaseConfig['anon_key'] ?? '';
-      if (url.isEmpty || anonKey.isEmpty) {
-        debugPrint('[V3VozacLocationTrackingService] Unified start payload skipped: supabase config empty');
-        return;
-      }
-
-      // Perzistuj Supabase config u SecureStorage da ga BG isolate može
-      // pročitati pri cold-start (killed app) bez main isolate-a.
+    if (url.isNotEmpty && anonKey.isNotEmpty) {
+      // Supabase kredencijali i dalje idu preko SecureStorage (osetljivi podaci),
+      // potrebni background isolate-u za cold-start bez main isolate-a.
       unawaited(_secureStorage.write(key: _kStorageSupabaseUrl, value: url));
       unawaited(_secureStorage.write(key: _kStorageSupabaseAnonKey, value: anonKey));
+    }
 
-      service.invoke('set_start_payload', {
-        'vozac_id': vozacId,
-        'datum_iso': _activeDatumIso,
-        'grad': _activeGrad,
-        'vreme': _activeVreme,
-        'started_at': _trackingStartedAt?.toIso8601String(),
-        'supabase_url': url,
-        'supabase_anon_key': anonKey,
-      });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kKeyVozacId, vozacId);
+      await prefs.setString(_kKeyDatumIso, _activeDatumIso);
+      await prefs.setString(_kKeyGrad, _activeGrad);
+      await prefs.setString(_kKeyVreme, _activeVreme);
+      final startedAt = _trackingStartedAt;
+      if (startedAt != null) {
+        await prefs.setInt(_kKeyStartedAt, startedAt.millisecondsSinceEpoch);
+      }
     } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] Failed to sync unified start payload: $e');
+      debugPrint('[V3VozacLocationTrackingService] Greška pri upisu željenog stanja: $e');
     }
   }
 
-  Future<void> _dispatchBackgroundTrackingState({
-    required FlutterBackgroundService service,
-    required String vozacId,
-    bool includeLegacyFallback = true,
-  }) async {
-    await _syncBackgroundSupabaseConfig(service);
-    await _syncBackgroundStartPayload(service: service, vozacId: vozacId);
-
-    if (!includeLegacyFallback) {
-      return;
+  Future<void> _clearDesiredState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kKeyVozacId);
+      await prefs.remove(_kKeyDatumIso);
+      await prefs.remove(_kKeyGrad);
+      await prefs.remove(_kKeyVreme);
+      await prefs.remove(_kKeyStartedAt);
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] Greška pri brisanju željenog stanja: $e');
     }
-
-    service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
-    service.invoke('set_vozac_id', {
-      'vozac_id': vozacId,
-      'datum_iso': _activeDatumIso,
-      'grad': _activeGrad,
-      'vreme': _activeVreme,
-    });
   }
 
   void setActiveTermin({required String datumIso, required String grad, required String vreme}) {
@@ -182,18 +154,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _optimizedPutnikIds.clear();
     _etaSecondsCache.clear();
 
-    // Prosledi background servisu da i on šalje pravilne vrednosti
-    final service = FlutterBackgroundService();
-    service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
-
     if (_isRunning && _activeVozacId.isNotEmpty) {
-      unawaited(_syncBackgroundStartPayload(service: service, vozacId: _activeVozacId));
-      service.invoke('set_vozac_id', {
-        'vozac_id': _activeVozacId,
-        'datum_iso': _activeDatumIso,
-        'grad': _activeGrad,
-        'vreme': _activeVreme,
-      });
+      unawaited(_writeDesiredState(vozacId: _activeVozacId));
     }
   }
 
@@ -303,7 +265,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         if (await service.isRunning()) {
           debugPrint(
               '[V3VozacLocationTrackingService] Već aktivno za istog vozača — ažuriram termin: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
-          await _dispatchBackgroundTrackingState(service: service, vozacId: normalizedVozacId);
+          await _writeDesiredState(vozacId: normalizedVozacId);
         }
         return; // finally će resetovati _startInProgress
       }
@@ -315,11 +277,18 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
       _activeVozacId = normalizedVozacId;
       _trackingStartedAt = DateTime.now();
-      unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _trackingStartedAt!.toIso8601String()));
-      unawaited(_secureStorage.write(key: _kStorageVozacId, value: normalizedVozacId));
-      unawaited(_secureStorage.write(key: _kStorageDatumIso, value: _activeDatumIso));
-      unawaited(_secureStorage.write(key: _kStorageGrad, value: _activeGrad));
-      unawaited(_secureStorage.write(key: _kStorageVreme, value: _activeVreme));
+
+      // Napomena: ove SecureStorage kljuceve i dalje koristi SAMO iOS restore
+      // put (_restoreAndResumeIfNeeded) jer iOS nema headless background
+      // isolate koji bi mogao da čita unified SharedPreferences stanje kad je
+      // app killed — Android koristi isključivo _writeDesiredState ispod.
+      if (Platform.isIOS) {
+        unawaited(_secureStorage.write(key: 'vozac_tracking_started_at', value: _trackingStartedAt!.toIso8601String()));
+        unawaited(_secureStorage.write(key: 'vozac_tracking_vozac_id', value: normalizedVozacId));
+        unawaited(_secureStorage.write(key: 'vozac_tracking_datum_iso', value: _activeDatumIso));
+        unawaited(_secureStorage.write(key: 'vozac_tracking_grad', value: _activeGrad));
+        unawaited(_secureStorage.write(key: 'vozac_tracking_vreme', value: _activeVreme));
+      }
 
       final prereqStatus = await checkLocationPrerequisites();
       if (prereqStatus != V3LocationPrereqStatus.ok) {
@@ -327,6 +296,18 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         await stop();
         return; // finally će resetovati _startInProgress
       }
+
+      // Aktiviraj slot red (idempotentan upsert) — jedina implementacija ove
+      // logike, deljena i sa background isolate-om (v3_slot_activation.dart).
+      unawaited(activateSlotWithRetry(
+        client: Supabase.instance.client,
+        vozacId: normalizedVozacId,
+        datumIso: _activeDatumIso,
+        grad: _activeGrad,
+        vreme: _activeVreme,
+        logTag: '[V3VozacLocationTrackingService]',
+        log: debugPrint,
+      ));
 
       if (Platform.isIOS) {
         await _startIosTracking();
@@ -351,7 +332,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         }
       }
 
-      await _dispatchBackgroundTrackingState(service: service, vozacId: normalizedVozacId);
+      await _writeDesiredState(vozacId: normalizedVozacId);
 
       _isRunning = true;
     } finally {
@@ -375,11 +356,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _optimizedPutnikIds.clear();
     _etaSecondsCache.clear();
 
-    unawaited(_secureStorage.delete(key: _kStorageStartedAt));
-    unawaited(_secureStorage.delete(key: _kStorageVozacId));
-    unawaited(_secureStorage.delete(key: _kStorageDatumIso));
-    unawaited(_secureStorage.delete(key: _kStorageGrad));
-    unawaited(_secureStorage.delete(key: _kStorageVreme));
+    unawaited(_clearDesiredState());
+    unawaited(_secureStorage.delete(key: 'vozac_tracking_started_at'));
+    unawaited(_secureStorage.delete(key: 'vozac_tracking_vozac_id'));
+    unawaited(_secureStorage.delete(key: 'vozac_tracking_datum_iso'));
+    unawaited(_secureStorage.delete(key: 'vozac_tracking_grad'));
+    unawaited(_secureStorage.delete(key: 'vozac_tracking_vreme'));
 
     await _iosPositionSub?.cancel();
     _iosPositionSub = null;
@@ -521,14 +503,47 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// sesije (vozacId/grad/vreme/datum + started_at), bez potrebe za ručnim startom.
   Future<void> _restoreAndResumeIfNeeded() async {
     try {
-      final startedRaw = await _secureStorage.read(key: _kStorageStartedAt);
+      if (_isRunning) return;
+
+      if (!Platform.isIOS) {
+        // Na Androidu je background isolate (headless) sam-dovoljan: čita
+        // željeno stanje direktno iz SharedPreferences svakih 20s i nastavlja
+        // rad i bez učešća main isolate-a. Ovde samo osvežimo lokalni UI-state
+        // (_activeVozacId/_isRunning) ako je servis zatečen kao već pokrenut,
+        // bez ponovnog upisivanja bilo čega.
+        final service = FlutterBackgroundService();
+        final isServiceRunning = await service.isRunning();
+        if (!isServiceRunning) return;
+
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final vozacId = (prefs.getString(_kKeyVozacId) ?? '').trim();
+          final datumIso = (prefs.getString(_kKeyDatumIso) ?? '').trim();
+          final grad = (prefs.getString(_kKeyGrad) ?? '').trim();
+          final vreme = (prefs.getString(_kKeyVreme) ?? '').trim();
+          final startedAtMs = prefs.getInt(_kKeyStartedAt) ?? 0;
+          if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
+
+          _activeVozacId = vozacId;
+          _activeDatumIso = datumIso;
+          _activeGrad = grad;
+          _activeVreme = vreme;
+          _trackingStartedAt = startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : DateTime.now();
+          _isRunning = true;
+          debugPrint(
+              '[V3VozacLocationTrackingService][Android] Zatečen aktivan BG servis: vozac=$vozacId grad=$grad vreme=$vreme');
+        } catch (e) {
+          debugPrint('[V3VozacLocationTrackingService][Android] Greška pri čitanju stanja: $e');
+        }
+        return;
+      }
+
+      final startedRaw = await _secureStorage.read(key: 'vozac_tracking_started_at');
       if (startedRaw == null || startedRaw.isEmpty) return;
 
       final startedAt = DateTime.tryParse(startedRaw);
       if (startedAt == null) return;
       _trackingStartedAt = startedAt;
-
-      if (_isRunning) return;
 
       // Ako je vreme trajanja već isteklo, samo očisti sesiju umesto restarta.
       if (DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
@@ -538,41 +553,16 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         return;
       }
 
-      final vozacId = (await _secureStorage.read(key: _kStorageVozacId) ?? '').trim();
-      final datumIso = (await _secureStorage.read(key: _kStorageDatumIso) ?? '').trim();
-      final grad = (await _secureStorage.read(key: _kStorageGrad) ?? '').trim();
-      final vreme = (await _secureStorage.read(key: _kStorageVreme) ?? '').trim();
+      final vozacId = (await _secureStorage.read(key: 'vozac_tracking_vozac_id') ?? '').trim();
+      final datumIso = (await _secureStorage.read(key: 'vozac_tracking_datum_iso') ?? '').trim();
+      final grad = (await _secureStorage.read(key: 'vozac_tracking_grad') ?? '').trim();
+      final vreme = (await _secureStorage.read(key: 'vozac_tracking_vreme') ?? '').trim();
 
       if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
 
       _activeDatumIso = datumIso;
       _activeGrad = grad;
       _activeVreme = vreme;
-
-      if (!Platform.isIOS) {
-        final service = FlutterBackgroundService();
-        final isServiceRunning = await service.isRunning();
-        if (!isServiceRunning) {
-          debugPrint('[V3VozacLocationTrackingService][Android] Nema aktivnog BG servisa, čistim stale sesiju.');
-          await stop();
-          return;
-        }
-
-        _activeVozacId = vozacId;
-        _isRunning = true;
-        await _syncBackgroundSupabaseConfig(service);
-        service.invoke('request_state', {});
-        service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
-        service.invoke('set_vozac_id', {
-          'vozac_id': vozacId,
-          'datum_iso': _activeDatumIso,
-          'grad': _activeGrad,
-          'vreme': _activeVreme,
-        });
-        debugPrint(
-            '[V3VozacLocationTrackingService][Android] Obnovljena sačuvana sesija: vozac=$vozacId grad=$grad vreme=$vreme');
-        return;
-      }
 
       // Na iOS-u proveravamo starost sesije — kao što BG watchdog radi na Androidu.
       if (DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
