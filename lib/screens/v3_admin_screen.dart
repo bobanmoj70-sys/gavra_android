@@ -698,6 +698,11 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                               'bc_custom_by_day': bcByDayNorm,
                               'vs_custom_by_day': vsByDayNorm,
                             });
+                            try {
+                              await supabase.rpc('seed_kapacitet_slots_for_active_week');
+                            } catch (seedError) {
+                              debugPrint('[AdminScreen] seed_kapacitet_slots_for_active_week error: $seedError');
+                            }
                             if (!mounted) return;
                             Navigator.of(dialogContext).pop();
                             V3AppSnackBar.success(this.context, _tr('customVremenaSacuvana'));
