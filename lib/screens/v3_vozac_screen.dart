@@ -1118,10 +1118,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isEmpty || _selectedGrad.isEmpty || _selectedVreme.isEmpty) return;
 
-    final preostali = _mojiPutnici.where((item) => !_isPutnikEntryCompleted(item)).toList(growable: false);
-
+    // NAPOMENA: šaljemo SVE putnike (uključujući pokupljene/otkazane), ne samo
+    // preostale. `waypoints_json.passengers` mora ostati statički snimak cele
+    // dodele za ovaj slot — jedini izvor istine za "da li je putnik završen"
+    // je `v3_operativna_nedelja.pokupljen_at/otkazano_at`, koji autostop
+    // provere (iOS/Android BG) i OSRM "remaining" filter (v3-compute-eta)
+    // već ispravno koriste preko posebnog upita. Ako bismo ovde filtrirali
+    // završene putnike, poslednji pokupljen/otkazan putnik bi ispraznio celu
+    // listu, a autostop provere tumače praznu listu kao "nema podataka" (ne
+    // "svi gotovi"), pa tracking nikad ne bi automatski stao.
     final passengerData = <Map<String, dynamic>>[];
-    for (final item in preostali) {
+    for (final item in _mojiPutnici) {
       final terminId = (item.entry?.id ?? '').trim();
       if (terminId.isEmpty) continue;
 

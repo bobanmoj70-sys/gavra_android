@@ -38,16 +38,16 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// iOS nema pravi background isolate (flutter_background_service na iOS-u
   /// se oslanja na retke/negarantovane background fetch pozive). Zato na iOS-u
   /// koristimo Geolocator position stream sa allowsBackgroundLocationUpdates,
-  /// koji iOS budi na promenu lokacije čak i kad je app suspendovana.
+  /// koji iOS budi na promenu lokacije čak i kad je app suspendovana. Stream
+  /// SAMO osvežava poslednju poznatu poziciju (jeftino, bez mreže) — jedini
+  /// izvor istine za "kada se šalje GPS/ETA" je `_iosMainTimer` ispod, isti
+  /// model kao Android-ov `Timer.periodic(20s)` u background isolate-u. Ovo
+  /// eliminiše zavisnost od toga da li GPS stream emituje evente dok vozač
+  /// stoji (nije garantovano) — tajmer garantuje tačan tick svakih 20s.
   StreamSubscription<Position>? _iosPositionSub;
   bool _iosInFlight = false;
-  Timer? _iosWatchdogTimer;
-
-  /// Vreme poslednjeg ETA obračuna na iOS-u. Koristi se da se ETA prisilno
-  /// osveži i kad vozač stoji (distanceFilter od 20m ne bi inače emitovao
-  /// update), tako da iOS ima isto ponašanje kao Android-ov fiksni 20s tajmer.
-  DateTime? _iosLastEtaComputedAt;
-  static const Duration _iosForcedRefreshInterval = Duration(seconds: 20);
+  Timer? _iosMainTimer;
+  static const Duration _iosTickInterval = Duration(seconds: 20);
 
   // Supabase kredencijali i dalje idu preko SecureStorage (osetljivi podaci).
   // Mora biti identično sa konstantama u v3_background_location_handler.dart
@@ -365,9 +365,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     await _iosPositionSub?.cancel();
     _iosPositionSub = null;
-    _iosWatchdogTimer?.cancel();
-    _iosWatchdogTimer = null;
-    _iosLastEtaComputedAt = null;
+    _iosMainTimer?.cancel();
+    _iosMainTimer = null;
 
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
@@ -564,14 +563,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _activeGrad = grad;
       _activeVreme = vreme;
 
-      // Na iOS-u proveravamo starost sesije — kao što BG watchdog radi na Androidu.
-      if (DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
-        debugPrint(
-            '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_restore duration_minutes=${v3TrackingMaxDuration.inMinutes}');
-        await stop();
-        return;
-      }
-
+      // Napomena: timeout je već proveren gore (odmah nakon parsiranja
+      // startedAt) — druga identična provera ovde je bila mrtav kod (isti
+      // startedAt, praktično isti `now`), uklonjena kao suvišan fallback.
       debugPrint(
           '[V3VozacLocationTrackingService][iOS] Nastavljam sačuvanu sesiju: vozac=$vozacId grad=$grad vreme=$vreme');
       await start(vozacId: vozacId);
@@ -586,11 +580,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// koji iOS budi na promenu lokacije čak i kad je app suspendovana.
   ///
   /// distanceFilter: 0 znači da GPS hardware/OS ne filtrira update-e po
-  /// pomaku — stream javlja svaku promenu pozicije koju iOS detektuje.
-  /// Throttlovanje ka computeEta()/OSRM pozivu se radi u kodu (vremenski,
-  /// najviše jednom na _iosForcedRefreshInterval), a ne preko distanceFilter-a
-  /// — tako ETA ostaje sveža i kad vozač stoji, a ne šalje se prekomerno
-  /// često kad se kreće.
+  /// pomaku — stream samo osvežava _lastSentPosition (jeftino). Stvarno
+  /// slanje GPS-a/ETA obračun ide isključivo preko `_iosMainTimer`
+  /// (Timer.periodic 20s) u `_iosTick()` — isti "jedan izvor istine" model
+  /// kao Android-ov background isolate tajmer, garantovano na svakih 20s
+  /// bez obzira da li stream u međuvremenu emituje evente.
   Future<void> _startIosTracking() async {
     await _iosPositionSub?.cancel();
     _isRunning = true;
@@ -604,72 +598,59 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       allowBackgroundLocationUpdates: true,
     );
 
+    // Stream SAMO osvežava _lastSentPosition (jeftino) — ne pokreće mrežne
+    // pozive. Jedini okidač za computeEta()/GPS slanje je _iosMainTimer ispod.
     _iosPositionSub = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (position) {
-        unawaited(_handleIosPosition(position));
+        _lastSentPosition = position;
       },
       onError: (Object e) {
         debugPrint('[V3VozacLocationTrackingService][iOS] position stream error: $e');
       },
     );
 
-    // Prvi ETA odmah po startu (bez čekanja na prvi stream event),
-    // koristeći trenutnu GPS poziciju vozača.
-    unawaited(() async {
-      try {
-        final initialPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 12),
-          ),
-        );
-        await _handleIosPosition(initialPosition);
-      } catch (e) {
-        debugPrint('[V3VozacLocationTrackingService][iOS] initial position error: $e');
-      }
-    }());
-
-    // GPS stream sam po sebi ne throttluje po vremenu (može javljati poziciju
-    // i svake 1-2s), pa se throttlovanje ka computeEta()/OSRM radi u kodu,
-    // u _handleIosPosition, tačno kao Android-ov fiksni Timer.periodic(20s).
-    // Watchdog tajmer ovde služi samo za auto-stop nakon v3TrackingMaxDuration.
-    _iosWatchdogTimer?.cancel();
-    _iosWatchdogTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      final startedAt = _trackingStartedAt;
-      if (startedAt == null) return;
-      if (DateTime.now().difference(startedAt) < v3TrackingMaxDuration) return;
-
-      debugPrint(
-          '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_watchdog duration_minutes=${v3TrackingMaxDuration.inMinutes}');
-      unawaited(stop());
-    });
+    // Jedan periodični tajmer (20s) — JEDINI izvor istine za slanje GPS
+    // pozicije/ETA na iOS-u, potpuno analogan Android-ovom
+    // `Timer.periodic(20s)` u background isolate-u. Ovo garantuje tačan tick
+    // svakih 20s bez obzira da li GPS stream emituje evente (npr. dok vozač
+    // stoji), za razliku od prethodnog pristupa gde je stream event bio
+    // (negarantovan) okidač.
+    _iosMainTimer?.cancel();
+    unawaited(_iosTick()); // odmah prvi tick, bez čekanja na prvi period
+    _iosMainTimer = Timer.periodic(_iosTickInterval, (_) => unawaited(_iosTick()));
   }
 
-  Future<void> _handleIosPosition(Position position) async {
+  Future<void> _iosTick() async {
     if (_iosInFlight) return;
-    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) return;
 
-    // Vremenski throttle: ne zovi computeEta()/OSRM češće od jednom na
-    // _iosForcedRefreshInterval (20s), bez obzira koliko često GPS stream
-    // javlja poziciju. Uvek ažuriramo _lastSentPosition (za UI/druge svrhe),
-    // ali stvarni mrežni poziv ide najviše svakih 20s — identično Androidu.
-    final lastComputed = _iosLastEtaComputedAt;
-    _lastSentPosition = position;
-    if (lastComputed != null && DateTime.now().difference(lastComputed) < _iosForcedRefreshInterval) {
-      return;
-    }
-
-    // 55-min auto-stop watchdog (iOS ekvivalent Android background isolate watchdoga)
     final startedAt = _trackingStartedAt;
     if (startedAt != null && DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
       debugPrint(
-          '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_position_handler duration_minutes=${v3TrackingMaxDuration.inMinutes}');
+          '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_main_timer duration_minutes=${v3TrackingMaxDuration.inMinutes}');
       await stop();
       return;
     }
 
+    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) return;
+
     _iosInFlight = true;
     try {
+      var position = _lastSentPosition;
+      if (position == null) {
+        try {
+          position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 12),
+            ),
+          );
+          _lastSentPosition = position;
+        } catch (e) {
+          debugPrint('[V3VozacLocationTrackingService][iOS] tick position error: $e');
+          return;
+        }
+      }
+
       await computeEta(
         vozacId: _activeVozacId,
         lat: position.latitude,
@@ -678,13 +659,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         vreme: _activeVreme,
         datumIso: _activeDatumIso,
       );
-      _iosLastEtaComputedAt = DateTime.now();
       onLocationSent?.call(position);
 
       // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.
       if (await _allPassengersCompleted()) {
-        debugPrint(
-            '[V3VozacLocationTrackingService][iOS] stop reason=all_passengers_completed source=ios_position_handler');
+        debugPrint('[V3VozacLocationTrackingService][iOS] stop reason=all_passengers_completed source=ios_main_timer');
         await stop();
       }
     } catch (e) {
