@@ -328,6 +328,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   }
 
   _bgMainTimer?.cancel();
+  unawaited(tick()); // odmah prvi tick (isti model kao iOS _iosTick()), bez čekanja na prvi period
   _bgMainTimer = Timer.periodic(_kInterval, (_) => unawaited(tick()));
 }
 
