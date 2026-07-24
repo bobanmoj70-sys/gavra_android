@@ -12,6 +12,7 @@ import 'v3_tracking_config.dart';
 /// Konstante za background servis
 const String _kVozacId = 'vozac_id';
 const String _kSetSupabaseConfig = 'set_supabase_config';
+const String _kSetStartPayload = 'set_start_payload';
 const String _kActionStop = 'stop';
 const String _kReady = 'ready';
 const String _kRequestState = 'request_state';
@@ -203,7 +204,53 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     _bgTryInitSupabaseClient();
     if (_bgSupabaseClient != null) {
       _bgConfigReady = true;
+      if (_bgCanSendLocation) {
+        _bgStartTimerIfReady();
+      }
     }
+  });
+
+  service.on(_kSetStartPayload).listen((event) {
+    final id = (event?[_kVozacId] ?? '').toString().trim();
+    final datumIso = (event?['datum_iso'] ?? '').toString().trim();
+    final grad = (event?['grad'] ?? '').toString().trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm((event?['vreme'] ?? '').toString());
+    final startedAtRaw = (event?['started_at'] ?? '').toString().trim();
+    final supabaseUrl = (event?['supabase_url'] ?? '').toString().trim();
+    final supabaseAnonKey = (event?['supabase_anon_key'] ?? '').toString().trim();
+
+    if (id.isNotEmpty) {
+      _bgVozacId = id;
+    }
+    if (datumIso.isNotEmpty) {
+      _bgDatumIso = datumIso;
+    }
+    if (grad.isNotEmpty) {
+      _bgGrad = grad;
+    }
+    if (vreme.isNotEmpty) {
+      _bgVreme = vreme;
+    }
+
+    if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
+      _bgSupabaseUrl = supabaseUrl;
+      _bgSupabaseAnonKey = supabaseAnonKey;
+      _bgSupabaseClient = null;
+      _bgConfigReady = false;
+      _bgTryInitSupabaseClient();
+      if (_bgSupabaseClient != null) {
+        _bgConfigReady = true;
+      }
+    }
+
+    if (_bgTrackingStartedAt == null) {
+      _bgTrackingStartedAt = DateTime.tryParse(startedAtRaw) ?? DateTime.now();
+      unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _bgTrackingStartedAt!.toIso8601String()));
+    }
+
+    debugPrint(
+        '[BG] Unified start payload primljen: vozac=$_bgVozacId datum=$_bgDatumIso grad=$_bgGrad vreme=$_bgVreme configReady=$_bgConfigReady');
+    _bgStartTimerIfReady();
   });
 
   service.on(_kActionStop).listen((event) async {

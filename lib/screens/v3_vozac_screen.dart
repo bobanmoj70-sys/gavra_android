@@ -567,7 +567,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Ako je tracking već aktivan za istog vozača, samo ažuriraj termin.
     if (V3VozacLocationTrackingService.instance.isRunning &&
         V3VozacLocationTrackingService.instance.activeVozacId == vozacId) {
-      V3VozacLocationTrackingService.instance.setActiveTermin(
+      await V3VozacLocationTrackingService.instance.startFromPayload(
+        vozacId: vozacId,
         datumIso: datumIso,
         grad: grad,
         vreme: vreme,
@@ -597,13 +598,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return;
     }
 
-    V3VozacLocationTrackingService.instance.setActiveTermin(
+    await V3VozacLocationTrackingService.instance.startFromPayload(
+      vozacId: vozacId,
       datumIso: datumIso,
       grad: grad,
       vreme: vreme,
     );
-
-    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
 
     if (mounted) {
       V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);

@@ -765,12 +765,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         }
       }
 
-      V3VozacLocationTrackingService.instance.setActiveTermin(
+      await V3VozacLocationTrackingService.instance.startFromPayload(
+        vozacId: vozacId,
         datumIso: datumIso,
         grad: grad,
         vreme: vreme,
       );
-      await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
     }
     return;
   }
@@ -1170,12 +1170,12 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
     }
   }
 
-  V3VozacLocationTrackingService.instance.setActiveTermin(
+  await V3VozacLocationTrackingService.instance.startFromPayload(
+    vozacId: vozacId,
     datumIso: datumIso,
     grad: grad,
     vreme: vreme,
   );
-  await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
 }
 
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)

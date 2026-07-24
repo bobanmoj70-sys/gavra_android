@@ -104,6 +104,66 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
+  Future<Map<String, String>> _loadSupabaseConfigForBackground() async {
+    if (!configService.isInitialized) {
+      await configService.initializeBasic();
+    }
+    final url = configService.getSupabaseUrl().trim();
+    final anonKey = configService.getSupabaseAnonKey().trim();
+    return <String, String>{
+      'url': url,
+      'anon_key': anonKey,
+    };
+  }
+
+  Future<void> _syncBackgroundStartPayload({
+    required FlutterBackgroundService service,
+    required String vozacId,
+  }) async {
+    try {
+      final supabaseConfig = await _loadSupabaseConfigForBackground();
+      final url = supabaseConfig['url'] ?? '';
+      final anonKey = supabaseConfig['anon_key'] ?? '';
+      if (url.isEmpty || anonKey.isEmpty) {
+        debugPrint('[V3VozacLocationTrackingService] Unified start payload skipped: supabase config empty');
+        return;
+      }
+
+      service.invoke('set_start_payload', {
+        'vozac_id': vozacId,
+        'datum_iso': _activeDatumIso,
+        'grad': _activeGrad,
+        'vreme': _activeVreme,
+        'started_at': _trackingStartedAt?.toIso8601String(),
+        'supabase_url': url,
+        'supabase_anon_key': anonKey,
+      });
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] Failed to sync unified start payload: $e');
+    }
+  }
+
+  Future<void> _dispatchBackgroundTrackingState({
+    required FlutterBackgroundService service,
+    required String vozacId,
+    bool includeLegacyFallback = true,
+  }) async {
+    await _syncBackgroundSupabaseConfig(service);
+    await _syncBackgroundStartPayload(service: service, vozacId: vozacId);
+
+    if (!includeLegacyFallback) {
+      return;
+    }
+
+    service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
+    service.invoke('set_vozac_id', {
+      'vozac_id': vozacId,
+      'datum_iso': _activeDatumIso,
+      'grad': _activeGrad,
+      'vreme': _activeVreme,
+    });
+  }
+
   void setActiveTermin({required String datumIso, required String grad, required String vreme}) {
     _activeDatumIso = _normalizeDateIso(datumIso);
     _activeGrad = grad.trim().toUpperCase();
@@ -118,6 +178,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
 
     if (_isRunning && _activeVozacId.isNotEmpty) {
+      unawaited(_syncBackgroundStartPayload(service: service, vozacId: _activeVozacId));
       service.invoke('set_vozac_id', {
         'vozac_id': _activeVozacId,
         'datum_iso': _activeDatumIso,
@@ -125,6 +186,32 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         'vreme': _activeVreme,
       });
     }
+  }
+
+  Future<void> startFromPayload({
+    required String vozacId,
+    required String datumIso,
+    required String grad,
+    required String vreme,
+  }) async {
+    final normalizedVozacId = vozacId.trim();
+    final normalizedGrad = grad.trim().toUpperCase();
+    final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normalizedDatumIso = _normalizeDateIso(datumIso);
+
+    if (normalizedVozacId.isEmpty || normalizedDatumIso.isEmpty || normalizedGrad.isEmpty || normalizedVreme.isEmpty) {
+      debugPrint(
+          '[V3VozacLocationTrackingService] startFromPayload skipped: invalid payload vozac=$normalizedVozacId datum=$normalizedDatumIso grad=$normalizedGrad vreme=$normalizedVreme');
+      return;
+    }
+
+    setActiveTermin(
+      datumIso: normalizedDatumIso,
+      grad: normalizedGrad,
+      vreme: normalizedVreme,
+    );
+
+    await start(vozacId: normalizedVozacId);
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) async {
@@ -198,13 +285,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       if (await service.isRunning()) {
         debugPrint(
             '[V3VozacLocationTrackingService] Već aktivno za istog vozača — ažuriram termin: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
-        service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
-        service.invoke('set_vozac_id', {
-          'vozac_id': normalizedVozacId,
-          'datum_iso': _activeDatumIso,
-          'grad': _activeGrad,
-          'vreme': _activeVreme,
-        });
+        await _dispatchBackgroundTrackingState(service: service, vozacId: normalizedVozacId);
       }
       return;
     }
@@ -252,17 +333,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       }
     }
 
-    await _syncBackgroundSupabaseConfig(service);
+    await _dispatchBackgroundTrackingState(service: service, vozacId: normalizedVozacId);
 
     _isRunning = true;
-
-    service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
-    service.invoke('set_vozac_id', {
-      'vozac_id': normalizedVozacId,
-      'datum_iso': _activeDatumIso,
-      'grad': _activeGrad,
-      'vreme': _activeVreme,
-    });
   }
 
   Future<void> stop() async {
