@@ -300,6 +300,9 @@ async function sendFcm(
       if (body) androidData.body = body;
     }
 
+    const effectiveType = String(data.type ?? '').trim();
+    const isAutoStartTracking = effectiveType === 'vozac_auto_start_tracking';
+
     const message: Record<string, unknown> = {
       token,
       // top-level data ide na sve platforme (type, event_id, itd.)
@@ -314,7 +317,13 @@ async function sendFcm(
         payload: {
           aps: dataOnly
             ? { 'content-available': 1 }
-            : { alert: { title, body }, sound: 'default' },
+            : {
+                alert: { title, body },
+                sound: 'default',
+                // Za auto-start tracking uvek šaljemo content-available kako bi iOS
+                // pokrenuo background handler i automatski započeo tracking bez tap-a.
+                ...(isAutoStartTracking ? { 'content-available': 1 } : {}),
+              },
         },
       },
     };

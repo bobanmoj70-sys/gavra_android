@@ -8,14 +8,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_time_utils.dart';
+import 'v3_tracking_config.dart';
 
 enum V3LocationPrereqStatus {
   ok,
   serviceDisabled,
   denied,
-  deniedForever,
-  needsAlwaysPermission,
 }
 
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
@@ -29,10 +29,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   String _activeVreme = '';
   Position? _lastSentPosition;
   bool _isRunning = false;
-
-  /// Tracking se automatski gasi ako traje duže od ovog vremena
-  /// (safety net ako se ne detektuje da su svi putnici pokupljeni).
-  static const Duration _maxTrackingDuration = Duration(minutes: 55);
 
   DateTime? _trackingStartedAt;
 
@@ -142,13 +138,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
-  /// Proverava da li je vrednost timestamp setovana.
-  bool _isTimestampSet(Object? value) {
-    if (value == null) return false;
-    if (value is String) return value.trim().isNotEmpty;
-    return true;
-  }
-
   /// Proverava da li su svi putnici u aktivnom slotu završeni
   /// (pokupljeni ili otkazani). Vraća false ako nema putnika.
   Future<bool> _allPassengersCompleted() async {
@@ -187,8 +176,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       if (rows.isEmpty) return false;
 
       for (final row in rows) {
-        final pokupljen = _isTimestampSet(row['pokupljen_at']);
-        final otkazan = _isTimestampSet(row['otkazano_at']);
+        final pokupljen = V3StatusPolicy.isTimestampSet(row['pokupljen_at']);
+        final otkazan = V3StatusPolicy.isTimestampSet(row['otkazano_at']);
         if (!pokupljen && !otkazan) return false;
       }
       return true;
@@ -355,18 +344,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
 
     if (permission == LocationPermission.deniedForever) {
-      return V3LocationPrereqStatus.deniedForever;
+      return V3LocationPrereqStatus.denied;
     }
 
     if (permission == LocationPermission.denied) {
       return V3LocationPrereqStatus.denied;
-    }
-
-    // iOS zahteva "Always" autorizaciju za allowsBackgroundLocationUpdates
-    // (koje koristimo u _startIosTracking). "While Using" (whileInUse) nije
-    // dovoljno — tracking bi prestao čim app ode u pozadinu.
-    if (Platform.isIOS && permission == LocationPermission.whileInUse) {
-      return V3LocationPrereqStatus.needsAlwaysPermission;
     }
 
     return V3LocationPrereqStatus.ok;
@@ -440,11 +422,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     unawaited(_restoreAndResumeIfNeeded());
   }
 
-  /// Ako je app na iOS-u bio prisilno ugašen dok je tracking bio aktivan,
-  /// ovde pokušavamo da automatski nastavimo tracking na osnovu sačuvane
-  /// sesije (vozacId/grad/vreme/datum + started_at), bez potrebe da vozač
-  /// ručno ponovo klikne "Pokreni vožnju". Android ovo ne treba jer background
-  /// isolate tamo nastavlja da radi nezavisno od glavne app.
+  /// Ako je app bila prisilno ugašena dok je tracking bio aktivan,
+  /// ovde pokušavamo da automatski obnovimo tracking na osnovu sačuvane
+  /// sesije (vozacId/grad/vreme/datum + started_at), bez potrebe za ručnim startom.
   Future<void> _restoreAndResumeIfNeeded() async {
     try {
       final startedRaw = await _secureStorage.read(key: _kStorageStartedAt);
@@ -454,12 +434,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       if (startedAt == null) return;
       _trackingStartedAt = startedAt;
 
-      if (!Platform.isIOS) return;
       if (_isRunning) return;
 
       // Ako je vreme trajanja već isteklo, samo očisti sesiju umesto restarta.
-      if (DateTime.now().difference(startedAt) >= _maxTrackingDuration) {
-        debugPrint('[V3VozacLocationTrackingService][iOS] Sačuvana sesija istekla, ne nastavljam tracking.');
+      if (DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
+        debugPrint(
+            '[V3VozacLocationTrackingService] stop reason=timeout source=restore_session duration_minutes=${v3TrackingMaxDuration.inMinutes}');
         await stop();
         return;
       }
@@ -471,11 +451,37 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
       if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
 
-      debugPrint(
-          '[V3VozacLocationTrackingService][iOS] Nastavljam sačuvanu sesiju: vozac=$vozacId grad=$grad vreme=$vreme');
       _activeDatumIso = datumIso;
       _activeGrad = grad;
       _activeVreme = vreme;
+
+      if (!Platform.isIOS) {
+        final service = FlutterBackgroundService();
+        final isServiceRunning = await service.isRunning();
+        if (!isServiceRunning) {
+          debugPrint('[V3VozacLocationTrackingService][Android] Nema aktivnog BG servisa, čistim stale sesiju.');
+          await stop();
+          return;
+        }
+
+        _activeVozacId = vozacId;
+        _isRunning = true;
+        await _syncBackgroundSupabaseConfig(service);
+        service.invoke('request_state', {});
+        service.invoke('set_termin', {'datum_iso': _activeDatumIso, 'grad': _activeGrad, 'vreme': _activeVreme});
+        service.invoke('set_vozac_id', {
+          'vozac_id': vozacId,
+          'datum_iso': _activeDatumIso,
+          'grad': _activeGrad,
+          'vreme': _activeVreme,
+        });
+        debugPrint(
+            '[V3VozacLocationTrackingService][Android] Obnovljena sačuvana sesija: vozac=$vozacId grad=$grad vreme=$vreme');
+        return;
+      }
+
+      debugPrint(
+          '[V3VozacLocationTrackingService][iOS] Nastavljam sačuvanu sesiju: vozac=$vozacId grad=$grad vreme=$vreme');
       await start(vozacId: vozacId);
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] restore/resume error: $e');
@@ -518,15 +524,15 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     // GPS stream sam po sebi ne throttluje po vremenu (može javljati poziciju
     // i svake 1-2s), pa se throttlovanje ka computeEta()/OSRM radi u kodu,
     // u _handleIosPosition, tačno kao Android-ov fiksni Timer.periodic(20s).
-    // Watchdog tajmer ovde služi samo za auto-stop nakon _maxTrackingDuration.
+    // Watchdog tajmer ovde služi samo za auto-stop nakon v3TrackingMaxDuration.
     _iosWatchdogTimer?.cancel();
     _iosWatchdogTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       final startedAt = _trackingStartedAt;
       if (startedAt == null) return;
-      if (DateTime.now().difference(startedAt) < _maxTrackingDuration) return;
+      if (DateTime.now().difference(startedAt) < v3TrackingMaxDuration) return;
 
       debugPrint(
-          '[V3VozacLocationTrackingService][iOS] Auto-stop (watchdog timer): ${_maxTrackingDuration.inMinutes} min trackinga isteklo');
+          '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_watchdog duration_minutes=${v3TrackingMaxDuration.inMinutes}');
       unawaited(stop());
     });
   }
@@ -547,9 +553,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     // 55-min auto-stop watchdog (iOS ekvivalent Android background isolate watchdoga)
     final startedAt = _trackingStartedAt;
-    if (startedAt != null && DateTime.now().difference(startedAt) >= _maxTrackingDuration) {
+    if (startedAt != null && DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
       debugPrint(
-          '[V3VozacLocationTrackingService][iOS] Auto-stop: ${_maxTrackingDuration.inMinutes} min trackinga isteklo');
+          '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_position_handler duration_minutes=${v3TrackingMaxDuration.inMinutes}');
       await stop();
       return;
     }
@@ -569,7 +575,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
       // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.
       if (await _allPassengersCompleted()) {
-        debugPrint('[V3VozacLocationTrackingService][iOS] Auto-stop: svi putnici su pokupljeni/otkazani');
+        debugPrint(
+            '[V3VozacLocationTrackingService][iOS] stop reason=all_passengers_completed source=ios_position_handler');
         await stop();
       }
     } catch (e) {

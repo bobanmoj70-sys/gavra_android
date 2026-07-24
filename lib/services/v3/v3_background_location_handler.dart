@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_time_utils.dart';
+import 'v3_tracking_config.dart';
 
 /// Konstante za background servis
 const String _kVozacId = 'vozac_id';
@@ -15,10 +16,6 @@ const String _kActionStop = 'stop';
 const String _kReady = 'ready';
 const String _kRequestState = 'request_state';
 const Duration _kInterval = Duration(seconds: 20);
-
-/// Tracking se automatski gasi ako traje duže od ovog vremena
-/// (safety net ako se ne detektuje da su svi putnici pokupljeni).
-const Duration _kMaxTrackingDuration = Duration(minutes: 55);
 
 /// Ključevi za perzistentno čuvanje aktivnog stanja (koristi se ako se
 /// background isolate restartuje dok main isolate nije dostupan).
@@ -170,7 +167,8 @@ Future<bool> _bgAllPassengersCompleted() async {
 }
 
 /// Zaustavlja background tracking i čisti stanje.
-Future<void> _bgStopTracking() async {
+Future<void> _bgStopTracking({String reason = 'unspecified'}) async {
+  debugPrint('[BG] stop reason=$reason');
   final service = _bgService;
   final vozacIdToClean = _bgVozacId;
   _bgTimer?.cancel();
@@ -209,7 +207,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   });
 
   service.on(_kActionStop).listen((event) async {
-    await _bgStopTracking();
+    await _bgStopTracking(reason: 'external_stop_event');
   });
 
   // Glavni isolate šalje vozac_id preko invoke
@@ -262,10 +260,10 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   Timer.periodic(_kInterval, (_) {
     final startedAt = _bgTrackingStartedAt;
     if (startedAt == null) return;
-    if (DateTime.now().difference(startedAt) < _kMaxTrackingDuration) return;
+    if (DateTime.now().difference(startedAt) < v3TrackingMaxDuration) return;
 
-    debugPrint('[BG] Auto-stop: ${_kMaxTrackingDuration.inMinutes} min trackinga isteklo');
-    unawaited(_bgStopTracking());
+    debugPrint('[BG] stop reason=timeout source=watchdog duration_minutes=${v3TrackingMaxDuration.inMinutes}');
+    unawaited(_bgStopTracking(reason: 'timeout'));
   });
 }
 
@@ -366,8 +364,8 @@ Future<void> _bgSendLocation() async {
 
     // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.
     if (await _bgAllPassengersCompleted()) {
-      debugPrint('[BG] Auto-stop: svi putnici su pokupljeni/otkazani');
-      await _bgStopTracking();
+      debugPrint('[BG] stop reason=all_passengers_completed source=bg_send_location');
+      await _bgStopTracking(reason: 'all_passengers_completed');
       return;
     }
   } catch (e) {

@@ -716,6 +716,65 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
+  // Na iOS-u auto-start tracking pokrećemo direktno iz background push-a.
+  // content-available: 1 u APNS payloadu omogućava da se ovaj handler izvrši
+  // bez potrebe da vozač tapne notifikaciju.
+  if (type == 'vozac_auto_start_tracking') {
+    final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
+    final grad = (data['grad'] ?? '').trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
+    final datumIso = (data['datum'] ?? '').trim();
+
+    if (vozacId.isNotEmpty && grad.isNotEmpty && vreme.isNotEmpty && datumIso.isNotEmpty) {
+      if (!isSupabaseReady) {
+        try {
+          await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
+        } catch (e) {
+          debugPrint('⚠️ [FCM][BG] Auto-start: Supabase init nije uspeo: $e');
+          return;
+        }
+      }
+
+      debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+
+      // Osiguraj da slot red postoji (idempotentno) pre pokretanja trackinga.
+      int retryCount = 0;
+      const maxRetries = 3;
+      const initialDelayMs = 500;
+      while (retryCount < maxRetries) {
+        try {
+          await V3TrenutnaDodelaSlotService.activateSlot(
+            datumIso: datumIso,
+            grad: grad,
+            vreme: vreme,
+            vozacId: vozacId,
+            updatedBy: vozacId,
+          );
+          debugPrint('[FCM][BG] ✅ activateSlot uspešan (attempt ${retryCount + 1})');
+          break;
+        } catch (e) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            debugPrint('⚠️ [FCM][BG] activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam)');
+            break;
+          }
+          final delayMs = initialDelayMs * (1 << (retryCount - 1));
+          debugPrint(
+              '⚠️ [FCM][BG] activateSlot pokušaj $retryCount/${maxRetries - 1} failed: $e, retry za ${delayMs}ms');
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+      }
+
+      V3VozacLocationTrackingService.instance.setActiveTermin(
+        datumIso: datumIso,
+        grad: grad,
+        vreme: vreme,
+      );
+      await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
+    }
+    return;
+  }
+
   // Kada je app killed, GavraFcmService se ne poziva — background handler
   // mora sam da prikaže notifikaciju za sve ostale tipove.
   if (title.isNotEmpty || body.isNotEmpty) {
@@ -1012,6 +1071,9 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
 
     case 'vozac_auto_start_tracking':
       final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
+      final grad = (data['grad'] ?? '').trim().toUpperCase();
+      final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
+      final datumIso = (data['datum'] ?? '').trim();
       if (vozacId.isNotEmpty) {
         // Navigiraj na V3VozacScreen i pokreni auto tracking
         final nav = navigatorKey.currentState;
@@ -1021,6 +1083,9 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
               builder: (_) => V3VozacScreen(
                 vozacId: vozacId,
                 autoStartTracking: true,
+                autoStartDatumIso: datumIso.isNotEmpty ? datumIso : null,
+                autoStartGrad: grad.isNotEmpty ? grad : null,
+                autoStartVreme: vreme.isNotEmpty ? vreme : null,
               ),
             ),
           );
