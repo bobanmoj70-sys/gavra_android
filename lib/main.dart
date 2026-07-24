@@ -738,32 +738,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
       // Osiguraj da slot red postoji (idempotentno) pre pokretanja trackinga.
-      int retryCount = 0;
-      const maxRetries = 3;
-      const initialDelayMs = 500;
-      while (retryCount < maxRetries) {
-        try {
-          await V3TrenutnaDodelaSlotService.activateSlot(
-            datumIso: datumIso,
-            grad: grad,
-            vreme: vreme,
-            vozacId: vozacId,
-            updatedBy: vozacId,
-          );
-          debugPrint('[FCM][BG] ✅ activateSlot uspešan (attempt ${retryCount + 1})');
-          break;
-        } catch (e) {
-          retryCount++;
-          if (retryCount >= maxRetries) {
-            debugPrint('⚠️ [FCM][BG] activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam)');
-            break;
-          }
-          final delayMs = initialDelayMs * (1 << (retryCount - 1));
-          debugPrint(
-              '⚠️ [FCM][BG] activateSlot pokušaj $retryCount/${maxRetries - 1} failed: $e, retry za ${delayMs}ms');
-          await Future.delayed(Duration(milliseconds: delayMs));
-        }
-      }
+      await _activateSlotWithRetry(
+        datumIso: datumIso,
+        grad: grad,
+        vreme: vreme,
+        vozacId: vozacId,
+        logTag: '[FCM][BG]',
+      );
 
       await V3VozacLocationTrackingService.instance.startFromPayload(
         vozacId: vozacId,
@@ -1139,12 +1120,42 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
   // ako ga je kron već popunio) — sprečava 'no_active_slot' race ako push
   // stigne pre nego što je kron-ova transakcija vidljiva, ili ako je
   // prethodni ručni start obrisao slot.
-  //
-  // RETRY LOGIC: Pokušaj do 3 puta sa exponential backoff jer Supabase može biti
-  // u middle of replication/consistency — nakon 500ms delay, pokušaj ponovo.
-  int retryCount = 0;
+  await _activateSlotWithRetry(
+    datumIso: datumIso,
+    grad: grad,
+    vreme: vreme,
+    vozacId: vozacId,
+    logTag: '[AUTO-START]',
+  );
+
+  await V3VozacLocationTrackingService.instance.startFromPayload(
+    vozacId: vozacId,
+    datumIso: datumIso,
+    grad: grad,
+    vreme: vreme,
+  );
+}
+
+/// Zajednička retry-helper funkcija za idempotentan upsert u
+/// `v3_trenutna_dodela_slot` (activateSlot) — koristi exponential backoff
+/// (500ms, 1000ms, 2000ms) jer Supabase može biti u sred replikacije kad push
+/// stigne odmah nakon kron job-a. Deljena između iOS background handlera i
+/// `_autoStartVozacTrackingFromPush` da se izbegne duplirana logika.
+///
+/// NAPOMENA: Android background isolate (`v3_background_location_handler.dart`)
+/// ima svoju sopstvenu verziju ove funkcije (`_bgActivateSlotWithRetry`) jer
+/// radi u posebnom headless isolate-u bez pristupa main isolate `globals.dart`
+/// supabase getter-u koji `V3TrenutnaDodelaSlotService` koristi.
+Future<void> _activateSlotWithRetry({
+  required String datumIso,
+  required String grad,
+  required String vreme,
+  required String vozacId,
+  required String logTag,
+}) async {
   const maxRetries = 3;
   const initialDelayMs = 500;
+  var retryCount = 0;
 
   while (retryCount < maxRetries) {
     try {
@@ -1155,27 +1166,19 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
         vozacId: vozacId,
         updatedBy: vozacId,
       );
-      debugPrint('[AUTO-START] ✅ activateSlot uspešan (attempt ${retryCount + 1})');
-      break;
+      debugPrint('$logTag ✅ activateSlot uspešan (attempt ${retryCount + 1})');
+      return;
     } catch (e) {
       retryCount++;
       if (retryCount >= maxRetries) {
-        debugPrint('⚠️ [AUTO-START] activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam)');
-        break;
+        debugPrint('⚠️ $logTag activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam)');
+        return;
       }
-      final delayMs = initialDelayMs * (1 << (retryCount - 1)); // exponential: 500, 1000, 2000
-      debugPrint(
-          '⚠️ [AUTO-START] activateSlot pokušaj $retryCount/${maxRetries - 1} failed: $e, retry za ${delayMs}ms');
+      final delayMs = initialDelayMs * (1 << (retryCount - 1));
+      debugPrint('⚠️ $logTag activateSlot pokušaj $retryCount/${maxRetries - 1} failed: $e, retry za ${delayMs}ms');
       await Future.delayed(Duration(milliseconds: delayMs));
     }
   }
-
-  await V3VozacLocationTrackingService.instance.startFromPayload(
-    vozacId: vozacId,
-    datumIso: datumIso,
-    grad: grad,
-    vreme: vreme,
-  );
 }
 
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_time_utils.dart';
@@ -25,6 +26,24 @@ const String _kStorageDatumIso = 'bg_tracking_datum_iso';
 const String _kStorageGrad = 'bg_tracking_grad';
 const String _kStorageVreme = 'bg_tracking_vreme';
 const String _kStorageStartedAt = 'bg_tracking_started_at';
+const String _kStorageSupabaseUrl = 'bg_tracking_supabase_url';
+const String _kStorageSupabaseAnonKey = 'bg_tracking_supabase_anon_key';
+
+/// Ključevi za native→Dart "pending" payload koji `GavraFcmService.kt` upisuje
+/// direktno u SharedPreferences kada stigne `vozac_auto_start_tracking` push,
+/// BEZ obzira na Flutter engine stanje (radi i kad je app potpuno ubijena).
+/// Moraju biti identični sa `GavraFcmService.KEY_PENDING_*` konstantama (bez
+/// `flutter.` prefiksa ovde, jer ga `package:shared_preferences` dodaje sam).
+const String _kPendingVozacId = 'bg_pending_vozac_id';
+const String _kPendingDatumIso = 'bg_pending_datum_iso';
+const String _kPendingGrad = 'bg_pending_grad';
+const String _kPendingVreme = 'bg_pending_vreme';
+const String _kPendingTimestamp = 'bg_pending_timestamp';
+
+/// Payload se smatra "svežim" najviše 10 minuta — sprečava da se stari,
+/// već obrađeni native payload ponovo pokrene ako iz nekog razloga ostane
+/// u SharedPreferences (npr. servis se restartuje iz drugog razloga).
+const Duration _kPendingPayloadMaxAge = Duration(minutes: 10);
 
 const _secureStorage = FlutterSecureStorage(
   aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -62,10 +81,154 @@ Future<void> _bgLoadPersistedState() async {
     if (startedAtRaw.isNotEmpty) {
       _bgTrackingStartedAt = DateTime.tryParse(startedAtRaw);
     }
+
+    // Supabase config — potreban da background isolate radi i kad je
+    // pokrenut direktno iz native koda (GavraFcmService), bez main isolate-a
+    // koji bi inače poslao `set_supabase_config`.
+    if (_bgSupabaseUrl.isEmpty || _bgSupabaseAnonKey.isEmpty) {
+      final persistedUrl = (values[_kStorageSupabaseUrl] ?? '').trim();
+      final persistedAnonKey = (values[_kStorageSupabaseAnonKey] ?? '').trim();
+      if (persistedUrl.isNotEmpty && persistedAnonKey.isNotEmpty) {
+        _bgSupabaseUrl = persistedUrl;
+        _bgSupabaseAnonKey = persistedAnonKey;
+        _bgTryInitSupabaseClient();
+        if (_bgSupabaseClient != null) {
+          _bgConfigReady = true;
+        }
+      }
+    }
+
     debugPrint(
         '[BG] Učitano perzistentno stanje: vozacId=$vozacId datum=$datumIso grad=$grad vreme=$vreme startedAt=$startedAtRaw');
   } catch (e) {
     debugPrint('[BG] Greška pri učitavanju perzistentnog stanja: $e');
+  }
+}
+
+/// Čita "pending" payload koji je `GavraFcmService.kt` upisao direktno u
+/// nativni SharedPreferences fajl (isti koji `package:shared_preferences`
+/// koristi), kada je stigao `vozac_auto_start_tracking` push — BEZ obzira
+/// na to da li je Flutter main engine bio aktivan.
+///
+/// Ovo je "čisto" rešenje za auto-start: background isolate (headless,
+/// pokrenut direktno iz native koda) sam pročita payload i sam pokreće
+/// tracking, bez potrebe za tap-om na notifikaciju ili aktivnim main
+/// isolate-om. Payload se briše nakon čitanja (idempotentno konzumiran).
+///
+/// Vraća true ako je pending payload pronađen i primenjen (setovao je
+/// _bgVozacId/_bgDatumIso/_bgGrad/_bgVreme).
+Future<bool> _bgConsumeNativePendingPayloadIfAny() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final vozacId = (prefs.getString(_kPendingVozacId) ?? '').trim();
+    final datumIso = (prefs.getString(_kPendingDatumIso) ?? '').trim();
+    final grad = (prefs.getString(_kPendingGrad) ?? '').trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(prefs.getString(_kPendingVreme) ?? '');
+    final timestampMs = prefs.getInt(_kPendingTimestamp) ?? 0;
+
+    if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+      return false;
+    }
+
+    // Konzumiraj (obriši) odmah da izbegnemo ponovnu obradu istog payload-a
+    // pri sledećem restartu servisa.
+    await prefs.remove(_kPendingVozacId);
+    await prefs.remove(_kPendingDatumIso);
+    await prefs.remove(_kPendingGrad);
+    await prefs.remove(_kPendingVreme);
+    await prefs.remove(_kPendingTimestamp);
+
+    if (timestampMs > 0) {
+      final age = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestampMs));
+      if (age > _kPendingPayloadMaxAge) {
+        debugPrint('[BG] Native pending payload je zastareo (age=${age.inMinutes}min), ignorišem.');
+        return false;
+      }
+    }
+
+    debugPrint('[BG] Native pending payload pronađen: vozac=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
+
+    _bgVozacId = vozacId;
+    _bgDatumIso = datumIso;
+    _bgGrad = grad;
+    _bgVreme = vreme;
+
+    if (_bgTrackingStartedAt == null) {
+      _bgTrackingStartedAt = DateTime.now();
+      unawaited(_secureStorage.write(key: _kStorageStartedAt, value: _bgTrackingStartedAt!.toIso8601String()));
+    }
+    unawaited(_secureStorage.write(key: _kStorageVozacId, value: vozacId));
+    unawaited(_secureStorage.write(key: _kStorageDatumIso, value: datumIso));
+    unawaited(_secureStorage.write(key: _kStorageGrad, value: grad));
+    unawaited(_secureStorage.write(key: _kStorageVreme, value: vreme));
+
+    // Aktiviraj slot red (idempotentan upsert) direktno preko background
+    // Supabase klijenta — ekvivalent `V3TrenutnaDodelaSlotService.activateSlot`,
+    // ali bez zavisnosti od main isolate `globals.dart` supabase getter-a.
+    unawaited(_bgActivateSlotWithRetry(vozacId: vozacId, datumIso: datumIso, grad: grad, vreme: vreme));
+
+    return true;
+  } catch (e) {
+    debugPrint('[BG] Greška pri čitanju native pending payload-a: $e');
+    return false;
+  }
+}
+
+/// Idempotentan upsert u `v3_trenutna_dodela_slot` — ekvivalent
+/// `V3TrenutnaDodelaSlotService.activateSlot`, sa retry logikom (isti
+/// pattern kao main isolate `_autoStartVozacTrackingFromPush`), samo
+/// implementiran direktno preko background Supabase client-a jer
+/// `V3TrenutnaDodelaSlotService` zavisi od main isolate `globals.dart`.
+Future<void> _bgActivateSlotWithRetry({
+  required String vozacId,
+  required String datumIso,
+  required String grad,
+  required String vreme,
+}) async {
+  _bgTryInitSupabaseClient();
+  var client = _bgSupabaseClient;
+
+  // Supabase config možda još nije stigao (npr. cold-start iz native koda
+  // bez main isolate-a) — sačekaj do 5s da `set_supabase_config`/persisted
+  // config postane dostupan.
+  for (var i = 0; i < 10 && client == null; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    _bgTryInitSupabaseClient();
+    client = _bgSupabaseClient;
+  }
+
+  if (client == null) {
+    debugPrint('[BG] activateSlot: Supabase client nije dostupan nakon čekanja, odustajem.');
+    return;
+  }
+
+  const maxRetries = 3;
+  const initialDelayMs = 500;
+  var retryCount = 0;
+
+  while (retryCount < maxRetries) {
+    try {
+      await client.from('v3_trenutna_dodela_slot').upsert(
+        <String, dynamic>{
+          'datum': datumIso,
+          'grad': grad,
+          'vreme': vreme,
+          'vozac_v3_auth_id': vozacId,
+          'updated_by': vozacId,
+        },
+        onConflict: 'datum,grad,vreme',
+      );
+      debugPrint('[BG] ✅ activateSlot uspešan (attempt ${retryCount + 1})');
+      return;
+    } catch (e) {
+      retryCount++;
+      if (retryCount >= maxRetries) {
+        debugPrint('⚠️ [BG] activateSlot greška nakon $maxRetries pokušaja: $e (nastavljam bez slota)');
+        return;
+      }
+      final delayMs = initialDelayMs * (1 << (retryCount - 1));
+      await Future<void>.delayed(Duration(milliseconds: delayMs));
+    }
   }
 }
 
@@ -298,7 +461,13 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   });
 
   // Obavesti main isolate da su listener-i registrovani i da je stanje učitano
-  await _bgLoadPersistedState();
+  // Native pending payload (upisan direktno iz GavraFcmService.kt) ima
+  // prioritet nad perzistentnim stanjem — to je "čisto" auto-start rešenje
+  // koje radi i kad je app potpuno ubijena (bez tap-a na notifikaciju).
+  final consumedNative = await _bgConsumeNativePendingPayloadIfAny();
+  if (!consumedNative) {
+    await _bgLoadPersistedState();
+  }
   _bgStartTimerIfReady();
   service.invoke(_kReady, {});
   debugPrint('[BG] Background servis spreman');
