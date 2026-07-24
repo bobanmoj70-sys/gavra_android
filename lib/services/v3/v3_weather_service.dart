@@ -69,7 +69,7 @@ class V3WeatherService {
         'longitude': config.lng.toString(),
         'timezone': 'Europe/Belgrade',
         'forecast_days': '2',
-        'current': 'temperature_2m,weather_code',
+        'current': 'temperature_2m,weather_code,is_day',
         'hourly': 'precipitation_probability',
       });
 
@@ -92,9 +92,12 @@ class V3WeatherService {
         return cached;
       }
 
+      final isDayValue = current['is_day'];
+      final isDay = isDayValue is num ? isDayValue.toInt() != 0 : true;
+
       final sourceTime = DateTime.tryParse(currentTimeRaw) ?? now;
       final precipProbability = _extractPrecipitation(data, currentTimeRaw);
-      final weather = _mapWeatherCode(weatherCode);
+      final weather = _mapWeatherCode(weatherCode, isDay);
 
       final snapshot = V3WeatherSnapshot(
         grad: normalized,
@@ -138,10 +141,16 @@ class V3WeatherService {
     return null;
   }
 
-  static _WeatherView _mapWeatherCode(int code) {
-    if (code == 0) return const _WeatherView('🌞', 'Vedro');
-    if (code == 1) return const _WeatherView('🌤️', 'Pretežno vedro');
-    if (code == 2) return const _WeatherView('⛅', 'Delimično oblačno');
+  static _WeatherView _mapWeatherCode(int code, bool isDay) {
+    if (code == 0) {
+      return isDay ? const _WeatherView('☀️', 'Vedro') : const _WeatherView('🌙', 'Vedro');
+    }
+    if (code == 1) {
+      return isDay ? const _WeatherView('🌤️', 'Pretežno vedro') : const _WeatherView('🌙', 'Pretežno vedro');
+    }
+    if (code == 2) {
+      return isDay ? const _WeatherView('⛅', 'Delimično oblačno') : const _WeatherView('☁️', 'Delimično oblačno');
+    }
     if (code == 3) return const _WeatherView('☁️', 'Oblačno');
     if ({45, 48}.contains(code)) return const _WeatherView('🌫️', 'Magla');
     if ({51, 53, 55, 56, 57}.contains(code)) return const _WeatherView('🌦️', 'Rominjanje');
