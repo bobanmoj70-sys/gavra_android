@@ -111,6 +111,30 @@ class _DnevTr {
     'otkazani': {'sr': 'Otkazani', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
     'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen', 'zh': '已收款'},
     'dodati': {'sr': 'Dodati', 'en': 'Added', 'ru': 'Добавлено', 'de': 'Hinzugefügt', 'zh': '已添加'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
+    'pokupljeniPutnici': {
+      'sr': 'POKUPLJENI PUTNICI',
+      'en': 'PICKED UP PASSENGERS',
+      'ru': 'ЗАБРАННЫЕ ПАССАЖИРЫ',
+      'de': 'ABGEHOLTE FAHRGÄSTE',
+      'zh': '已接送乘客',
+    },
+    'otkazaneVoznje': {
+      'sr': 'OTKAZANE VOŽNJE',
+      'en': 'CANCELLED RIDES',
+      'ru': 'ОТМЕНЁННЫЕ ПОЕЗДКИ',
+      'de': 'STORNIERTE FAHRTEN',
+      'zh': '已取消行程',
+    },
+    'naplate': {'sr': 'NAPLATE', 'en': 'PAYMENTS', 'ru': 'ОПЛАТЫ', 'de': 'ZAHLUNGEN', 'zh': '付款'},
+    'ukupno': {'sr': 'UKUPNO', 'en': 'TOTAL', 'ru': 'ИТОГО', 'de': 'GESAMT', 'zh': '总计'},
+    'uplata': {'sr': 'uplata', 'en': 'payment', 'ru': 'оплата', 'de': 'Zahlung', 'zh': '付款'},
+    'ime': {'sr': 'Ime', 'en': 'Name', 'ru': 'Имя', 'de': 'Name', 'zh': '姓名'},
+    'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Uhrzeit', 'zh': '时间'},
+    'termin': {'sr': 'Termin', 'en': 'Term', 'ru': 'Срок', 'de': 'Termin', 'zh': '时间'},
+    'iznos': {'sr': 'Iznos', 'en': 'Amount', 'ru': 'Сумма', 'de': 'Betrag', 'zh': '金额'},
+    'broj': {'sr': '#', 'en': '#', 'ru': '#', 'de': '#', 'zh': '#'},
   };
 
   static String tr(String key) {
@@ -240,22 +264,22 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
     if (_naplate.isEmpty) return;
 
     final buf = StringBuffer();
-    buf.writeln('DNEVNIK VOZAČA — $_selectedVozacIme');
-    buf.writeln('Datum: ${_formatDatum(_selectedDate)}');
+    buf.writeln('${_DnevTr.tr('dnevnikVozaca').toUpperCase()} — $_selectedVozacIme');
+    buf.writeln('${_DnevTr.tr('datum')}: ${_formatDatum(_selectedDate)}');
     buf.writeln('─────────────────────────');
 
     final rm = V3MasterRealtimeManager.instance;
 
     // Prikaz pokupljenih putnika
     if (_pokupio.isNotEmpty) {
-      buf.writeln('POKUPLJENI PUTNICI (${_pokupio.length}):');
+      buf.writeln('${_DnevTr.tr('pokupljeniPutnici')} (${_pokupio.length}):');
       for (int i = 0; i < _pokupio.length; i++) {
         final p = _pokupio[i];
         final datum = V3DateUtils.parseTs(p['pokupljen_at']?.toString()) ?? DateTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['putnik_v3_auth_id']?.toString() ?? p['created_by']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
-        final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+        final putnikIme = putnik?['ime_prezime']?.toString() ?? _DnevTr.tr('nepoznato');
         buf.writeln('  ${i + 1}. $putnikIme — $vreme');
       }
       buf.writeln('─────────────────────────');
@@ -263,14 +287,14 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
 
     // Prikaz otkazanih vožnji
     if (_otkazao.isNotEmpty) {
-      buf.writeln('OTKAZANE VOŽNJE (${_otkazao.length}):');
+      buf.writeln('${_DnevTr.tr('otkazaneVoznje')} (${_otkazao.length}):');
       for (int i = 0; i < _otkazao.length; i++) {
         final p = _otkazao[i];
         final datum = V3DateUtils.parseTs(p['otkazano_at']?.toString()) ?? DateTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
-        final putnikIme = putnik?['ime_prezime']?.toString() ?? 'Nepoznato';
+        final putnikIme = putnik?['ime_prezime']?.toString() ?? _DnevTr.tr('nepoznato');
         final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
         final polazakAt = p['vreme']?.toString() ?? '';
         buf.writeln('  ${i + 1}. $putnikIme — $grad $polazakAt — $vreme');
@@ -279,7 +303,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
     }
 
     // Prikaz naplata
-    buf.writeln('NAPLATE (${_naplate.length}):');
+    buf.writeln('${_DnevTr.tr('naplate')} (${_naplate.length}):');
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
       final datum = V3DateUtils.parseTs(n['naplatio_at']?.toString()) ??
@@ -289,19 +313,20 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
       final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
       final putnik = rm.putniciCache[putnikId];
-      final putnikIme = putnik?['ime_prezime']?.toString() ?? n['naziv']?.toString() ?? 'Nepoznato';
+      final putnikIme = putnik?['ime_prezime']?.toString() ?? n['naziv']?.toString() ?? _DnevTr.tr('nepoznato');
       final iznos = (n['iznos'] as num?)?.toDouble() ?? 0;
       buf.writeln('  ${i + 1}. $putnikIme — ${iznos.toStringAsFixed(0)} din — $vreme');
     }
     buf.writeln('─────────────────────────');
-    buf.writeln('UKUPNO: ${_naplate.length} uplata — ${_ukupnoIznos.toStringAsFixed(0)} din');
+    buf.writeln(
+        '${_DnevTr.tr('ukupno')}: ${_naplate.length} ${_DnevTr.tr('uplata')} — ${_ukupnoIznos.toStringAsFixed(0)} din');
     final predaoVal = _predaoIznos;
     if (predaoVal != null) {
       final razlika = predaoVal - _ukupnoIznos;
-      buf.writeln('Predao: ${predaoVal.toStringAsFixed(0)} din');
+      buf.writeln('${_DnevTr.tr('predao')} ${predaoVal.toStringAsFixed(0)} din');
       buf.writeln(razlika >= 0
-          ? 'Višak: ${razlika.toStringAsFixed(0)} din'
-          : 'Manjak: ${razlika.abs().toStringAsFixed(0)} din');
+          ? '${_DnevTr.tr('visak')} ${razlika.toStringAsFixed(0)} din'
+          : '${_DnevTr.tr('manjak')} ${razlika.abs().toStringAsFixed(0)} din');
     }
 
     Clipboard.setData(ClipboardData(text: buf.toString()));
@@ -333,17 +358,17 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(36),
         build: (_) => [
-          pw.Text('DNEVNIK VOZAČA', style: titleStyle),
+          pw.Text(_DnevTr.tr('dnevnikVozaca').toUpperCase(), style: titleStyle),
           pw.SizedBox(height: 4),
-          pw.Text('Vozač: $_selectedVozacIme', style: headerStyle),
-          pw.Text('Datum: ${_formatDatum(_selectedDate)}', style: normalStyle),
+          pw.Text('${_DnevTr.tr('vozac')}: $_selectedVozacIme', style: headerStyle),
+          pw.Text('${_DnevTr.tr('datum')}: ${_formatDatum(_selectedDate)}', style: normalStyle),
           pw.SizedBox(height: 14),
           pw.Divider(),
           pw.SizedBox(height: 8),
 
           // Pokupljeni putnici
           if (_pokupio.isNotEmpty) ...[
-            pw.Text('POKUPLJENI PUTNICI (${_pokupio.length})', style: headerStyle),
+            pw.Text('${_DnevTr.tr('pokupljeniPutnici')} (${_pokupio.length})', style: headerStyle),
             pw.SizedBox(height: 6),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
@@ -356,9 +381,9 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   children: [
-                    _pdfCell('#', style: boldStyle),
-                    _pdfCell('Ime', style: boldStyle),
-                    _pdfCell('Vreme', style: boldStyle),
+                    _pdfCell(_DnevTr.tr('broj'), style: boldStyle),
+                    _pdfCell(_DnevTr.tr('ime'), style: boldStyle),
+                    _pdfCell(_DnevTr.tr('vreme'), style: boldStyle),
                   ],
                 ),
                 for (int i = 0; i < _pokupio.length; i++)
@@ -373,7 +398,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                                       _pokupio[i]['created_by']?.toString() ??
                                       '']?['ime_prezime']
                                   ?.toString() ??
-                              'Nepoznato'),
+                              _DnevTr.tr('nepoznato')),
                           style: baseStyle),
                       _pdfCell(
                           V3DanHelper.formatVreme(
@@ -391,7 +416,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
 
           // Otkazane vožnje
           if (_otkazao.isNotEmpty) ...[
-            pw.Text('OTKAZANE VOŽNJE (${_otkazao.length})', style: headerStyle),
+            pw.Text('${_DnevTr.tr('otkazaneVoznje')} (${_otkazao.length})', style: headerStyle),
             pw.SizedBox(height: 6),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
@@ -404,9 +429,9 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                   children: [
-                    _pdfCell('#', style: boldStyle),
-                    _pdfCell('Ime', style: boldStyle),
-                    _pdfCell('Termin', style: boldStyle),
+                    _pdfCell(_DnevTr.tr('broj'), style: boldStyle),
+                    _pdfCell(_DnevTr.tr('ime'), style: boldStyle),
+                    _pdfCell(_DnevTr.tr('termin'), style: boldStyle),
                   ],
                 ),
                 for (int i = 0; i < _otkazao.length; i++)
@@ -419,7 +444,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                       _pdfCell(
                           (rm.putniciCache[_otkazao[i]['putnik_v3_auth_id']?.toString() ?? '']?['ime_prezime']
                                   ?.toString() ??
-                              'Nepoznato'),
+                              _DnevTr.tr('nepoznato')),
                           style: baseStyle),
                       _pdfCell(
                           '${(_otkazao[i]['grad']?.toString() ?? '').trim().toUpperCase()} ${_otkazao[i]['vreme']?.toString() ?? ''}',
@@ -434,7 +459,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
           ],
 
           // Naplate
-          pw.Text('NAPLATE (${_naplate.length})', style: headerStyle),
+          pw.Text('${_DnevTr.tr('naplate')} (${_naplate.length})', style: headerStyle),
           pw.SizedBox(height: 6),
           pw.Table(
             border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
@@ -448,10 +473,10 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
               pw.TableRow(
                 decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                 children: [
-                  _pdfCell('#', style: boldStyle),
-                  _pdfCell('Ime', style: boldStyle),
-                  _pdfCell('Iznos', style: boldStyle),
-                  _pdfCell('Vreme', style: boldStyle),
+                  _pdfCell(_DnevTr.tr('broj'), style: boldStyle),
+                  _pdfCell(_DnevTr.tr('ime'), style: boldStyle),
+                  _pdfCell(_DnevTr.tr('iznos'), style: boldStyle),
+                  _pdfCell(_DnevTr.tr('vreme'), style: boldStyle),
                 ],
               ),
               for (int i = 0; i < _naplate.length; i++)
@@ -465,7 +490,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                         (rm.putniciCache[_naplate[i]['putnik_v3_auth_id']?.toString() ?? '']?['ime_prezime']
                                 ?.toString() ??
                             _naplate[i]['naziv']?.toString() ??
-                            'Nepoznato'),
+                            _DnevTr.tr('nepoznato')),
                         style: baseStyle),
                     _pdfCell('${((_naplate[i]['iznos'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)} din',
                         style: baseStyle),
@@ -494,7 +519,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('UKUPNO (${_naplate.length} uplata):', style: summaryStyle),
+              pw.Text('${_DnevTr.tr('ukupno')} (${_naplate.length} ${_DnevTr.tr('uplata')}):', style: summaryStyle),
               pw.Text('${_ukupnoIznos.toStringAsFixed(0)} din', style: summaryStyle),
             ],
           ),
@@ -503,7 +528,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Predao:', style: normalStyle),
+                pw.Text(_DnevTr.tr('predao'), style: normalStyle),
                 pw.Text('${predaoVal.toStringAsFixed(0)} din', style: normalStyle),
               ],
             ),
@@ -512,7 +537,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text(razlika >= 0 ? 'Višak:' : 'Manjak:', style: summaryStyle),
+                  pw.Text(razlika >= 0 ? _DnevTr.tr('visak') : _DnevTr.tr('manjak'), style: summaryStyle),
                   pw.Text('${razlika.abs().toStringAsFixed(0)} din', style: summaryStyle),
                 ],
               ),

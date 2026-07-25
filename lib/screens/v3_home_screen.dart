@@ -126,6 +126,13 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       'zh': '选择乘客',
     },
     'pretrazi': {'sr': 'Pretraži...', 'en': 'Search...', 'ru': 'Поиск...', 'de': 'Suchen...', 'zh': '搜索...'},
+    'passengerAddressPlaceholder': {
+      'sr': '— putnikova adresa —',
+      'en': '— passenger address —',
+      'ru': '— адрес пассажира —',
+      'de': '— Adresse des Fahrgasts —',
+      'zh': '— 乘客地址 —',
+    },
     'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'izaberitePutnika': {
       'sr': '⚠️ Izaberite putnika',

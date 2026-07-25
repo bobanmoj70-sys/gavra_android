@@ -117,6 +117,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       'de': 'Telefonnummer',
       'zh': '电话号码'
     },
+    'phoneHint': {
+      'sr': '06x xxx xxxx',
+      'en': '06x xxx xxxx',
+      'ru': '06x xxx xxxx',
+      'de': '06x xxx xxxx',
+      'zh': '06x xxx xxxx'
+    },
     'nalepi': {'sr': 'Nalepi', 'en': 'Paste', 'ru': 'Вставить', 'de': 'Einfügen', 'zh': '粘贴'},
     'nastavi': {'sr': 'Nastavi', 'en': 'Continue', 'ru': 'Продолжить', 'de': 'Weiter', 'zh': '继续'},
     'ucitavanje': {
@@ -1358,7 +1365,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: _tr('brojTelefona'),
-            hintText: '06x xxx xxxx',
+            hintText: _tr('phoneHint'),
             labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
             hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
             filled: true,

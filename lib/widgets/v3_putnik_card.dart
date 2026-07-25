@@ -96,6 +96,27 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       'de': 'Kontaktieren',
       'zh': '联系',
     },
+    'hereWeGoInstallTitle': {
+      'sr': 'Da biste koristili ovu funkciju, molimo instalirajte HERE WeGo.',
+      'en': 'To use this feature, please install HERE WeGo.',
+      'ru': 'Чтобы использовать эту функцию, установите HERE WeGo.',
+      'de': 'Um diese Funktion zu nutzen, installieren Sie bitte HERE WeGo.',
+      'zh': '要使用此功能，请安装 HERE WeGo。',
+    },
+    'hereWeGoInstallAction': {
+      'sr': 'INSTALIRAJ',
+      'en': 'INSTALL',
+      'ru': 'УСТАНОВИТЬ',
+      'de': 'INSTALLIEREN',
+      'zh': '安装'
+    },
+    'noGpsCoordinatesForAddress': {
+      'sr': 'Nema GPS koordinata za ovu adresu',
+      'en': 'No GPS coordinates for this address',
+      'ru': 'Нет GPS-координат для этого адреса',
+      'de': 'Keine GPS-Koordinaten für diese Adresse',
+      'zh': '此地址没有 GPS 坐标',
+    },
     'cancel': {
       'sr': 'Otkaži',
       'en': 'Cancel',
@@ -627,7 +648,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   Future<void> _openHereWeGoForPutnik() async {
     final coords = _resolveAdresaCoords();
     if (coords == null) {
-      if (mounted) V3AppSnackBar.error(context, 'Nema GPS koordinata za ovu adresu');
+      if (mounted) V3AppSnackBar.error(context, _tr('noGpsCoordinatesForAddress'));
       return;
     }
 
@@ -646,9 +667,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
-        content: const Text('Da biste koristili ovu funkciju, molimo instalirajte HERE WeGo.'),
+        content: Text(_tr('hereWeGoInstallTitle')),
         action: SnackBarAction(
-          label: 'INSTALIRAJ',
+          label: _tr('hereWeGoInstallAction'),
           onPressed: () async {
             await launchUrl(installUri, mode: LaunchMode.externalApplication);
           },
