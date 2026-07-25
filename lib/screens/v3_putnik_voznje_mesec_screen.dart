@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3_locale_manager.dart';
@@ -7,7 +8,6 @@ import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_date_utils.dart';
 import '../utils/v3_style_helper.dart';
-import '../l10n/app_translations.dart';
 
 class _VoznjeMesecTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('putnikVoznjeMesecScreen');
@@ -81,10 +81,6 @@ class _V3PutnikVoznjeMesecScreenState extends State<V3PutnikVoznjeMesecScreen> {
             elevation: 0,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
             title: Text(
               _VoznjeMesecTr.tr('dnevniPregled'),
               style: const TextStyle(fontWeight: FontWeight.bold),
