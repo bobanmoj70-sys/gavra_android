@@ -1451,9 +1451,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               onChanged: (val) {
                                                 setState(() {
                                                   _selectedDay = V3DanHelper.normalizeToWorkdayFull(val!);
-                                                  _syncSelectedSlotForDatum(_selectedDatumIso);
                                                   _operativnaStream = _buildOperativnaStream(_selectedDatumIso);
                                                 });
+                                                unawaited(_reloadTrenutnaDodelaMap().then((_) {
+                                                  if (!mounted) return;
+                                                  setState(() {
+                                                    _syncSelectedSlotForDatum(_selectedDatumIso);
+                                                  });
+                                                }));
                                               },
                                             ),
                                           ),

@@ -817,10 +817,16 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(
-                            onTap: () => setState(() {
-                              _selectedDay = V3DanHelper.normalizeToWorkdayFull(day);
-                              _syncSelectedSlotForDay();
-                            }),
+                            onTap: () async {
+                              setState(() {
+                                _selectedDay = V3DanHelper.normalizeToWorkdayFull(day);
+                              });
+                              await _reloadTrenutnaDodelaMap();
+                              if (!mounted) return;
+                              setState(() {
+                                _syncSelectedSlotForDay();
+                              });
+                            },
                             borderRadius: BorderRadius.circular(12),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),

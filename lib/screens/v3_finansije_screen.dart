@@ -91,6 +91,13 @@ class _FinTr {
     },
     'trenutno': {'sr': 'Trenutno:', 'en': 'Current:', 'ru': 'Текущее:', 'de': 'Aktuell:', 'zh': '当前：'},
     'dodajDots': {'sr': 'Dodaj...', 'en': 'Add...', 'ru': 'Добавить...', 'de': 'Hinzufügen...', 'zh': '添加...'},
+    'kojiKreditSeOtplacuje': {
+      'sr': 'Koji kredit se otplaćuje?',
+      'en': 'Which loan is being repaid?',
+      'ru': 'Какой кредит погашается?',
+      'de': 'Welcher Kredit wird zurückgezahlt?',
+      'zh': '哪笔贷款正在偿还？',
+    },
     'troskoviDodati': {
       'sr': '✅ Troškovi dodati',
       'en': '✅ Expenses added',
