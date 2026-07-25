@@ -1,11 +1,13 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class V3WeatherSnapshot {
   final String grad;
   final String icon;
+  final IconData iconData;
+  final Color iconColor;
   final String description;
   final double temperatureC;
   final int? precipitationProbability;
@@ -15,6 +17,8 @@ class V3WeatherSnapshot {
   const V3WeatherSnapshot({
     required this.grad,
     required this.icon,
+    required this.iconData,
+    required this.iconColor,
     required this.description,
     required this.temperatureC,
     required this.precipitationProbability,
@@ -117,6 +121,8 @@ class V3WeatherService {
         final snapshot = V3WeatherSnapshot(
           grad: normalized,
           icon: weather.icon,
+          iconData: weather.iconData,
+          iconColor: weather.iconColor,
           description: weather.description,
           temperatureC: currentTemp,
           precipitationProbability: precipProbability,
@@ -164,21 +170,35 @@ class V3WeatherService {
 
   static _WeatherView _mapWeatherCode(int code, bool isDay) {
     if (code == 0) {
-      return isDay ? const _WeatherView('☀️', 'Vedro') : const _WeatherView('🌙', 'Vedro');
+      return isDay
+          ? const _WeatherView('☀️', 'Vedro', Icons.wb_sunny_rounded, Color(0xFFFFC107))
+          : const _WeatherView('🌙', 'Vedro', Icons.nightlight_round, Color(0xFFB0BEC5));
     }
     if (code == 1) {
-      return isDay ? const _WeatherView('🌤️', 'Pretežno vedro') : const _WeatherView('🌙', 'Pretežno vedro');
+      return isDay
+          ? const _WeatherView('🌤️', 'Pretežno vedro', Icons.wb_twilight, Color(0xFFFFB300))
+          : const _WeatherView('🌙', 'Pretežno vedro', Icons.nightlight_round, Color(0xFFB0BEC5));
     }
     if (code == 2) {
-      return isDay ? const _WeatherView('⛅', 'Delimično oblačno') : const _WeatherView('☁️', 'Delimično oblačno');
+      return isDay
+          ? const _WeatherView('⛅', 'Delimično oblačno', Icons.cloud_queue_rounded, Color(0xFFCFD8DC))
+          : const _WeatherView('☁️', 'Delimično oblačno', Icons.cloud_rounded, Color(0xFF90A4AE));
     }
-    if (code == 3) return const _WeatherView('☁️', 'Oblačno');
-    if ({45, 48}.contains(code)) return const _WeatherView('🌫️', 'Magla');
-    if ({51, 53, 55, 56, 57}.contains(code)) return const _WeatherView('🌦️', 'Rominjanje');
-    if ({61, 63, 65, 66, 67, 80, 81, 82}.contains(code)) return const _WeatherView('🌧️', 'Kiša');
-    if ({71, 73, 75, 77, 85, 86}.contains(code)) return const _WeatherView('❄️', 'Sneg');
-    if ({95, 96, 99}.contains(code)) return const _WeatherView('⛈️', 'Oluja');
-    return const _WeatherView('🌡️', 'Vreme');
+    if (code == 3) return const _WeatherView('☁️', 'Oblačno', Icons.cloud_rounded, Color(0xFF90A4AE));
+    if ({45, 48}.contains(code)) return const _WeatherView('🌫️', 'Magla', Icons.foggy, Color(0xFFB0BEC5));
+    if ({51, 53, 55, 56, 57}.contains(code)) {
+      return const _WeatherView('🌦️', 'Rominjanje', Icons.grain_rounded, Color(0xFF64B5F6));
+    }
+    if ({61, 63, 65, 66, 67, 80, 81, 82}.contains(code)) {
+      return const _WeatherView('🌧️', 'Kiša', Icons.water_drop_rounded, Color(0xFF42A5F5));
+    }
+    if ({71, 73, 75, 77, 85, 86}.contains(code)) {
+      return const _WeatherView('❄️', 'Sneg', Icons.ac_unit_rounded, Color(0xFF80DEEA));
+    }
+    if ({95, 96, 99}.contains(code)) {
+      return const _WeatherView('⛈️', 'Oluja', Icons.thunderstorm_rounded, Color(0xFFFFCA28));
+    }
+    return const _WeatherView('🌡️', 'Vreme', Icons.thermostat_rounded, Colors.white);
   }
 }
 
@@ -197,6 +217,8 @@ class _GradConfig {
 class _WeatherView {
   final String icon;
   final String description;
+  final IconData iconData;
+  final Color iconColor;
 
-  const _WeatherView(this.icon, this.description);
+  const _WeatherView(this.icon, this.description, this.iconData, this.iconColor);
 }

@@ -60,26 +60,30 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       'en': 'WELCOME',
       'ru': 'ДОБРО ПОЖАЛОВАТЬ',
       'de': 'WILLKOMMEN',
+      'zh': '欢迎',
     },
     'subtitle': {
       'sr': 'Vaš pouzdani prevoz',
       'en': 'Your reliable transport',
       'ru': 'Ваш надежный транспорт',
       'de': 'Ihr zuverlässiger Transport',
+      'zh': '您可靠的出行伙伴',
     },
-    'login': {'sr': 'Prijavi se', 'en': 'Log in', 'ru': 'Войти', 'de': 'Anmelden'},
-    'about': {'sr': 'O nama', 'en': 'About us', 'ru': 'О нас', 'de': 'Über uns'},
+    'login': {'sr': 'Prijavi se', 'en': 'Log in', 'ru': 'Войти', 'de': 'Anmelden', 'zh': '登录'},
+    'about': {'sr': 'O nama', 'en': 'About us', 'ru': 'О нас', 'de': 'Über uns', 'zh': '关于我们'},
     'footer1': {
       'sr': 'Designed - Developed - Crafted with balls',
       'en': 'Designed - Developed - Crafted with balls',
       'ru': 'Designed - Developed - Crafted with balls',
       'de': 'Designed - Developed - Crafted with balls',
+      'zh': 'Designed - Developed - Crafted with balls',
     },
     'footer2': {
       'sr': 'by Bojan Gavrilovic',
       'en': 'by Bojan Gavrilovic',
       'ru': 'by Bojan Gavrilovic',
       'de': 'by Bojan Gavrilovic',
+      'zh': 'by Bojan Gavrilovic',
     },
   };
 

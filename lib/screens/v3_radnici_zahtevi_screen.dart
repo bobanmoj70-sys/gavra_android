@@ -19,14 +19,21 @@ class _RadZahTr {
       'sr': 'Monitoring zahteva',
       'en': 'Request monitoring',
       'ru': 'Мониторинг запросов',
-      'de': 'Anfragenüberwachung'
+      'de': 'Anfragenüberwachung',
+      'zh': '请求监控',
     },
-    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
-    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
-    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
-    'otkazano': {'sr': 'otkazano', 'en': 'canceled', 'ru': 'отменено', 'de': 'storniert'},
-    'nemaZahteva': {'sr': 'Nema zahteva', 'en': 'No requests', 'ru': 'Нет запросов', 'de': 'Keine Anfragen'},
-    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast'},
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung', 'zh': '处理中'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt', 'zh': '已批准'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt', 'zh': '已拒绝'},
+    'otkazano': {'sr': 'otkazano', 'en': 'canceled', 'ru': 'отменено', 'de': 'storniert', 'zh': '已取消'},
+    'nemaZahteva': {
+      'sr': 'Nema zahteva',
+      'en': 'No requests',
+      'ru': 'Нет запросов',
+      'de': 'Keine Anfragen',
+      'zh': '没有请求'
+    },
+    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast', 'zh': '乘客'},
   };
 
   static String tr(String key) {

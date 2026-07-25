@@ -13,55 +13,68 @@ import '../utils/v3_input_utils.dart';
 
 class _UplTr {
   static const Map<String, Map<String, String>> _t = {
-    'uplataPazara': {'sr': 'Uplata pazara', 'en': 'Cash payment', 'ru': 'Оплата выручки', 'de': 'Kassenzahlung'},
-    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
-    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum'},
-    'predao': {'sr': 'Predao', 'en': 'Handed over', 'ru': 'Сдал', 'de': 'Übergeben'},
-    'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:'},
-    'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:'},
-    'cuvanje': {'sr': 'Čuvanje...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...'},
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
+    'uplataPazara': {
+      'sr': 'Uplata pazara',
+      'en': 'Cash payment',
+      'ru': 'Оплата выручки',
+      'de': 'Kassenzahlung',
+      'zh': '现金付款'
+    },
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
+    'predao': {'sr': 'Predao', 'en': 'Handed over', 'ru': 'Сдал', 'de': 'Übergeben', 'zh': '已交款'},
+    'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:', 'zh': '盈余：'},
+    'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:', 'zh': '不足：'},
+    'cuvanje': {'sr': 'Čuvanje...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...', 'zh': '保存中...'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
     'zatraziUnosOdVozaca': {
       'sr': 'Zatraži unos od vozača',
       'en': 'Request entry from driver',
       'ru': 'Запросить ввод у водителя',
-      'de': 'Eingabe vom Fahrer anfordern'
+      'de': 'Eingabe vom Fahrer anfordern',
+      'zh': '请求司机输入'
     },
     'greskaPriUcitavanju': {
       'sr': 'Greška pri učitavanju',
       'en': 'Error loading',
       'ru': 'Ошибка загрузки',
-      'de': 'Fehler beim Laden'
+      'de': 'Fehler beim Laden',
+      'zh': '加载错误'
     },
     'unesiteIznosVeciOd0': {
       'sr': 'Unesite iznos veći od 0 din.',
       'en': 'Enter an amount greater than 0.',
       'ru': 'Введите сумму больше 0.',
-      'de': 'Geben Sie einen Betrag größer als 0 ein.'
+      'de': 'Geben Sie einen Betrag größer als 0 ein.',
+      'zh': '请输入大于0的金额。'
     },
     'uplataPazaraSacuvana': {
       'sr': 'Uplata pazara sačuvana',
       'en': 'Cash payment saved',
       'ru': 'Оплата выручки сохранена',
-      'de': 'Kassenzahlung gespeichert'
+      'de': 'Kassenzahlung gespeichert',
+      'zh': '现金付款已保存'
     },
     'greskaPriCuvanju': {
       'sr': 'Greška pri čuvanju',
       'en': 'Error saving',
       'ru': 'Ошибка сохранения',
-      'de': 'Fehler beim Speichern'
+      'de': 'Fehler beim Speichern',
+      'zh': '保存错误'
     },
     'zahtevProslijedjenVozacu': {
       'sr': 'Zahtev prosleđen vozaču!',
       'en': 'Request sent to driver!',
       'ru': 'Запрос отправлен водителю!',
-      'de': 'Anfrage an Fahrer gesendet!'
+      'de': 'Anfrage an Fahrer gesendet!',
+      'zh': '请求已发送给司机！'
     },
     'greskaPriSlanjuZahteva': {
       'sr': 'Greška pri slanju zahteva',
       'en': 'Error sending request',
       'ru': 'Ошибка отправки запроса',
-      'de': 'Fehler beim Senden der Anfrage'
+      'de': 'Fehler beim Senden der Anfrage',
+      'zh': '发送请求错误'
     },
   };
 

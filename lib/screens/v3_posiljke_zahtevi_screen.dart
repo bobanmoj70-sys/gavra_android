@@ -12,13 +12,19 @@ import '../widgets/v3_zahtev_timelapse_widget.dart';
 
 class _PosZahTr {
   static const Map<String, Map<String, String>> _t = {
-    'posiljke': {'sr': 'Pošiljke', 'en': 'Shipments', 'ru': 'Посылки', 'de': 'Sendungen'},
-    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
-    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
-    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
-    'nemaPosiljki': {'sr': 'Nema pošiljki', 'en': 'No shipments', 'ru': 'Нет посылок', 'de': 'Keine Sendungen'},
-    'posiljka': {'sr': 'Pošiljka', 'en': 'Shipment', 'ru': 'Посылка', 'de': 'Sendung'},
-    'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Zeit'},
+    'posiljke': {'sr': 'Pošiljke', 'en': 'Shipments', 'ru': 'Посылки', 'de': 'Sendungen', 'zh': '包裹'},
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung', 'zh': '处理中'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt', 'zh': '已批准'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt', 'zh': '已拒绝'},
+    'nemaPosiljki': {
+      'sr': 'Nema pošiljki',
+      'en': 'No shipments',
+      'ru': 'Нет посылок',
+      'de': 'Keine Sendungen',
+      'zh': '没有包裹'
+    },
+    'posiljka': {'sr': 'Pošiljka', 'en': 'Shipment', 'ru': 'Посылка', 'de': 'Sendung', 'zh': '包裹'},
+    'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Zeit', 'zh': '时间'},
   };
 
   static String tr(String key) {

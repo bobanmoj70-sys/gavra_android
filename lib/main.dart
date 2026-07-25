@@ -377,6 +377,10 @@ void main() async {
     debugPrint('⚠️ [main] Locale load timeout/greška: $e');
   }
 
+  // Kad korisnik promeni jezik u app-u, odmah sinhronizuj locale_code u bazi
+  // (umesto da se to desi tek na sledećem hladnom startu/resume-u).
+  V3LocaleManager().onLocaleChanged = () => unawaited(_syncLocaleOnResume(force: true));
+
   // ODMAH POKREĆEMO UI KAKO BI IZBEGLI CRN OS EKRAN
   debugPrint('🚀 [main] 5. runApp start (Native non-blocking UI)');
   runApp(const MyApp());
@@ -699,9 +703,14 @@ Future<void> _syncRefreshedPushToken(String token) async {
 /// vrati iz pozadine (resume), bez čekanja na hladan restart ili FCM token
 /// refresh. Throttle-ovano na jednom u 6h da ne spamuje edge funkciju kod
 /// korisnika koji često prebacuju app u pozadinu i nazad.
-Future<void> _syncLocaleOnResume() async {
+///
+/// Kada `force` je true (npr. korisnik je upravo ručno promenio jezik u
+/// app-u), throttle se zaobilazi kako bi se promena odmah videla u bazi.
+Future<void> _syncLocaleOnResume({bool force = false}) async {
   final now = DateTime.now();
-  if (_lastLocaleResumeSyncAt != null && now.difference(_lastLocaleResumeSyncAt!) < const Duration(hours: 6)) {
+  if (!force &&
+      _lastLocaleResumeSyncAt != null &&
+      now.difference(_lastLocaleResumeSyncAt!) < const Duration(hours: 6)) {
     return;
   }
 

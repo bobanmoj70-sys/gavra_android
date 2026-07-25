@@ -29,27 +29,37 @@ class _PutTr {
       'sr': 'Dodaj putnika',
       'en': 'Add passenger',
       'ru': 'Добавить пассажира',
-      'de': 'Passagier hinzufügen'
+      'de': 'Passagier hinzufügen',
+      'zh': '添加乘客'
     },
-    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle'},
+    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle', 'zh': '全部'},
     'pretraziPutnike': {
       'sr': 'Pretraži putnike...',
       'en': 'Search passengers...',
       'ru': 'Поиск пассажиров...',
-      'de': 'Passagiere suchen...'
+      'de': 'Passagiere suchen...',
+      'zh': '搜索乘客...'
     },
     'nemaRezultataPretrage': {
       'sr': 'Nema rezultata pretrage',
       'en': 'No search results',
       'ru': 'Нет результатов поиска',
-      'de': 'Keine Suchergebnisse'
+      'de': 'Keine Suchergebnisse',
+      'zh': '无搜索结果'
     },
-    'nemaPutnika': {'sr': 'Nema putnika', 'en': 'No passengers', 'ru': 'Нет пассажиров', 'de': 'Keine Passagiere'},
+    'nemaPutnika': {
+      'sr': 'Nema putnika',
+      'en': 'No passengers',
+      'ru': 'Нет пассажиров',
+      'de': 'Keine Passagiere',
+      'zh': '无乘客'
+    },
     'potvrdiBrisanje': {
       'sr': 'Potvrdi brisanje',
       'en': 'Confirm deletion',
       'ru': 'Подтвердите удаление',
-      'de': 'Löschen bestätigen'
+      'de': 'Löschen bestätigen',
+      'zh': '确认删除'
     },
     'daLiSteSigurniObrisatiPutnika': {
       'sr':
@@ -60,108 +70,170 @@ class _PutTr {
           'Вы уверены, что хотите удалить "%s"?\n\n⚠️ ВАЖНО:\n• Пассажир будет НАВСЕГДА удален\n• Все поездки и статистика будут удалены\n• Это действие НЕОБРАТИМО!',
       'de':
           'Möchten Sie "%s" wirklich löschen?\n\n⚠️ WICHTIG:\n• Der Passagier wird DAUERHAFT gelöscht\n• Alle Fahrten und Statistiken werden gelöscht\n• Diese Aktion ist UNWIDERRUFLICH!',
+      'zh': '您确定要删除“%s”吗？\n\n⚠️ 重要提示：\n• 乘客将被永久删除\n• 所有行程和统计数据都将被删除\n• 此操作不可恢复！',
     },
-    'obrisi': {'sr': 'Obriši', 'en': 'Delete', 'ru': 'Удалить', 'de': 'Löschen'},
-    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
-    'obrisan': {'sr': 'obrisan', 'en': 'deleted', 'ru': 'удален', 'de': 'gelöscht'},
-    'pozovi': {'sr': 'Pozovi', 'en': 'Call', 'ru': 'Позвонить', 'de': 'Anrufen'},
+    'obrisi': {'sr': 'Obriši', 'en': 'Delete', 'ru': 'Удалить', 'de': 'Löschen', 'zh': '删除'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'obrisan': {'sr': 'obrisan', 'en': 'deleted', 'ru': 'удален', 'de': 'gelöscht', 'zh': '已删除'},
+    'pozovi': {'sr': 'Pozovi', 'en': 'Call', 'ru': 'Позвонить', 'de': 'Anrufen', 'zh': '打电话'},
     'detaljneStatistike': {
       'sr': 'Detaljne statistike',
       'en': 'Detailed statistics',
       'ru': 'Подробная статистика',
-      'de': 'Detaillierte Statistik'
+      'de': 'Detaillierte Statistik',
+      'zh': '详细统计'
     },
-    'uredi': {'sr': 'Uredi', 'en': 'Edit', 'ru': 'Изменить', 'de': 'Bearbeiten'},
-    'kontaktiraj': {'sr': 'Kontaktiraj', 'en': 'Contact', 'ru': 'Связаться с', 'de': 'Kontaktieren'},
-    'sms': {'sr': 'SMS', 'en': 'SMS', 'ru': 'SMS', 'de': 'SMS'},
+    'uredi': {'sr': 'Uredi', 'en': 'Edit', 'ru': 'Изменить', 'de': 'Bearbeiten', 'zh': '编辑'},
+    'kontaktiraj': {'sr': 'Kontaktiraj', 'en': 'Contact', 'ru': 'Связаться с', 'de': 'Kontaktieren', 'zh': '联系'},
+    'sms': {'sr': 'SMS', 'en': 'SMS', 'ru': 'SMS', 'de': 'SMS', 'zh': '短信'},
     'unesiteImeIliTelefon': {
       'sr': '⚠️ Unesite makar ime ili broj telefona',
       'en': '⚠️ Enter at least a name or phone number',
       'ru': '⚠️ Введите хотя бы имя или номер телефона',
       'de': '⚠️ Geben Sie mindestens einen Namen oder eine Telefonnummer ein',
+      'zh': '⚠️ 请至少输入姓名或电话号码',
     },
     'putnikDodan': {
       'sr': '✅ Putnik dodan',
       'en': '✅ Passenger added',
       'ru': '✅ Пассажир добавлен',
-      'de': '✅ Passagier hinzugefügt'
+      'de': '✅ Passagier hinzugefügt',
+      'zh': '✅ 乘客已添加'
     },
     'putnikSacuvan': {
       'sr': '✅ Putnik sačuvan',
       'en': '✅ Passenger saved',
       'ru': '✅ Пассажир сохранен',
-      'de': '✅ Passagier gespeichert'
+      'de': '✅ Passagier gespeichert',
+      'zh': '✅ 乘客已保存'
     },
-    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler', 'zh': '错误'},
     'nijeOdabrano': {
       'sr': '— nije odabrano —',
       'en': '— not selected —',
       'ru': '— не выбрано —',
-      'de': '— nicht ausgewählt —'
+      'de': '— nicht ausgewählt —',
+      'zh': '— 未选择 —'
     },
     'urediPutnika': {
       'sr': 'Uredi putnika',
       'en': 'Edit passenger',
       'ru': 'Изменить пассажира',
-      'de': 'Passagier bearbeiten'
+      'de': 'Passagier bearbeiten',
+      'zh': '编辑乘客'
     },
-    'noviPutnik': {'sr': 'Novi putnik', 'en': 'New passenger', 'ru': 'Новый пассажир', 'de': 'Neuer Passagier'},
+    'noviPutnik': {
+      'sr': 'Novi putnik',
+      'en': 'New passenger',
+      'ru': 'Новый пассажир',
+      'de': 'Neuer Passagier',
+      'zh': '新乘客'
+    },
     'azurirajPodatke': {
       'sr': 'Ažuriraj podatke i sačuvaj izmene',
       'en': 'Update the details and save changes',
       'ru': 'Обновите данные и сохраните изменения',
       'de': 'Daten aktualisieren und Änderungen speichern',
+      'zh': '更新信息并保存更改',
     },
     'unesiPodatke': {
       'sr': 'Unesi podatke i dodaj putnika',
       'en': 'Enter the details and add passenger',
       'ru': 'Введите данные и добавьте пассажира',
       'de': 'Daten eingeben und Passagier hinzufügen',
+      'zh': '输入信息并添加乘客',
     },
-    'osnovniPodaci': {'sr': 'Osnovni podaci', 'en': 'Basic details', 'ru': 'Основные данные', 'de': 'Grunddaten'},
-    'tipPutnika': {'sr': 'Tip putnika', 'en': 'Passenger type', 'ru': 'Тип пассажира', 'de': 'Passagiertyp'},
-    'radnik': {'sr': '👷 Radnik', 'en': '👷 Worker', 'ru': '👷 Рабочий', 'de': '👷 Arbeiter'},
-    'ucenik': {'sr': '🎒 Učenik', 'en': '🎒 Student', 'ru': '🎒 Ученик', 'de': '🎒 Schüler'},
-    'dnevni': {'sr': '🚶 Dnevni', 'en': '🚶 Daily', 'ru': '🚶 Ежедневный', 'de': '🚶 Täglich'},
-    'posiljka': {'sr': '📦 Pošiljka', 'en': '📦 Shipment', 'ru': '📦 Посылка', 'de': '📦 Sendung'},
+    'osnovniPodaci': {
+      'sr': 'Osnovni podaci',
+      'en': 'Basic details',
+      'ru': 'Основные данные',
+      'de': 'Grunddaten',
+      'zh': '基本信息'
+    },
+    'tipPutnika': {
+      'sr': 'Tip putnika',
+      'en': 'Passenger type',
+      'ru': 'Тип пассажира',
+      'de': 'Passagiertyp',
+      'zh': '乘客类型'
+    },
+    'radnik': {'sr': '👷 Radnik', 'en': '👷 Worker', 'ru': '👷 Рабочий', 'de': '👷 Arbeiter', 'zh': '👷 工人'},
+    'ucenik': {'sr': '🎒 Učenik', 'en': '🎒 Student', 'ru': '🎒 Ученик', 'de': '🎒 Schüler', 'zh': '🎒 学生'},
+    'dnevni': {'sr': '🚶 Dnevni', 'en': '🚶 Daily', 'ru': '🚶 Ежедневный', 'de': '🚶 Täglich', 'zh': '🚶 日常'},
+    'posiljka': {'sr': '📦 Pošiljka', 'en': '📦 Shipment', 'ru': '📦 Посылка', 'de': '📦 Sendung', 'zh': '📦 包裹'},
     'imePrezime': {
       'sr': 'Ime i prezime',
       'en': 'First and last name',
       'ru': 'Имя и фамилия',
-      'de': 'Vor- und Nachname'
+      'de': 'Vor- und Nachname',
+      'zh': '姓名'
     },
-    'telefon1': {'sr': 'Telefon 1 *', 'en': 'Phone 1 *', 'ru': 'Телефон 1 *', 'de': 'Telefon 1 *'},
+    'telefon1': {'sr': 'Telefon 1 *', 'en': 'Phone 1 *', 'ru': 'Телефон 1 *', 'de': 'Telefon 1 *', 'zh': '电话 1 *'},
     'telefon2': {
       'sr': 'Telefon 2 (opciono)',
       'en': 'Phone 2 (optional)',
       'ru': 'Телефон 2 (опционально)',
-      'de': 'Telefon 2 (optional)'
+      'de': 'Telefon 2 (optional)',
+      'zh': '电话 2（可选）'
     },
-    'cenaPoVoznji': {'sr': 'Cena po vožnji', 'en': 'Price per ride', 'ru': 'Цена за поездку', 'de': 'Preis pro Fahrt'},
-    'cenaPoDanu': {'sr': 'Cena po danu', 'en': 'Price per day', 'ru': 'Цена за день', 'de': 'Preis pro Tag'},
+    'cenaPoVoznji': {
+      'sr': 'Cena po vožnji',
+      'en': 'Price per ride',
+      'ru': 'Цена за поездку',
+      'de': 'Preis pro Fahrt',
+      'zh': '每次价格'
+    },
+    'cenaPoDanu': {
+      'sr': 'Cena po danu',
+      'en': 'Price per day',
+      'ru': 'Цена за день',
+      'de': 'Preis pro Tag',
+      'zh': '每日价格'
+    },
     'adreseBc': {
       'sr': 'Adrese — Bela Crkva',
       'en': 'Addresses — Bela Crkva',
       'ru': 'Адреса — Бела-Црква',
-      'de': 'Adressen — Bela Crkva'
+      'de': 'Adressen — Bela Crkva',
+      'zh': '地址 — Bela Crkva'
     },
-    'adreseVs': {'sr': 'Adrese — Vršac', 'en': 'Addresses — Vršac', 'ru': 'Адреса — Вршац', 'de': 'Adressen — Vršac'},
-    'bcAdresa1': {'sr': 'BC — Adresa 1', 'en': 'BC — Address 1', 'ru': 'BC — Адрес 1', 'de': 'BC — Adresse 1'},
+    'adreseVs': {
+      'sr': 'Adrese — Vršac',
+      'en': 'Addresses — Vršac',
+      'ru': 'Адреса — Вршац',
+      'de': 'Adressen — Vršac',
+      'zh': '地址 — Vršac'
+    },
+    'bcAdresa1': {
+      'sr': 'BC — Adresa 1',
+      'en': 'BC — Address 1',
+      'ru': 'BC — Адрес 1',
+      'de': 'BC — Adresse 1',
+      'zh': 'BC — 地址 1'
+    },
     'bcAdresa2': {
       'sr': 'BC — Adresa 2 (opciono)',
       'en': 'BC — Address 2 (optional)',
       'ru': 'BC — Адрес 2 (опционально)',
-      'de': 'BC — Adresse 2 (optional)'
+      'de': 'BC — Adresse 2 (optional)',
+      'zh': 'BC — 地址 2（可选）'
     },
-    'vsAdresa1': {'sr': 'VS — Adresa 1', 'en': 'VS — Address 1', 'ru': 'VS — Адрес 1', 'de': 'VS — Adresse 1'},
+    'vsAdresa1': {
+      'sr': 'VS — Adresa 1',
+      'en': 'VS — Address 1',
+      'ru': 'VS — Адрес 1',
+      'de': 'VS — Adresse 1',
+      'zh': 'VS — 地址 1'
+    },
     'vsAdresa2': {
       'sr': 'VS — Adresa 2 (opciono)',
       'en': 'VS — Address 2 (optional)',
       'ru': 'VS — Адрес 2 (опционально)',
-      'de': 'VS — Adresse 2 (optional)'
+      'de': 'VS — Adresse 2 (optional)',
+      'zh': 'VS — 地址 2（可选）'
     },
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
-    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen', 'zh': '添加'},
   };
 
   static String tr(String key, [List<String>? args]) {

@@ -13,44 +13,60 @@ import '../utils/v3_state_utils.dart';
 
 class _DugTr {
   static const Map<String, Map<String, String>> _t = {
-    'dugovanja': {'sr': 'Dugovanja', 'en': 'Debts', 'ru': 'Долги', 'de': 'Schulden'},
-    'ukupnoDugova': {'sr': 'Ukupno dugova', 'en': 'Total debts', 'ru': 'Всего долгов', 'de': 'Gesamtschulden'},
-    'ukupanIznos': {'sr': 'Ukupan iznos', 'en': 'Total amount', 'ru': 'Общая сумма', 'de': 'Gesamtbetrag'},
+    'dugovanja': {'sr': 'Dugovanja', 'en': 'Debts', 'ru': 'Долги', 'de': 'Schulden', 'zh': '欠款'},
+    'ukupnoDugova': {
+      'sr': 'Ukupno dugova',
+      'en': 'Total debts',
+      'ru': 'Всего долгов',
+      'de': 'Gesamtschulden',
+      'zh': '欠款总数'
+    },
+    'ukupanIznos': {'sr': 'Ukupan iznos', 'en': 'Total amount', 'ru': 'Общая сумма', 'de': 'Gesamtbetrag', 'zh': '总金额'},
     'pretraziPutnike': {
       'sr': '🔍  Pretraži putnike...',
       'en': '🔍  Search passengers...',
       'ru': '🔍  Поиск пассажиров...',
       'de': '🔍  Passagiere suchen...',
+      'zh': '🔍  搜索乘客...',
     },
     'nemaEvidentiranihDugovanja': {
       'sr': 'Nema evidentiranih dugovanja',
       'en': 'No recorded debts',
       'ru': 'Нет зарегистрированных долгов',
       'de': 'Keine erfassten Schulden',
+      'zh': '没有记录的欠款',
     },
     'nemaRezultataZa': {
       'sr': 'Nema rezultata za',
       'en': 'No results for',
       'ru': 'Нет результатов для',
       'de': 'Keine Ergebnisse für',
+      'zh': '没有找到结果：',
     },
-    'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen'},
-    'za': {'sr': 'za', 'en': 'for', 'ru': 'для', 'de': 'für'},
-    'period': {'sr': 'Period', 'en': 'Period', 'ru': 'Период', 'de': 'Zeitraum'},
-    'obracun': {'sr': 'Obračun', 'en': 'Calculation', 'ru': 'Расчёт', 'de': 'Abrechnung'},
-    'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt'},
-    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schuld'},
-    'pokupio': {'sr': 'Pokupio', 'en': 'Collected by', 'ru': 'Забрал', 'de': 'Abgeholt von'},
-    'naplatio': {'sr': 'Naplatio', 'en': 'Charged by', 'ru': 'Взыскал', 'de': 'Eingezogen von'},
+    'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen', 'zh': '已收款'},
+    'za': {'sr': 'za', 'en': 'for', 'ru': 'для', 'de': 'für', 'zh': '为'},
+    'period': {'sr': 'Period', 'en': 'Period', 'ru': 'Период', 'de': 'Zeitraum', 'zh': '周期'},
+    'obracun': {'sr': 'Obračun', 'en': 'Calculation', 'ru': 'Расчёт', 'de': 'Abrechnung', 'zh': '结算'},
+    'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt', 'zh': '已支付'},
+    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schuld', 'zh': '欠款'},
+    'pokupio': {'sr': 'Pokupio', 'en': 'Collected by', 'ru': 'Забрал', 'de': 'Abgeholt von', 'zh': '收款人'},
+    'naplatio': {'sr': 'Naplatio', 'en': 'Charged by', 'ru': 'Взыскал', 'de': 'Eingezogen von', 'zh': '收取人'},
     'naplacenoCreatedAt': {
       'sr': 'Naplaćeno (created_at)',
       'en': 'Collected (created_at)',
       'ru': 'Взыскано (created_at)',
       'de': 'Eingezogen (created_at)',
+      'zh': '已收款 (created_at)',
     },
-    'updatedAt': {'sr': 'Updated at', 'en': 'Updated at', 'ru': 'Обновлено', 'de': 'Aktualisiert am'},
-    'finansijeNaziv': {'sr': 'Finansije naziv', 'en': 'Finance name', 'ru': 'Название финансов', 'de': 'Finanzname'},
-    'naplati': {'sr': 'NAPLATI', 'en': 'COLLECT', 'ru': 'ВЗЫСКАТЬ', 'de': 'EINZIEHEN'},
+    'updatedAt': {'sr': 'Updated at', 'en': 'Updated at', 'ru': 'Обновлено', 'de': 'Aktualisiert am', 'zh': '更新时间'},
+    'finansijeNaziv': {
+      'sr': 'Finansije naziv',
+      'en': 'Finance name',
+      'ru': 'Название финансов',
+      'de': 'Finanzname',
+      'zh': '财务名称'
+    },
+    'naplati': {'sr': 'NAPLATI', 'en': 'COLLECT', 'ru': 'ВЗЫСКАТЬ', 'de': 'EINZIEHEN', 'zh': '收款'},
   };
 
   static String tr(String key) {

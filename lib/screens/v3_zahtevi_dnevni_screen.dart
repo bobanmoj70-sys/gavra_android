@@ -26,23 +26,31 @@ class _ZahDnevTr {
       'sr': 'Monitoring zahteva',
       'en': 'Request monitoring',
       'ru': 'Мониторинг запросов',
-      'de': 'Anfragenüberwachung'
+      'de': 'Anfragenüberwachung',
+      'zh': '请求监控'
     },
-    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung'},
-    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt'},
-    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt'},
-    'nemaZahteva': {'sr': 'Nema zahteva', 'en': 'No requests', 'ru': 'Нет запросов', 'de': 'Keine Anfragen'},
-    'uspeh': {'sr': '✅ Uspeh', 'en': '✅ Success', 'ru': '✅ Успех', 'de': '✅ Erfolg'},
-    'odobrenoLabel': {'sr': '✅ Odobreno', 'en': '✅ Approved', 'ru': '✅ Одобрено', 'de': '✅ Genehmigt'},
-    'otkazano': {'sr': '🚫 Otkazano', 'en': '🚫 Canceled', 'ru': '🚫 Отменено', 'de': '🚫 Storniert'},
-    'odbijenoLabel': {'sr': '❌ Odbijeno', 'en': '❌ Rejected', 'ru': '❌ Отклонено', 'de': '❌ Abgelehnt'},
-    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast'},
-    'nepoznat': {'sr': 'Nepoznat', 'en': 'Unknown', 'ru': 'Неизвестно', 'de': 'Unbekannt'},
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung', 'zh': '处理中'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt', 'zh': '已批准'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt', 'zh': '已拒绝'},
+    'nemaZahteva': {
+      'sr': 'Nema zahteva',
+      'en': 'No requests',
+      'ru': 'Нет запросов',
+      'de': 'Keine Anfragen',
+      'zh': '没有请求'
+    },
+    'uspeh': {'sr': '✅ Uspeh', 'en': '✅ Success', 'ru': '✅ Успех', 'de': '✅ Erfolg', 'zh': '✅ 成功'},
+    'odobrenoLabel': {'sr': '✅ Odobreno', 'en': '✅ Approved', 'ru': '✅ Одобрено', 'de': '✅ Genehmigt', 'zh': '✅ 已批准'},
+    'otkazano': {'sr': '🚫 Otkazano', 'en': '🚫 Canceled', 'ru': '🚫 Отменено', 'de': '🚫 Storniert', 'zh': '🚫 已取消'},
+    'odbijenoLabel': {'sr': '❌ Odbijeno', 'en': '❌ Rejected', 'ru': '❌ Отклонено', 'de': '❌ Abgelehnt', 'zh': '❌ 已拒绝'},
+    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast', 'zh': '乘客'},
+    'nepoznat': {'sr': 'Nepoznat', 'en': 'Unknown', 'ru': 'Неизвестно', 'de': 'Unbekannt', 'zh': '未知'},
     'cekaOdgovor': {
       'sr': 'čeka odgovor...',
       'en': 'awaiting response...',
       'ru': 'ожидает ответа...',
-      'de': 'wartet auf Antwort...'
+      'de': 'wartet auf Antwort...',
+      'zh': '等待回复...'
     },
   };
 

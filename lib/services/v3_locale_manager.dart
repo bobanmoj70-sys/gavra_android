@@ -25,6 +25,11 @@ class V3LocaleManager {
 
   late final ValueNotifier<Locale> _localeNotifier;
 
+  /// Opcioni hook koji app (main.dart) postavlja da bi odmah sinhronizovao
+  /// novi jezik u bazu (v3_auth.locale_code) čim korisnik promeni jezik,
+  /// umesto da se to desi tek na sledećem hladnom startu/resume-u.
+  void Function()? onLocaleChanged;
+
   /// ValueNotifier za reaktivno slušanje jezika (za MaterialApp).
   ValueNotifier<Locale> get localeNotifier => _localeNotifier;
 
@@ -46,8 +51,12 @@ class V3LocaleManager {
   /// Promeni jezik i sačuvaj izbor.
   Future<void> changeLocale(Locale locale) async {
     final code = _normalizeLocaleCode(locale.languageCode) ?? _defaultLocale.languageCode;
+    final changed = code != _localeNotifier.value.languageCode;
     _localeNotifier.value = Locale(code);
     await _persistLocale(code);
+    if (changed) {
+      onLocaleChanged?.call();
+    }
   }
 
   /// Prebaci na sledeći podržani jezik.

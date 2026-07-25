@@ -13,33 +13,44 @@ class _PopupTr {
       'sr': 'Unesite ispravan iznos stotino nula',
       'en': 'Enter a valid amount',
       'ru': 'Введите правильную сумму',
-      'de': 'Geben Sie einen gültigen Betrag ein'
+      'de': 'Geben Sie einen gültigen Betrag ein',
+      'zh': '请输入有效金额'
     },
     'pazarEvidentiran': {
       'sr': 'Pazar je uspesno evidentiran. Hvala.',
       'en': 'Earnings successfully recorded. Thank you.',
       'ru': 'Выручка успешно зарегистрирована. Спасибо.',
-      'de': 'Einnahmen erfolgreich erfasst. Danke.'
+      'de': 'Einnahmen erfolgreich erfasst. Danke.',
+      'zh': '收入已成功记录。谢谢。'
     },
-    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler', 'zh': '错误'},
     'smenaZavrsenaUnesiteIznos': {
       'sr': 'Vaša smena za danas je završena. Molimo unesite iznos današnjeg pazara.',
       'en': 'Your shift for today has ended. Please enter today\'s earnings amount.',
       'ru': 'Ваша смена на сегодня завершена. Пожалуйста, введите сумму сегодняшней выручки.',
-      'de': 'Ihre Schicht für heute ist beendet. Bitte geben Sie den heutigen Einnahmenbetrag ein.'
+      'de': 'Ihre Schicht für heute ist beendet. Bitte geben Sie den heutigen Einnahmenbetrag ein.',
+      'zh': '您今天的班次已结束。请输入今天的收入金额。'
     },
     'unesitePredatIznos': {
       'sr': 'Unesite predat iznos',
       'en': 'Enter handed over amount',
       'ru': 'Введите переданную сумму',
-      'de': 'Geben Sie den übergebenen Betrag ein'
+      'de': 'Geben Sie den übergebenen Betrag ein',
+      'zh': '请输入已交金额'
     },
-    'belezenje': {'sr': 'Beleženje...', 'en': 'Recording...', 'ru': 'Запись...', 'de': 'Aufzeichnen...'},
+    'belezenje': {
+      'sr': 'Beleženje...',
+      'en': 'Recording...',
+      'ru': 'Запись...',
+      'de': 'Aufzeichnen...',
+      'zh': '记录中...'
+    },
     'sacuvajPazarIZatvori': {
       'sr': 'Sacuvaj pazar i zatvori',
       'en': 'Save earnings and close',
       'ru': 'Сохранить выручку и закрыть',
-      'de': 'Einnahmen speichern und schließen'
+      'de': 'Einnahmen speichern und schließen',
+      'zh': '保存收入并关闭'
     },
   };
 

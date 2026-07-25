@@ -18,133 +18,192 @@ class _OdrTr {
       'sr': '📖 Kolska knjiga',
       'en': '📖 Vehicle logbook',
       'ru': '📖 Автомобильный журнал',
-      'de': '📖 Fahrzeugbuch'
+      'de': '📖 Fahrzeugbuch',
+      'zh': '📖 车辆日志'
     },
-    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler'},
-    'nemaVozila': {'sr': 'Nema vozila.', 'en': 'No vehicles.', 'ru': 'Нет автомобилей.', 'de': 'Keine Fahrzeuge.'},
-    'registracija': {'sr': 'Registracija', 'en': 'Registration', 'ru': 'Регистрация', 'de': 'Registrierung'},
-    'godinaLabel': {'sr': 'Godina', 'en': 'Year', 'ru': 'Год', 'de': 'Jahr'},
-    'kilometraza': {'sr': 'Kilometraža: ', 'en': 'Mileage: ', 'ru': 'Пробег: ', 'de': 'Kilometerstand: '},
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler', 'zh': '错误'},
+    'nemaVozila': {
+      'sr': 'Nema vozila.',
+      'en': 'No vehicles.',
+      'ru': 'Нет автомобилей.',
+      'de': 'Keine Fahrzeuge.',
+      'zh': '没有车辆。'
+    },
+    'registracija': {
+      'sr': 'Registracija',
+      'en': 'Registration',
+      'ru': 'Регистрация',
+      'de': 'Registrierung',
+      'zh': '登记'
+    },
+    'godinaLabel': {'sr': 'Godina', 'en': 'Year', 'ru': 'Год', 'de': 'Jahr', 'zh': '年份'},
+    'kilometraza': {'sr': 'Kilometraža: ', 'en': 'Mileage: ', 'ru': 'Пробег: ', 'de': 'Kilometerstand: ', 'zh': '里程: '},
     'brojSasijeVin': {
       'sr': 'Broj šasije (VIN)',
       'en': 'Chassis number (VIN)',
       'ru': 'Номер шасси (VIN)',
-      'de': 'Fahrgestellnummer (VIN)'
+      'de': 'Fahrgestellnummer (VIN)',
+      'zh': '底盘号 (VIN)'
     },
-    'brojSasije': {'sr': 'Broj šasije', 'en': 'Chassis number', 'ru': 'Номер шасси', 'de': 'Fahrgestellnummer'},
+    'brojSasije': {
+      'sr': 'Broj šasije',
+      'en': 'Chassis number',
+      'ru': 'Номер шасси',
+      'de': 'Fahrgestellnummer',
+      'zh': '底盘号'
+    },
     'registracijaVaziDo': {
       'sr': 'Registracija važi do',
       'en': 'Registration valid until',
       'ru': 'Регистрация действительна до',
-      'de': 'Zulassung gültig bis'
+      'de': 'Zulassung gültig bis',
+      'zh': '注册有效期至'
     },
-    'istekla': {'sr': 'ISTEKLA!', 'en': 'EXPIRED!', 'ru': 'ИСТЕКЛА!', 'de': 'ABGELAUFEN!'},
-    'dana': {'sr': 'dana', 'en': 'days', 'ru': 'дней', 'de': 'Tage'},
-    'napomena': {'sr': 'Napomena', 'en': 'Note', 'ru': 'Примечание', 'de': 'Notiz'},
-    'maliServis': {'sr': 'Mali servis', 'en': 'Minor service', 'ru': 'Малое ТО', 'de': 'Kleiner Service'},
-    'velikiServis': {'sr': 'Veliki servis', 'en': 'Major service', 'ru': 'Большое ТО', 'de': 'Großer Service'},
-    'alternator': {'sr': 'Alternator', 'en': 'Alternator', 'ru': 'Генератор', 'de': 'Lichtmaschine'},
-    'akumulator': {'sr': 'Akumulator', 'en': 'Battery', 'ru': 'Аккумулятор', 'de': 'Batterie'},
+    'istekla': {'sr': 'ISTEKLA!', 'en': 'EXPIRED!', 'ru': 'ИСТЕКЛА!', 'de': 'ABGELAUFEN!', 'zh': '已过期！'},
+    'dana': {'sr': 'dana', 'en': 'days', 'ru': 'дней', 'de': 'Tage', 'zh': '天'},
+    'napomena': {'sr': 'Napomena', 'en': 'Note', 'ru': 'Примечание', 'de': 'Notiz', 'zh': '备注'},
+    'maliServis': {'sr': 'Mali servis', 'en': 'Minor service', 'ru': 'Малое ТО', 'de': 'Kleiner Service', 'zh': '小保养'},
+    'velikiServis': {
+      'sr': 'Veliki servis',
+      'en': 'Major service',
+      'ru': 'Большое ТО',
+      'de': 'Großer Service',
+      'zh': '大保养'
+    },
+    'alternator': {'sr': 'Alternator', 'en': 'Alternator', 'ru': 'Генератор', 'de': 'Lichtmaschine', 'zh': '发电机'},
+    'akumulator': {'sr': 'Akumulator', 'en': 'Battery', 'ru': 'Аккумулятор', 'de': 'Batterie', 'zh': '蓄电池'},
     'plocicePrednje': {
       'sr': 'Pločice prednje',
       'en': 'Front brake pads',
       'ru': 'Передние колодки',
-      'de': 'Vordere Bremsbeläge'
+      'de': 'Vordere Bremsbeläge',
+      'zh': '前制动片'
     },
     'plociceZadnje': {
       'sr': 'Pločice zadnje',
       'en': 'Rear brake pads',
       'ru': 'Задние колодки',
-      'de': 'Hintere Bremsbeläge'
+      'de': 'Hintere Bremsbeläge',
+      'zh': '后制动片'
     },
-    'trap': {'sr': 'Trap', 'en': 'Chassis/suspension', 'ru': 'Ходовая', 'de': 'Fahrwerk'},
-    'gumePrednje': {'sr': 'Gume prednje', 'en': 'Front tires', 'ru': 'Передние шины', 'de': 'Vorderreifen'},
-    'gumeZadnje': {'sr': 'Gume zadnje', 'en': 'Rear tires', 'ru': 'Задние шины', 'de': 'Hinterreifen'},
-    'menjane': {'sr': 'Menjane', 'en': 'Changed', 'ru': 'Заменено', 'de': 'Gewechselt'},
-    'radioCode': {'sr': 'Radio code', 'en': 'Radio code', 'ru': 'Код радио', 'de': 'Radio-Code'},
-    'unesi': {'sr': 'Unesi', 'en': 'Enter', 'ru': 'Введите', 'de': 'Eingeben'},
-    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen'},
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern'},
-    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum'},
-    'izaberiDatum': {'sr': 'Izaberi datum', 'en': 'Select date', 'ru': 'Выберите дату', 'de': 'Datum wählen'},
+    'trap': {'sr': 'Trap', 'en': 'Chassis/suspension', 'ru': 'Ходовая', 'de': 'Fahrwerk', 'zh': '底盘/悬架'},
+    'gumePrednje': {
+      'sr': 'Gume prednje',
+      'en': 'Front tires',
+      'ru': 'Передние шины',
+      'de': 'Vorderreifen',
+      'zh': '前轮轮胎'
+    },
+    'gumeZadnje': {'sr': 'Gume zadnje', 'en': 'Rear tires', 'ru': 'Задние шины', 'de': 'Hinterreifen', 'zh': '后轮轮胎'},
+    'menjane': {'sr': 'Menjane', 'en': 'Changed', 'ru': 'Заменено', 'de': 'Gewechselt', 'zh': '已更换'},
+    'radioCode': {'sr': 'Radio code', 'en': 'Radio code', 'ru': 'Код радио', 'de': 'Radio-Code', 'zh': '收音机密码'},
+    'unesi': {'sr': 'Unesi', 'en': 'Enter', 'ru': 'Введите', 'de': 'Eingeben', 'zh': '输入'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
+    'izaberiDatum': {
+      'sr': 'Izaberi datum',
+      'en': 'Select date',
+      'ru': 'Выберите дату',
+      'de': 'Datum wählen',
+      'zh': '选择日期'
+    },
     'kilometrazaServisa': {
       'sr': 'Kilometraža servisa',
       'en': 'Service mileage',
       'ru': 'Пробег на ТО',
-      'de': 'Service-Kilometerstand'
+      'de': 'Service-Kilometerstand',
+      'zh': '保养里程'
     },
-    'trenutno': {'sr': 'Trenutno', 'en': 'Current', 'ru': 'Текущий', 'de': 'Aktuell'},
-    'tipGuma': {'sr': 'Tip guma:', 'en': 'Tire type:', 'ru': 'Тип шин:', 'de': 'Reifentyp:'},
-    'letnje': {'sr': '☀️ Letnje', 'en': '☀️ Summer', 'ru': '☀️ Летние', 'de': '☀️ Sommer'},
-    'zimske': {'sr': '❄️ Zimske', 'en': '❄️ Winter', 'ru': '❄️ Зимние', 'de': '❄️ Winter'},
+    'trenutno': {'sr': 'Trenutno', 'en': 'Current', 'ru': 'Текущий', 'de': 'Aktuell', 'zh': '当前'},
+    'tipGuma': {'sr': 'Tip guma:', 'en': 'Tire type:', 'ru': 'Тип шин:', 'de': 'Reifentyp:', 'zh': '轮胎类型：'},
+    'letnje': {'sr': '☀️ Letnje', 'en': '☀️ Summer', 'ru': '☀️ Летние', 'de': '☀️ Sommer', 'zh': '☀️ 夏季'},
+    'zimske': {'sr': '❄️ Zimske', 'en': '❄️ Winter', 'ru': '❄️ Зимние', 'de': '❄️ Winter', 'zh': '❄️ 冬季'},
     'markaIDimenzija': {
       'sr': 'Marka i dimenzija',
       'en': 'Brand and size',
       'ru': 'Марка и размер',
-      'de': 'Marke und Größe'
+      'de': 'Marke und Größe',
+      'zh': '品牌和尺寸'
     },
     'nprMichelin': {
       'sr': 'npr. Michelin 215/65 R16',
       'en': 'e.g. Michelin 215/65 R16',
       'ru': 'напр. Michelin 215/65 R16',
-      'de': 'z.B. Michelin 215/65 R16'
+      'de': 'z.B. Michelin 215/65 R16',
+      'zh': '例如 Michelin 215/65 R16'
     },
-    'datumZamene': {'sr': 'Datum zamene', 'en': 'Replacement date', 'ru': 'Дата замены', 'de': 'Wechseldatum'},
+    'datumZamene': {
+      'sr': 'Datum zamene',
+      'en': 'Replacement date',
+      'ru': 'Дата замены',
+      'de': 'Wechseldatum',
+      'zh': '更换日期'
+    },
     'kilometrazaZamene': {
       'sr': 'Kilometraža zamene',
       'en': 'Replacement mileage',
       'ru': 'Пробег при замене',
-      'de': 'Kilometerstand beim Wechsel'
+      'de': 'Kilometerstand beim Wechsel',
+      'zh': '更换里程'
     },
     'dodajVozilo': {
       'sr': 'Dodaj vozilo',
       'en': 'Add vehicle',
       'ru': 'Добавить автомобиль',
-      'de': 'Fahrzeug hinzufügen'
+      'de': 'Fahrzeug hinzufügen',
+      'zh': '添加车辆'
     },
     'obrisiVozilo': {
       'sr': 'Obriši vozilo',
       'en': 'Delete vehicle',
       'ru': 'Удалить автомобиль',
-      'de': 'Fahrzeug löschen'
+      'de': 'Fahrzeug löschen',
+      'zh': '删除车辆'
     },
     'potvrdiBrisanjeVozila': {
       'sr': 'Potvrdi brisanje',
       'en': 'Confirm deletion',
       'ru': 'Подтвердить удаление',
-      'de': 'Löschen bestätigen'
+      'de': 'Löschen bestätigen',
+      'zh': '确认删除'
     },
     'potvrdiBrisanjeVozilaPoruka': {
       'sr': 'Da li sigurno želiš da obrišeš ovo vozilo?',
       'en': 'Are you sure you want to delete this vehicle?',
       'ru': 'Вы уверены, что хотите удалить этот автомобиль?',
-      'de': 'Möchten Sie dieses Fahrzeug wirklich löschen?'
+      'de': 'Möchten Sie dieses Fahrzeug wirklich löschen?',
+      'zh': '确定要删除此车辆吗？'
     },
-    'marka': {'sr': 'Marka', 'en': 'Brand', 'ru': 'Марка', 'de': 'Marke'},
-    'model': {'sr': 'Model', 'en': 'Model', 'ru': 'Модель', 'de': 'Modell'},
+    'marka': {'sr': 'Marka', 'en': 'Brand', 'ru': 'Марка', 'de': 'Marke', 'zh': '品牌'},
+    'model': {'sr': 'Model', 'en': 'Model', 'ru': 'Модель', 'de': 'Modell', 'zh': '型号'},
     'registracijaObavezna': {
       'sr': 'Registracija je obavezna',
       'en': 'Registration is required',
       'ru': 'Регистрация обязательна',
-      'de': 'Registrierung ist erforderlich'
+      'de': 'Registrierung ist erforderlich',
+      'zh': '必须填写登记号'
     },
     'voziloDodato': {
       'sr': '✅ Vozilo dodato',
       'en': '✅ Vehicle added',
       'ru': '✅ Автомобиль добавлен',
-      'de': '✅ Fahrzeug hinzugefügt'
+      'de': '✅ Fahrzeug hinzugefügt',
+      'zh': '✅ 车辆已添加'
     },
     'voziloObrisano': {
       'sr': '✅ Vozilo obrisano',
       'en': '✅ Vehicle deleted',
       'ru': '✅ Автомобиль удалён',
-      'de': '✅ Fahrzeug gelöscht'
+      'de': '✅ Fahrzeug gelöscht',
+      'zh': '✅ 车辆已删除'
     },
     'greskaPriBrisanju': {
       'sr': 'Greška pri brisanju',
       'en': 'Error deleting',
       'ru': 'Ошибка удаления',
-      'de': 'Fehler beim Löschen'
+      'de': 'Fehler beim Löschen',
+      'zh': '删除时出错'
     },
   };
 
