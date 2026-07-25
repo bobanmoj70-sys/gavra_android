@@ -785,25 +785,35 @@ class V3FinansijeService {
     if (id.isEmpty) return <Map<String, dynamic>>[];
 
     final targetDay = DateTime(dan.year, dan.month, dan.day);
-    final rows = _naplataRowsForDan(targetDay)
-        .where((row) {
-          // Prikazujemo samo redove sa stvarnom uplatom istog dana od traženog vozača (u uplate_json).
-          return _readUplate(row).any((u) {
-            final dt = V3DateUtils.parseTs(u['datum']?.toString());
-            if (dt == null) return false;
-            if (dt.year != targetDay.year || dt.month != targetDay.month || dt.day != targetDay.day) return false;
-            return (u['naplatio_by']?.toString() ?? '').trim().toLowerCase() == id.toLowerCase();
-          });
-        })
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList(growable: false);
+    final idLower = id.toLowerCase();
+    final result = <Map<String, dynamic>>[];
 
-    rows.sort((a, b) {
-      final aDt = _createdAtOrEpoch(a);
-      final bDt = _createdAtOrEpoch(b);
+    // Vraćamo po jednu stavku za SVAKU pojedinačnu uplatu (ne po redu), jer jedan red
+    // može imati više uplata (npr. isti putnik plaća u više navrata / meseci).
+    // Tako svaka stavka nosi tačan iznos i vreme (naplatio_at) te konkretne uplate.
+    for (final row in _naplataRowsForDan(targetDay)) {
+      for (final uplata in _readUplate(row)) {
+        final dt = V3DateUtils.parseTs(uplata['datum']?.toString());
+        if (dt == null) continue;
+        if (dt.year != targetDay.year || dt.month != targetDay.month || dt.day != targetDay.day) continue;
+        if ((uplata['naplatio_by']?.toString() ?? '').trim().toLowerCase() != idLower) continue;
+
+        result.add({
+          ...row,
+          'iznos': uplata['iznos'],
+          'naplatio_at': uplata['naplatio_at'],
+          'uplata_datum': uplata['datum'],
+          'uplata_id': uplata['uplata_id'],
+        });
+      }
+    }
+
+    result.sort((a, b) {
+      final aDt = V3DateUtils.parseTs(a['naplatio_at']?.toString()) ?? _createdAtOrEpoch(a);
+      final bDt = V3DateUtils.parseTs(b['naplatio_at']?.toString()) ?? _createdAtOrEpoch(b);
       return aDt.compareTo(bDt);
     });
-    return rows;
+    return result;
   }
 
   static Map<String, double> getPazarPoVozacuZaDan(DateTime dan) {

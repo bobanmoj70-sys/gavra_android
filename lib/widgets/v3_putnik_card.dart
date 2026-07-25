@@ -430,6 +430,21 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     return null;
   }
 
+  /// Naziv adrese putnika u SUPROTNOM gradu od trenutne vožnje (destinacija).
+  String? _getOdredisteAdresaNaziv() {
+    final grad = V3ValidationUtils.normalizeGrad(widget.entry?.grad ?? widget.zahtev?.grad ?? '');
+    // Ako putujemo iz BC, odredište je adresa u VS i obrnuto.
+    if (grad == 'BC') {
+      return V3AdresaService.getAdresaById(widget.putnik.adresaVsId)?.naziv ??
+          V3AdresaService.getAdresaById(widget.putnik.adresaVsId2)?.naziv;
+    }
+    if (grad == 'VS') {
+      return V3AdresaService.getAdresaById(widget.putnik.adresaBcId)?.naziv ??
+          V3AdresaService.getAdresaById(widget.putnik.adresaBcId2)?.naziv;
+    }
+    return null;
+  }
+
   String? _resolveAdresaId() {
     final overrideId = widget.entry?.adresaIdOverride;
     if (overrideId != null && overrideId.isNotEmpty) {
@@ -514,7 +529,13 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final double ukupanIznos = naplataInfo?.ukupanIznos ?? 0;
     final double poslednjaDopuna = naplataInfo?.poslednjaDopuna ?? 0;
     final bool hasTel = _firstValidTelefon() != null;
-    final String? adresaNaziv = _getAdresaNaziv();
+    final String? polazakAdresaNaziv = _getAdresaNaziv();
+    final String? odredisteAdresaNaziv = _getOdredisteAdresaNaziv();
+    final String? adresaNaziv = (polazakAdresaNaziv != null && polazakAdresaNaziv.isNotEmpty)
+        ? (odredisteAdresaNaziv != null && odredisteAdresaNaziv.isNotEmpty
+            ? '$polazakAdresaNaziv ↔ $odredisteAdresaNaziv'
+            : polazakAdresaNaziv)
+        : null;
     final bool hasAdresa = adresaNaziv != null && adresaNaziv.isNotEmpty;
     final bool hasAdresaCoords = _resolveAdresaCoords() != null;
     final textStyle = _getStatusTextStyle();
