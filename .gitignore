@@ -86,7 +86,7 @@ models/saved/
 
 # Debug files
 debug_*.sql
-*_test.dart
+debug_*_test.dart
 
 # Node modules (anywhere in project)
 **/node_modules/
