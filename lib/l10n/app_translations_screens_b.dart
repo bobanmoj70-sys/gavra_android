@@ -1182,6 +1182,13 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
   },
   'vozacScreen': {
+    'slotoviZakljucaniZaRazlog': {
+      'sr': '⛔ Slotovi zaključani za %DAN%. Razlog: %RAZLOG%',
+      'en': '⛔ Slots locked for %DAN%. Reason: %RAZLOG%',
+      'ru': '⛔ Слоты заблокированы на %DAN%. Причина: %RAZLOG%',
+      'de': '⛔ Slots gesperrt für %DAN%. Grund: %RAZLOG%',
+      'zh': '⛔ %DAN% 的时段已锁定。原因：%RAZLOG%',
+    },
     'gpsIskljucen': {
       'sr': 'GPS je isključen. Uključi lokaciju na telefonu.',
       'en': 'GPS is turned off. Enable location on your phone.',

@@ -1,8 +1,44 @@
+import '../l10n/app_translations.dart';
+import '../services/v3_locale_manager.dart';
 import 'v3_string_utils.dart';
 
 /// Helper za konverziju DateTime u naziv/kraticu dana i naziva u datume.
 class V3DanHelper {
   V3DanHelper._();
+
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('danHelper');
+
+  static const Map<String, String> _translationKeys = {
+    'ponedeljak': 'ponedeljak',
+    'utorak': 'utorak',
+    'sreda': 'sreda',
+    'cetvrtak': 'cetvrtak',
+    'četvrtak': 'cetvrtak',
+    'petak': 'petak',
+    'subota': 'subota',
+    'nedelja': 'nedelja',
+  };
+
+  /// Prevodi kanonski (srpski) puni naziv dana (npr. 'Ponedeljak') na trenutno
+  /// izabrani jezik aplikacije, za prikaz u UI-ju. Interna logika/baza i dalje
+  /// koriste kanonski srpski naziv — ova metoda menja samo prikaz.
+  static String trFullName(String danPuni) {
+    final key = _translationKeys[danPuni.trim().toLowerCase()];
+    if (key == null) return danPuni;
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? danPuni;
+  }
+
+  /// Prevedena skraćenica dana (npr. 'Pon'/'Mon') za kompaktan prikaz u UI-ju
+  /// (chip-ovi, dugmad). Za CJK jezike vraća pun prevedeni naziv (nema smisleno
+  /// skraćivanje na 3 karaktera).
+  static String trAbbr(String danPuni) {
+    final translated = trFullName(danPuni);
+    final code = V3LocaleManager().currentLocale.languageCode;
+    if (code == 'zh') return translated;
+    final len = translated.length < 3 ? translated.length : 3;
+    return translated.substring(0, len);
+  }
 
   static const int _isoDateLength = 10;
 

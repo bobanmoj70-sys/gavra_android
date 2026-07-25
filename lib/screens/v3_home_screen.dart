@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
@@ -47,7 +48,6 @@ import '../widgets/v3_update_banner.dart';
 import 'v3_admin_screen.dart';
 import 'v3_vozac_screen.dart';
 import 'v3_welcome_screen.dart';
-import '../l10n/app_translations.dart';
 
 // ─── Helpers za izbor meseca u dijalozima za račune ─────────────────────────
 
@@ -113,6 +113,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final code = V3LocaleManager().currentLocale.languageCode;
     return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
   }
+
+  /// Prevodi kanonski (srpski) naziv dana (npr. 'Ponedeljak') za prikaz u UI-ju.
+  /// Interna logika i dalje koristi kanonski naziv (V3DanHelper), samo se prikaz prevodi.
+  String _trDan(String dan) => V3DanHelper.trFullName(dan);
 
   bool _isLoading = true;
   String _selectedDay = 'Ponedeljak';
@@ -453,7 +457,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 const SizedBox(height: 8),
                                 _buildStatRow(_tr('vreme'), _selectedVreme),
                                 _buildStatRow(_tr('grad'), _selectedGrad),
-                                _buildStatRow(_tr('dan'), _selectedDay),
+                                _buildStatRow(_tr('dan'), _trDan(_selectedDay)),
                               ],
                             ),
                           ),
@@ -656,9 +660,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final items = <DropdownMenuItem<V3Adresa?>>[];
 
     // "default" opcija — bez override
-    items.add(const DropdownMenuItem<V3Adresa?>(
+    items.add(DropdownMenuItem<V3Adresa?>(
       value: null,
-      child: Text('— putnikova adresa —', style: TextStyle(fontSize: 13, color: Colors.grey)),
+      child: Text(_tr('passengerAddressPlaceholder'), style: const TextStyle(fontSize: 13, color: Colors.grey)),
     ));
 
     if (adresa1 != null) {
@@ -1039,7 +1043,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 final putnik = p ??
                     V3Putnik(
                       id: z.putnikId,
-                      imePrezime: 'Nepoznat putnik',
+                      imePrezime: _tr('nepoznatPutnik'),
                       tipPutnika: 'dnevni',
                     );
                 return (entry: z, putnik: putnik);
@@ -1197,7 +1201,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                               value: _selectedDay,
                                               customButton: Center(
                                                 child: Text(
-                                                  _selectedDay,
+                                                  _trDan(_selectedDay),
                                                   style: TextStyle(
                                                     color: Theme.of(context).colorScheme.onPrimary,
                                                     fontWeight: FontWeight.w600,
@@ -1226,7 +1230,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                                         value: d,
                                                         child: Center(
                                                           child: Text(
-                                                            d,
+                                                            _trDan(d),
                                                             style: TextStyle(
                                                               color: Theme.of(context).colorScheme.onPrimary,
                                                               fontWeight: FontWeight.w700,
@@ -1280,7 +1284,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               children: [
                                 Expanded(
                                   child: _V3HomeButton(
-                                    label: 'Dodaj',
+                                    label: _tr('dodaj'),
                                     icon: Icons.person_add,
                                     onTap: _showDodajTerminDialog,
                                   ),
@@ -1289,7 +1293,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 if (!_isAdmin) ...[
                                   Expanded(
                                     child: _V3HomeButton(
-                                      label: 'Ja',
+                                      label: _tr('ja'),
                                       icon: Icons.person,
                                       onTap: () => V3NavigationUtils.pushScreen(
                                         context,
@@ -1302,7 +1306,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                 if (_isAdmin) ...[
                                   Expanded(
                                     child: _V3HomeButton(
-                                      label: 'Admin',
+                                      label: _tr('admin'),
                                       icon: Icons.admin_panel_settings,
                                       onTap: () => V3NavigationUtils.pushScreen(
                                         context,
@@ -1313,7 +1317,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: _V3HomeButton(
-                                      label: 'Ja',
+                                      label: _tr('ja'),
                                       icon: Icons.person,
                                       onTap: () => V3NavigationUtils.pushScreen(
                                         context,
@@ -1695,9 +1699,11 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                       children: [
                         Text(selectedFirma!['firma_adresa']?.toString() ?? ''),
                         const SizedBox(height: 2),
-                        Text('PIB: ${selectedFirma!['firma_pib'] ?? ''}   MB: ${selectedFirma!['firma_mb'] ?? ''}'),
+                        Text(
+                          '${_tr('pibPrefix')} ${selectedFirma!['firma_pib'] ?? ''}   ${_tr('mbPrefix')} ${selectedFirma!['firma_mb'] ?? ''}',
+                        ),
                         if ((selectedFirma!['firma_ziro'] ?? '').toString().isNotEmpty)
-                          Text('Žiro: ${selectedFirma!['firma_ziro']}'),
+                          Text('${_tr('ziroPrefix')} ${selectedFirma!['firma_ziro']}'),
                       ],
                     ),
                   ),
@@ -1848,7 +1854,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                     const Icon(Icons.calendar_month, color: Colors.amber, size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      'Mesec: ${_formatMesecRacuna(selectedMesec)}',
+                      '${_tr('mesecPrefix')} ${_formatMesecRacuna(selectedMesec)}',
                       style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600),
                     ),
                   ]),
@@ -1879,7 +1885,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Izdavanje: ${datumIzdavanja.day.toString().padLeft(2, '0')}.${datumIzdavanja.month.toString().padLeft(2, '0')}.${datumIzdavanja.year}.',
+                            '${_tr('izdavanjePrefix')} ${datumIzdavanja.day.toString().padLeft(2, '0')}.${datumIzdavanja.month.toString().padLeft(2, '0')}.${datumIzdavanja.year}.',
                             style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1912,7 +1918,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Promet: ${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
+                            '${_tr('prometPrefix')} ${datumPrometa.day.toString().padLeft(2, '0')}.${datumPrometa.month.toString().padLeft(2, '0')}.${datumPrometa.year}.',
                             style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.w600, fontSize: 12),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1931,14 +1937,14 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                 Expanded(
                     child: V3InputUtils.numberField(
                   controller: danaCtrl,
-                  label: 'Dana',
+                  label: _tr('danaLabel'),
                   onChanged: (_) => setState(() {}),
                 )),
                 const SizedBox(width: 8),
                 Expanded(
                     child: V3InputUtils.numberField(
                   controller: cenaCtrl,
-                  label: 'Cena/dan',
+                  label: _tr('cenaPoDanLabel'),
                   onChanged: (_) => setState(() {}),
                 )),
               ]),
@@ -1967,7 +1973,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Ukupno: ${ukupno.toStringAsFixed(2)} RSD',
+                        '${_tr('ukupnoPrefix')} ${ukupno.toStringAsFixed(2)} RSD',
                         style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ],
@@ -2028,7 +2034,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
               Navigator.pop(ctx);
             }
           },
-          text: 'Štampaj',
+          text: _tr('stampaj'),
         ),
       ],
     );
@@ -2052,29 +2058,29 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _localField(nazivCtrl, 'Naziv firme'),
+              _localField(nazivCtrl, _tr('nazivFirme')),
               const SizedBox(height: 8),
-              _localField(adresaCtrl, 'Adresa'),
+              _localField(adresaCtrl, _tr('adresa')),
               const SizedBox(height: 8),
-              _localField(pibCtrl, 'PIB', numeric: true),
+              _localField(pibCtrl, _tr('pib'), numeric: true),
               const SizedBox(height: 8),
-              _localField(mbCtrl, 'Matični broj', numeric: true),
+              _localField(mbCtrl, _tr('maticniBroj'), numeric: true),
               const SizedBox(height: 8),
-              _localField(ziroCtrl, 'Žiro račun'),
+              _localField(ziroCtrl, _tr('ziroRacun')),
             ],
           ),
         ),
         actions: [
           V3ButtonUtils.textButton(
             onPressed: () => Navigator.pop(ctx),
-            text: 'Otkaži',
+            text: _tr('otkazi'),
             foregroundColor: Colors.red,
           ),
           V3ButtonUtils.successButton(
             onPressed: () async {
               final naziv = nazivCtrl.text.trim();
               if (naziv.isEmpty) {
-                V3AppSnackBar.error(ctx, '⚠️ Unesite naziv firme');
+                V3AppSnackBar.error(ctx, _tr('uneseiteNazivFirme'));
                 return;
               }
               try {
@@ -2087,10 +2093,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                 });
                 if (ctx.mounted) Navigator.pop(ctx);
               } catch (e) {
-                if (ctx.mounted) V3AppSnackBar.error(ctx, '❌ Greška pri upisu: $e');
+                if (ctx.mounted) V3AppSnackBar.error(ctx, '${_tr('greskaPriUpisuPrefix')} $e');
               }
             },
-            text: 'Sačuvaj',
+            text: _tr('sacuvaj'),
           ),
         ],
       ),

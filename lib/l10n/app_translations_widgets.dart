@@ -1,6 +1,15 @@
 part of 'app_translations.dart';
 
 const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
+  'danHelper': {
+    'ponedeljak': {'sr': 'Ponedeljak', 'en': 'Monday', 'ru': 'Понедельник', 'de': 'Montag', 'zh': '星期一'},
+    'utorak': {'sr': 'Utorak', 'en': 'Tuesday', 'ru': 'Вторник', 'de': 'Dienstag', 'zh': '星期二'},
+    'sreda': {'sr': 'Sreda', 'en': 'Wednesday', 'ru': 'Среда', 'de': 'Mittwoch', 'zh': '星期三'},
+    'cetvrtak': {'sr': 'Četvrtak', 'en': 'Thursday', 'ru': 'Четверг', 'de': 'Donnerstag', 'zh': '星期四'},
+    'petak': {'sr': 'Petak', 'en': 'Friday', 'ru': 'Пятница', 'de': 'Freitag', 'zh': '星期五'},
+    'subota': {'sr': 'Subota', 'en': 'Saturday', 'ru': 'Суббота', 'de': 'Samstag', 'zh': '星期六'},
+    'nedelja': {'sr': 'Nedelja', 'en': 'Sunday', 'ru': 'Воскресенье', 'de': 'Sonntag', 'zh': '星期日'},
+  },
   'telefonHelper': {
     'telefonBrojNijeDostupan': {
       'sr': 'Telefon broj nije dostupan',

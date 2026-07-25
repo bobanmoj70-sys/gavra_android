@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -27,7 +28,6 @@ import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_putnik_card.dart';
-import '../l10n/app_translations.dart';
 
 class _RasTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('adminRasporedScreen');
@@ -703,7 +703,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     child: Row(
                       children: V3DanHelper.workdayNames.map((day) {
                         final isSelected = _selectedDay == day;
-                        final abbr = V3DanHelper.workdayAbbrFromFullName(day);
+                        final abbr = V3DanHelper.trAbbr(day);
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: InkWell(

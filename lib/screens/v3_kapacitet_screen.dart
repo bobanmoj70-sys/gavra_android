@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_kapacitet_slots_service.dart';
 import '../services/v3_locale_manager.dart';
@@ -11,7 +12,6 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _KapTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('kapacitetScreen');
@@ -211,7 +211,7 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
                   child: Row(
                     children: V3DanHelper.workdayNames.map((day) {
                       final isSelected = _selectedDay == day;
-                      final abbr = V3DanHelper.workdayAbbrFromFullName(day);
+                      final abbr = V3DanHelper.trAbbr(day);
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: InkWell(

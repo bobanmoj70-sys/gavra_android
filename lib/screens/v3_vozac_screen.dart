@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
@@ -43,7 +44,6 @@ import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_welcome_screen.dart';
-import '../l10n/app_translations.dart';
 
 /// V3 Vozač Screen - prikazuje dodeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
@@ -1471,7 +1471,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                           border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
                         ),
                         child: Text(
-                          '⛔ Slotovi zaključani za $_selectedDay. Razlog: $neradanRazlog',
+                          _tr('slotoviZakljucaniZaRazlog')
+                              .replaceAll('%DAN%', V3DanHelper.trFullName(_selectedDay))
+                              .replaceAll('%RAZLOG%', neradanRazlog),
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                           textAlign: TextAlign.center,
                         ),
@@ -1674,7 +1676,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         padding: EdgeInsets.zero,
         child: Center(
           child: Text(
-            _selectedDay.substring(0, 3).toUpperCase(),
+            V3DanHelper.trAbbr(_selectedDay).toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -1701,7 +1703,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, dan),
             child: Text(
-              dan,
+              V3DanHelper.trFullName(dan),
               style: TextStyle(
                 color: isSelected ? Colors.amberAccent : Colors.white,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_settings_service.dart';
 import '../services/v3/v3_finansije_service.dart';
@@ -27,7 +28,6 @@ import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
 import 'v3_uplata_pazara_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
-import '../l10n/app_translations.dart';
 
 class V3AdminScreen extends StatefulWidget {
   const V3AdminScreen({super.key});
@@ -403,14 +403,15 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                       Text(_tr('unosFormataHint'), style: const TextStyle(color: Colors.white70)),
                       const SizedBox(height: 10),
                       for (final day in V3DanHelper.workdayNames) ...[
-                        Text(day, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                        Text(V3DanHelper.trFullName(day),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
                         TextFormField(
                           initialValue: bcInputs[day] ?? '',
                           style: const TextStyle(color: Colors.white),
                           onChanged: (value) => bcInputs[day] = value,
                           decoration: InputDecoration(
-                            labelText: 'BC custom - $day',
+                            labelText: 'BC custom - ${V3DanHelper.trFullName(day)}',
                             labelStyle: const TextStyle(color: Colors.white70),
                           ),
                         ),
@@ -420,7 +421,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           style: const TextStyle(color: Colors.white),
                           onChanged: (value) => vsInputs[day] = value,
                           decoration: InputDecoration(
-                            labelText: 'VS custom - $day',
+                            labelText: 'VS custom - ${V3DanHelper.trFullName(day)}',
                             labelStyle: const TextStyle(color: Colors.white70),
                           ),
                         ),
