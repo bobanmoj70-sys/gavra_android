@@ -197,9 +197,16 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
   void _startTrenutnaDodelaRealtime() {
     _trenutnaDodelaRevisionSub?.cancel();
+    // Napomena: pratimo i 'v3_operativna_nedelja' i 'v3_auth' jer se
+    // vizuelni prikaz oslanja i na te keševe (putnici/vozači). Ako se ekran
+    // otvori pre nego što master realtime bootstrap napuni te keševe, ekran
+    // se mora osvežiti čim ti podaci stignu — inače deluje kao da nema
+    // dodeljenih slotova sve dok se ne desi neka promena u trenutnoj dodeli.
     _trenutnaDodelaRevisionSub = V3MasterRealtimeManager.instance.tablesRevisionStream(const [
       V3TrenutnaDodelaService.tableName,
       V3TrenutnaDodelaSlotService.tableName,
+      'v3_operativna_nedelja',
+      'v3_auth',
     ]).listen((_) {
       unawaited(_refreshDodelaFromRealtime());
     });
@@ -209,7 +216,9 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     if (!mounted) return;
     await _reloadTrenutnaDodelaMap();
     if (!mounted) return;
-    setState(() {});
+    setState(() {
+      _syncSelectedSlotForDay();
+    });
   }
 
   @override
