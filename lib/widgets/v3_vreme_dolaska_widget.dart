@@ -72,6 +72,20 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     'cekaNa': {'sr': 'Čeka na', 'en': 'Waiting at', 'ru': 'Ожидает у', 'de': 'Wartet bei', 'zh': '等待于'},
     'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
     'u': {'sr': 'u', 'en': 'at', 'ru': 'в', 'de': 'um', 'zh': '于'},
+    'noGpsForAddress': {
+      'sr': 'Nema GPS koordinata za ovu adresu',
+      'en': 'No GPS coordinates for this address',
+      'ru': 'Для этого адреса нет GPS-координат',
+      'de': 'Keine GPS-Koordinaten für diese Adresse',
+      'zh': '此地址没有GPS坐标',
+    },
+    'cannotOpenGoogleMaps': {
+      'sr': 'Ne mogu da otvorim Google Maps',
+      'en': 'Cannot open Google Maps',
+      'ru': 'Не удается открыть Google Maps',
+      'de': 'Google Maps kann nicht geöffnet werden',
+      'zh': '无法打开Google地图',
+    },
   };
 
   String _tr(String key) {
@@ -300,7 +314,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     if (coords == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nema GPS koordinata za ovu adresu')),
+          SnackBar(content: Text(_tr('noGpsForAddress'))),
         );
       }
       return;
@@ -323,7 +337,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ne mogu da otvorim Google Maps')),
+        SnackBar(content: Text(_tr('cannotOpenGoogleMaps'))),
       );
     }
   }

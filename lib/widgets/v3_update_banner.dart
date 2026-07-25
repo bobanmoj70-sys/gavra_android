@@ -4,9 +4,53 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
 import '../services/v3/v3_app_update_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
+
+const Map<String, Map<String, String>> _updateBannerTranslations = {
+  'maintenanceWorkInProgress': {
+    'sr': '⛔ Radovi u toku — ne diraj kablove 😄',
+    'en': '⛔ Maintenance in progress — please do not touch cables 😄',
+    'ru': '⛔ Идут работы — пожалуйста, не трогайте кабели 😄',
+    'de': '⛔ Wartungsarbeiten laufen — bitte keine Kabel berühren 😄',
+    'zh': '⛔ 维护进行中——请勿触碰电缆 😄',
+  },
+  'updateRequired': {
+    'sr': 'Potrebno ažuriranje',
+    'en': 'Update required',
+    'ru': 'Требуется обновление',
+    'de': 'Update erforderlich',
+    'zh': '需要更新',
+  },
+  'versionLabel': {
+    'sr': 'verzija',
+    'en': 'version',
+    'ru': 'версия',
+    'de': 'Version',
+    'zh': '版本',
+  },
+  'unsupportedVersionMessage': {
+    'sr': 'Ova verzija aplikacije više nije podržana. Ažurirajte aplikaciju da biste nastavili rad.',
+    'en': 'This app version is no longer supported. Please update the app to continue.',
+    'ru': 'Эта версия приложения больше не поддерживается. Обновите приложение, чтобы продолжить работу.',
+    'de': 'Diese App-Version wird nicht mehr unterstützt. Bitte aktualisieren Sie die App, um fortzufahren.',
+    'zh': '此应用版本已不再受支持。请更新应用后继续使用。',
+  },
+  'updateApp': {
+    'sr': 'Ažuriraj aplikaciju',
+    'en': 'Update app',
+    'ru': 'Обновить приложение',
+    'de': 'App aktualisieren',
+    'zh': '更新应用',
+  },
+};
+
+String _trUpdateBanner(String key) {
+  final code = V3LocaleManager().currentLocale.languageCode;
+  return _updateBannerTranslations[key]?[code] ?? _updateBannerTranslations[key]?['sr'] ?? key;
+}
 
 /// Forced-update gate za aplikaciju.
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
@@ -224,8 +268,8 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTicke
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0x66FFD54F)),
                         ),
-                        child: const Text(
-                          '⛔ Radovi u toku — ne diraj kablove 😄',
+                        child: Text(
+                          _trUpdateBanner('maintenanceWorkInProgress'),
                           style: TextStyle(
                             color: Color(0xFFFFD54F),
                             fontWeight: FontWeight.w700,
@@ -377,8 +421,8 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                         ),
                       ),
                       const SizedBox(height: 22),
-                      const Text(
-                        'Potrebno ažuriranje',
+                      Text(
+                        _trUpdateBanner('updateRequired'),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 23,
@@ -394,7 +438,7 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: Colors.redAccent.withValues(alpha: 0.38)),
                         child: Text(
-                          'verzija ${_installedVersion.isNotEmpty ? _installedVersion : widget.info.latestVersion}',
+                          '${_trUpdateBanner('versionLabel')} ${_installedVersion.isNotEmpty ? _installedVersion : widget.info.latestVersion}',
                           style: const TextStyle(
                             color: Colors.redAccent,
                             fontSize: 12,
@@ -405,7 +449,7 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Ova verzija aplikacije više nije podržana. Ažurirajte aplikaciju da biste nastavili rad.',
+                        _trUpdateBanner('unsupportedVersionMessage'),
                         style: TextStyle(
                           color: V3StyleHelper.whiteAlpha75,
                           fontSize: 13,
@@ -419,8 +463,8 @@ class _ForceUpdateDialogState extends State<_ForceUpdateDialog> with SingleTicke
                         child: ElevatedButton.icon(
                           onPressed: _openStore,
                           icon: const Icon(Icons.download_rounded, size: 20),
-                          label: const Text(
-                            'Ažuriraj aplikaciju',
+                          label: Text(
+                            _trUpdateBanner('updateApp'),
                             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                           ),
                           style: ElevatedButton.styleFrom(

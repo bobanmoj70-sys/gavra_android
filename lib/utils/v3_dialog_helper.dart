@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/v3_locale_manager.dart';
 import 'v3_button_utils.dart';
 
 /// 🎖️💥 V3DIALOGHELPER - CENTRALIZOVANI DIALOG DUPLIKATE ELIMINATOR! 💥🎖️
@@ -7,6 +8,39 @@ import 'v3_button_utils.dart';
 /// u jedinstvenu centralizovanu utility klasu sa standardnim styling-om
 class V3DialogHelper {
   V3DialogHelper._();
+
+  static const Map<String, Map<String, String>> _t = {
+    'yes': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja', 'zh': '是'},
+    'no': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '否'},
+    'ok': {'sr': 'U redu', 'en': 'OK', 'ru': 'ОК', 'de': 'OK', 'zh': '确定'},
+    'loading': {
+      'sr': 'Učitavanje...',
+      'en': 'Loading...',
+      'ru': 'Загрузка...',
+      'de': 'Wird geladen...',
+      'zh': '加载中...',
+    },
+    'confirm': {
+      'sr': 'Potvrdi',
+      'en': 'Confirm',
+      'ru': 'Подтвердить',
+      'de': 'Bestätigen',
+      'zh': '确认',
+    },
+    'cancel': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'working': {
+      'sr': 'Radi...',
+      'en': 'Working...',
+      'ru': 'Выполняется...',
+      'de': 'Wird ausgeführt...',
+      'zh': '处理中...'
+    },
+  };
+
+  static String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
 
   // ─── KONSTANTE STYLING ─────────────────────────────────────────────────────
 
@@ -132,8 +166,8 @@ class V3DialogHelper {
     BuildContext context, {
     required String title,
     required String message, // V3NavigationUtils koristi 'message'
-    String confirmText = 'Da',
-    String cancelText = 'Ne',
+    String? confirmText,
+    String? cancelText,
     IconData? titleIcon,
     Color? titleIconColor,
     Color? confirmColor,
@@ -151,12 +185,12 @@ class V3DialogHelper {
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, false),
-          text: cancelText,
+          text: cancelText ?? _tr('no'),
           foregroundColor: cancelColor ?? Colors.grey,
         ),
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, true),
-          text: confirmText,
+          text: confirmText ?? _tr('yes'),
           foregroundColor: isDangerous ? Colors.red : (confirmColor ?? Colors.amber),
         ),
       ],
@@ -170,7 +204,7 @@ class V3DialogHelper {
     required String content,
     IconData? titleIcon,
     Color? titleIconColor,
-    String buttonText = 'U redu',
+    String? buttonText,
     Color? buttonColor,
   }) {
     return showBasicDialog<void>(
@@ -182,7 +216,7 @@ class V3DialogHelper {
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context),
-          text: buttonText,
+          text: buttonText ?? _tr('ok'),
           foregroundColor: buttonColor ?? Colors.amber,
         ),
       ],
@@ -337,7 +371,7 @@ class V3DialogHelper {
   /// Loading dialog koji se može zatvoriti programski
   static Future<void> showLoadingDialog({
     required BuildContext context,
-    String message = 'Učitavanje...',
+    String? message,
     bool barrierDismissible = false,
     Color? backgroundColor,
   }) {
@@ -357,7 +391,7 @@ class V3DialogHelper {
             const SizedBox(width: 20),
             Expanded(
               child: Text(
-                message,
+                message ?? _tr('loading'),
                 style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
               ),
             ),
@@ -511,8 +545,8 @@ class V3DialogHelper {
     required String hintText,
     String? initialValue,
     TextInputType keyboardType = TextInputType.text,
-    String confirmText = 'Potvrdi',
-    String cancelText = 'Otkaži',
+    String? confirmText,
+    String? cancelText,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
@@ -562,7 +596,7 @@ class V3DialogHelper {
                 controller.dispose();
                 Navigator.pop(ctx);
               },
-              text: cancelText,
+              text: cancelText ?? _tr('cancel'),
               foregroundColor: Colors.grey,
             ),
             V3ButtonUtils.textButton(
@@ -578,7 +612,7 @@ class V3DialogHelper {
                 controller.dispose();
                 Navigator.pop(ctx, value);
               },
-              text: confirmText,
+              text: confirmText ?? _tr('confirm'),
               foregroundColor: Colors.amber,
             ),
           ],
@@ -604,7 +638,7 @@ class V3DialogHelper {
   /// Standardne dialog akcije (cancel/confirm)
   static List<Widget> standardActions({
     required BuildContext context,
-    String cancelText = 'Otkaži',
+    String? cancelText,
     VoidCallback? onCancel,
     required String confirmText,
     required VoidCallback onConfirm,
@@ -614,12 +648,12 @@ class V3DialogHelper {
     return [
       V3ButtonUtils.textButton(
         onPressed: onCancel ?? () => Navigator.pop(context),
-        text: cancelText,
+        text: cancelText ?? _tr('cancel'),
         foregroundColor: Colors.grey,
       ),
       V3ButtonUtils.textButton(
         onPressed: isLoading ? null : onConfirm,
-        text: isLoading ? 'Radi...' : confirmText,
+        text: isLoading ? _tr('working') : confirmText,
         foregroundColor: isDestructive ? Colors.red : Colors.amber,
       ),
     ];

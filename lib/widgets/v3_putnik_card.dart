@@ -15,6 +15,7 @@ import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
@@ -65,6 +66,141 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
 
   // Debounce ključ za akcije na kartici (npr. otkazivanje)
   String get _debounceKey => 'putnik_card_${widget.putnik.id}_action_debounce';
+
+  static const Map<String, Map<String, String>> _t = {
+    'notLoggedIn': {
+      'sr': 'Niste logovani u V3 sistem',
+      'en': 'You are not logged in to the V3 system',
+      'ru': 'Вы не вошли в систему V3',
+      'de': 'Sie sind nicht im V3-System angemeldet',
+      'zh': '您尚未登录V3系统',
+    },
+    'rideRecorded': {
+      'sr': 'Vožnja evidentirana',
+      'en': 'Ride recorded',
+      'ru': 'Поездка зафиксирована',
+      'de': 'Fahrt erfasst',
+      'zh': '行程已记录',
+    },
+    'pickupRecordError': {
+      'sr': 'Greška pri evidenciji vožnje',
+      'en': 'Error while recording ride',
+      'ru': 'Ошибка при фиксации поездки',
+      'de': 'Fehler beim Erfassen der Fahrt',
+      'zh': '记录行程时出错',
+    },
+    'contactPassenger': {
+      'sr': 'Kontaktiraj',
+      'en': 'Contact',
+      'ru': 'Связаться',
+      'de': 'Kontaktieren',
+      'zh': '联系',
+    },
+    'cancel': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消',
+    },
+    'call': {
+      'sr': 'Pozovi',
+      'en': 'Call',
+      'ru': 'Позвонить',
+      'de': 'Anrufen',
+      'zh': '拨打',
+    },
+    'sms': {
+      'sr': 'SMS',
+      'en': 'SMS',
+      'ru': 'SMS',
+      'de': 'SMS',
+      'zh': '短信',
+    },
+    'driverExcludedFromPassengerBilling': {
+      'sr': 'Vozač ne ulazi u putničku naplatu.',
+      'en': 'Driver is excluded from passenger billing.',
+      'ru': 'Водитель не участвует в пассажирской оплате.',
+      'de': 'Fahrer ist von der Fahrgastabrechnung ausgeschlossen.',
+      'zh': '司机不参与乘客计费。',
+    },
+    'chargedAmountForPassenger': {
+      'sr': '✅ Naplaćeno %AMOUNT% RSD za %NAME%',
+      'en': '✅ Charged %AMOUNT% RSD for %NAME%',
+      'ru': '✅ Списано %AMOUNT% RSD за %NAME%',
+      'de': '✅ %AMOUNT% RSD für %NAME% berechnet',
+      'zh': '✅ 已向%NAME%收取 %AMOUNT% RSD',
+    },
+    'paymentDiffInfo': {
+      'sr': 'Obračun %EXPECTED% RSD, uneto %ENTERED% RSD, razlika %DIFF% RSD',
+      'en': 'Calculation %EXPECTED% RSD, entered %ENTERED% RSD, difference %DIFF% RSD',
+      'ru': 'Расчёт %EXPECTED% RSD, внесено %ENTERED% RSD, разница %DIFF% RSD',
+      'de': 'Abrechnung %EXPECTED% RSD, eingegeben %ENTERED% RSD, Differenz %DIFF% RSD',
+      'zh': '结算 %EXPECTED% RSD，输入 %ENTERED% RSD，差额 %DIFF% RSD',
+    },
+    'paymentError': {
+      'sr': 'Greška pri plaćanju',
+      'en': 'Payment error',
+      'ru': 'Ошибка при оплате',
+      'de': 'Fehler bei der Zahlung',
+      'zh': '支付出错',
+    },
+    'passengerAlreadyPickedUp': {
+      'sr': 'Putnik je već pokupljen, ne može se otkazati.',
+      'en': 'Passenger is already picked up and cannot be canceled.',
+      'ru': 'Пассажир уже забран, отмена невозможна.',
+      'de': 'Fahrgast wurde bereits abgeholt und kann nicht storniert werden.',
+      'zh': '乘客已接载，无法取消。',
+    },
+    'cancelPassengerTitle': {
+      'sr': 'Otkazivanje putnika',
+      'en': 'Cancel passenger',
+      'ru': 'Отмена пассажира',
+      'de': 'Fahrgast stornieren',
+      'zh': '取消乘客',
+    },
+    'confirmCancelPassenger': {
+      'sr': 'Da li ste sigurni da želite da otkaže %NAME%?',
+      'en': 'Are you sure you want to cancel %NAME%?',
+      'ru': 'Вы уверены, что хотите отменить %NAME%?',
+      'de': 'Möchten Sie %NAME% wirklich stornieren?',
+      'zh': '确定要取消 %NAME% 吗？',
+    },
+    'yes': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja', 'zh': '是'},
+    'no': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '否'},
+    'canceledPassenger': {
+      'sr': 'Otkazano: %NAME%',
+      'en': 'Canceled: %NAME%',
+      'ru': 'Отменено: %NAME%',
+      'de': 'Storniert: %NAME%',
+      'zh': '已取消：%NAME%',
+    },
+    'genericError': {
+      'sr': 'Greška',
+      'en': 'Error',
+      'ru': 'Ошибка',
+      'de': 'Fehler',
+      'zh': '错误',
+    },
+    'ridesPlural': {'sr': 'Vožnje', 'en': 'Rides', 'ru': 'Поездки', 'de': 'Fahrten', 'zh': '行程'},
+    'rideSingular': {'sr': 'Vožnja', 'en': 'Ride', 'ru': 'Поездка', 'de': 'Fahrt', 'zh': '行程'},
+    'total': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt', 'zh': '总计'},
+    'last': {'sr': 'Poslednje', 'en': 'Last', 'ru': 'Последнее', 'de': 'Letzte', 'zh': '最近'},
+    'canceled': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
+  };
+
+  String _tr(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
+  }
+
+  String _trf(String key, Map<String, String> params) {
+    var text = _tr(key);
+    params.forEach((placeholder, value) {
+      text = text.replaceAll('%$placeholder%', value);
+    });
+    return text;
+  }
 
   @override
   void dispose() {
@@ -145,7 +281,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     try {
       V2HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
-      if (currentVozac == null) throw 'Niste logovani u V3 sistem';
+      if (currentVozac == null) throw _tr('notLoggedIn');
       await V3ZahtevService.oznaciPokupljen(pokupljenBy: currentVozac.id, operativnaId: widget.entry?.id);
       final tipPutnika = widget.putnik.tipPutnika.trim().toLowerCase();
       if (tipPutnika != 'vozac') {
@@ -164,11 +300,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       }
       await V2HapticService.putnikPokupljen();
       if (mounted) {
-        V3AppSnackBar.success(context, 'Vožnja evidentirana');
+        V3AppSnackBar.success(context, _tr('rideRecorded'));
         widget.onChanged?.call();
       }
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, 'Greška pri evidenciji vožnje: $e');
+      V3ErrorUtils.safeError(this, context, '${_tr('pickupRecordError')}: $e');
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -201,7 +337,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Kontaktiraj ${widget.putnik.imePrezime}',
+              Text('${_tr('contactPassenger')} ${widget.putnik.imePrezime}',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               if (tel1.isNotEmpty) ..._kontaktRed(context, tel1),
@@ -209,7 +345,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Otkaži'),
+                child: Text(_tr('cancel')),
               ),
             ],
           ),
@@ -230,7 +366,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           Expanded(
             child: ListTile(
               leading: const Icon(Icons.phone, color: Colors.green),
-              title: const Text('Pozovi'),
+              title: Text(_tr('call')),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               onTap: () async {
                 Navigator.pop(context);
@@ -242,7 +378,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           Expanded(
             child: ListTile(
               leading: const Icon(Icons.sms, color: Colors.blueAccent),
-              title: const Text('SMS'),
+              title: Text(_tr('sms')),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               onTap: () async {
                 Navigator.pop(context);
@@ -268,7 +404,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
       if (mounted) {
-        V3AppSnackBar.warning(context, 'Vozač ne ulazi u putničku naplatu.');
+        V3AppSnackBar.warning(context, _tr('driverExcludedFromPassengerBilling'));
       }
       return;
     }
@@ -294,21 +430,31 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         godina: datumRef.year,
       );
       if (rezultat != null && mounted) {
-        V3AppSnackBar.payment(context, '✅ Naplaćeno ${rezultat.iznos} RSD za ${widget.putnik.imePrezime}');
+        V3AppSnackBar.payment(
+          context,
+          _trf('chargedAmountForPassenger', {
+            'AMOUNT': rezultat.iznos.toString(),
+            'NAME': widget.putnik.imePrezime,
+          }),
+        );
         if (imaObracun) {
           final razlika = rezultat.iznos - ocekivaniIznos;
           if (razlika.abs() > 0.009) {
             final znak = razlika > 0 ? '+' : '';
             V3AppSnackBar.info(
               context,
-              'Obračun ${ocekivaniIznos.toStringAsFixed(0)} RSD, uneto ${rezultat.iznos.toStringAsFixed(0)} RSD, razlika ${znak}${razlika.toStringAsFixed(0)} RSD',
+              _trf('paymentDiffInfo', {
+                'EXPECTED': ocekivaniIznos.toStringAsFixed(0),
+                'ENTERED': rezultat.iznos.toStringAsFixed(0),
+                'DIFF': '$znak${razlika.toStringAsFixed(0)}',
+              }),
             );
           }
         }
         widget.onChanged?.call();
       }
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, 'Greška pri plaćanju: $e');
+      V3ErrorUtils.safeError(this, context, '${_tr('paymentError')}: $e');
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -324,7 +470,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     // kao realizovana i istovremeno prikazana kao otkazana.
     if (V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt)) {
       if (mounted) {
-        V3AppSnackBar.warning(context, 'Putnik je već pokupljen, ne može se otkazati.');
+        V3AppSnackBar.warning(context, _tr('passengerAlreadyPickedUp'));
       }
       return;
     }
@@ -336,28 +482,28 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     try {
       final confirm = await V3DialogHelper.showConfirmDialog(
         context,
-        title: 'Otkazivanje putnika',
-        message: 'Da li ste sigurni da želite da otkaže ${widget.putnik.imePrezime}?',
-        confirmText: 'Da',
-        cancelText: 'Ne',
+        title: _tr('cancelPassengerTitle'),
+        message: _trf('confirmCancelPassenger', {'NAME': widget.putnik.imePrezime}),
+        confirmText: _tr('yes'),
+        cancelText: _tr('no'),
         isDangerous: true,
       );
 
       if (confirm == true) {
         final currentVozac = V3VozacService.currentVozac;
         if (currentVozac == null || currentVozac.id.isEmpty) {
-          throw 'Niste logovani u V3 sistem';
+          throw _tr('notLoggedIn');
         }
 
         await V3ZahtevService.otkaziZahtev('',
             otkazaoVozacId: currentVozac.id, operativnaId: operativnaId, putnikId: widget.putnik.id);
         if (mounted) {
-          V3AppSnackBar.warning(context, 'Otkazano: ${widget.putnik.imePrezime}');
+          V3AppSnackBar.warning(context, _trf('canceledPassenger', {'NAME': widget.putnik.imePrezime}));
           widget.onChanged?.call();
         }
       }
     } catch (e) {
-      V3ErrorUtils.safeError(this, context, 'Greška: $e');
+      V3ErrorUtils.safeError(this, context, '${_tr('genericError')}: $e');
     } finally {
       _globalProcessingLock = false;
       V3StateUtils.safeSetState(this, () => _isProcessing = false);
@@ -788,7 +934,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                               final defaults =
                                   _resolvePaymentDefaults(tipPutnika: tip, isPoDanuModel: _isPoDanuModel(tip));
                               final brojVoznji = defaults.brojVoznji;
-                              final voznjaText = brojVoznji > 1 ? 'Vožnje' : 'Vožnja';
+                              final voznjaText = brojVoznji > 1 ? _tr('ridesPlural') : _tr('rideSingular');
                               if (dtStr.isNotEmpty) {
                                 return '$voznjaText ($brojVoznji): $dtStr';
                               } else {
@@ -805,9 +951,11 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final vpl = poslednjaDopunaAt ?? naplataAt;
-                              final ukupnoStr = ukupanIznos > 0 ? 'Ukupno: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
-                              final poslednjeStr =
-                                  poslednjaDopuna > 0 ? 'Poslednje: ${poslednjaDopuna.toStringAsFixed(0)} RSD' : '';
+                              final ukupnoStr =
+                                  ukupanIznos > 0 ? '${_tr('total')}: ${ukupanIznos.toStringAsFixed(0)} RSD' : '';
+                              final poslednjeStr = poslednjaDopuna > 0
+                                  ? '${_tr('last')}: ${poslednjaDopuna.toStringAsFixed(0)} RSD'
+                                  : '';
                               final dtStr = _fmt(vpl);
                               return [
                                 if (ukupnoStr.isNotEmpty) ukupnoStr,
@@ -824,7 +972,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           Text(
                             () {
                               final dtStr = _fmt(widget.entry?.otkazanoAt);
-                              return dtStr.isNotEmpty ? 'Otkazano: $dtStr' : 'Otkazano';
+                              return dtStr.isNotEmpty ? '${_tr('canceled')}: $dtStr' : _tr('canceled');
                             }(),
                             style: TextStyle(fontSize: 13, color: bojaOtkaz, fontWeight: FontWeight.w600),
                           ),

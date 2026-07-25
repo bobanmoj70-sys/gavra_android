@@ -85,6 +85,41 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       'de': 'by Bojan Gavrilovic',
       'zh': 'by Bojan Gavrilovic',
     },
+    'deviceLimitReached': {
+      'sr': '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
+      'en': '❌ A limit of 2 devices per account has been reached. Contact admin.',
+      'ru': '❌ Достигнут лимит в 2 устройства на аккаунт. Свяжитесь с администратором.',
+      'de': '❌ Das Limit von 2 Geräten pro Konto wurde erreicht. Kontaktieren Sie den Admin.',
+      'zh': '❌ 每个账户最多只能使用2台设备。请联系管理员。',
+    },
+    'phoneNotPaired': {
+      'sr': '❌ Telefon nije uparen sa UUID nalogom.',
+      'en': '❌ Phone is not paired with the UUID account.',
+      'ru': '❌ Телефон не привязан к UUID-аккаунту.',
+      'de': '❌ Das Telefon ist nicht mit dem UUID-Konto gekoppelt.',
+      'zh': '❌ 该手机未与UUID账户绑定。',
+    },
+    'missingUuidForCheck': {
+      'sr': '❌ UUID naloga nedostaje za proveru.',
+      'en': '❌ Account UUID is missing for verification.',
+      'ru': '❌ Для проверки отсутствует UUID аккаунта.',
+      'de': '❌ Für die Verifizierung fehlt die Konto-UUID.',
+      'zh': '❌ 缺少用于验证的账户UUID。',
+    },
+    'closedTypeNotInSystem': {
+      'sr': 'Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+      'en': 'This is a closed-type app and you are not in the system. Contact admin.',
+      'ru': 'Приложение закрытого типа, и вас нет в системе. Свяжитесь с администратором.',
+      'de': 'Diese App ist geschlossen und Sie sind nicht im System. Kontaktieren Sie den Admin.',
+      'zh': '该应用为封闭系统，您不在系统内。请联系管理员。',
+    },
+    'loginVerificationError': {
+      'sr': '⚠️ Greška pri verifikaciji prijave. Pokušaj ponovo.',
+      'en': '⚠️ Login verification error. Please try again.',
+      'ru': '⚠️ Ошибка проверки входа. Попробуйте снова.',
+      'de': '⚠️ Fehler bei der Login-Verifizierung. Bitte versuchen Sie es erneut.',
+      'zh': '⚠️ 登录验证出错。请重试。',
+    },
   };
 
   String _tr(String key) {
@@ -301,9 +336,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
             if (!verification.ok || !verification.deviceAllowed) {
               if (verification.reason == 'device_limit_reached') {
-                _showSafeSnackBar('❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.');
+                _showSafeSnackBar(_tr('deviceLimitReached'));
               } else {
-                _showSafeSnackBar('❌ Telefon nije uparen sa UUID nalogom.');
+                _showSafeSnackBar(_tr('phoneNotPaired'));
               }
               return;
             }
@@ -566,7 +601,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
 
       final resolvedId = (authId ?? '').trim();
       if (resolvedId.isEmpty) {
-        _showSafeSnackBar('❌ UUID naloga nedostaje za proveru.');
+        _showSafeSnackBar(_tr('missingUuidForCheck'));
         return;
       }
 
@@ -610,9 +645,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       }
 
       if (putnik == null) {
-        _showSafeSnackBar(
-          'Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
-        );
+        _showSafeSnackBar(_tr('closedTypeNotInSystem'));
         return;
       }
 
@@ -640,7 +673,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       );
     } catch (e) {
       debugPrint('[V3WelcomeScreen] onLoginVerified error: $e');
-      _showSafeSnackBar('⚠️ Greška pri verifikaciji prijave. Pokušaj ponovo.');
+      _showSafeSnackBar(_tr('loginVerificationError'));
     }
   }
 
