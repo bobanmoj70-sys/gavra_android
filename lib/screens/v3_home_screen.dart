@@ -11,8 +11,8 @@ import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_admin_service.dart';
 import '../services/v3/v3_adresa_service.dart';
-import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_dodela_resolver_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
@@ -102,10 +102,6 @@ class V3HomeScreen extends StatefulWidget {
 }
 
 class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMixin {
-  static const Set<String> _adminUserIds = <String>{
-    V3AppUpdateService.bojanUserId,
-  };
-
   // Prevodi za dijalog "Dodaj rezervaciju" (SR/EN/RU/DE).
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('homeScreen');
 
@@ -294,12 +290,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     }
   }
 
-  bool get _isAdmin {
-    final vozac = V3VozacService.currentVozac;
-    final vozacId = vozac?.id.trim() ?? '';
-    if (vozacId.isNotEmpty && _adminUserIds.contains(vozacId)) return true;
-    return false;
-  }
+  bool get _isAdmin => V3AdminService.isCurrentUserAdmin;
 
   List<Color> getVozacColors(String grad, String vreme) {
     final rm = V3MasterRealtimeManager.instance;

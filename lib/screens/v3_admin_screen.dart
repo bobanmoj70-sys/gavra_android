@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_admin_service.dart';
 import '../services/v3/v3_app_settings_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -60,6 +61,18 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   void initState() {
     super.initState();
     _themeManager = V3ThemeManager();
+    // Sigurnosna provera nezavisna od home_screen menija: ako korisnik nekako
+    // dospe ovde (deep link, stara ruta, race-condition pri logoutu) a nije
+    // admin, odmah ga vraćamo nazad. Ovo je JEDINA kapija ka svim admin
+    // pod-ekranima (kapacitet, dnevnik vozača, uplata pazara, pošiljke,
+    // radnici/učenici zahtevi, dugovi, gorivo, održavanje, adrese, finansije,
+    // raspored, putnici) — sve se granaju odavde.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!V3AdminService.isCurrentUserAdmin) {
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   bool _isValidVersion(String value) {
