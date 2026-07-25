@@ -977,7 +977,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (center != null) {
       return V3RouteWaypoint(
         id: '__fixed_destination_$opposite',
-        label: 'Cilj $opposite',
+        label: _tr('ciljGrad').replaceAll('%GRAD%', opposite),
         coordinate: V3RouteCoordinate(latitude: center.lat, longitude: center.lng),
       );
     }
@@ -992,7 +992,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     return V3RouteWaypoint(
       id: '__fixed_destination_$opposite',
-      label: 'Cilj $opposite',
+      label: _tr('ciljGrad').replaceAll('%GRAD%', opposite),
       coordinate: coordinate,
     );
   }
@@ -1334,7 +1334,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label: V3VozacLocationTrackingService.instance.isRunning ? '🟢 AKTIVNO' : '⚫ ČEKA',
+                                  label: V3VozacLocationTrackingService.instance.isRunning
+                                      ? _tr('statusAktivno')
+                                      : _tr('statusCeka'),
                                   color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.grey,
                                   height: appBarButtonHeight,
                                   onTap: () {
@@ -1348,15 +1350,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                 flex: 2,
                                 child: _buildAppBarBtn(
                                   context: context,
-                                  label: 'MAPA',
+                                  label: _tr('mapaDugme'),
                                   color: (!_isNavigating)
                                       ? Colors.grey // Inaktivno dok tracking nije aktivan
                                       : Colors.blue,
                                   height: appBarButtonHeight,
                                   onTap: () {
                                     if (!_isNavigating) {
-                                      V3AppSnackBar.warning(context,
-                                          'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.');
+                                      V3AppSnackBar.warning(context, _tr('rutaBiceDostupna'));
                                       return;
                                     }
                                     _handleOpenMap();
@@ -1595,7 +1596,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   // ── V2 stil: digitalni datum prikaz ──
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
     final selectedDate = _selectedDate;
-    final dayName = _selectedDay.trim().toUpperCase();
+    final dayName = V3DanHelper.trFullName(_selectedDay).toUpperCase();
     final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
     final vozacBoja = _getVozacBojaRaw(vozac);
     return Row(

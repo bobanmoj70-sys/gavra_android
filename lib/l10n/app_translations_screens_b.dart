@@ -1189,6 +1189,25 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Betriebswoche:',
       'zh': '运营周：',
     },
+    'statusAktivno': {'sr': '🟢 AKTIVNO', 'en': '🟢 ACTIVE', 'ru': '🟢 АКТИВНО', 'de': '🟢 AKTIV', 'zh': '🟢 运行中'},
+    'statusCeka': {'sr': '⚫ ČEKA', 'en': '⚫ WAITING', 'ru': '⚫ ОЖИДАНИЕ', 'de': '⚫ WARTET', 'zh': '⚫ 等待中'},
+    'mapaDugme': {'sr': 'MAPA', 'en': 'MAP', 'ru': 'КАРТА', 'de': 'KARTE', 'zh': '地图'},
+    'rutaBiceDostupna': {
+      'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.',
+      'en':
+          'The route will be available once tracking activates automatically. Wait for the push notification for the appointment.',
+      'ru': 'Маршрут будет доступен, когда отслеживание активируется автоматически. Ждите push-уведомление о времени.',
+      'de':
+          'Die Route ist verfügbar, sobald das Tracking automatisch aktiviert wird. Warten Sie auf die Push-Benachrichtigung für den Termin.',
+      'zh': '跟踪自动启动后即可查看路线。请等待预约的推送通知。',
+    },
+    'ciljGrad': {
+      'sr': 'Cilj %GRAD%',
+      'en': 'Destination %GRAD%',
+      'ru': 'Цель %GRAD%',
+      'de': 'Ziel %GRAD%',
+      'zh': '目的地 %GRAD%',
+    },
     'slotoviZakljucaniZaRazlog': {
       'sr': '⛔ Slotovi zaključani za %DAN%. Razlog: %RAZLOG%',
       'en': '⛔ Slots locked for %DAN%. Reason: %RAZLOG%',
