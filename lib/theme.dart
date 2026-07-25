@@ -100,8 +100,17 @@ extension SerbianTextStyleExtension on TextStyle {
 }
 
 /// Kreira TextTheme sa srpskom dijakritikom podrškom
-TextTheme createSerbianTextTheme() {
-  final baseTheme = GoogleFonts.interTextTheme();
+/// [bodyColor]/[displayColor] moraju odgovarati `onSurface` boji teme kako bi
+/// tekst (npr. u AlertDialog, TextField, SwitchListTile) ostao čitljiv na
+/// svakoj temi (svetloj i tamnoj) — bez ovoga GoogleFonts.interTextTheme()
+/// uvek vraća tamne (light-mode) boje teksta, što ga čini nečitljivim na
+/// tamnim pozadinama.
+TextTheme createSerbianTextTheme({Color? bodyColor, Color? displayColor}) {
+  final baseTheme = GoogleFonts.interTextTheme().apply(
+    bodyColor: bodyColor,
+    displayColor: displayColor,
+    decorationColor: bodyColor,
+  );
   return baseTheme.copyWith(
     // Headline stilovi
     headlineLarge: baseTheme.headlineLarge?.withSerbianSupport(),
@@ -363,7 +372,10 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
   useMaterial3: true,
   fontFamily: 'Inter', // Primarni font sa podrškom za latin-ext
   fontFamilyFallback: SerbianTextStyle._fallbackFonts, // Emoji + dijakritika fallback
-  textTheme: createSerbianTextTheme(), // SRPSKA DJAKRITIKA PODRŠKA
+  textTheme: createSerbianTextTheme(
+    bodyColor: tripleBlueFashionColorScheme.onSurface,
+    displayColor: tripleBlueFashionColorScheme.onSurface,
+  ), // SRPSKA DJAKRITIKA PODRŠKA
   scaffoldBackgroundColor: const Color(0xFFF0F9FF),
   appBarTheme: AppBarTheme(
     elevation: 0,
@@ -384,7 +396,10 @@ final ThemeData darkSteelGreyTheme = ThemeData(
   useMaterial3: true,
   fontFamily: 'Inter',
   fontFamilyFallback: SerbianTextStyle._fallbackFonts,
-  textTheme: createSerbianTextTheme(),
+  textTheme: createSerbianTextTheme(
+    bodyColor: darkSteelGreyColorScheme.onSurface,
+    displayColor: darkSteelGreyColorScheme.onSurface,
+  ),
   scaffoldBackgroundColor: const Color(0xFF1A1A1A),
   appBarTheme: AppBarTheme(
     elevation: 0,
@@ -405,7 +420,10 @@ final ThemeData passionateRoseTheme = ThemeData(
   useMaterial3: true,
   fontFamily: 'Inter',
   fontFamilyFallback: SerbianTextStyle._fallbackFonts,
-  textTheme: createSerbianTextTheme(),
+  textTheme: createSerbianTextTheme(
+    bodyColor: passionateRoseColorScheme.onSurface,
+    displayColor: passionateRoseColorScheme.onSurface,
+  ),
   scaffoldBackgroundColor: const Color(0xFFFFF8F9),
   appBarTheme: AppBarTheme(
     elevation: 0,
@@ -426,7 +444,10 @@ final ThemeData darkPinkTheme = ThemeData(
   useMaterial3: true,
   fontFamily: 'Inter',
   fontFamilyFallback: SerbianTextStyle._fallbackFonts,
-  textTheme: createSerbianTextTheme(),
+  textTheme: createSerbianTextTheme(
+    bodyColor: darkPinkColorScheme.onSurface,
+    displayColor: darkPinkColorScheme.onSurface,
+  ),
   scaffoldBackgroundColor: const Color(0xFF1A0A14),
   appBarTheme: AppBarTheme(
     elevation: 0,
