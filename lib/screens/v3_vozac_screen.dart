@@ -1816,11 +1816,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     V3DialogHelper.showDialogBuilder<String>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: Text(_tr('izaberiDan')),
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        title: Text(_tr('izaberiDan'), style: const TextStyle(color: Colors.white)),
         children: V3DanHelper.workdayNames.map((dan) {
+          final isSelected = dan == _selectedDay;
           return SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, dan),
-            child: Text(dan, style: TextStyle(fontWeight: dan == _selectedDay ? FontWeight.bold : FontWeight.normal)),
+            child: Text(
+              dan,
+              style: TextStyle(
+                color: isSelected ? Colors.amberAccent : Colors.white,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
           );
         }).toList(),
       ),
