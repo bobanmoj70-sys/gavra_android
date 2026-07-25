@@ -481,24 +481,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return const [];
   }
 
-  /// Ponovo izračunaj ETA-e kada se app vrati sa aktivnom navigacijom
-  /// (npr. vozač je ubio app a background servis je i dalje trajao).
-  Future<void> _restoreEtaFromLastKnownPosition() async {
+  /// Ponovo izračunaj ETA-e sa TRENUTNOM (live) GPS pozicijom kada se app
+  /// vrati u foreground sa aktivnom navigacijom (npr. vozač je ubio app a
+  /// background servis je i dalje trajao). `fetchPositionAndComputeEta()`
+  /// interno traži svežu poziciju preko `Geolocator.getCurrentPosition()` —
+  /// ne koristi se nikakva stara/keširana pozicija.
+  Future<void> _recomputeEtaFromCurrentPosition() async {
     if (!_isNavigating) return;
     final vid = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vid.isEmpty) return;
 
     try {
       final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
-      debugPrint('[RESTORE] ETA map: ${etaResult.etaMap}');
-      debugPrint('[RESTORE] optimized order: ${etaResult.order}');
+      debugPrint('[RESUME_ETA] ETA map: ${etaResult.etaMap}');
+      debugPrint('[RESUME_ETA] optimized order: ${etaResult.order}');
 
       if (!mounted) return;
       _refreshPutniciOrderFromEtaCache();
-      debugPrint('[RESTORE] cards re-sorted by OSRM order');
-      unawaited(_syncMapRouteIfNeeded(reason: 'restore_from_last_known_position'));
+      debugPrint('[RESUME_ETA] cards re-sorted by OSRM order');
+      unawaited(_syncMapRouteIfNeeded(reason: 'resume_eta_recompute'));
     } catch (e) {
-      debugPrint('[RESTORE] ETA restore error: $e');
+      debugPrint('[RESUME_ETA] ETA recompute error: $e');
     }
   }
 
@@ -567,9 +570,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         if (!mounted) return;
         _rebuild();
         // Ako je navigacija aktivna (app ubijena pa ponovo otvorena),
-        // ponovo izračunaj ETA-e sa poslednjom poznatom lokacijom
+        // ponovo izračunaj ETA-e sa TRENUTNOM (live) GPS pozicijom
         if (_isNavigating) {
-          unawaited(_restoreEtaFromLastKnownPosition());
+          unawaited(_recomputeEtaFromCurrentPosition());
         }
         // Auto-start tracking ako je ekran otvoren preko push notifikacije
         if (widget.autoStartTracking && !_isNavigating) {
