@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../models/v3_finansije.dart';
 import '../models/v3_kredit.dart';
 import '../screens/v3_krediti_screen.dart';
@@ -20,11 +21,9 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _FinTr {
-  static final Map<String, Map<String, String>> _t =
-      AppTranslations.ns('finansijeScreen');
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('finansijeScreen');
 
   static String tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;
@@ -168,8 +167,7 @@ _V3IzvestajData _buildIzvestaj() {
 
   // Troškovi iz cache
   double trosakDan = 0, trosakNed = 0, trosakMes = 0, trosakGod = 0;
-  final troskoviMes =
-      V3FinansijeService.getTroskoviMesec(mesec: now.month, godina: now.year);
+  final troskoviMes = V3FinansijeService.getTroskoviMesec(mesec: now.month, godina: now.year);
 
   for (final row in finansijeCache) {
     if (row['tip'] != 'rashod') continue;
@@ -205,8 +203,7 @@ _V3IzvestajData _buildIzvestaj() {
 
   // Period stringovi
   final danPeriod = V3DanHelper.formatDanMesec(danas);
-  final nedeljaPeriod =
-      '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}';
+  final nedeljaPeriod = '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}';
 
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
@@ -254,8 +251,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: V3MasterRealtimeManager.instance.tablesRevisionStream(
-          const ['v3_finansije', 'v3_krediti', 'v3_auth', 'v3_app_settings']),
+      stream: V3MasterRealtimeManager.instance
+          .tablesRevisionStream(const ['v3_finansije', 'v3_krediti', 'v3_auth', 'v3_app_settings']),
       builder: (context, _) {
         final iz = _buildIzvestaj();
         return Scaffold(
@@ -265,8 +262,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             elevation: 0,
             automaticallyImplyLeading: false,
             centerTitle: true,
-            title: Text(_FinTr.tr('finansije'),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(_FinTr.tr('finansije'), style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: Theme.of(context).backgroundGradient,
@@ -283,8 +279,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '📅',
                       naslov: 'Danas',
-                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month,
-                          fallback: ''),
+                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month, fallback: ''),
                       prihod: iz.prihodDanas,
                       troskovi: iz.trosakDanas,
                       voznjiLabel: '${iz.voznjiDanas} uplata',
@@ -304,8 +299,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '🗓️',
                       naslov: 'Ovaj mesec',
-                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month,
-                          fallback: ''),
+                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month, fallback: ''),
                       prihod: iz.prihodMesec,
                       troskovi: iz.trosakMesec,
                       voznjiLabel: '${iz.voznjiMesec} uplata',
@@ -327,8 +321,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: V3ButtonUtils.outlinedButton(
-                        onPressed: () =>
-                            _showTroskoviDialog(iz.troskoviPoKategoriji),
+                        onPressed: () => _showTroskoviDialog(iz.troskoviPoKategoriji),
                         text: _FinTr.tr('dodajTroskove'),
                         icon: Icons.edit,
                         borderColor: Colors.white24,
@@ -354,12 +347,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
         end: Alignment.bottomRight,
       ),
       borderRadius: BorderRadius.circular(18),
-      boxShadow: [
-        BoxShadow(
-            color: Colors.orange.withValues(alpha: 0.35),
-            blurRadius: 14,
-            offset: const Offset(0, 5))
-      ],
+      boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))],
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       child: Row(
         children: [
@@ -368,8 +356,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             height: V3ContainerUtils.responsiveHeight(context, 52),
             backgroundColor: Colors.white.withValues(alpha: 0.2),
             borderRadiusGeometry: BorderRadius.circular(14),
-            child:
-                const Center(child: Text('💰', style: TextStyle(fontSize: 26))),
+            child: const Center(child: Text('💰', style: TextStyle(fontSize: 26))),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -377,23 +364,15 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_FinTr.tr('potrazivanjaDugovi'),
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(height: 2),
                 Text(_FinTr.tr('neplaceneVoznjeSvihPutnika'),
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.8))),
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
               ],
             ),
           ),
           Text(_fmtIznos(iznos),
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white)),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
         ],
       ),
     );
@@ -412,12 +391,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.blue.withValues(alpha: 0.35),
-              blurRadius: 14,
-              offset: const Offset(0, 5))
-        ],
+        boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))],
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Row(
           children: [
@@ -426,8 +400,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
               height: V3ContainerUtils.responsiveHeight(context, 52),
               backgroundColor: Colors.white.withValues(alpha: 0.2),
               borderRadiusGeometry: BorderRadius.circular(14),
-              child: const Center(
-                  child: Text('🏦', style: TextStyle(fontSize: 26))),
+              child: const Center(child: Text('🏦', style: TextStyle(fontSize: 26))),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -435,25 +408,17 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_FinTr.tr('krediti'),
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 2),
                   Text(_FinTr.tr('preostaliDugZaKredite'),
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.8))),
+                      style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                 ],
               ),
             ),
             Row(
               children: [
                 Text(_fmtIznos(iznos),
-                    style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                 const SizedBox(width: 8),
                 const Icon(Icons.chevron_right, color: Colors.white70),
               ],
@@ -475,27 +440,18 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   }) {
     final neto = prihod - troskovi;
     final isPositive = neto >= 0;
-    final netoColor =
-        isPositive ? const Color(0xFF4ADE80) : const Color(0xFFF87171);
+    final netoColor = isPositive ? const Color(0xFF4ADE80) : const Color(0xFFF87171);
 
     return V3ContainerUtils.iconContainer(
       backgroundColor: const Color(0xFF1E2235),
       borderRadiusGeometry: BorderRadius.circular(18),
       border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-      boxShadow: [
-        BoxShadow(
-            color: color.withValues(alpha: 0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4))
-      ],
+      boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))],
       child: Column(
         children: [
           V3ContainerUtils.gradientContainer(
             gradient: LinearGradient(
-              colors: [
-                color.withValues(alpha: 0.3),
-                color.withValues(alpha: 0.1)
-              ],
+              colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -510,20 +466,13 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(naslov,
-                          style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
-                      Text(podnaslov,
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.6))),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text(podnaslov, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6))),
                     ],
                   ),
                 ),
                 V3ContainerUtils.iconContainer(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   backgroundColor: color.withValues(alpha: 0.25),
                   borderRadiusGeometry: BorderRadius.circular(20),
                   border: Border.all(color: color.withValues(alpha: 0.5)),
@@ -540,12 +489,9 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Column(
               children: [
-                _FinRow(_FinTr.tr('prihod'), prihod, const Color(0xFF4ADE80),
-                    prefix: '+'),
+                _FinRow(_FinTr.tr('prihod'), prihod, const Color(0xFF4ADE80), prefix: '+'),
                 const SizedBox(height: 8),
-                _FinRow(
-                    _FinTr.tr('troskovi'), troskovi, const Color(0xFFF87171),
-                    prefix: '-'),
+                _FinRow(_FinTr.tr('troskovi'), troskovi, const Color(0xFFF87171), prefix: '-'),
                 const SizedBox(height: 10),
                 Divider(color: Colors.white.withValues(alpha: 0.1)),
                 const SizedBox(height: 8),
@@ -554,23 +500,13 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                   children: [
                     Text(_FinTr.tr('neto'),
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white.withValues(alpha: 0.9))),
+                            fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.9))),
                     Row(
                       children: [
-                        Icon(
-                            isPositive
-                                ? Icons.trending_up
-                                : Icons.trending_down,
-                            color: netoColor,
-                            size: 20),
+                        Icon(isPositive ? Icons.trending_up : Icons.trending_down, color: netoColor, size: 20),
                         const SizedBox(width: 6),
                         Text(_fmtIznos(neto.abs()),
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: netoColor)),
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: netoColor)),
                       ],
                     ),
                   ],
@@ -589,23 +525,14 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E2235),
         borderRadius: BorderRadius.circular(18),
-        border:
-            Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.red.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4))
-        ],
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
           V3ContainerUtils.gradientContainer(
             gradient: LinearGradient(
-              colors: [
-                Colors.red.withValues(alpha: 0.3),
-                Colors.red.withValues(alpha: 0.1)
-              ],
+              colors: [Colors.red.withValues(alpha: 0.3), Colors.red.withValues(alpha: 0.1)],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -615,15 +542,9 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(_FinTr.tr('mesecniTroskovi'),
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 Text(_fmtIznos(ukupno),
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFF87171))),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFF87171))),
               ],
             ),
           ),
@@ -634,14 +555,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     style: const TextStyle(color: Colors.white38, fontSize: 13))
                 : Column(
                     children: poKat.entries
-                        .map((e) => _FinRow(
-                            e.key,
-                            e.value,
-                            e.value > 0
-                                ? const Color(0xFFF87171)
-                                : Colors.white38,
-                            fontSize: 14,
-                            labelColor: Colors.white70))
+                        .map((e) => _FinRow(e.key, e.value, e.value > 0 ? const Color(0xFFF87171) : Colors.white38,
+                            fontSize: 14, labelColor: Colors.white70))
                         .toList(),
                   ),
           ),
@@ -660,8 +575,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-String _fmtIznos(double iznos) =>
-    '${V3FormatUtils.formatBroj(iznos.round())} din';
+String _fmtIznos(double iznos) => '${V3FormatUtils.formatBroj(iznos.round())} din';
 
 // ─── _FinRow Widget ───────────────────────────────────────────────────────────
 
@@ -689,15 +603,10 @@ class _FinRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: fontSize,
-                  color: labelColor,
-                  fontWeight: FontWeight.normal)),
+          Text(label, style: TextStyle(fontSize: fontSize, color: labelColor, fontWeight: FontWeight.normal)),
           Text(
             '${prefix ?? ''}${_fmtIznos(iznos.abs())}',
-            style: TextStyle(
-                fontSize: fontSize, fontWeight: FontWeight.w700, color: color),
+            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),
@@ -754,8 +663,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
     try {
       final futures = <Future<void>>[];
       for (final s in _stavke) {
-        final val =
-            double.tryParse(_ctrls[s.$1]!.text.replaceAll(',', '.')) ?? 0;
+        final val = double.tryParse(_ctrls[s.$1]!.text.replaceAll(',', '.')) ?? 0;
         if (val <= 0) continue;
 
         if (s.$1 == 'kredit' && _selectedKreditId != null) {
@@ -804,8 +712,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         top: false,
         child: Container(
@@ -820,19 +727,15 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
               children: [
                 V3ContainerUtils.styledContainer(
                   width: 40,
-                  height: V3ContainerUtils.responsiveHeight(context, 4,
-                      intensity: 0.2),
+                  height: V3ContainerUtils.responsiveHeight(context, 4, intensity: 0.2),
                   backgroundColor: Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(2),
                   child: const SizedBox(),
                 ),
                 const SizedBox(height: 16),
-                Text(_FinTr.tr('dodajTroskove'),
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(_FinTr.tr('dodajTroskove'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
-                Text(_FinTr.tr('unesiIznosDodas'),
-                    style: const TextStyle(color: Colors.grey)),
+                Text(_FinTr.tr('unesiIznosDodas'), style: const TextStyle(color: Colors.grey)),
                 const SizedBox(height: 20),
                 for (final s in _stavke) ...[
                   Row(
@@ -848,10 +751,8 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                             if ((widget.poKat[_katLabel(s.$1)] ?? 0) > 0)
                               Text(
                                 '${_FinTr.tr('trenutno')} ${V3FormatUtils.formatBroj((widget.poKat[_katLabel(s.$1)] ?? 0).round())}',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.bold),
+                                style:
+                                    TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
                               ),
                           ],
                         ),
@@ -881,12 +782,10 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                         items: _krediti
                             .map((k) => DropdownMenuItem(
                                   value: k.id,
-                                  child: Text(
-                                      '${k.naziv} (${_fmtIznos(k.preostalo)} ${_FinTr.tr('preostaloLower')})'),
+                                  child: Text('${k.naziv} (${_fmtIznos(k.preostalo)} ${_FinTr.tr('preostaloLower')})'),
                                 ))
                             .toList(),
-                        onChanged: (val) => V3StateUtils.safeSetState(
-                            this, () => _selectedKreditId = val),
+                        onChanged: (val) => V3StateUtils.safeSetState(this, () => _selectedKreditId = val),
                       ),
                     ),
                   ],

@@ -30,13 +30,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '⚠️ Kein Betriebseintrag für den ausgewählten Passagier/Termin',
       'zh': '⚠️ 所选乘客/时段无运营记录',
     },
-    'putnik': {
-      'sr': 'putnik',
-      'en': 'passenger',
-      'ru': 'пассажир',
-      'de': 'Passagier',
-      'zh': '乘客'
-    },
+    'putnik': {'sr': 'putnik', 'en': 'passenger', 'ru': 'пассажир', 'de': 'Passagier', 'zh': '乘客'},
     'individualnaDodelaUklonjena': {
       'sr': '🗑️ Individualna dodela uklonjena',
       'en': '🗑️ Individual assignment removed',
@@ -51,13 +45,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Keine registrierten Fahrer',
       'zh': '没有已注册的司机',
     },
-    'terminLabel': {
-      'sr': 'TERMIN',
-      'en': 'SLOT',
-      'ru': 'СЛОТ',
-      'de': 'TERMIN',
-      'zh': '时段'
-    },
+    'terminLabel': {'sr': 'TERMIN', 'en': 'SLOT', 'ru': 'СЛОТ', 'de': 'TERMIN', 'zh': '时段'},
     'dodeliVozacaTerminu': {
       'sr': 'Dodeli vozača terminu',
       'en': 'Assign driver to slot',
@@ -72,20 +60,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Terminzuweisung entfernen',
       'zh': '移除时段分配',
     },
-    'potvrdi': {
-      'sr': 'Potvrdi',
-      'en': 'Confirm',
-      'ru': 'Подтвердить',
-      'de': 'Bestätigen',
-      'zh': '确认'
-    },
-    'putnikDefault': {
-      'sr': 'Putnik',
-      'en': 'Passenger',
-      'ru': 'Пассажир',
-      'de': 'Passagier',
-      'zh': '乘客'
-    },
+    'potvrdi': {'sr': 'Potvrdi', 'en': 'Confirm', 'ru': 'Подтвердить', 'de': 'Bestätigen', 'zh': '确认'},
+    'putnikDefault': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Passagier', 'zh': '乘客'},
     'dodeliVozacaPutniku': {
       'sr': 'Dodeli vozača putniku',
       'en': 'Assign driver to passenger',
@@ -128,13 +104,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Unbekannter Passagier',
       'zh': '未知乘客',
     },
-    'vozac': {
-      'sr': 'Vozač',
-      'en': 'Driver',
-      'ru': 'Водитель',
-      'de': 'Fahrer',
-      'zh': '司机'
-    },
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
     'nemaDodeleTapZaDodelu': {
       'sr': 'Nema dodele — tap za dodelu vozača',
       'en': 'Not assigned — tap to assign driver',
@@ -158,13 +128,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Das Datum wird aus dem Kalender ausgewählt.',
       'zh': '日期从日历中选择。',
     },
-    'datum': {
-      'sr': 'Datum',
-      'en': 'Date',
-      'ru': 'Дата',
-      'de': 'Datum',
-      'zh': '日期'
-    },
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
     'izaberiDatum': {
       'sr': 'Izaberi datum',
       'en': 'Select date',
@@ -172,27 +136,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Datum auswählen',
       'zh': '选择日期',
     },
-    'scope': {
-      'sr': 'Scope',
-      'en': 'Scope',
-      'ru': 'Область',
-      'de': 'Bereich',
-      'zh': '范围'
-    },
-    'sviAll': {
-      'sr': 'Svi (ALL)',
-      'en': 'All (ALL)',
-      'ru': 'Все (ALL)',
-      'de': 'Alle (ALL)',
-      'zh': '全部 (ALL)'
-    },
-    'razlog': {
-      'sr': 'Razlog',
-      'en': 'Reason',
-      'ru': 'Причина',
-      'de': 'Grund',
-      'zh': '原因'
-    },
+    'scope': {'sr': 'Scope', 'en': 'Scope', 'ru': 'Область', 'de': 'Bereich', 'zh': '范围'},
+    'sviAll': {'sr': 'Svi (ALL)', 'en': 'All (ALL)', 'ru': 'Все (ALL)', 'de': 'Alle (ALL)', 'zh': '全部 (ALL)'},
+    'razlog': {'sr': 'Razlog', 'en': 'Reason', 'ru': 'Причина', 'de': 'Grund', 'zh': '原因'},
     'drzavniPraznik': {
       'sr': 'Državni praznik',
       'en': 'Public holiday',
@@ -214,34 +160,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Aktive Regeln',
       'zh': '有效规则',
     },
-    'nemaUnosa': {
-      'sr': 'Nema unosa',
-      'en': 'No entries',
-      'ru': 'Нет записей',
-      'de': 'Keine Einträge',
-      'zh': '无记录'
-    },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
-    'sacuvaj': {
-      'sr': 'Sačuvaj',
-      'en': 'Save',
-      'ru': 'Сохранить',
-      'de': 'Speichern',
-      'zh': '保存'
-    },
-    'cuvam': {
-      'sr': 'Čuvam...',
-      'en': 'Saving...',
-      'ru': 'Сохранение...',
-      'de': 'Speichern...',
-      'zh': '保存中...'
-    },
+    'nemaUnosa': {'sr': 'Nema unosa', 'en': 'No entries', 'ru': 'Нет записей', 'de': 'Keine Einträge', 'zh': '无记录'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
+    'cuvam': {'sr': 'Čuvam...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...', 'zh': '保存中...'},
     'izaberiDatumIzKalendara': {
       'sr': 'Izaberi datum iz kalendara.',
       'en': 'Select a date from the calendar.',
@@ -260,8 +182,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'sr': 'Dodaj bar jedan neradan dan pre čuvanja.',
       'en': 'Add at least one non-working day before saving.',
       'ru': 'Добавьте хотя бы один нерабочий день перед сохранением.',
-      'de':
-          'Fügen Sie mindestens einen arbeitsfreien Tag hinzu, bevor Sie speichern.',
+      'de': 'Fügen Sie mindestens einen arbeitsfreien Tag hinzu, bevor Sie speichern.',
       'zh': '保存前请至少添加一个非工作日。',
     },
     'neradniDaniSacuvani': {
@@ -328,12 +249,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'zh': '📢 信息横幅',
     },
     'infoBanerHint': {
-      'sr':
-          'Jedna poruka prikazana odabranoj grupi korisnika. Isključi kada ne treba da se prikazuje.',
-      'en':
-          'A single message shown to the selected group of users. Turn off when it should not be shown.',
-      'ru':
-          'Одно сообщение, показываемое выбранной группе пользователей. Отключите, если не нужно показывать.',
+      'sr': 'Jedna poruka prikazana odabranoj grupi korisnika. Isključi kada ne treba da se prikazuje.',
+      'en': 'A single message shown to the selected group of users. Turn off when it should not be shown.',
+      'ru': 'Одно сообщение, показываемое выбранной группе пользователей. Отключите, если не нужно показывать.',
       'de':
           'Eine einzelne Nachricht für die ausgewählte Nutzergruppe. Deaktivieren, wenn sie nicht angezeigt werden soll.',
       'zh': '向选定用户组显示的单条消息。不需要显示时请关闭。',
@@ -345,27 +263,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Banner anzeigen',
       'zh': '显示横幅',
     },
-    'naslov': {
-      'sr': 'Naslov',
-      'en': 'Title',
-      'ru': 'Заголовок',
-      'de': 'Titel',
-      'zh': '标题'
-    },
-    'obavestenje': {
-      'sr': 'Obaveštenje',
-      'en': 'Notice',
-      'ru': 'Уведомление',
-      'de': 'Hinweis',
-      'zh': '通知'
-    },
-    'poruka': {
-      'sr': 'Poruka',
-      'en': 'Message',
-      'ru': 'Сообщение',
-      'de': 'Nachricht',
-      'zh': '消息'
-    },
+    'naslov': {'sr': 'Naslov', 'en': 'Title', 'ru': 'Заголовок', 'de': 'Titel', 'zh': '标题'},
+    'obavestenje': {'sr': 'Obaveštenje', 'en': 'Notice', 'ru': 'Уведомление', 'de': 'Hinweis', 'zh': '通知'},
+    'poruka': {'sr': 'Poruka', 'en': 'Message', 'ru': 'Сообщение', 'de': 'Nachricht', 'zh': '消息'},
     'unesiTekstObavestenja': {
       'sr': 'Unesi tekst obaveštenja...',
       'en': 'Enter notice text...',
@@ -389,11 +289,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
     'bakerUkljucenValidacija': {
       'sr': 'Ako je baner uključen, moraš uneti i naslov i poruku.',
-      'en':
-          'If the banner is enabled, you must enter both a title and a message.',
+      'en': 'If the banner is enabled, you must enter both a title and a message.',
       'ru': 'Если баннер включен, необходимо ввести заголовок и сообщение.',
-      'de':
-          'Wenn der Banner aktiviert ist, müssen Titel und Nachricht eingegeben werden.',
+      'de': 'Wenn der Banner aktiviert ist, müssen Titel und Nachricht eingegeben werden.',
       'zh': '如果横幅已启用，必须输入标题和消息。',
     },
     'infoBanerSacuvan': {
@@ -411,34 +309,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'zh': '加载信息横幅时出错：',
     },
     'audSvi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle', 'zh': '全部'},
-    'audPutnici': {
-      'sr': 'Putnici',
-      'en': 'Passengers',
-      'ru': 'Пассажиры',
-      'de': 'Passagiere',
-      'zh': '乘客'
-    },
-    'audVozaci': {
-      'sr': 'Vozači',
-      'en': 'Drivers',
-      'ru': 'Водители',
-      'de': 'Fahrer',
-      'zh': '司机'
-    },
-    'audRadnici': {
-      'sr': 'Radnici',
-      'en': 'Workers',
-      'ru': 'Рабочие',
-      'de': 'Arbeiter',
-      'zh': '员工'
-    },
-    'audUcenici': {
-      'sr': 'Učenici',
-      'en': 'Students',
-      'ru': 'Ученики',
-      'de': 'Schüler',
-      'zh': '学生'
-    },
+    'audPutnici': {'sr': 'Putnici', 'en': 'Passengers', 'ru': 'Пассажиры', 'de': 'Passagiere', 'zh': '乘客'},
+    'audVozaci': {'sr': 'Vozači', 'en': 'Drivers', 'ru': 'Водители', 'de': 'Fahrer', 'zh': '司机'},
+    'audRadnici': {'sr': 'Radnici', 'en': 'Workers', 'ru': 'Рабочие', 'de': 'Arbeiter', 'zh': '员工'},
+    'audUcenici': {'sr': 'Učenici', 'en': 'Students', 'ru': 'Ученики', 'de': 'Schüler', 'zh': '学生'},
     'updateVerzije': {
       'sr': 'Update verzije',
       'en': 'Update versions',
@@ -467,13 +341,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'iOS neueste',
       'zh': 'iOS 最新版',
     },
-    'iosMin': {
-      'sr': 'iOS min',
-      'en': 'iOS min',
-      'ru': 'iOS минимальная',
-      'de': 'iOS min',
-      'zh': 'iOS 最低版本'
-    },
+    'iosMin': {'sr': 'iOS min', 'en': 'iOS min', 'ru': 'iOS минимальная', 'de': 'iOS min', 'zh': 'iOS 最低版本'},
     'forceAndroid': {
       'sr': 'Force Android',
       'en': 'Force Android',
@@ -530,13 +398,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Schüler ohne VS-Termin',
       'zh': '没有 VS 时段的学生',
     },
-    'bezVs': {
-      'sr': 'Bez VS',
-      'en': 'Without VS',
-      'ru': 'Без VS',
-      'de': 'Ohne VS',
-      'zh': '无 VS'
-    },
+    'bezVs': {'sr': 'Bez VS', 'en': 'Without VS', 'ru': 'Без VS', 'de': 'Ohne VS', 'zh': '无 VS'},
     'sviImajuVsTermin': {
       'sr': '— svi imaju VS termin —',
       'en': '— everyone has a VS slot —',
@@ -544,13 +406,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '— alle haben einen VS-Termin —',
       'zh': '— 所有人都有 VS 时段 —',
     },
-    'zatvori': {
-      'sr': 'Zatvori',
-      'en': 'Close',
-      'ru': 'Закрыть',
-      'de': 'Schließen',
-      'zh': '关闭'
-    },
+    'zatvori': {'sr': 'Zatvori', 'en': 'Close', 'ru': 'Закрыть', 'de': 'Schließen', 'zh': '关闭'},
     'tipRasporeda': {
       'sr': 'Tip rasporeda',
       'en': 'Schedule type',
@@ -586,13 +442,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '📢  Info-Banner bearbeiten',
       'zh': '📢  编辑信息横幅',
     },
-    'duznici': {
-      'sr': 'Dužnici',
-      'en': 'Debtors',
-      'ru': 'Должники',
-      'de': 'Schuldner',
-      'zh': '欠款人'
-    },
+    'duznici': {'sr': 'Dužnici', 'en': 'Debtors', 'ru': 'Должники', 'de': 'Schuldner', 'zh': '欠款人'},
     'ukupanPazar': {
       'sr': 'UKUPAN PAZAR',
       'en': 'TOTAL EARNINGS',
@@ -602,27 +452,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
   },
   'adreseScreen': {
-    'naslov': {
-      'sr': '📍 Adrese',
-      'en': '📍 Addresses',
-      'ru': '📍 Адреса',
-      'de': '📍 Adressen',
-      'zh': '📍 地址'
-    },
-    'greska': {
-      'sr': 'Greška:',
-      'en': 'Error:',
-      'ru': 'Ошибка:',
-      'de': 'Fehler:',
-      'zh': '错误：'
-    },
-    'dodaj': {
-      'sr': 'Dodaj',
-      'en': 'Add',
-      'ru': 'Добавить',
-      'de': 'Hinzufügen',
-      'zh': '添加'
-    },
+    'naslov': {'sr': '📍 Adrese', 'en': '📍 Addresses', 'ru': '📍 Адреса', 'de': '📍 Adressen', 'zh': '📍 地址'},
+    'greska': {'sr': 'Greška:', 'en': 'Error:', 'ru': 'Ошибка:', 'de': 'Fehler:', 'zh': '错误：'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen', 'zh': '添加'},
     'adresaDodata': {
       'sr': '✅ Adresa dodata',
       'en': '✅ Address added',
@@ -660,27 +492,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '🗑️ Adresse gelöscht',
       'zh': '🗑️ 已删除地址',
     },
-    'ukupno': {
-      'sr': 'Ukupno',
-      'en': 'Total',
-      'ru': 'Всего',
-      'de': 'Gesamt',
-      'zh': '总计'
-    },
-    'belaCrkvaKratko': {
-      'sr': 'B. Crkva',
-      'en': 'B. Crkva',
-      'ru': 'Б. Црква',
-      'de': 'B. Crkva',
-      'zh': 'B. Crkva'
-    },
-    'vrsac': {
-      'sr': 'Vrsac',
-      'en': 'Vrsac',
-      'ru': 'Вршац',
-      'de': 'Vrsac',
-      'zh': 'Vrsac'
-    },
+    'ukupno': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt', 'zh': '总计'},
+    'belaCrkvaKratko': {'sr': 'B. Crkva', 'en': 'B. Crkva', 'ru': 'Б. Црква', 'de': 'B. Crkva', 'zh': 'B. Crkva'},
+    'vrsac': {'sr': 'Vrsac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac', 'zh': 'Vrsac'},
     'belaCrkvaPuno': {
       'sr': 'Bela Crkva',
       'en': 'Bela Crkva',
@@ -688,13 +502,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Bela Crkva',
       'zh': 'Bela Crkva'
     },
-    'vrsacDijakritik': {
-      'sr': 'Vršac',
-      'en': 'Vrsac',
-      'ru': 'Вршац',
-      'de': 'Vrsac',
-      'zh': 'Vrsac'
-    },
+    'vrsacDijakritik': {'sr': 'Vršac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac', 'zh': 'Vrsac'},
     'pretraziAdrese': {
       'sr': 'Pretraži adrese...',
       'en': 'Search addresses...',
@@ -710,13 +518,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Keine Adressen',
       'zh': '没有地址'
     },
-    'novaAdresa': {
-      'sr': 'Nova Adresa',
-      'en': 'New Address',
-      'ru': 'Новый адрес',
-      'de': 'Neue Adresse',
-      'zh': '新地址'
-    },
+    'novaAdresa': {'sr': 'Nova Adresa', 'en': 'New Address', 'ru': 'Новый адрес', 'de': 'Neue Adresse', 'zh': '新地址'},
     'izmeniAdresu': {
       'sr': 'Izmeni Adresu',
       'en': 'Edit Address',
@@ -731,27 +533,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Adressname',
       'zh': '地址名称'
     },
-    'grad': {
-      'sr': 'Grad',
-      'en': 'City',
-      'ru': 'Город',
-      'de': 'Stadt',
-      'zh': '城市'
-    },
-    'odustani': {
-      'sr': 'ODUSTANI',
-      'en': 'CANCEL',
-      'ru': 'ОТМЕНА',
-      'de': 'ABBRECHEN',
-      'zh': '取消'
-    },
-    'sacuvaj': {
-      'sr': 'SAČUVAJ',
-      'en': 'SAVE',
-      'ru': 'СОХРАНИТЬ',
-      'de': 'SPEICHERN',
-      'zh': '保存'
-    },
+    'grad': {'sr': 'Grad', 'en': 'City', 'ru': 'Город', 'de': 'Stadt', 'zh': '城市'},
+    'odustani': {'sr': 'ODUSTANI', 'en': 'CANCEL', 'ru': 'ОТМЕНА', 'de': 'ABBRECHEN', 'zh': '取消'},
+    'sacuvaj': {'sr': 'SAČUVAJ', 'en': 'SAVE', 'ru': 'СОХРАНИТЬ', 'de': 'SPEICHERN', 'zh': '保存'},
   },
   'dnevnikVozacaScreen': {
     'dnevnikVozaca': {
@@ -761,13 +545,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Fahrertagebuch',
       'zh': '司机日志'
     },
-    'sacuvajPdf': {
-      'sr': 'Sačuvaj PDF',
-      'en': 'Save PDF',
-      'ru': 'Сохранить PDF',
-      'de': 'PDF speichern',
-      'zh': '保存PDF'
-    },
+    'sacuvajPdf': {'sr': 'Sačuvaj PDF', 'en': 'Save PDF', 'ru': 'Сохранить PDF', 'de': 'PDF speichern', 'zh': '保存PDF'},
     'kopirajIzvestaj': {
       'sr': 'Kopiraj izveštaj',
       'en': 'Copy report',
@@ -775,13 +553,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Bericht kopieren',
       'zh': '复制报告',
     },
-    'vozacHint': {
-      'sr': 'Vozač',
-      'en': 'Driver',
-      'ru': 'Водитель',
-      'de': 'Fahrer',
-      'zh': '司机'
-    },
+    'vozacHint': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
     'izaberiVozacaIDatum': {
       'sr': 'Izaberi vozača i datum',
       'en': 'Select driver and date',
@@ -796,34 +568,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Keine Aktionen für',
       'zh': '没有操作记录：',
     },
-    'nepoznato': {
-      'sr': 'Nepoznato',
-      'en': 'Unknown',
-      'ru': 'Неизвестно',
-      'de': 'Unbekannt',
-      'zh': '未知'
-    },
-    'pokupio': {
-      'sr': 'POKUPIO',
-      'en': 'PICKED UP',
-      'ru': 'ЗАБРАЛ',
-      'de': 'ABGEHOLT',
-      'zh': '已接送'
-    },
-    'dodao': {
-      'sr': 'DODAO',
-      'en': 'ADDED',
-      'ru': 'ДОБАВИЛ',
-      'de': 'HINZUGEFÜGT',
-      'zh': '已添加'
-    },
-    'otkazao': {
-      'sr': 'OTKAZAO',
-      'en': 'CANCELED',
-      'ru': 'ОТМЕНИЛ',
-      'de': 'STORNIERT',
-      'zh': '已取消'
-    },
+    'nepoznato': {'sr': 'Nepoznato', 'en': 'Unknown', 'ru': 'Неизвестно', 'de': 'Unbekannt', 'zh': '未知'},
+    'pokupio': {'sr': 'POKUPIO', 'en': 'PICKED UP', 'ru': 'ЗАБРАЛ', 'de': 'ABGEHOLT', 'zh': '已接送'},
+    'dodao': {'sr': 'DODAO', 'en': 'ADDED', 'ru': 'ДОБАВИЛ', 'de': 'HINZUGEFÜGT', 'zh': '已添加'},
+    'otkazao': {'sr': 'OTKAZAO', 'en': 'CANCELED', 'ru': 'ОТМЕНИЛ', 'de': 'STORNIERT', 'zh': '已取消'},
     'ukupnoNaplaceno': {
       'sr': 'Ukupno naplaćeno:',
       'en': 'Total collected:',
@@ -831,34 +579,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Insgesamt eingezogen:',
       'zh': '总收款：',
     },
-    'predao': {
-      'sr': 'Predao:',
-      'en': 'Handed over:',
-      'ru': 'Сдал:',
-      'de': 'Übergeben:',
-      'zh': '已上交：'
-    },
-    'sacuvaj': {
-      'sr': 'Sačuvaj',
-      'en': 'Save',
-      'ru': 'Сохранить',
-      'de': 'Speichern',
-      'zh': '保存'
-    },
-    'visak': {
-      'sr': 'Višak:',
-      'en': 'Surplus:',
-      'ru': 'Излишек:',
-      'de': 'Überschuss:',
-      'zh': '盈余：'
-    },
-    'manjak': {
-      'sr': 'Manjak:',
-      'en': 'Shortage:',
-      'ru': 'Недостача:',
-      'de': 'Fehlbetrag:',
-      'zh': '短缺：'
-    },
+    'predao': {'sr': 'Predao:', 'en': 'Handed over:', 'ru': 'Сдал:', 'de': 'Übergeben:', 'zh': '已上交：'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
+    'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:', 'zh': '盈余：'},
+    'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:', 'zh': '短缺：'},
     'unesiteIznosPredajeVeciOd0': {
       'sr': 'Unesite iznos predaje veći od 0 din.',
       'en': 'Enter a handover amount greater than 0.',
@@ -894,48 +618,12 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '❌ Fehler beim PDF-Export',
       'zh': '❌ PDF导出出错',
     },
-    'pokupljeni': {
-      'sr': 'Pokupljeni',
-      'en': 'Picked up',
-      'ru': 'Забрано',
-      'de': 'Abgeholt',
-      'zh': '已接送'
-    },
-    'otkazani': {
-      'sr': 'Otkazani',
-      'en': 'Canceled',
-      'ru': 'Отменено',
-      'de': 'Storniert',
-      'zh': '已取消'
-    },
-    'naplaceno': {
-      'sr': 'Naplaćeno',
-      'en': 'Collected',
-      'ru': 'Взыскано',
-      'de': 'Eingezogen',
-      'zh': '已收款'
-    },
-    'dodati': {
-      'sr': 'Dodati',
-      'en': 'Added',
-      'ru': 'Добавлено',
-      'de': 'Hinzugefügt',
-      'zh': '已添加'
-    },
-    'datum': {
-      'sr': 'Datum',
-      'en': 'Date',
-      'ru': 'Дата',
-      'de': 'Datum',
-      'zh': '日期'
-    },
-    'vozac': {
-      'sr': 'Vozač',
-      'en': 'Driver',
-      'ru': 'Водитель',
-      'de': 'Fahrer',
-      'zh': '司机'
-    },
+    'pokupljeni': {'sr': 'Pokupljeni', 'en': 'Picked up', 'ru': 'Забрано', 'de': 'Abgeholt', 'zh': '已接送'},
+    'otkazani': {'sr': 'Otkazani', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
+    'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen', 'zh': '已收款'},
+    'dodati': {'sr': 'Dodati', 'en': 'Added', 'ru': 'Добавлено', 'de': 'Hinzugefügt', 'zh': '已添加'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
     'pokupljeniPutnici': {
       'sr': 'POKUPLJENI PUTNICI',
       'en': 'PICKED UP PASSENGERS',
@@ -950,59 +638,17 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'STORNIERTE FAHRTEN',
       'zh': '已取消行程',
     },
-    'naplate': {
-      'sr': 'NAPLATE',
-      'en': 'PAYMENTS',
-      'ru': 'ОПЛАТЫ',
-      'de': 'ZAHLUNGEN',
-      'zh': '付款'
-    },
-    'ukupno': {
-      'sr': 'UKUPNO',
-      'en': 'TOTAL',
-      'ru': 'ИТОГО',
-      'de': 'GESAMT',
-      'zh': '总计'
-    },
-    'uplata': {
-      'sr': 'uplata',
-      'en': 'payment',
-      'ru': 'оплата',
-      'de': 'Zahlung',
-      'zh': '付款'
-    },
+    'naplate': {'sr': 'NAPLATE', 'en': 'PAYMENTS', 'ru': 'ОПЛАТЫ', 'de': 'ZAHLUNGEN', 'zh': '付款'},
+    'ukupno': {'sr': 'UKUPNO', 'en': 'TOTAL', 'ru': 'ИТОГО', 'de': 'GESAMT', 'zh': '总计'},
+    'uplata': {'sr': 'uplata', 'en': 'payment', 'ru': 'оплата', 'de': 'Zahlung', 'zh': '付款'},
     'ime': {'sr': 'Ime', 'en': 'Name', 'ru': 'Имя', 'de': 'Name', 'zh': '姓名'},
-    'vreme': {
-      'sr': 'Vreme',
-      'en': 'Time',
-      'ru': 'Время',
-      'de': 'Uhrzeit',
-      'zh': '时间'
-    },
-    'termin': {
-      'sr': 'Termin',
-      'en': 'Term',
-      'ru': 'Срок',
-      'de': 'Termin',
-      'zh': '时间'
-    },
-    'iznos': {
-      'sr': 'Iznos',
-      'en': 'Amount',
-      'ru': 'Сумма',
-      'de': 'Betrag',
-      'zh': '金额'
-    },
+    'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Uhrzeit', 'zh': '时间'},
+    'termin': {'sr': 'Termin', 'en': 'Term', 'ru': 'Срок', 'de': 'Termin', 'zh': '时间'},
+    'iznos': {'sr': 'Iznos', 'en': 'Amount', 'ru': 'Сумма', 'de': 'Betrag', 'zh': '金额'},
     'broj': {'sr': '#', 'en': '#', 'ru': '#', 'de': '#', 'zh': '#'},
   },
   'dugoviScreen': {
-    'dugovanja': {
-      'sr': 'Dugovanja',
-      'en': 'Debts',
-      'ru': 'Долги',
-      'de': 'Schulden',
-      'zh': '欠款'
-    },
+    'dugovanja': {'sr': 'Dugovanja', 'en': 'Debts', 'ru': 'Долги', 'de': 'Schulden', 'zh': '欠款'},
     'ukupnoDugova': {
       'sr': 'Ukupno dugova',
       'en': 'Total debts',
@@ -1010,13 +656,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Gesamtschulden',
       'zh': '欠款总数'
     },
-    'ukupanIznos': {
-      'sr': 'Ukupan iznos',
-      'en': 'Total amount',
-      'ru': 'Общая сумма',
-      'de': 'Gesamtbetrag',
-      'zh': '总金额'
-    },
+    'ukupanIznos': {'sr': 'Ukupan iznos', 'en': 'Total amount', 'ru': 'Общая сумма', 'de': 'Gesamtbetrag', 'zh': '总金额'},
     'pretraziPutnike': {
       'sr': '🔍  Pretraži putnike...',
       'en': '🔍  Search passengers...',
@@ -1038,56 +678,14 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Keine Ergebnisse für',
       'zh': '没有找到结果：',
     },
-    'naplaceno': {
-      'sr': 'Naplaćeno',
-      'en': 'Collected',
-      'ru': 'Взыскано',
-      'de': 'Eingezogen',
-      'zh': '已收款'
-    },
+    'naplaceno': {'sr': 'Naplaćeno', 'en': 'Collected', 'ru': 'Взыскано', 'de': 'Eingezogen', 'zh': '已收款'},
     'za': {'sr': 'za', 'en': 'for', 'ru': 'для', 'de': 'für', 'zh': '为'},
-    'period': {
-      'sr': 'Period',
-      'en': 'Period',
-      'ru': 'Период',
-      'de': 'Zeitraum',
-      'zh': '周期'
-    },
-    'obracun': {
-      'sr': 'Obračun',
-      'en': 'Calculation',
-      'ru': 'Расчёт',
-      'de': 'Abrechnung',
-      'zh': '结算'
-    },
-    'uplaceno': {
-      'sr': 'Uplaćeno',
-      'en': 'Paid',
-      'ru': 'Оплачено',
-      'de': 'Bezahlt',
-      'zh': '已支付'
-    },
-    'dug': {
-      'sr': 'Dug',
-      'en': 'Debt',
-      'ru': 'Долг',
-      'de': 'Schuld',
-      'zh': '欠款'
-    },
-    'pokupio': {
-      'sr': 'Pokupio',
-      'en': 'Collected by',
-      'ru': 'Забрал',
-      'de': 'Abgeholt von',
-      'zh': '收款人'
-    },
-    'naplatio': {
-      'sr': 'Naplatio',
-      'en': 'Charged by',
-      'ru': 'Взыскал',
-      'de': 'Eingezogen von',
-      'zh': '收取人'
-    },
+    'period': {'sr': 'Period', 'en': 'Period', 'ru': 'Период', 'de': 'Zeitraum', 'zh': '周期'},
+    'obracun': {'sr': 'Obračun', 'en': 'Calculation', 'ru': 'Расчёт', 'de': 'Abrechnung', 'zh': '结算'},
+    'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt', 'zh': '已支付'},
+    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schuld', 'zh': '欠款'},
+    'pokupio': {'sr': 'Pokupio', 'en': 'Collected by', 'ru': 'Забрал', 'de': 'Abgeholt von', 'zh': '收款人'},
+    'naplatio': {'sr': 'Naplatio', 'en': 'Charged by', 'ru': 'Взыскал', 'de': 'Eingezogen von', 'zh': '收取人'},
     'naplacenoCreatedAt': {
       'sr': 'Naplaćeno (created_at)',
       'en': 'Collected (created_at)',
@@ -1095,13 +693,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Eingezogen (created_at)',
       'zh': '已收款 (created_at)',
     },
-    'updatedAt': {
-      'sr': 'Updated at',
-      'en': 'Updated at',
-      'ru': 'Обновлено',
-      'de': 'Aktualisiert am',
-      'zh': '更新时间'
-    },
+    'updatedAt': {'sr': 'Updated at', 'en': 'Updated at', 'ru': 'Обновлено', 'de': 'Aktualisiert am', 'zh': '更新时间'},
     'finansijeNaziv': {
       'sr': 'Finansije naziv',
       'en': 'Finance name',
@@ -1109,22 +701,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Finanzname',
       'zh': '财务名称'
     },
-    'naplati': {
-      'sr': 'NAPLATI',
-      'en': 'COLLECT',
-      'ru': 'ВЗЫСКАТЬ',
-      'de': 'EINZIEHEN',
-      'zh': '收款'
-    },
+    'naplati': {'sr': 'NAPLATI', 'en': 'COLLECT', 'ru': 'ВЗЫСКАТЬ', 'de': 'EINZIEHEN', 'zh': '收款'},
   },
   'finansijeScreen': {
-    'finansije': {
-      'sr': 'Finansije',
-      'en': 'Finances',
-      'ru': 'Финансы',
-      'de': 'Finanzen',
-      'zh': '财务'
-    },
+    'finansije': {'sr': 'Finansije', 'en': 'Finances', 'ru': 'Финансы', 'de': 'Finanzen', 'zh': '财务'},
     'potrazivanjaDugovi': {
       'sr': 'Potraživanja (Dugovi)',
       'en': 'Receivables (Debts)',
@@ -1139,13 +719,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Unbezahlte Fahrten aller Passagiere',
       'zh': '所有乘客的未付车费',
     },
-    'krediti': {
-      'sr': 'Krediti',
-      'en': 'Loans',
-      'ru': 'Кредиты',
-      'de': 'Kredite',
-      'zh': '贷款'
-    },
+    'krediti': {'sr': 'Krediti', 'en': 'Loans', 'ru': 'Кредиты', 'de': 'Kredite', 'zh': '贷款'},
     'preostaliDugZaKredite': {
       'sr': 'Preostali dug za kredite',
       'en': 'Remaining loan debt',
@@ -1153,34 +727,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Verbleibende Kreditschuld',
       'zh': '剩余贷款欠款',
     },
-    'danas': {
-      'sr': 'Danas',
-      'en': 'Today',
-      'ru': 'Сегодня',
-      'de': 'Heute',
-      'zh': '今天'
-    },
-    'ovaNedelja': {
-      'sr': 'Ova nedelja',
-      'en': 'This week',
-      'ru': 'Эта неделя',
-      'de': 'Diese Woche',
-      'zh': '本周'
-    },
-    'ovajMesec': {
-      'sr': 'Ovaj mesec',
-      'en': 'This month',
-      'ru': 'Этот месяц',
-      'de': 'Dieser Monat',
-      'zh': '本月'
-    },
-    'ovaGodina': {
-      'sr': 'Ova godina',
-      'en': 'This year',
-      'ru': 'Этот год',
-      'de': 'Dieses Jahr',
-      'zh': '今年'
-    },
+    'danas': {'sr': 'Danas', 'en': 'Today', 'ru': 'Сегодня', 'de': 'Heute', 'zh': '今天'},
+    'ovaNedelja': {'sr': 'Ova nedelja', 'en': 'This week', 'ru': 'Эта неделя', 'de': 'Diese Woche', 'zh': '本周'},
+    'ovajMesec': {'sr': 'Ovaj mesec', 'en': 'This month', 'ru': 'Этот месяц', 'de': 'Dieser Monat', 'zh': '本月'},
+    'ovaGodina': {'sr': 'Ova godina', 'en': 'This year', 'ru': 'Этот год', 'de': 'Dieses Jahr', 'zh': '今年'},
     'ceoGodisnjiBilans': {
       'sr': 'Ceo godišnji bilans',
       'en': 'Full yearly balance',
@@ -1188,34 +738,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Gesamte Jahresbilanz',
       'zh': '全年结余',
     },
-    'uplata': {
-      'sr': 'uplata',
-      'en': 'payments',
-      'ru': 'платежей',
-      'de': 'Zahlungen',
-      'zh': '付款'
-    },
-    'prihod': {
-      'sr': 'Prihod',
-      'en': 'Income',
-      'ru': 'Доход',
-      'de': 'Einnahmen',
-      'zh': '收入'
-    },
-    'troskovi': {
-      'sr': 'Troškovi',
-      'en': 'Expenses',
-      'ru': 'Расходы',
-      'de': 'Ausgaben',
-      'zh': '支出'
-    },
-    'neto': {
-      'sr': 'NETO',
-      'en': 'NET',
-      'ru': 'НЕТТО',
-      'de': 'NETTO',
-      'zh': '净额'
-    },
+    'uplata': {'sr': 'uplata', 'en': 'payments', 'ru': 'платежей', 'de': 'Zahlungen', 'zh': '付款'},
+    'prihod': {'sr': 'Prihod', 'en': 'Income', 'ru': 'Доход', 'de': 'Einnahmen', 'zh': '收入'},
+    'troskovi': {'sr': 'Troškovi', 'en': 'Expenses', 'ru': 'Расходы', 'de': 'Ausgaben', 'zh': '支出'},
+    'neto': {'sr': 'NETO', 'en': 'NET', 'ru': 'НЕТТО', 'de': 'NETTO', 'zh': '净额'},
     'mesecniTroskovi': {
       'sr': '📋 Mesečni troškovi',
       'en': '📋 Monthly expenses',
@@ -1241,24 +767,11 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'sr': 'Unesi iznos koji želiš da DODAŠ na trenutni trošak.',
       'en': 'Enter the amount you want to ADD to the current expense.',
       'ru': 'Введите сумму, которую хотите ДОБАВИТЬ к текущему расходу.',
-      'de':
-          'Geben Sie den Betrag ein, den Sie zur aktuellen Ausgabe HINZUFÜGEN möchten.',
+      'de': 'Geben Sie den Betrag ein, den Sie zur aktuellen Ausgabe HINZUFÜGEN möchten.',
       'zh': '输入您想要添加到当前支出的金额。',
     },
-    'trenutno': {
-      'sr': 'Trenutno:',
-      'en': 'Current:',
-      'ru': 'Текущее:',
-      'de': 'Aktuell:',
-      'zh': '当前：'
-    },
-    'dodajDots': {
-      'sr': 'Dodaj...',
-      'en': 'Add...',
-      'ru': 'Добавить...',
-      'de': 'Hinzufügen...',
-      'zh': '添加...'
-    },
+    'trenutno': {'sr': 'Trenutno:', 'en': 'Current:', 'ru': 'Текущее:', 'de': 'Aktuell:', 'zh': '当前：'},
+    'dodajDots': {'sr': 'Dodaj...', 'en': 'Add...', 'ru': 'Добавить...', 'de': 'Hinzufügen...', 'zh': '添加...'},
     'kojiKreditSeOtplacuje': {
       'sr': 'Koji kredit se otplaćuje?',
       'en': 'Which loan is being repaid?',
@@ -1280,92 +793,20 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '✅ Ausgaben hinzugefügt',
       'zh': '✅ 支出已添加',
     },
-    'katGorivo': {
-      'sr': 'Gorivo',
-      'en': 'Fuel',
-      'ru': 'Топливо',
-      'de': 'Kraftstoff',
-      'zh': '燃油'
-    },
-    'katOdrzavanje': {
-      'sr': 'Održavanje',
-      'en': 'Maintenance',
-      'ru': 'Обслуживание',
-      'de': 'Wartung',
-      'zh': '维护'
-    },
-    'katPlate': {
-      'sr': 'Plate',
-      'en': 'Salaries',
-      'ru': 'Зарплаты',
-      'de': 'Gehälter',
-      'zh': '工资'
-    },
-    'katKredit': {
-      'sr': 'Kredit',
-      'en': 'Loan',
-      'ru': 'Кредит',
-      'de': 'Kredit',
-      'zh': '贷款'
-    },
-    'katRegistracija': {
-      'sr': 'Registracija',
-      'en': 'Registration',
-      'ru': 'Регистрация',
-      'de': 'Zulassung',
-      'zh': '注册'
-    },
-    'katYuAuto': {
-      'sr': 'YU auto',
-      'en': 'YU auto',
-      'ru': 'YU авто',
-      'de': 'YU Auto',
-      'zh': 'YU 汽车'
-    },
-    'katMajstori': {
-      'sr': 'Majstori',
-      'en': 'Repairmen',
-      'ru': 'Мастера',
-      'de': 'Handwerker',
-      'zh': '维修工'
-    },
-    'katPorez': {
-      'sr': 'Porez',
-      'en': 'Tax',
-      'ru': 'Налог',
-      'de': 'Steuer',
-      'zh': '税费'
-    },
-    'katAlimentacija': {
-      'sr': 'Alimentacija',
-      'en': 'Child support',
-      'ru': 'Алименты',
-      'de': 'Unterhalt',
-      'zh': '抚养费'
-    },
-    'katRacuni': {
-      'sr': 'Računi',
-      'en': 'Bills',
-      'ru': 'Счета',
-      'de': 'Rechnungen',
-      'zh': '账单'
-    },
-    'katOstalo': {
-      'sr': 'Ostalo',
-      'en': 'Other',
-      'ru': 'Прочее',
-      'de': 'Sonstiges',
-      'zh': '其他'
-    },
+    'katGorivo': {'sr': 'Gorivo', 'en': 'Fuel', 'ru': 'Топливо', 'de': 'Kraftstoff', 'zh': '燃油'},
+    'katOdrzavanje': {'sr': 'Održavanje', 'en': 'Maintenance', 'ru': 'Обслуживание', 'de': 'Wartung', 'zh': '维护'},
+    'katPlate': {'sr': 'Plate', 'en': 'Salaries', 'ru': 'Зарплаты', 'de': 'Gehälter', 'zh': '工资'},
+    'katKredit': {'sr': 'Kredit', 'en': 'Loan', 'ru': 'Кредит', 'de': 'Kredit', 'zh': '贷款'},
+    'katRegistracija': {'sr': 'Registracija', 'en': 'Registration', 'ru': 'Регистрация', 'de': 'Zulassung', 'zh': '注册'},
+    'katYuAuto': {'sr': 'YU auto', 'en': 'YU auto', 'ru': 'YU авто', 'de': 'YU Auto', 'zh': 'YU 汽车'},
+    'katMajstori': {'sr': 'Majstori', 'en': 'Repairmen', 'ru': 'Мастера', 'de': 'Handwerker', 'zh': '维修工'},
+    'katPorez': {'sr': 'Porez', 'en': 'Tax', 'ru': 'Налог', 'de': 'Steuer', 'zh': '税费'},
+    'katAlimentacija': {'sr': 'Alimentacija', 'en': 'Child support', 'ru': 'Алименты', 'de': 'Unterhalt', 'zh': '抚养费'},
+    'katRacuni': {'sr': 'Računi', 'en': 'Bills', 'ru': 'Счета', 'de': 'Rechnungen', 'zh': '账单'},
+    'katOstalo': {'sr': 'Ostalo', 'en': 'Other', 'ru': 'Прочее', 'de': 'Sonstiges', 'zh': '其他'},
   },
   'gorivoScreen': {
-    'gorivo': {
-      'sr': 'Gorivo',
-      'en': 'Fuel',
-      'ru': 'Топливо',
-      'de': 'Kraftstoff',
-      'zh': '燃油'
-    },
+    'gorivo': {'sr': 'Gorivo', 'en': 'Fuel', 'ru': 'Топливо', 'de': 'Kraftstoff', 'zh': '燃油'},
     'nemaRedaZaDopunu': {
       'sr': 'Nema reda za dopunu. Prvo dodaj početne podatke.',
       'en': 'No record to refill. First add initial data.',
@@ -1387,13 +828,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Aktuell',
       'zh': '当前',
     },
-    'kapacitet': {
-      'sr': 'kapacitet',
-      'en': 'capacity',
-      'ru': 'ёмкость',
-      'de': 'Kapazität',
-      'zh': '容量'
-    },
+    'kapacitet': {'sr': 'kapacitet', 'en': 'capacity', 'ru': 'ёмкость', 'de': 'Kapazität', 'zh': '容量'},
     'kolikoLitaraJeDopunjeno': {
       'sr': 'Koliko litara je dopunjeno (L)',
       'en': 'How many liters were refilled (L)',
@@ -1401,13 +836,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Wie viele Liter wurden nachgefüllt (L)',
       'zh': '加油了多少升（L）',
     },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'unesiPozitivanBrojLitara': {
       'sr': 'Unesi pozitivan broj litara.',
       'en': 'Enter a positive number of liters.',
@@ -1425,21 +854,13 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     'novoStanjeQPremasujeKapacitet': {
       'sr': 'Novo stanje %NOVO% L premašuje kapacitet %KAP% L.\n\nIpak dodati?',
       'en': 'New level %NOVO% L exceeds capacity %KAP% L.\n\nAdd anyway?',
-      'ru':
-          'Новый уровень %NOVO% л превышает ёмкость %KAP% л.\n\nВсё равно добавить?',
-      'de':
-          'Neuer Stand %NOVO% L überschreitet die Kapazität %KAP% L.\n\nTrotzdem hinzufügen?',
+      'ru': 'Новый уровень %NOVO% л превышает ёмкость %KAP% л.\n\nВсё равно добавить?',
+      'de': 'Neuer Stand %NOVO% L überschreitet die Kapazität %KAP% L.\n\nTrotzdem hinzufügen?',
       'zh': '新液位 %NOVO% 升超过容量 %KAP% 升。\n\n仍要添加吗？',
     },
     'ne': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '否'},
     'da': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja', 'zh': '是'},
-    'dodaj': {
-      'sr': 'Dodaj',
-      'en': 'Add',
-      'ru': 'Добавить',
-      'de': 'Hinzufügen',
-      'zh': '添加'
-    },
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen', 'zh': '添加'},
     'gorivoDodatoNovoStanje': {
       'sr': 'Gorivo dodato. Novo stanje: %NOVO% L',
       'en': 'Fuel added. New level: %NOVO% L',
@@ -1490,8 +911,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'zh': '加油枪计数器（L）',
     },
     'trenutnoStanjeSeRacunaAutomatski': {
-      'sr':
-          'Upiši novo (rastuće) očitanje sa pištolja. Trenutno stanje se automatski umanjuje za razliku (potrošnju).',
+      'sr': 'Upiši novo (rastuće) očitanje sa pištolja. Trenutno stanje se automatski umanjuje za razliku (potrošnju).',
       'en':
           'Enter the new (increasing) nozzle reading. Current level is automatically reduced by the difference (consumption).',
       'ru':
@@ -1507,13 +927,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Preis pro Liter (RSD)',
       'zh': '每升价格（RSD）'
     },
-    'dugRsd': {
-      'sr': 'Dug (RSD)',
-      'en': 'Debt (RSD)',
-      'ru': 'Долг (RSD)',
-      'de': 'Schulden (RSD)',
-      'zh': '欠款（RSD）'
-    },
+    'dugRsd': {'sr': 'Dug (RSD)', 'en': 'Debt (RSD)', 'ru': 'Долг (RSD)', 'de': 'Schulden (RSD)', 'zh': '欠款（RSD）'},
     'vrednostiNeMoguBitiNegativne': {
       'sr': 'Vrednosti ne mogu biti negativne.',
       'en': 'Values cannot be negative.',
@@ -1525,8 +939,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'sr': 'Brojač pištolja ne može biti manji od trenutnog stanja.',
       'en': 'The nozzle counter cannot be lower than the current value.',
       'ru': 'Счётчик пистолета не может быть меньше текущего значения.',
-      'de':
-          'Der Zapfpistolenzähler darf nicht kleiner als der aktuelle Wert sein.',
+      'de': 'Der Zapfpistolenzähler darf nicht kleiner als der aktuelle Wert sein.',
       'zh': '加油枪计数器不能低于当前值。',
     },
     'podaciOGorivuSuSacuvani': {
@@ -1543,13 +956,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Fehler beim Speichern der Daten.',
       'zh': '保存数据时出错。',
     },
-    'sacuvaj': {
-      'sr': 'Sačuvaj',
-      'en': 'Save',
-      'ru': 'Сохранить',
-      'de': 'Speichern',
-      'zh': '保存'
-    },
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
     'obaveznoPolje': {
       'sr': 'Obavezno polje',
       'en': 'Required field',
@@ -1648,20 +1055,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '⚠️ WENIG KRAFTSTOFF',
       'zh': '⚠️ 燃油不足'
     },
-    'odKapaciteta': {
-      'sr': 'od',
-      'en': 'of',
-      'ru': 'из',
-      'de': 'von',
-      'zh': '之'
-    },
-    'kapacitetaL': {
-      'sr': 'kapaciteta',
-      'en': 'capacity',
-      'ru': 'ёмкости',
-      'de': 'Kapazität',
-      'zh': '容量'
-    },
+    'odKapaciteta': {'sr': 'od', 'en': 'of', 'ru': 'из', 'de': 'von', 'zh': '之'},
+    'kapacitetaL': {'sr': 'kapaciteta', 'en': 'capacity', 'ru': 'ёмкости', 'de': 'Kapazität', 'zh': '容量'},
   },
   'helpScreen': {
     'appBarTitle': {
@@ -1678,13 +1073,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Sicherheit und Zertifizierungen',
       'zh': '安全与认证',
     },
-    'secPrijava': {
-      'sr': 'Prijava (Log in)',
-      'en': 'Login',
-      'ru': 'Вход',
-      'de': 'Anmeldung',
-      'zh': '登录'
-    },
+    'secPrijava': {'sr': 'Prijava (Log in)', 'en': 'Login', 'ru': 'Вход', 'de': 'Anmeldung', 'zh': '登录'},
     'secZakazivanje': {
       'sr': 'Zakazivanje prevoza',
       'en': 'Scheduling a ride',
@@ -1706,13 +1095,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Biometrische Anmeldung',
       'zh': '生物识别登录',
     },
-    'secAdrese': {
-      'sr': 'Adrese',
-      'en': 'Addresses',
-      'ru': 'Адреса',
-      'de': 'Adressen',
-      'zh': '地址'
-    },
+    'secAdrese': {'sr': 'Adrese', 'en': 'Addresses', 'ru': 'Адреса', 'de': 'Adressen', 'zh': '地址'},
     'secAlternativa': {
       'sr': 'Alternativni termin',
       'en': 'Alternative time slot',
@@ -1743,34 +1126,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Reservierung hinzufügen',
       'zh': '添加预约',
     },
-    'termin': {
-      'sr': 'Termin',
-      'en': 'Appointment',
-      'ru': 'Время',
-      'de': 'Termin',
-      'zh': '预约时间'
-    },
-    'vreme': {
-      'sr': '⏰ Vreme:',
-      'en': '⏰ Time:',
-      'ru': '⏰ Время:',
-      'de': '⏰ Zeit:',
-      'zh': '⏰ 时间：'
-    },
-    'grad': {
-      'sr': '📍 Grad:',
-      'en': '📍 City:',
-      'ru': '📍 Город:',
-      'de': '📍 Stadt:',
-      'zh': '📍 城市：'
-    },
-    'dan': {
-      'sr': '📅 Dan:',
-      'en': '📅 Day:',
-      'ru': '📅 День:',
-      'de': '📅 Tag:',
-      'zh': '📅 日期：'
-    },
+    'termin': {'sr': 'Termin', 'en': 'Appointment', 'ru': 'Время', 'de': 'Termin', 'zh': '预约时间'},
+    'vreme': {'sr': '⏰ Vreme:', 'en': '⏰ Time:', 'ru': '⏰ Время:', 'de': '⏰ Zeit:', 'zh': '⏰ 时间：'},
+    'grad': {'sr': '📍 Grad:', 'en': '📍 City:', 'ru': '📍 Город:', 'de': '📍 Stadt:', 'zh': '📍 城市：'},
+    'dan': {'sr': '📅 Dan:', 'en': '📅 Day:', 'ru': '📅 День:', 'de': '📅 Tag:', 'zh': '📅 日期：'},
     'izaberiPutnika': {
       'sr': 'Izaberi putnika',
       'en': 'Select passenger',
@@ -1778,13 +1137,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Fahrgast auswählen',
       'zh': '选择乘客',
     },
-    'pretrazi': {
-      'sr': 'Pretraži...',
-      'en': 'Search...',
-      'ru': 'Поиск...',
-      'de': 'Suchen...',
-      'zh': '搜索...'
-    },
+    'pretrazi': {'sr': 'Pretraži...', 'en': 'Search...', 'ru': 'Поиск...', 'de': 'Suchen...', 'zh': '搜索...'},
     'passengerAddressPlaceholder': {
       'sr': '— putnikova adresa —',
       'en': '— passenger address —',
@@ -1792,13 +1145,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '— Adresse des Fahrgasts —',
       'zh': '— 乘客地址 —',
     },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'izaberitePutnika': {
       'sr': '⚠️ Izaberite putnika',
       'en': '⚠️ Select a passenger',
@@ -1820,13 +1167,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '✅ Reservierung hinzugefügt',
       'zh': '✅ 预约已添加',
     },
-    'greskaPrefix': {
-      'sr': '❌ Greška:',
-      'en': '❌ Error:',
-      'ru': '❌ Ошибка:',
-      'de': '❌ Fehler:',
-      'zh': '❌ 错误：'
-    },
+    'greskaPrefix': {'sr': '❌ Greška:', 'en': '❌ Error:', 'ru': '❌ Ошибка:', 'de': '❌ Fehler:', 'zh': '❌ 错误：'},
     'dodaje': {
       'sr': 'Dodaje...',
       'en': 'Adding...',
@@ -1834,20 +1175,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Wird hinzugefügt...',
       'zh': '添加中...'
     },
-    'dodaj': {
-      'sr': 'Dodaj',
-      'en': 'Add',
-      'ru': 'Добавить',
-      'de': 'Hinzufügen',
-      'zh': '添加'
-    },
-    'noviRacun': {
-      'sr': 'Novi račun',
-      'en': 'New invoice',
-      'ru': 'Новый счет',
-      'de': 'Neue Rechnung',
-      'zh': '新建发票'
-    },
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen', 'zh': '添加'},
+    'noviRacun': {'sr': 'Novi račun', 'en': 'New invoice', 'ru': 'Новый счет', 'de': 'Neue Rechnung', 'zh': '新建发票'},
     'imePrezimeKupca': {
       'sr': 'Ime i prezime kupca',
       'en': 'Customer full name',
@@ -1869,20 +1198,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Leistungsbeschreibung',
       'zh': '服务描述'
     },
-    'cena': {
-      'sr': 'Cena',
-      'en': 'Price',
-      'ru': 'Цена',
-      'de': 'Preis',
-      'zh': '价格'
-    },
-    'kolicina': {
-      'sr': 'Količina',
-      'en': 'Quantity',
-      'ru': 'Количество',
-      'de': 'Menge',
-      'zh': '数量'
-    },
+    'cena': {'sr': 'Cena', 'en': 'Price', 'ru': 'Цена', 'de': 'Preis', 'zh': '价格'},
+    'kolicina': {'sr': 'Količina', 'en': 'Quantity', 'ru': 'Количество', 'de': 'Menge', 'zh': '数量'},
     'jedinicaMere': {
       'sr': 'Jedinica mere',
       'en': 'Unit of measure',
@@ -1890,22 +1207,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Maßeinheit',
       'zh': '计量单位'
     },
-    'jmUsluga': {
-      'sr': 'usluga',
-      'en': 'service',
-      'ru': 'услуга',
-      'de': 'Leistung',
-      'zh': '服务'
-    },
+    'jmUsluga': {'sr': 'usluga', 'en': 'service', 'ru': 'услуга', 'de': 'Leistung', 'zh': '服务'},
     'jmDan': {'sr': 'dan', 'en': 'day', 'ru': 'день', 'de': 'Tag', 'zh': '天'},
     'jmKom': {'sr': 'kom', 'en': 'pcs', 'ru': 'шт', 'de': 'Stk', 'zh': '件'},
-    'jmSat': {
-      'sr': 'sat',
-      'en': 'hour',
-      'ru': 'час',
-      'de': 'Stunde',
-      'zh': '小时'
-    },
+    'jmSat': {'sr': 'sat', 'en': 'hour', 'ru': 'час', 'de': 'Stunde', 'zh': '小时'},
     'jmKm': {'sr': 'km', 'en': 'km', 'ru': 'км', 'de': 'km', 'zh': '公里'},
     'mesecIzdavanja': {
       'sr': 'Mesec izdavanja:',
@@ -1942,13 +1247,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '⚠️ Gültigen Preis eingeben',
       'zh': '⚠️ 请输入有效价格',
     },
-    'stampaj': {
-      'sr': 'Štampaj',
-      'en': 'Print',
-      'ru': 'Печать',
-      'de': 'Drucken',
-      'zh': '打印'
-    },
+    'stampaj': {'sr': 'Štampaj', 'en': 'Print', 'ru': 'Печать', 'de': 'Drucken', 'zh': '打印'},
     'stampajSpisak': {
       'sr': 'Štampaj spisak',
       'en': 'Print list',
@@ -2012,20 +1311,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '⚠️ Fahrgast auswählen',
       'zh': '⚠️ 请选择乘客',
     },
-    'sekcijaFirma': {
-      'sr': 'FIRMA',
-      'en': 'COMPANY',
-      'ru': 'КОМПАНИЯ',
-      'de': 'FIRMA',
-      'zh': '公司'
-    },
-    'sekcijaPutnik': {
-      'sr': 'PUTNIK',
-      'en': 'PASSENGER',
-      'ru': 'ПАССАЖИР',
-      'de': 'FAHRGAST',
-      'zh': '乘客'
-    },
+    'sekcijaFirma': {'sr': 'FIRMA', 'en': 'COMPANY', 'ru': 'КОМПАНИЯ', 'de': 'FIRMA', 'zh': '公司'},
+    'sekcijaPutnik': {'sr': 'PUTNIK', 'en': 'PASSENGER', 'ru': 'ПАССАЖИР', 'de': 'FAHRGAST', 'zh': '乘客'},
     'sekcijaMesecIDatumi': {
       'sr': 'MESEC I DATUMI',
       'en': 'MONTH AND DATES',
@@ -2033,13 +1320,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'MONAT UND DATEN',
       'zh': '月份与日期'
     },
-    'sekcijaIznos': {
-      'sr': 'IZNOS',
-      'en': 'AMOUNT',
-      'ru': 'СУММА',
-      'de': 'BETRAG',
-      'zh': '金额'
-    },
+    'sekcijaIznos': {'sr': 'IZNOS', 'en': 'AMOUNT', 'ru': 'СУММА', 'de': 'BETRAG', 'zh': '金额'},
     'dodajNovuFirmu': {
       'sr': 'Dodaj novu firmu',
       'en': 'Add new company',
@@ -2056,20 +1337,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Abfahrtskapazität',
       'zh': '发车容量',
     },
-    'belaCrkva': {
-      'sr': 'Bela Crkva',
-      'en': 'Bela Crkva',
-      'ru': 'Бела-Црква',
-      'de': 'Bela Crkva',
-      'zh': 'Bela Crkva'
-    },
-    'vrsac': {
-      'sr': 'Vršac',
-      'en': 'Vršac',
-      'ru': 'Вршац',
-      'de': 'Vršac',
-      'zh': 'Vršac'
-    },
+    'belaCrkva': {'sr': 'Bela Crkva', 'en': 'Bela Crkva', 'ru': 'Бела-Црква', 'de': 'Bela Crkva', 'zh': 'Bela Crkva'},
+    'vrsac': {'sr': 'Vršac', 'en': 'Vršac', 'ru': 'Вршац', 'de': 'Vršac', 'zh': 'Vršac'},
     'greskaPriCuvanju': {
       'sr': '❌ Greška pri čuvanju',
       'en': '❌ Error saving',
@@ -2077,20 +1346,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '❌ Fehler beim Speichern',
       'zh': '❌ 保存时出错',
     },
-    'mesta': {
-      'sr': 'mesta',
-      'en': 'seats',
-      'ru': 'мест',
-      'de': 'Plätze',
-      'zh': '座位'
-    },
-    'kapacitetLabel': {
-      'sr': 'Kapacitet',
-      'en': 'Capacity',
-      'ru': 'Вместимость',
-      'de': 'Kapazität',
-      'zh': '容量'
-    },
+    'mesta': {'sr': 'mesta', 'en': 'seats', 'ru': 'мест', 'de': 'Plätze', 'zh': '座位'},
+    'kapacitetLabel': {'sr': 'Kapacitet', 'en': 'Capacity', 'ru': 'Вместимость', 'de': 'Kapazität', 'zh': '容量'},
     'nijePostavljen': {
       'sr': 'nije postavljen',
       'en': 'not set',
@@ -2105,13 +1362,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Geben Sie die maximale Platzanzahl ein:',
       'zh': '请输入最大座位数：',
     },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'unesiteBrojIzmedju1i20': {
       'sr': 'Unesite broj između 1 i 20',
       'en': 'Enter a number between 1 and 20',
@@ -2119,22 +1370,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Geben Sie eine Zahl zwischen 1 und 20 ein',
       'zh': '请输入 1 到 20 之间的数字',
     },
-    'sacuvaj': {
-      'sr': 'Sačuvaj',
-      'en': 'Save',
-      'ru': 'Сохранить',
-      'de': 'Speichern',
-      'zh': '保存'
-    },
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
   },
   'kreditiScreen': {
-    'mojiKrediti': {
-      'sr': 'Moji krediti',
-      'en': 'My loans',
-      'ru': 'Мои кредиты',
-      'de': 'Meine Kredite',
-      'zh': '我的贷款'
-    },
+    'mojiKrediti': {'sr': 'Moji krediti', 'en': 'My loans', 'ru': 'Мои кредиты', 'de': 'Meine Kredite', 'zh': '我的贷款'},
     'nemaEvidentiranihKredita': {
       'sr': 'Nema evidentiranih kredita',
       'en': 'No recorded loans',
@@ -2198,13 +1437,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Möchten Sie „%NAZIV%" wirklich löschen?',
       'zh': '您确定要删除"%NAZIV%"吗？',
     },
-    'obrisi': {
-      'sr': 'Obriši',
-      'en': 'Delete',
-      'ru': 'Удалить',
-      'de': 'Löschen',
-      'zh': '删除'
-    },
+    'obrisi': {'sr': 'Obriši', 'en': 'Delete', 'ru': 'Удалить', 'de': 'Löschen', 'zh': '删除'},
     'kreditObrisan': {
       'sr': '✅ Kredit obrisan',
       'en': '✅ Loan deleted',
@@ -2247,76 +1480,16 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '✅ Zahlung gelöscht',
       'zh': '✅ 付款已删除',
     },
-    'zatvori': {
-      'sr': 'Zatvori',
-      'en': 'Close',
-      'ru': 'Закрыть',
-      'de': 'Schließen',
-      'zh': '关闭'
-    },
-    'otplaceno': {
-      'sr': 'OTPLAĆENO',
-      'en': 'PAID OFF',
-      'ru': 'ПОГАШЕНО',
-      'de': 'ABBEZAHLT',
-      'zh': '已还清'
-    },
-    'kraj': {
-      'sr': 'Kraj',
-      'en': 'End',
-      'ru': 'Конец',
-      'de': 'Ende',
-      'zh': '结束'
-    },
-    'ukupanIznos': {
-      'sr': 'Ukupan iznos',
-      'en': 'Total amount',
-      'ru': 'Общая сумма',
-      'de': 'Gesamtbetrag',
-      'zh': '总金额'
-    },
-    'uplaceno': {
-      'sr': 'Uplaćeno',
-      'en': 'Paid',
-      'ru': 'Оплачено',
-      'de': 'Bezahlt',
-      'zh': '已付'
-    },
-    'preostalo': {
-      'sr': 'Preostalo',
-      'en': 'Remaining',
-      'ru': 'Осталось',
-      'de': 'Verbleibend',
-      'zh': '剩余'
-    },
-    'uplati': {
-      'sr': 'UPLATI',
-      'en': 'PAY',
-      'ru': 'ОПЛАТИТЬ',
-      'de': 'ZAHLEN',
-      'zh': '支付'
-    },
-    'uplateStat': {
-      'sr': 'Uplate',
-      'en': 'Payments',
-      'ru': 'Платежи',
-      'de': 'Zahlungen',
-      'zh': '付款'
-    },
-    'prosek': {
-      'sr': 'Prosek',
-      'en': 'Average',
-      'ru': 'Среднее',
-      'de': 'Durchschnitt',
-      'zh': '平均'
-    },
-    'najveca': {
-      'sr': 'Najveća',
-      'en': 'Largest',
-      'ru': 'Наибольший',
-      'de': 'Größte',
-      'zh': '最大'
-    },
+    'zatvori': {'sr': 'Zatvori', 'en': 'Close', 'ru': 'Закрыть', 'de': 'Schließen', 'zh': '关闭'},
+    'otplaceno': {'sr': 'OTPLAĆENO', 'en': 'PAID OFF', 'ru': 'ПОГАШЕНО', 'de': 'ABBEZAHLT', 'zh': '已还清'},
+    'kraj': {'sr': 'Kraj', 'en': 'End', 'ru': 'Конец', 'de': 'Ende', 'zh': '结束'},
+    'ukupanIznos': {'sr': 'Ukupan iznos', 'en': 'Total amount', 'ru': 'Общая сумма', 'de': 'Gesamtbetrag', 'zh': '总金额'},
+    'uplaceno': {'sr': 'Uplaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt', 'zh': '已付'},
+    'preostalo': {'sr': 'Preostalo', 'en': 'Remaining', 'ru': 'Осталось', 'de': 'Verbleibend', 'zh': '剩余'},
+    'uplati': {'sr': 'UPLATI', 'en': 'PAY', 'ru': 'ОПЛАТИТЬ', 'de': 'ZAHLEN', 'zh': '支付'},
+    'uplateStat': {'sr': 'Uplate', 'en': 'Payments', 'ru': 'Платежи', 'de': 'Zahlungen', 'zh': '付款'},
+    'prosek': {'sr': 'Prosek', 'en': 'Average', 'ru': 'Среднее', 'de': 'Durchschnitt', 'zh': '平均'},
+    'najveca': {'sr': 'Najveća', 'en': 'Largest', 'ru': 'Наибольший', 'de': 'Größte', 'zh': '最大'},
     'grafikUplataPoMesecima': {
       'sr': 'Grafik uplata po mesecima',
       'en': 'Payments by month chart',
@@ -2366,20 +1539,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Datum wählen',
       'zh': '选择日期'
     },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
-    'sacuvaj': {
-      'sr': 'Sačuvaj',
-      'en': 'Save',
-      'ru': 'Сохранить',
-      'de': 'Speichern',
-      'zh': '保存'
-    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
     'nazivJeObavezan': {
       'sr': 'Naziv je obavezan',
       'en': 'Name is required',
@@ -2431,13 +1592,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
   },
   'oNamaScreen': {
-    'title': {
-      'sr': '📖 O nama',
-      'en': '📖 About us',
-      'ru': '📖 О нас',
-      'de': '📖 Über uns',
-      'zh': '📖 关于我们'
-    },
+    'title': {'sr': '📖 O nama', 'en': '📖 About us', 'ru': '📖 О нас', 'de': '📖 Über uns', 'zh': '📖 关于我们'},
     'limoServis': {
       'sr': 'Limo servis',
       'en': 'Limo service',
@@ -2452,13 +1607,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Vermietung von Personenfahrzeugen mit Fahrer',
       'zh': '带司机的乘用车租赁',
     },
-    'od2003': {
-      'sr': 'Od 2003. godine',
-      'en': 'Since 2003',
-      'ru': 'С 2003 года',
-      'de': 'Seit 2003',
-      'zh': '自2003年起'
-    },
+    'od2003': {'sr': 'Od 2003. godine', 'en': 'Since 2003', 'ru': 'С 2003 года', 'de': 'Seit 2003', 'zh': '自2003年起'},
     'nasaPrica': {
       'sr': 'Naša priča',
       'en': 'Our story',
@@ -2467,14 +1616,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'zh': '我们的故事'
     },
     'prica1': {
-      'sr':
-          'Limo servis "Gavra 013" osnovan je 25. aprila 2003. godine u Beloj Crkvi.',
-      'en':
-          'Limo service "Gavra 013" was founded on April 25, 2003 in Bela Crkva.',
-      'ru':
-          'Лимо-сервис «Gavra 013» основан 25 апреля 2003 года в городе Бела Црква.',
-      'de':
-          'Der Limo-Service "Gavra 013" wurde am 25. April 2003 in Bela Crkva gegründet.',
+      'sr': 'Limo servis "Gavra 013" osnovan je 25. aprila 2003. godine u Beloj Crkvi.',
+      'en': 'Limo service "Gavra 013" was founded on April 25, 2003 in Bela Crkva.',
+      'ru': 'Лимо-сервис «Gavra 013» основан 25 апреля 2003 года в городе Бела Црква.',
+      'de': 'Der Limo-Service "Gavra 013" wurde am 25. April 2003 in Bela Crkva gegründet.',
       'zh': '“Gavra 013”豪华轿车服务于2003年4月25日在贝拉茨尔克瓦成立。',
     },
     'prica2': {
@@ -2490,35 +1635,14 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
     'prica3': {
       'sr': 'Više od 20 godina pružamo pouzdanu uslugu prevoza putnika.',
-      'en':
-          'For over 20 years we have been providing reliable passenger transport service.',
-      'ru':
-          'Более 20 лет мы предоставляем надёжные услуги пассажирских перевозок.',
-      'de':
-          'Seit über 20 Jahren bieten wir zuverlässigen Personentransport an.',
+      'en': 'For over 20 years we have been providing reliable passenger transport service.',
+      'ru': 'Более 20 лет мы предоставляем надёжные услуги пассажирских перевозок.',
+      'de': 'Seit über 20 Jahren bieten wir zuverlässigen Personentransport an.',
       'zh': '20多年来，我们一直提供可靠的客运服务。',
     },
-    'kontakt': {
-      'sr': 'Kontakt',
-      'en': 'Contact',
-      'ru': 'Контакты',
-      'de': 'Kontakt',
-      'zh': '联系方式'
-    },
-    'adresa': {
-      'sr': 'Adresa',
-      'en': 'Address',
-      'ru': 'Адрес',
-      'de': 'Adresse',
-      'zh': '地址'
-    },
-    'mobilni': {
-      'sr': 'Mobilni',
-      'en': 'Mobile',
-      'ru': 'Мобильный',
-      'de': 'Mobil',
-      'zh': '手机'
-    },
+    'kontakt': {'sr': 'Kontakt', 'en': 'Contact', 'ru': 'Контакты', 'de': 'Kontakt', 'zh': '联系方式'},
+    'adresa': {'sr': 'Adresa', 'en': 'Address', 'ru': 'Адрес', 'de': 'Adresse', 'zh': '地址'},
+    'mobilni': {'sr': 'Mobilni', 'en': 'Mobile', 'ru': 'Мобильный', 'de': 'Mobil', 'zh': '手机'},
     'podaciOFirmi': {
       'sr': 'Podaci o firmi',
       'en': 'Company information',
@@ -2526,20 +1650,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Unternehmensangaben',
       'zh': '公司信息'
     },
-    'punNaziv': {
-      'sr': 'Pun naziv',
-      'en': 'Full name',
-      'ru': 'Полное название',
-      'de': 'Vollständiger Name',
-      'zh': '全称'
-    },
-    'delatnost': {
-      'sr': 'Delatnost',
-      'en': 'Activity',
-      'ru': 'Деятельность',
-      'de': 'Tätigkeit',
-      'zh': '经营范围'
-    },
+    'punNaziv': {'sr': 'Pun naziv', 'en': 'Full name', 'ru': 'Полное название', 'de': 'Vollständiger Name', 'zh': '全称'},
+    'delatnost': {'sr': 'Delatnost', 'en': 'Activity', 'ru': 'Деятельность', 'de': 'Tätigkeit', 'zh': '经营范围'},
     'delatnostVal': {
       'sr': '4932 - Limo servis + Taksi prevoz',
       'en': '4932 - Limo service + Taxi transport',
@@ -2547,13 +1659,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '4932 - Limo-Service + Taxiverkehr',
       'zh': '4932 - 豪华轿车服务 + 出租车运输',
     },
-    'pib': {
-      'sr': 'PIB',
-      'en': 'Tax ID',
-      'ru': 'ИНН',
-      'de': 'Steuernummer',
-      'zh': '税号'
-    },
+    'pib': {'sr': 'PIB', 'en': 'Tax ID', 'ru': 'ИНН', 'de': 'Steuernummer', 'zh': '税号'},
     'maticniBroj': {
       'sr': 'Matični broj',
       'en': 'Registration number',
@@ -2568,41 +1674,11 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Gründungsdatum',
       'zh': '成立日期'
     },
-    'ziroRacun': {
-      'sr': 'Žiro račun',
-      'en': 'Bank account',
-      'ru': 'Расчётный счёт',
-      'de': 'Bankkonto',
-      'zh': '银行账户'
-    },
-    'vlasnik': {
-      'sr': 'Vlasnik',
-      'en': 'Owner',
-      'ru': 'Владелец',
-      'de': 'Inhaber',
-      'zh': '所有者'
-    },
-    'aplikacija': {
-      'sr': 'Aplikacija',
-      'en': 'Application',
-      'ru': 'Приложение',
-      'de': 'Anwendung',
-      'zh': '应用程序'
-    },
-    'verzija': {
-      'sr': 'Verzija',
-      'en': 'Version',
-      'ru': 'Версия',
-      'de': 'Version',
-      'zh': '版本'
-    },
-    'platforma': {
-      'sr': 'Platforma',
-      'en': 'Platform',
-      'ru': 'Платформа',
-      'de': 'Plattform',
-      'zh': '平台'
-    },
+    'ziroRacun': {'sr': 'Žiro račun', 'en': 'Bank account', 'ru': 'Расчётный счёт', 'de': 'Bankkonto', 'zh': '银行账户'},
+    'vlasnik': {'sr': 'Vlasnik', 'en': 'Owner', 'ru': 'Владелец', 'de': 'Inhaber', 'zh': '所有者'},
+    'aplikacija': {'sr': 'Aplikacija', 'en': 'Application', 'ru': 'Приложение', 'de': 'Anwendung', 'zh': '应用程序'},
+    'verzija': {'sr': 'Verzija', 'en': 'Version', 'ru': 'Версия', 'de': 'Version', 'zh': '版本'},
+    'platforma': {'sr': 'Platforma', 'en': 'Platform', 'ru': 'Платформа', 'de': 'Plattform', 'zh': '平台'},
     'copyright': {
       'sr': '© 2024-2026 Gavra 013. Sva prava zadržana.',
       'en': '© 2024-2026 Gavra 013. All rights reserved.',
@@ -2633,13 +1709,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '📖 Fahrzeugbuch',
       'zh': '📖 车辆日志'
     },
-    'greska': {
-      'sr': 'Greška',
-      'en': 'Error',
-      'ru': 'Ошибка',
-      'de': 'Fehler',
-      'zh': '错误'
-    },
+    'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler', 'zh': '错误'},
     'nemaVozila': {
       'sr': 'Nema vozila.',
       'en': 'No vehicles.',
@@ -2654,20 +1724,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Registrierung',
       'zh': '登记'
     },
-    'godinaLabel': {
-      'sr': 'Godina',
-      'en': 'Year',
-      'ru': 'Год',
-      'de': 'Jahr',
-      'zh': '年份'
-    },
-    'kilometraza': {
-      'sr': 'Kilometraža: ',
-      'en': 'Mileage: ',
-      'ru': 'Пробег: ',
-      'de': 'Kilometerstand: ',
-      'zh': '里程: '
-    },
+    'godinaLabel': {'sr': 'Godina', 'en': 'Year', 'ru': 'Год', 'de': 'Jahr', 'zh': '年份'},
+    'kilometraza': {'sr': 'Kilometraža: ', 'en': 'Mileage: ', 'ru': 'Пробег: ', 'de': 'Kilometerstand: ', 'zh': '里程: '},
     'brojSasijeVin': {
       'sr': 'Broj šasije (VIN)',
       'en': 'Chassis number (VIN)',
@@ -2689,28 +1747,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Zulassung gültig bis',
       'zh': '注册有效期至'
     },
-    'istekla': {
-      'sr': 'ISTEKLA!',
-      'en': 'EXPIRED!',
-      'ru': 'ИСТЕКЛА!',
-      'de': 'ABGELAUFEN!',
-      'zh': '已过期！'
-    },
+    'istekla': {'sr': 'ISTEKLA!', 'en': 'EXPIRED!', 'ru': 'ИСТЕКЛА!', 'de': 'ABGELAUFEN!', 'zh': '已过期！'},
     'dana': {'sr': 'dana', 'en': 'days', 'ru': 'дней', 'de': 'Tage', 'zh': '天'},
-    'napomena': {
-      'sr': 'Napomena',
-      'en': 'Note',
-      'ru': 'Примечание',
-      'de': 'Notiz',
-      'zh': '备注'
-    },
-    'maliServis': {
-      'sr': 'Mali servis',
-      'en': 'Minor service',
-      'ru': 'Малое ТО',
-      'de': 'Kleiner Service',
-      'zh': '小保养'
-    },
+    'napomena': {'sr': 'Napomena', 'en': 'Note', 'ru': 'Примечание', 'de': 'Notiz', 'zh': '备注'},
+    'maliServis': {'sr': 'Mali servis', 'en': 'Minor service', 'ru': 'Малое ТО', 'de': 'Kleiner Service', 'zh': '小保养'},
     'velikiServis': {
       'sr': 'Veliki servis',
       'en': 'Major service',
@@ -2718,20 +1758,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Großer Service',
       'zh': '大保养'
     },
-    'alternator': {
-      'sr': 'Alternator',
-      'en': 'Alternator',
-      'ru': 'Генератор',
-      'de': 'Lichtmaschine',
-      'zh': '发电机'
-    },
-    'akumulator': {
-      'sr': 'Akumulator',
-      'en': 'Battery',
-      'ru': 'Аккумулятор',
-      'de': 'Batterie',
-      'zh': '蓄电池'
-    },
+    'alternator': {'sr': 'Alternator', 'en': 'Alternator', 'ru': 'Генератор', 'de': 'Lichtmaschine', 'zh': '发电机'},
+    'akumulator': {'sr': 'Akumulator', 'en': 'Battery', 'ru': 'Аккумулятор', 'de': 'Batterie', 'zh': '蓄电池'},
     'plocicePrednje': {
       'sr': 'Pločice prednje',
       'en': 'Front brake pads',
@@ -2746,13 +1774,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Hintere Bremsbeläge',
       'zh': '后制动片'
     },
-    'trap': {
-      'sr': 'Trap',
-      'en': 'Chassis/suspension',
-      'ru': 'Ходовая',
-      'de': 'Fahrwerk',
-      'zh': '底盘/悬架'
-    },
+    'trap': {'sr': 'Trap', 'en': 'Chassis/suspension', 'ru': 'Ходовая', 'de': 'Fahrwerk', 'zh': '底盘/悬架'},
     'gumePrednje': {
       'sr': 'Gume prednje',
       'en': 'Front tires',
@@ -2760,55 +1782,13 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Vorderreifen',
       'zh': '前轮轮胎'
     },
-    'gumeZadnje': {
-      'sr': 'Gume zadnje',
-      'en': 'Rear tires',
-      'ru': 'Задние шины',
-      'de': 'Hinterreifen',
-      'zh': '后轮轮胎'
-    },
-    'menjane': {
-      'sr': 'Menjane',
-      'en': 'Changed',
-      'ru': 'Заменено',
-      'de': 'Gewechselt',
-      'zh': '已更换'
-    },
-    'radioCode': {
-      'sr': 'Radio code',
-      'en': 'Radio code',
-      'ru': 'Код радио',
-      'de': 'Radio-Code',
-      'zh': '收音机密码'
-    },
-    'unesi': {
-      'sr': 'Unesi',
-      'en': 'Enter',
-      'ru': 'Введите',
-      'de': 'Eingeben',
-      'zh': '输入'
-    },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
-    'sacuvaj': {
-      'sr': 'Sačuvaj',
-      'en': 'Save',
-      'ru': 'Сохранить',
-      'de': 'Speichern',
-      'zh': '保存'
-    },
-    'datum': {
-      'sr': 'Datum',
-      'en': 'Date',
-      'ru': 'Дата',
-      'de': 'Datum',
-      'zh': '日期'
-    },
+    'gumeZadnje': {'sr': 'Gume zadnje', 'en': 'Rear tires', 'ru': 'Задние шины', 'de': 'Hinterreifen', 'zh': '后轮轮胎'},
+    'menjane': {'sr': 'Menjane', 'en': 'Changed', 'ru': 'Заменено', 'de': 'Gewechselt', 'zh': '已更换'},
+    'radioCode': {'sr': 'Radio code', 'en': 'Radio code', 'ru': 'Код радио', 'de': 'Radio-Code', 'zh': '收音机密码'},
+    'unesi': {'sr': 'Unesi', 'en': 'Enter', 'ru': 'Введите', 'de': 'Eingeben', 'zh': '输入'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
+    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
     'izaberiDatum': {
       'sr': 'Izaberi datum',
       'en': 'Select date',
@@ -2823,34 +1803,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Service-Kilometerstand',
       'zh': '保养里程'
     },
-    'trenutno': {
-      'sr': 'Trenutno',
-      'en': 'Current',
-      'ru': 'Текущий',
-      'de': 'Aktuell',
-      'zh': '当前'
-    },
-    'tipGuma': {
-      'sr': 'Tip guma:',
-      'en': 'Tire type:',
-      'ru': 'Тип шин:',
-      'de': 'Reifentyp:',
-      'zh': '轮胎类型：'
-    },
-    'letnje': {
-      'sr': '☀️ Letnje',
-      'en': '☀️ Summer',
-      'ru': '☀️ Летние',
-      'de': '☀️ Sommer',
-      'zh': '☀️ 夏季'
-    },
-    'zimske': {
-      'sr': '❄️ Zimske',
-      'en': '❄️ Winter',
-      'ru': '❄️ Зимние',
-      'de': '❄️ Winter',
-      'zh': '❄️ 冬季'
-    },
+    'trenutno': {'sr': 'Trenutno', 'en': 'Current', 'ru': 'Текущий', 'de': 'Aktuell', 'zh': '当前'},
+    'tipGuma': {'sr': 'Tip guma:', 'en': 'Tire type:', 'ru': 'Тип шин:', 'de': 'Reifentyp:', 'zh': '轮胎类型：'},
+    'letnje': {'sr': '☀️ Letnje', 'en': '☀️ Summer', 'ru': '☀️ Летние', 'de': '☀️ Sommer', 'zh': '☀️ 夏季'},
+    'zimske': {'sr': '❄️ Zimske', 'en': '❄️ Winter', 'ru': '❄️ Зимние', 'de': '❄️ Winter', 'zh': '❄️ 冬季'},
     'markaIDimenzija': {
       'sr': 'Marka i dimenzija',
       'en': 'Brand and size',
@@ -2907,20 +1863,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Möchten Sie dieses Fahrzeug wirklich löschen?',
       'zh': '确定要删除此车辆吗？'
     },
-    'marka': {
-      'sr': 'Marka',
-      'en': 'Brand',
-      'ru': 'Марка',
-      'de': 'Marke',
-      'zh': '品牌'
-    },
-    'model': {
-      'sr': 'Model',
-      'en': 'Model',
-      'ru': 'Модель',
-      'de': 'Modell',
-      'zh': '型号'
-    },
+    'marka': {'sr': 'Marka', 'en': 'Brand', 'ru': 'Марка', 'de': 'Marke', 'zh': '品牌'},
+    'model': {'sr': 'Model', 'en': 'Model', 'ru': 'Модель', 'de': 'Modell', 'zh': '型号'},
     'registracijaObavezna': {
       'sr': 'Registracija je obavezna',
       'en': 'Registration is required',
@@ -2951,34 +1895,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
   },
   'posiljkeZahteviScreen': {
-    'posiljke': {
-      'sr': 'Pošiljke',
-      'en': 'Shipments',
-      'ru': 'Посылки',
-      'de': 'Sendungen',
-      'zh': '包裹'
-    },
-    'obrada': {
-      'sr': 'obrada',
-      'en': 'processing',
-      'ru': 'обработка',
-      'de': 'Bearbeitung',
-      'zh': '处理中'
-    },
-    'odobreno': {
-      'sr': 'odobreno',
-      'en': 'approved',
-      'ru': 'одобрено',
-      'de': 'genehmigt',
-      'zh': '已批准'
-    },
-    'odbijeno': {
-      'sr': 'odbijeno',
-      'en': 'rejected',
-      'ru': 'отклонено',
-      'de': 'abgelehnt',
-      'zh': '已拒绝'
-    },
+    'posiljke': {'sr': 'Pošiljke', 'en': 'Shipments', 'ru': 'Посылки', 'de': 'Sendungen', 'zh': '包裹'},
+    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung', 'zh': '处理中'},
+    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt', 'zh': '已批准'},
+    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt', 'zh': '已拒绝'},
     'nemaPosiljki': {
       'sr': 'Nema pošiljki',
       'en': 'No shipments',
@@ -2986,19 +1906,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Keine Sendungen',
       'zh': '没有包裹'
     },
-    'posiljka': {
-      'sr': 'Pošiljka',
-      'en': 'Shipment',
-      'ru': 'Посылка',
-      'de': 'Sendung',
-      'zh': '包裹'
-    },
-    'vreme': {
-      'sr': 'Vreme',
-      'en': 'Time',
-      'ru': 'Время',
-      'de': 'Zeit',
-      'zh': '时间'
-    },
+    'posiljka': {'sr': 'Pošiljka', 'en': 'Shipment', 'ru': 'Посылка', 'de': 'Sendung', 'zh': '包裹'},
+    'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Zeit', 'zh': '时间'},
   },
 };

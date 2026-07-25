@@ -132,13 +132,7 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'de': 'Jahr',
       'zh': '年份',
     },
-    'otkazi': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'potvrdi': {
       'sr': 'Potvrdi',
       'en': 'Confirm',
@@ -186,13 +180,7 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'de': 'Bestätigen',
       'zh': '确认',
     },
-    'cancel': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消'
-    },
+    'cancel': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'working': {
       'sr': 'Radi...',
       'en': 'Working...',
@@ -202,13 +190,7 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
     },
   },
   'uiUtils': {
-    'saved': {
-      'sr': '✅ Sačuvano',
-      'en': '✅ Saved',
-      'ru': '✅ Сохранено',
-      'de': '✅ Gespeichert',
-      'zh': '✅ 已保存'
-    },
+    'saved': {'sr': '✅ Sačuvano', 'en': '✅ Saved', 'ru': '✅ Сохранено', 'de': '✅ Gespeichert', 'zh': '✅ 已保存'},
     'saveError': {
       'sr': '❌ Greška pri čuvanju',
       'en': '❌ Error while saving',
@@ -311,11 +293,9 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
     },
     'paymentDiffInfo': {
       'sr': 'Obračun %EXPECTED% RSD, uneto %ENTERED% RSD, razlika %DIFF% RSD',
-      'en':
-          'Calculation %EXPECTED% RSD, entered %ENTERED% RSD, difference %DIFF% RSD',
+      'en': 'Calculation %EXPECTED% RSD, entered %ENTERED% RSD, difference %DIFF% RSD',
       'ru': 'Расчёт %EXPECTED% RSD, внесено %ENTERED% RSD, разница %DIFF% RSD',
-      'de':
-          'Abrechnung %EXPECTED% RSD, eingegeben %ENTERED% RSD, Differenz %DIFF% RSD',
+      'de': 'Abrechnung %EXPECTED% RSD, eingegeben %ENTERED% RSD, Differenz %DIFF% RSD',
       'zh': '结算 %EXPECTED% RSD，输入 %ENTERED% RSD，差额 %DIFF% RSD',
     },
     'paymentError': {
@@ -362,41 +342,11 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'de': 'Fehler',
       'zh': '错误',
     },
-    'ridesPlural': {
-      'sr': 'Vožnje',
-      'en': 'Rides',
-      'ru': 'Поездки',
-      'de': 'Fahrten',
-      'zh': '行程'
-    },
-    'rideSingular': {
-      'sr': 'Vožnja',
-      'en': 'Ride',
-      'ru': 'Поездка',
-      'de': 'Fahrt',
-      'zh': '行程'
-    },
-    'total': {
-      'sr': 'Ukupno',
-      'en': 'Total',
-      'ru': 'Всего',
-      'de': 'Gesamt',
-      'zh': '总计'
-    },
-    'last': {
-      'sr': 'Poslednje',
-      'en': 'Last',
-      'ru': 'Последнее',
-      'de': 'Letzte',
-      'zh': '最近'
-    },
-    'canceled': {
-      'sr': 'Otkazano',
-      'en': 'Canceled',
-      'ru': 'Отменено',
-      'de': 'Storniert',
-      'zh': '已取消'
-    },
+    'ridesPlural': {'sr': 'Vožnje', 'en': 'Rides', 'ru': 'Поездки', 'de': 'Fahrten', 'zh': '行程'},
+    'rideSingular': {'sr': 'Vožnja', 'en': 'Ride', 'ru': 'Поездка', 'de': 'Fahrt', 'zh': '行程'},
+    'total': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt', 'zh': '总计'},
+    'last': {'sr': 'Poslednje', 'en': 'Last', 'ru': 'Последнее', 'de': 'Letzte', 'zh': '最近'},
+    'canceled': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
   },
   'updateBannerUpdateBannerTranslations': {
     'maintenanceWorkInProgress': {
@@ -421,14 +371,10 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'zh': '版本',
     },
     'unsupportedVersionMessage': {
-      'sr':
-          'Ova verzija aplikacije više nije podržana. Ažurirajte aplikaciju da biste nastavili rad.',
-      'en':
-          'This app version is no longer supported. Please update the app to continue.',
-      'ru':
-          'Эта версия приложения больше не поддерживается. Обновите приложение, чтобы продолжить работу.',
-      'de':
-          'Diese App-Version wird nicht mehr unterstützt. Bitte aktualisieren Sie die App, um fortzufahren.',
+      'sr': 'Ova verzija aplikacije više nije podržana. Ažurirajte aplikaciju da biste nastavili rad.',
+      'en': 'This app version is no longer supported. Please update the app to continue.',
+      'ru': 'Эта версия приложения больше не поддерживается. Обновите приложение, чтобы продолжить работу.',
+      'de': 'Diese App-Version wird nicht mehr unterstützt. Bitte aktualisieren Sie die App, um fortzufahren.',
       'zh': '此应用版本已不再受支持。请更新应用后继续使用。',
     },
     'updateApp': {
@@ -463,20 +409,8 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'de': 'Keine geplante Fahrt',
       'zh': '没有安排的行程',
     },
-    'cekaNa': {
-      'sr': 'Čeka na',
-      'en': 'Waiting at',
-      'ru': 'Ожидает у',
-      'de': 'Wartet bei',
-      'zh': '等待于'
-    },
-    'vozac': {
-      'sr': 'Vozač',
-      'en': 'Driver',
-      'ru': 'Водитель',
-      'de': 'Fahrer',
-      'zh': '司机'
-    },
+    'cekaNa': {'sr': 'Čeka na', 'en': 'Waiting at', 'ru': 'Ожидает у', 'de': 'Wartet bei', 'zh': '等待于'},
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
     'u': {'sr': 'u', 'en': 'at', 'ru': 'в', 'de': 'um', 'zh': '于'},
     'noGpsForAddress': {
       'sr': 'Nema GPS koordinata za ovu adresu',

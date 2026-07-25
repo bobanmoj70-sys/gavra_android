@@ -39,11 +39,9 @@ class V3TelefonHelper {
   ///
   /// **Koristi umesto:** 15+ duplikata tel: launch koda
   /// **Primjer:** V3TelefonHelper.pozovi(this, context, '0641162560');
-  static Future<void> pozovi(
-      State state, BuildContext context, String broj) async {
+  static Future<void> pozovi(State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
-      V3ErrorUtils.validationError(
-          state, context, _telefonTr('telefonBrojNijeDostupan'));
+      V3ErrorUtils.validationError(state, context, _telefonTr('telefonBrojNijeDostupan'));
       return;
     }
 
@@ -55,8 +53,7 @@ class V3TelefonHelper {
     if (!status.isGranted) {
       final result = await Permission.phone.request();
       if (!result.isGranted) {
-        V3ErrorUtils.permissionError(
-            state, context, _telefonTr('dozvolaZaPozive'));
+        V3ErrorUtils.permissionError(state, context, _telefonTr('dozvolaZaPozive'));
         return;
       }
     }
@@ -71,8 +68,7 @@ class V3TelefonHelper {
         throw _telefonTr('neMoguPokrenutiPoziv');
       }
     } catch (e) {
-      V3ErrorUtils.safeError(state, context,
-          _telefonTrf('greskaPozivanje', {'BROJ': broj, 'ERROR': '$e'}));
+      V3ErrorUtils.safeError(state, context, _telefonTrf('greskaPozivanje', {'BROJ': broj, 'ERROR': '$e'}));
     }
   }
 
@@ -80,11 +76,9 @@ class V3TelefonHelper {
   ///
   /// **Koristi kada:** već imaš permission ili u emergency situacijama
   /// **Primjer:** V3TelefonHelper.pozoviBrzo(this, context, '064123456');
-  static Future<void> pozoviBrzo(
-      State state, BuildContext context, String broj) async {
+  static Future<void> pozoviBrzo(State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
-      V3ErrorUtils.validationError(
-          state, context, _telefonTr('telefonBrojNijeDostupan'));
+      V3ErrorUtils.validationError(state, context, _telefonTr('telefonBrojNijeDostupan'));
       return;
     }
 
@@ -99,8 +93,7 @@ class V3TelefonHelper {
         throw _telefonTr('neMoguPokrenutiPoziv');
       }
     } catch (e) {
-      V3ErrorUtils.safeError(state, context,
-          _telefonTrf('greskaPozivanje', {'BROJ': broj, 'ERROR': '$e'}));
+      V3ErrorUtils.safeError(state, context, _telefonTrf('greskaPozivanje', {'BROJ': broj, 'ERROR': '$e'}));
     }
   }
 
@@ -138,8 +131,7 @@ class V3TelefonHelper {
       }
     } catch (e) {
       if (!state.mounted) return;
-      V3ErrorUtils.safeError(state, context,
-          _telefonTrf('greskaPriOtvaranjuSms', {'ERROR': '$e'}));
+      V3ErrorUtils.safeError(state, context, _telefonTrf('greskaPriOtvaranjuSms', {'ERROR': '$e'}));
     }
   }
 
