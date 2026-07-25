@@ -2,9 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_translations.dart';
+import '../services/v3_locale_manager.dart';
 import 'v3_app_snack_bar.dart';
 import 'v3_error_utils.dart';
 import 'v3_phone_utils.dart';
+
+String _telefonTr(String key) {
+  final code = V3LocaleManager().currentLocale.languageCode;
+  final t = AppTranslations.ns('telefonHelper');
+  return t[key]?[code] ?? t[key]?['sr'] ?? key;
+}
+
+String _telefonTrf(String key, Map<String, String> params) {
+  var text = _telefonTr(key);
+  params.forEach((placeholder, value) {
+    text = text.replaceAll('%$placeholder%', value);
+  });
+  return text;
+}
 
 /// 📞 V3TelefonHelper - ЦЕНТРАЛИЗОВАНО УПРАВЉАЊЕ ПОЗИВА/SMS
 /// Елиминише све duplikate launchUrl(Uri(scheme: 'tel'...)) позива!
@@ -23,9 +39,11 @@ class V3TelefonHelper {
   ///
   /// **Koristi umesto:** 15+ duplikata tel: launch koda
   /// **Primjer:** V3TelefonHelper.pozovi(this, context, '0641162560');
-  static Future<void> pozovi(State state, BuildContext context, String broj) async {
+  static Future<void> pozovi(
+      State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
-      V3ErrorUtils.validationError(state, context, 'Telefon broj nije dostupan');
+      V3ErrorUtils.validationError(
+          state, context, _telefonTr('telefonBrojNijeDostupan'));
       return;
     }
 
@@ -37,7 +55,8 @@ class V3TelefonHelper {
     if (!status.isGranted) {
       final result = await Permission.phone.request();
       if (!result.isGranted) {
-        V3ErrorUtils.permissionError(state, context, 'Dozvola za pozive je potrebna');
+        V3ErrorUtils.permissionError(
+            state, context, _telefonTr('dozvolaZaPozive'));
         return;
       }
     }
@@ -49,10 +68,11 @@ class V3TelefonHelper {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        throw 'Ne mogu pokrenuti poziv';
+        throw _telefonTr('neMoguPokrenutiPoziv');
       }
     } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ Greška pozivanje $broj: $e');
+      V3ErrorUtils.safeError(state, context,
+          _telefonTrf('greskaPozivanje', {'BROJ': broj, 'ERROR': '$e'}));
     }
   }
 
@@ -60,9 +80,11 @@ class V3TelefonHelper {
   ///
   /// **Koristi kada:** već imaš permission ili u emergency situacijama
   /// **Primjer:** V3TelefonHelper.pozoviBrzo(this, context, '064123456');
-  static Future<void> pozoviBrzo(State state, BuildContext context, String broj) async {
+  static Future<void> pozoviBrzo(
+      State state, BuildContext context, String broj) async {
     if (broj.isEmpty) {
-      V3ErrorUtils.validationError(state, context, 'Telefon broj nije dostupan');
+      V3ErrorUtils.validationError(
+          state, context, _telefonTr('telefonBrojNijeDostupan'));
       return;
     }
 
@@ -74,10 +96,11 @@ class V3TelefonHelper {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        throw 'Ne mogu pokrenuti poziv';
+        throw _telefonTr('neMoguPokrenutiPoziv');
       }
     } catch (e) {
-      V3ErrorUtils.safeError(state, context, '❌ Greška pozivanje $broj: $e');
+      V3ErrorUtils.safeError(state, context,
+          _telefonTrf('greskaPozivanje', {'BROJ': broj, 'ERROR': '$e'}));
     }
   }
 
@@ -96,7 +119,7 @@ class V3TelefonHelper {
     if (!state.mounted) return;
 
     if (!V3PhoneUtils.isValid(broj)) {
-      V3AppSnackBar.error(context, '❌ Nevažeći broj telefona');
+      V3AppSnackBar.error(context, _telefonTr('nevaziciBrojTelefona'));
       return;
     }
 
@@ -111,11 +134,12 @@ class V3TelefonHelper {
       if (await canLaunchUrl(smsUri)) {
         await launchUrl(smsUri, mode: LaunchMode.externalApplication);
       } else {
-        throw 'Ne mogu pokrenuti SMS aplikaciju';
+        throw _telefonTr('neMoguPokrenutiSms');
       }
     } catch (e) {
       if (!state.mounted) return;
-      V3ErrorUtils.safeError(state, context, '❌ Greška pri otvaranju SMS: $e');
+      V3ErrorUtils.safeError(state, context,
+          _telefonTrf('greskaPriOtvaranjuSms', {'ERROR': '$e'}));
     }
   }
 

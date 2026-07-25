@@ -1067,6 +1067,21 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
   },
   'smsLoginScreen': {
+    'biometrijaNijeUkljucena': {
+      'sr': 'ℹ️ Biometrija nije uključena za ovaj nalog.',
+      'en': 'ℹ️ Biometrics is not enabled for this account.',
+      'ru': 'ℹ️ Биометрия не включена для этой учётной записи.',
+      'de': 'ℹ️ Biometrie ist für dieses Konto nicht aktiviert.',
+      'zh': 'ℹ️ 此账户未启用生物识别。',
+    },
+    'nemaSacuvanihPodataka': {
+      'sr': 'ℹ️ Nema sačuvanih podataka. Prijavi se brojem telefona.',
+      'en': 'ℹ️ No saved data. Log in with your phone number.',
+      'ru': 'ℹ️ Нет сохранённых данных. Войдите с помощью номера телефона.',
+      'de':
+          'ℹ️ Keine gespeicherten Daten. Melden Sie sich mit Ihrer Telefonnummer an.',
+      'zh': 'ℹ️ 没有保存的数据。请使用手机号登录。',
+    },
     'prijava': {
       'sr': 'Prijava',
       'en': 'Login',

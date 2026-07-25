@@ -23,5 +23,6 @@ class AppTranslations {
       _all[namespace] ?? const {};
 
   /// Sve namespace mape (za testove/audit alate koji proveravaju kompletnost prevoda).
-  static Map<String, Map<String, Map<String, String>>> get allNamespaces => _all;
+  static Map<String, Map<String, Map<String, String>>> get allNamespaces =>
+      _all;
 }

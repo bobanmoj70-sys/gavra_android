@@ -1266,6 +1266,13 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Welcher Kredit wird zurückgezahlt?',
       'zh': '哪笔贷款正在偿还？',
     },
+    'preostaloLower': {
+      'sr': 'preostalo',
+      'en': 'remaining',
+      'ru': 'осталось',
+      'de': 'verbleibend',
+      'zh': '剩余',
+    },
     'troskoviDodati': {
       'sr': '✅ Troškovi dodati',
       'en': '✅ Expenses added',

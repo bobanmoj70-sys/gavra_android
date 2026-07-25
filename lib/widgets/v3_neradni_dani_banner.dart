@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
+import '../services/v3_locale_manager.dart';
 import '../utils/v3_date_utils.dart';
 import 'v3_shimmer_banner.dart';
+
+String _neradniDaniTr(String key) {
+  final code = V3LocaleManager().currentLocale.languageCode;
+  final t = AppTranslations.ns('neradniDaniBanner');
+  return t[key]?[code] ?? t[key]?['sr'] ?? key;
+}
 
 /// Inline baner koji prikazuje neradne dane iz operativne nedelje.
 /// Koristi [neradniDaniNotifier] i filtrira dane iz operativne sedmice.
@@ -40,7 +48,8 @@ class V3NeradniDaniBanner extends StatelessWidget {
                   ? 'VS'
                   : '';
           final reason = (rule['reason'] ?? '').trim();
-          final reasonText = reason.isEmpty ? 'Neradan dan' : reason;
+          final reasonText =
+              reason.isEmpty ? _neradniDaniTr('neradanDan') : reason;
           final scopeText = scopeLabel.isEmpty ? '' : ' [$scopeLabel]';
           lines.add('• $dayName ($dateIso)$scopeText — $reasonText');
         }
@@ -57,9 +66,10 @@ class V3NeradniDaniBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '📢 Neradni dan(i) — operativna nedelja',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                Text(
+                  _neradniDaniTr('naslov'),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(
