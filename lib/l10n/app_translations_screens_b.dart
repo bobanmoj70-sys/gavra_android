@@ -1161,6 +1161,9 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
           'wurde der Zeitraum der eingeschränkten App-Verfügbarkeit verlängert. Diese Maßnahmen wurden eingeführt, '
           'um das Risiko von Missbrauch zu verringern, einschließlich Phishing-Versuchen, Datendiebstahl und '
           'unbefugter Werbung. Vielen Dank für Ihre Geduld und Ihr Verständnis.',
+      'zh':
+          '尊敬的用户，由于需要进一步符合平台（Google Play 和 iOS）的安全要求，以及为加强数据保护而完成的认证流程，应用的受限可用期已延长。'
+              '采取这些措施是为了降低滥用风险，包括钓鱼攻击、数据盗窃和未经授权的广告。感谢您的耐心与理解。',
     },
     'unesitePodatke': {
       'sr': 'Unesite podatke za nalog',
@@ -1831,6 +1834,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
           'В доступе к геолокации отказано навсегда. Включите её в настройках.',
       'de':
           'Standortberechtigung wurde dauerhaft verweigert. Aktivieren Sie sie in den Einstellungen.',
+      'zh': '位置权限已被永久拒绝。请在设置中启用它。',
     },
     'dozvolaPotrebnaUvek': {
       'sr':
