@@ -1110,7 +1110,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               final ponedeljak = weekRange.start;
               final petak = weekRange.end;
               final aktivnaNedelja =
-                  'Operativna nedelja: ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
+                  '${_tr('operativnaNedeljaPrefix')} ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
               return V3ContainerUtils.gradientContainer(
                 gradient: V3ThemeManager().currentGradient,
@@ -1139,7 +1139,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                       Expanded(
                                         child: Center(
                                           child: Text(
-                                            'R E Z E R V A C I J E',
+                                            _tr('appBarNaslov'),
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w800,

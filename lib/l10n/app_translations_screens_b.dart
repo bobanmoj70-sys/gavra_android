@@ -1182,6 +1182,13 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
   },
   'vozacScreen': {
+    'operativnaSedmicaPrefix': {
+      'sr': 'Operativna sedmica:',
+      'en': 'Operating week:',
+      'ru': 'Рабочая неделя:',
+      'de': 'Betriebswoche:',
+      'zh': '运营周：',
+    },
     'slotoviZakljucaniZaRazlog': {
       'sr': '⛔ Slotovi zaključani za %DAN%. Razlog: %RAZLOG%',
       'en': '⛔ Slots locked for %DAN%. Reason: %RAZLOG%',

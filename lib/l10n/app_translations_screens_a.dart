@@ -1119,6 +1119,20 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
   },
   'homeScreen': {
+    'appBarNaslov': {
+      'sr': 'R E Z E R V A C I J E',
+      'en': 'R E S E R V A T I O N S',
+      'ru': 'Р Е З Е Р В А Ц И И',
+      'de': 'R E S E R V I E R U N G E N',
+      'zh': '预 约',
+    },
+    'operativnaNedeljaPrefix': {
+      'sr': 'Operativna nedelja:',
+      'en': 'Operating week:',
+      'ru': 'Рабочая неделя:',
+      'de': 'Betriebswoche:',
+      'zh': '运营周：',
+    },
     'dodajRezervaciju': {
       'sr': 'Dodaj Rezervaciju',
       'en': 'Add Reservation',
