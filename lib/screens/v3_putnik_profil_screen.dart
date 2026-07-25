@@ -158,8 +158,14 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // Operativni termini po danu
   // key = dan kratica npr 'pon', value = lista termina (BC i VS)
   final Map<String, List<_ZahtevInfo>> _rasporedMap = {};
+  // Ključevi (putnikId|dan|grad) za koje je trenutno u toku slanje/otkazivanje
+  // zahteva. Sprečava da brzi uzastopni klikovi (2-3 puta zaredom) kreiraju
+  // više zahteva pre nego što prvi stigne da se upiše i osveži u kešu.
+  final Set<String> _pendingActionContexts = {};
   Map<String, V3WeatherSnapshot> _weatherByGrad = const {};
   Timer? _weatherTimer;
+  Timer? _weatherRetryTimer;
+  int _weatherRetryCount = 0;
 
   static final RegExp _timeFormat = RegExp(r'^\d{2}:\d{2}$');
 
@@ -350,6 +356,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     V3StreamUtils.cancelSubscription('putnik_profil_cache');
     V3StreamUtils.cancelTimer(_actionDebounceKey);
     _weatherTimer?.cancel();
+    _weatherRetryTimer?.cancel();
     super.dispose();
   }
 
@@ -362,8 +369,23 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   Future<void> _refreshWeather({bool forceRefresh = false}) async {
     final snapshots = await V3WeatherService.fetchBcVs(forceRefresh: forceRefresh);
-    if (!mounted || snapshots.isEmpty) return;
-    V3StateUtils.safeSetState(this, () => _weatherByGrad = snapshots);
+    if (!mounted) return;
+    if (snapshots.isNotEmpty) {
+      V3StateUtils.safeSetState(this, () => _weatherByGrad = snapshots);
+    }
+    // Ako nedostaje neki grad (BC ili VS), verovatno je prvi pokušaj
+    // pao usled slabe/spore mreže na hladnom startu - probaj ponovo uskoro
+    // umesto da čekamo pun period od 15 minuta.
+    final missing = const ['BC', 'VS'].any((g) => !_weatherByGrad.containsKey(g));
+    if (missing && _weatherRetryCount < 5) {
+      _weatherRetryCount++;
+      _weatherRetryTimer?.cancel();
+      _weatherRetryTimer = Timer(const Duration(seconds: 20), () {
+        if (mounted) _refreshWeather(forceRefresh: true);
+      });
+    } else {
+      _weatherRetryCount = 0;
+    }
   }
 
   void _refresh() {
@@ -536,6 +558,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       callback: () => V3StreamUtils.cancelTimer(_actionDebounceKey),
     );
 
+    // Guard za CEO trajanje akcije (putnik + dan + grad): sprečava da 2-3
+    // uzastopna klika (van 500ms debounce prozora, dok prvi zahtev još nije
+    // stigao/osvežio keš) kreiraju više zahteva istovremeno za isti kontekst.
+    final contextKey = '$putnikId|$dan|$grad';
+    if (_pendingActionContexts.contains(contextKey)) return;
+
     final validNovoVreme = _normalizeValidTime(novoVreme);
     final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
       dan,
@@ -556,6 +584,25 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
 
+    // Sveži pogled u keš neposredno pre slanja: ako već postoji zahtev u
+    // obradi/ponudi za ovaj kontekst (npr. iz prethodnog klika koji je već
+    // stigao na server ali UI dijalog to još nije prikazao), ne dozvoli novi.
+    if (validNovoVreme != null) {
+      final datumIso = V3DanHelper.toIsoDate(datumPolaska);
+      final vecPostojiUObradi = V3MasterRealtimeManager.instance.zahteviCache.values.any((z) {
+        final status = V3StatusPolicy.normalizeStatus(z['status']?.toString());
+        return (z['created_by']?.toString() ?? '') == putnikId &&
+            (z['datum'] as String? ?? '').startsWith(datumIso) &&
+            (z['grad']?.toString().toUpperCase() ?? '') == grad &&
+            (V3StatusPolicy.isPending(status) || V3StatusPolicy.isOfferLike(status));
+      });
+      if (vecPostojiUObradi) {
+        if (mounted) V3AppSnackBar.info(context, V3PutnikProfilMessages.requestPendingDispatcher);
+        return;
+      }
+    }
+
+    _pendingActionContexts.add(contextKey);
     try {
       if (validNovoVreme == null) {
         // Otkaži postojeći zahtev
@@ -583,6 +630,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       }
     } catch (e) {
       V3ErrorUtils.asyncError(this, context, e);
+    } finally {
+      _pendingActionContexts.remove(contextKey);
     }
   }
 

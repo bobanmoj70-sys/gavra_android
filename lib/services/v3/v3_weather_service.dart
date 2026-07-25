@@ -63,58 +63,79 @@ class V3WeatherService {
       return cached;
     }
 
-    try {
-      final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
-        'latitude': config.lat.toString(),
-        'longitude': config.lng.toString(),
-        'timezone': 'Europe/Belgrade',
-        'forecast_days': '2',
-        'current': 'temperature_2m,weather_code,is_day',
-        'hourly': 'precipitation_probability',
-      });
+    // Pokušaj do 2 puta (prvi pokušaj + 1 retry) jer hladan start aplikacije
+    // ili privremeno spora mreža čest je uzrok da se ikonica ne učita.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+          'latitude': config.lat.toString(),
+          'longitude': config.lng.toString(),
+          'timezone': 'Europe/Belgrade',
+          'forecast_days': '2',
+          'current': 'temperature_2m,weather_code,is_day',
+          'hourly': 'precipitation_probability',
+        });
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 8));
-      if (response.statusCode != 200) {
-        debugPrint('[V3WeatherService] status=${response.statusCode} body=${response.body}');
+        final response = await http.get(uri).timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) {
+          debugPrint('[V3WeatherService] status=${response.statusCode} body=${response.body}');
+          if (attempt == 0) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+          return cached;
+        }
+
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final current = data['current'];
+        if (current is! Map<String, dynamic>) {
+          if (attempt == 0) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+          return cached;
+        }
+
+        final currentTemp = (current['temperature_2m'] as num?)?.toDouble();
+        final weatherCode = (current['weather_code'] as num?)?.toInt();
+        final currentTimeRaw = current['time']?.toString();
+        if (currentTemp == null || weatherCode == null || currentTimeRaw == null) {
+          if (attempt == 0) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+          return cached;
+        }
+
+        final isDayValue = current['is_day'];
+        final isDay = isDayValue is num ? isDayValue.toInt() != 0 : true;
+
+        final sourceTime = DateTime.tryParse(currentTimeRaw) ?? now;
+        final precipProbability = _extractPrecipitation(data, currentTimeRaw);
+        final weather = _mapWeatherCode(weatherCode, isDay);
+
+        final snapshot = V3WeatherSnapshot(
+          grad: normalized,
+          icon: weather.icon,
+          description: weather.description,
+          temperatureC: currentTemp,
+          precipitationProbability: precipProbability,
+          sourceTime: sourceTime,
+          fetchedAt: now,
+        );
+
+        _cache[normalized] = snapshot;
+        return snapshot;
+      } catch (e) {
+        debugPrint('[V3WeatherService] fetchByGrad($normalized) attempt=$attempt error: $e');
+        if (attempt == 0) {
+          await Future.delayed(const Duration(seconds: 2));
+          continue;
+        }
         return cached;
       }
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final current = data['current'];
-      if (current is! Map<String, dynamic>) {
-        return cached;
-      }
-
-      final currentTemp = (current['temperature_2m'] as num?)?.toDouble();
-      final weatherCode = (current['weather_code'] as num?)?.toInt();
-      final currentTimeRaw = current['time']?.toString();
-      if (currentTemp == null || weatherCode == null || currentTimeRaw == null) {
-        return cached;
-      }
-
-      final isDayValue = current['is_day'];
-      final isDay = isDayValue is num ? isDayValue.toInt() != 0 : true;
-
-      final sourceTime = DateTime.tryParse(currentTimeRaw) ?? now;
-      final precipProbability = _extractPrecipitation(data, currentTimeRaw);
-      final weather = _mapWeatherCode(weatherCode, isDay);
-
-      final snapshot = V3WeatherSnapshot(
-        grad: normalized,
-        icon: weather.icon,
-        description: weather.description,
-        temperatureC: currentTemp,
-        precipitationProbability: precipProbability,
-        sourceTime: sourceTime,
-        fetchedAt: now,
-      );
-
-      _cache[normalized] = snapshot;
-      return snapshot;
-    } catch (e) {
-      debugPrint('[V3WeatherService] fetchByGrad($normalized) error: $e');
-      return cached;
     }
+    return cached;
   }
 
   static int? _extractPrecipitation(Map<String, dynamic> data, String currentTimeRaw) {
