@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../l10n/app_translations.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_admin_service.dart';
 import '../services/v3/v3_app_update_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
@@ -25,7 +27,7 @@ import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_putnik_profil_screen.dart';
 import 'v3_sms_login_screen.dart';
-import '../l10n/app_translations.dart';
+import 'v3_vozac_screen.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -309,7 +311,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       unawaited(V3AppUpdateService.refreshUpdateInfo()
           .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
 
-      _safePushReplacement(const V3HomeScreen());
+      // Admin/dispečer idu na Home (operativna tabla; admin dodatno vidi
+      // Admin dugme). Obični vozač ide direktno na svoj vozački ekran.
+      if (V3AdminService.canAccessHome(restoredVozac)) {
+        _safePushReplacement(const V3HomeScreen());
+      } else {
+        _safePushReplacement(const V3VozacScreen());
+      }
       return true;
     } catch (e) {
       debugPrint('[V3WelcomeScreen] auto-login vozac error: $e');
@@ -575,7 +583,13 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
         unawaited(V3AppUpdateService.refreshUpdateInfo()
             .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
-        _safePushReplacement(const V3HomeScreen());
+        // Admin/dispečer idu na Home (operativna tabla; admin dodatno vidi
+        // Admin dugme). Obični vozač ide direktno na svoj vozački ekran.
+        if (V3AdminService.canAccessHome(vozac)) {
+          _safePushReplacement(const V3HomeScreen());
+        } else {
+          _safePushReplacement(const V3VozacScreen());
+        }
         return;
       }
 

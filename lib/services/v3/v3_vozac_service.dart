@@ -106,4 +106,19 @@ class V3VozacService {
     final row = await _repo.getActiveByIdAndPushToken(vozacId: id, pushToken: token);
     return row != null;
   }
+
+  /// Ažurira ulogu (`uloga`) vozača u bazi — koristi [V3AdminService] za validaciju
+  /// dozvoljenih vrednosti pre poziva ove metode.
+  static Future<void> updateUloga({required String vozacId, required String uloga}) async {
+    final id = vozacId.trim();
+    if (id.isEmpty) return;
+    try {
+      final row = await _repo.updateUlogaByIdReturning(id, uloga);
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_auth', row);
+    } catch (e) {
+      debugPrint('[V3VozacService] updateUloga error: $e');
+      rethrow;
+    }
+  }
 }
+
