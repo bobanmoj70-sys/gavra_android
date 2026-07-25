@@ -43,6 +43,7 @@ import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
 import 'v3_welcome_screen.dart';
+import '../l10n/app_translations.dart';
 
 /// V3 Vozač Screen - prikazuje dodeljene termine i putnike
 /// iz cache-a građenog iz v3_operativna_nedelja.
@@ -71,138 +72,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
 
   // Prevodi za vozački ekran (SR/EN/RU/DE).
-  static const Map<String, Map<String, String>> _t = {
-    'gpsIskljucen': {
-      'sr': 'GPS je isključen. Uključi lokaciju na telefonu.',
-      'en': 'GPS is turned off. Enable location on your phone.',
-      'ru': 'ГПС выключен. Включите геолокацию на телефоне.',
-      'de': 'GPS ist ausgeschaltet. Aktivieren Sie den Standort auf Ihrem Telefon.',
-      'zh': 'GPS已关闭。请在手机上启用定位。',
-    },
-    'dozvolaOdbijena': {
-      'sr': 'Dozvola za lokaciju je odbijena.',
-      'en': 'Location permission was denied.',
-      'ru': 'В доступе к геолокации отказано.',
-      'de': 'Standortberechtigung wurde verweigert.',
-      'zh': '位置权限被拒绝。',
-    },
-    'dozvolaTrajnoOdbijena': {
-      'sr': 'Dozvola za lokaciju je trajno odbijena. Uključi je u Settings.',
-      'en': 'Location permission was permanently denied. Enable it in Settings.',
-      'ru': 'В доступе к геолокации отказано навсегда. Включите её в настройках.',
-      'de': 'Standortberechtigung wurde dauerhaft verweigert. Aktivieren Sie sie in den Einstellungen.',
-    },
-    'dozvolaPotrebnaUvek': {
-      'sr': 'Za praćenje vožnje potrebna je dozvola "Uvek" za lokaciju. Podesi u Settings.',
-      'en': 'Driving tracking requires "Always" location permission. Enable it in Settings.',
-      'ru': 'Для отслеживания поездки требуется разрешение «Всегда» на геолокацию. Включите в настройках.',
-      'de':
-          'Für die Fahrtverfolgung ist die Standortfreigabe "Immer" erforderlich. Aktivieren Sie sie in den Einstellungen.',
-      'zh': '行驶跟踪需要“始终允许”位置权限。请在设置中启用。',
-    },
-    'rutaNemaKoordinate': {
-      'sr': 'Nije moguće formirati rutu: nema validnih koordinata adresa.',
-      'en': 'Cannot build route: no valid address coordinates.',
-      'ru': 'Не удалось построить маршрут: нет действительных координат адресов.',
-      'de': 'Route kann nicht erstellt werden: keine gültigen Adresskoordinaten.',
-      'zh': '无法生成路线：没有有效的地址坐标。',
-    },
-    'zapocniVoznjuPrviPuta': {
-      'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira za termin.',
-      'en': 'The route will be available when tracking is automatically activated for the slot.',
-      'ru': 'Маршрут станет доступен, когда отслеживание автоматически активируется для слота.',
-      'de': 'Die Route ist verfügbar, sobald das Tracking für den Termin automatisch aktiviert wird.',
-      'zh': '当该时段自动启用跟踪后，路线将可用。',
-    },
-    'nemaPutnikaZaTermin': {
-      'sr': 'Nema putnika za izabrani termin.',
-      'en': 'No passengers for the selected time slot.',
-      'ru': 'Нет пассажиров на выбранное время.',
-      'de': 'Keine Fahrgäste für den ausgewählten Termin.',
-      'zh': '所选时段没有乘客。',
-    },
-    'hereWeGoOtvoren': {
-      'sr': 'HERE WeGo otvoren sa trenutnim redosledom stanica.',
-      'en': 'HERE WeGo opened with the current stop order.',
-      'ru': 'HERE WeGo открыт с текущим порядком остановок.',
-      'de': 'HERE WeGo mit der aktuellen Haltestellenreihenfolge geöffnet.',
-      'zh': 'HERE WeGo 已以当前站点顺序打开。',
-    },
-    'mapaNijeOtvorena': {
-      'sr': 'MAPA nije otvorena:',
-      'en': 'MAP was not opened:',
-      'ru': 'КАРТА не открыта:',
-      'de': 'KARTE wurde nicht geöffnet:',
-      'zh': '地图未打开：',
-    },
-    'rutaPripremljena': {
-      'sr': 'Ruta pripremljena za HERE WeGo.',
-      'en': 'Route prepared for HERE WeGo.',
-      'ru': 'Маршрут подготовлен для HERE WeGo.',
-      'de': 'Route für HERE WeGo vorbereitet.',
-      'zh': '已为 HERE WeGo 准备好路线。',
-    },
-    'trackingVecPokrenut': {
-      'sr': 'Tracking je već pokrenut. Zaustaviće se automatski kada završite sa poslom.',
-      'en': 'Tracking is already running. It will stop automatically when you finish work.',
-      'ru': 'Отслеживание уже запущено. Оно остановится автоматически по завершению работы.',
-      'de': 'Tracking läuft bereits. Es wird automatisch gestoppt, wenn Sie die Arbeit beenden.',
-      'zh': '跟踪已在运行。完成工作后将自动停止。',
-    },
-    'temaPromenjena': {
-      'sr': '🎨 Tema promenjena',
-      'en': '🎨 Theme changed',
-      'ru': '🎨 Тема изменена',
-      'de': '🎨 Thema geändert',
-      'zh': '🎨 主题已更改'
-    },
-    'nemogucIdentifikovatiVozaca': {
-      'sr': 'Nije moguće identifikovati vozača.',
-      'en': 'Unable to identify the driver.',
-      'ru': 'Не удалось идентифицировать водителя.',
-      'de': 'Der Fahrer konnte nicht identifiziert werden.',
-      'zh': '无法识别司机。',
-    },
-    'promeniTemu': {
-      'sr': 'Promeni temu',
-      'en': 'Change theme',
-      'ru': 'Сменить тему',
-      'de': 'Thema ändern',
-      'zh': '更改主题'
-    },
-    'promeniPin': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern', 'zh': '更改PIN码'},
-    'promeniJezik': {
-      'sr': 'Promeni jezik',
-      'en': 'Change language',
-      'ru': 'Изменить язык',
-      'de': 'Sprache ändern',
-      'zh': '更改语言'
-    },
-    'jezikPromenjen': {
-      'sr': '🌐 Jezik promenjen',
-      'en': '🌐 Language changed',
-      'ru': '🌐 Язык изменён',
-      'de': '🌐 Sprache geändert',
-      'zh': '🌐 语言已更改',
-    },
-    'logout': {'sr': 'Logout', 'en': 'Log out', 'ru': 'Выйти', 'de': 'Abmelden', 'zh': '退出登录'},
-    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
-    'izaberiDan': {'sr': 'Izaberi dan', 'en': 'Select day', 'ru': 'Выберите день', 'de': 'Tag auswählen', 'zh': '选择日期'},
-    'logoutPitanje': {
-      'sr': 'Da li ste sigurni da želite da se odjavite?',
-      'en': 'Are you sure you want to log out?',
-      'ru': 'Вы уверены, что хотите выйти?',
-      'de': 'Möchten Sie sich wirklich abmelden?',
-      'zh': '您确定要退出登录吗？',
-    },
-    'pinPromenjen': {
-      'sr': '✅ PIN je uspešno promenjen.',
-      'en': '✅ PIN has been changed successfully.',
-      'ru': '✅ PIN успешно изменён.',
-      'de': '✅ PIN wurde erfolgreich geändert.',
-      'zh': '✅ PIN码已成功修改。',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('vozacScreen');
 
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;
@@ -1880,89 +1750,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
   String? _error;
 
   // Prevodi za dijalog promene PIN-a (SR/EN/RU/DE).
-  static const Map<String, Map<String, String>> _t = {
-    'trenutniPinMora6Cifara': {
-      'sr': 'Trenutni PIN mora imati tačno 6 cifara.',
-      'en': 'Current PIN must be exactly 6 digits.',
-      'ru': 'Текущий PIN должен содержать ровно 6 цифр.',
-      'de': 'Die aktuelle PIN muss genau 6 Ziffern haben.',
-      'zh': '当前PIN码必须正好为6位数字。',
-    },
-    'noviPinMora6Cifara': {
-      'sr': 'Novi PIN mora imati tačno 6 cifara.',
-      'en': 'New PIN must be exactly 6 digits.',
-      'ru': 'Новый PIN должен содержать ровно 6 цифр.',
-      'de': 'Die neue PIN muss genau 6 Ziffern haben.',
-      'zh': '新PIN码必须正好为6位数字。',
-    },
-    'noviPinoviSeNePoklapaju': {
-      'sr': 'Novi PIN-ovi se ne poklapaju.',
-      'en': 'New PINs do not match.',
-      'ru': 'Новые PIN-коды не совпадают.',
-      'de': 'Die neuen PINs stimmen nicht überein.',
-      'zh': '两次输入的新PIN码不一致。',
-    },
-    'noviPinMoraBitiRazlicit': {
-      'sr': 'Novi PIN mora biti različit od trenutnog.',
-      'en': 'New PIN must be different from the current one.',
-      'ru': 'Новый PIN должен отличаться от текущего.',
-      'de': 'Die neue PIN muss sich von der aktuellen unterscheiden.',
-      'zh': '新PIN码必须与当前PIN码不同。',
-    },
-    'trenutniPinNijeIspravan': {
-      'sr': 'Trenutni PIN nije ispravan.',
-      'en': 'Current PIN is incorrect.',
-      'ru': 'Текущий PIN неверен.',
-      'de': 'Die aktuelle PIN ist falsch.',
-      'zh': '当前PIN码不正确。',
-    },
-    'nalogNemaPin': {
-      'sr': 'Nalog nema podešen PIN.',
-      'en': 'Account has no PIN set.',
-      'ru': 'У аккаунта не установлен PIN.',
-      'de': 'Für das Konto ist keine PIN festgelegt.',
-      'zh': '该账户未设置PIN码。',
-    },
-    'greskaPromenaPin': {
-      'sr': 'Greška pri promeni PIN-a. Pokušaj ponovo.',
-      'en': 'Error changing PIN. Please try again.',
-      'ru': 'Ошибка при смене PIN. Попробуйте снова.',
-      'de': 'Fehler beim Ändern der PIN. Bitte versuche es erneut.',
-      'zh': '修改PIN码时出错。请重试。',
-    },
-    'pinPromenjen': {
-      'sr': '✅ PIN je uspešno promenjen.',
-      'en': '✅ PIN has been changed successfully.',
-      'ru': '✅ PIN успешно изменён.',
-      'de': '✅ PIN wurde erfolgreich geändert.',
-      'zh': '✅ PIN码已成功修改。',
-    },
-    'promeniPin': {'sr': 'Promeni PIN', 'en': 'Change PIN', 'ru': 'Изменить PIN', 'de': 'PIN ändern', 'zh': '更改PIN码'},
-    'unesiPinSubtitle': {
-      'sr': 'Unesi trenutni i novi PIN (6 cifara)',
-      'en': 'Enter current and new PIN (6 digits)',
-      'ru': 'Введите текущий и новый PIN (6 цифр)',
-      'de': 'Aktuelle und neue PIN eingeben (6 Ziffern)',
-      'zh': '请输入当前和新PIN码（6位数字）',
-    },
-    'trenutniPin': {
-      'sr': 'Trenutni PIN',
-      'en': 'Current PIN',
-      'ru': 'Текущий PIN',
-      'de': 'Aktuelle PIN',
-      'zh': '当前PIN码'
-    },
-    'noviPin': {'sr': 'Novi PIN', 'en': 'New PIN', 'ru': 'Новый PIN', 'de': 'Neue PIN', 'zh': '新PIN码'},
-    'ponoviNoviPin': {
-      'sr': 'Ponovi novi PIN',
-      'en': 'Repeat new PIN',
-      'ru': 'Повторите новый PIN',
-      'de': 'Neue PIN wiederholen',
-      'zh': '再次输入新PIN码',
-    },
-    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('vozacScreen2');
 
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

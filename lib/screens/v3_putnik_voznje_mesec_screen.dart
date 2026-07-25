@@ -7,47 +7,10 @@ import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_date_utils.dart';
 import '../utils/v3_style_helper.dart';
+import '../l10n/app_translations.dart';
 
 class _VoznjeMesecTr {
-  static const Map<String, Map<String, String>> _t = {
-    'dnevniPregled': {
-      'sr': 'Dnevni pregled vožnji',
-      'en': 'Daily ride overview',
-      'ru': 'Ежедневный обзор поездок',
-      'de': 'Tägliche Fahrtenübersicht',
-      'zh': '每日行程概览',
-    },
-    'nemaVoznji': {
-      'sr': 'Nema vožnji u izabranom mesecu.',
-      'en': 'No rides in the selected month.',
-      'ru': 'В выбранном месяце нет поездок.',
-      'de': 'Keine Fahrten im ausgewählten Monat.',
-      'zh': '所选月份没有行程。',
-    },
-    'voznji': {'sr': 'vožnji', 'en': 'rides', 'ru': 'поездок', 'de': 'Fahrten', 'zh': '次行程'},
-    'voznja': {'sr': 'vožnja', 'en': 'ride', 'ru': 'поездка', 'de': 'Fahrt', 'zh': '行程'},
-    'voznje': {'sr': 'vožnje', 'en': 'rides', 'ru': 'поездки', 'de': 'Fahrten', 'zh': '行程'},
-    'uplata': {'sr': 'Uplata', 'en': 'Payment', 'ru': 'Оплата', 'de': 'Zahlung', 'zh': '付款'},
-    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
-    'pokupio': {'sr': 'Pokupio', 'en': 'Picked up', 'ru': 'Подобрал', 'de': 'Abgeholt', 'zh': '已接载'},
-    'vreme': {'sr': 'vreme', 'en': 'time', 'ru': 'время', 'de': 'Zeit', 'zh': '时间'},
-    'ukupno': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt', 'zh': '总计'},
-    'otkazano': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
-    'otkazaoPutnik': {
-      'sr': 'Otkazao putnik',
-      'en': 'Canceled by passenger',
-      'ru': 'Отменил пассажир',
-      'de': 'Vom Fahrgast storniert',
-      'zh': '乘客已取消',
-    },
-    'otkazaoVozac': {
-      'sr': 'Otkazao vozač',
-      'en': 'Canceled by driver',
-      'ru': 'Отменил водитель',
-      'de': 'Vom Fahrer storniert',
-      'zh': '司机已取消',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('putnikVoznjeMesecScreen');
 
   static String tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

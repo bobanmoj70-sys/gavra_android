@@ -11,97 +11,13 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
+import '../l10n/app_translations.dart';
 
 // Deljeni prevodi za ekran adresa (SR/EN/RU/DE).
 class _AdrTr {
   _AdrTr._();
 
-  static const Map<String, Map<String, String>> _t = {
-    'naslov': {'sr': '📍 Adrese', 'en': '📍 Addresses', 'ru': '📍 Адреса', 'de': '📍 Adressen', 'zh': '📍 地址'},
-    'greska': {'sr': 'Greška:', 'en': 'Error:', 'ru': 'Ошибка:', 'de': 'Fehler:', 'zh': '错误：'},
-    'dodaj': {'sr': 'Dodaj', 'en': 'Add', 'ru': 'Добавить', 'de': 'Hinzufügen', 'zh': '添加'},
-    'adresaDodata': {
-      'sr': '✅ Adresa dodata',
-      'en': '✅ Address added',
-      'ru': '✅ Адрес добавлен',
-      'de': '✅ Adresse hinzugefügt',
-      'zh': '✅ 已添加地址',
-    },
-    'adresaIzmenjena': {
-      'sr': '✅ Adresa izmenjena',
-      'en': '✅ Address updated',
-      'ru': '✅ Адрес изменён',
-      'de': '✅ Adresse geändert',
-      'zh': '✅ 已更新地址',
-    },
-    'potvrdaBrisanja': {
-      'sr': 'Potvrda brisanja',
-      'en': 'Confirm deletion',
-      'ru': 'Подтвердите удаление',
-      'de': 'Löschen bestätigen',
-      'zh': '确认删除',
-    },
-    'daLiSteSigurniObrisati': {
-      'sr': 'Da li ste sigurni da želite obrisati adresu',
-      'en': 'Are you sure you want to delete the address',
-      'ru': 'Вы уверены, что хотите удалить адрес',
-      'de': 'Möchten Sie die Adresse wirklich löschen',
-      'zh': '您确定要删除此地址吗',
-    },
-    'da': {'sr': 'DA', 'en': 'YES', 'ru': 'ДА', 'de': 'JA', 'zh': '是'},
-    'ne': {'sr': 'NE', 'en': 'NO', 'ru': 'НЕТ', 'de': 'NEIN', 'zh': '否'},
-    'adresaObrisana': {
-      'sr': '🗑️ Adresa obrisana',
-      'en': '🗑️ Address deleted',
-      'ru': '🗑️ Адрес удалён',
-      'de': '🗑️ Adresse gelöscht',
-      'zh': '🗑️ 已删除地址',
-    },
-    'ukupno': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt', 'zh': '总计'},
-    'belaCrkvaKratko': {'sr': 'B. Crkva', 'en': 'B. Crkva', 'ru': 'Б. Црква', 'de': 'B. Crkva', 'zh': 'B. Crkva'},
-    'vrsac': {'sr': 'Vrsac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac', 'zh': 'Vrsac'},
-    'belaCrkvaPuno': {
-      'sr': 'Bela Crkva',
-      'en': 'Bela Crkva',
-      'ru': 'Бела Црква',
-      'de': 'Bela Crkva',
-      'zh': 'Bela Crkva'
-    },
-    'vrsacDijakritik': {'sr': 'Vršac', 'en': 'Vrsac', 'ru': 'Вршац', 'de': 'Vrsac', 'zh': 'Vrsac'},
-    'pretraziAdrese': {
-      'sr': 'Pretraži adrese...',
-      'en': 'Search addresses...',
-      'ru': 'Поиск адресов...',
-      'de': 'Adressen suchen...',
-      'zh': '搜索地址...',
-    },
-    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle', 'zh': '全部'},
-    'nemaAdresa': {
-      'sr': 'Nema adresa',
-      'en': 'No addresses',
-      'ru': 'Нет адресов',
-      'de': 'Keine Adressen',
-      'zh': '没有地址'
-    },
-    'novaAdresa': {'sr': 'Nova Adresa', 'en': 'New Address', 'ru': 'Новый адрес', 'de': 'Neue Adresse', 'zh': '新地址'},
-    'izmeniAdresu': {
-      'sr': 'Izmeni Adresu',
-      'en': 'Edit Address',
-      'ru': 'Изменить адрес',
-      'de': 'Adresse bearbeiten',
-      'zh': '编辑地址',
-    },
-    'nazivAdrese': {
-      'sr': 'Naziv adrese',
-      'en': 'Address name',
-      'ru': 'Название адреса',
-      'de': 'Adressname',
-      'zh': '地址名称'
-    },
-    'grad': {'sr': 'Grad', 'en': 'City', 'ru': 'Город', 'de': 'Stadt', 'zh': '城市'},
-    'odustani': {'sr': 'ODUSTANI', 'en': 'CANCEL', 'ru': 'ОТМЕНА', 'de': 'ABBRECHEN', 'zh': '取消'},
-    'sacuvaj': {'sr': 'SAČUVAJ', 'en': 'SAVE', 'ru': 'СОХРАНИТЬ', 'de': 'SPEICHERN', 'zh': '保存'},
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('adreseScreen');
 
   static String tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

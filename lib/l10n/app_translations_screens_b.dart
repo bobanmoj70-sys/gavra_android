@@ -1,0 +1,2264 @@
+part of 'app_translations.dart';
+
+const Map<String, Map<String, Map<String, String>>> _screensB = {
+  'putniciScreen': {
+    'dodajPutnika': {
+      'sr': 'Dodaj putnika',
+      'en': 'Add passenger',
+      'ru': 'Добавить пассажира',
+      'de': 'Passagier hinzufügen',
+      'zh': '添加乘客'
+    },
+    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle', 'zh': '全部'},
+    'pretraziPutnike': {
+      'sr': 'Pretraži putnike...',
+      'en': 'Search passengers...',
+      'ru': 'Поиск пассажиров...',
+      'de': 'Passagiere suchen...',
+      'zh': '搜索乘客...'
+    },
+    'nemaRezultataPretrage': {
+      'sr': 'Nema rezultata pretrage',
+      'en': 'No search results',
+      'ru': 'Нет результатов поиска',
+      'de': 'Keine Suchergebnisse',
+      'zh': '无搜索结果'
+    },
+    'nemaPutnika': {
+      'sr': 'Nema putnika',
+      'en': 'No passengers',
+      'ru': 'Нет пассажиров',
+      'de': 'Keine Passagiere',
+      'zh': '无乘客'
+    },
+    'potvrdiBrisanje': {
+      'sr': 'Potvrdi brisanje',
+      'en': 'Confirm deletion',
+      'ru': 'Подтвердите удаление',
+      'de': 'Löschen bestätigen',
+      'zh': '确认删除'
+    },
+    'daLiSteSigurniObrisatiPutnika': {
+      'sr':
+          'Da li ste sigurni da želite da obrišete "%s"?\n\n⚠️ VAŽNO:\n• Putnik će biti TRAJNO obrisan\n• Sve vožnje i statistike se brišu\n• Ova akcija je NEPOVRATNA!',
+      'en':
+          'Are you sure you want to delete "%s"?\n\n⚠️ IMPORTANT:\n• The passenger will be PERMANENTLY deleted\n• All rides and statistics will be deleted\n• This action is IRREVERSIBLE!',
+      'ru':
+          'Вы уверены, что хотите удалить "%s"?\n\n⚠️ ВАЖНО:\n• Пассажир будет НАВСЕГДА удален\n• Все поездки и статистика будут удалены\n• Это действие НЕОБРАТИМО!',
+      'de':
+          'Möchten Sie "%s" wirklich löschen?\n\n⚠️ WICHTIG:\n• Der Passagier wird DAUERHAFT gelöscht\n• Alle Fahrten und Statistiken werden gelöscht\n• Diese Aktion ist UNWIDERRUFLICH!',
+      'zh':
+          '您确定要删除“%s”吗？\n\n⚠️ 重要提示：\n• 乘客将被永久删除\n• 所有行程和统计数据都将被删除\n• 此操作不可恢复！',
+    },
+    'obrisi': {
+      'sr': 'Obriši',
+      'en': 'Delete',
+      'ru': 'Удалить',
+      'de': 'Löschen',
+      'zh': '删除'
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'obrisan': {
+      'sr': 'obrisan',
+      'en': 'deleted',
+      'ru': 'удален',
+      'de': 'gelöscht',
+      'zh': '已删除'
+    },
+    'pozovi': {
+      'sr': 'Pozovi',
+      'en': 'Call',
+      'ru': 'Позвонить',
+      'de': 'Anrufen',
+      'zh': '打电话'
+    },
+    'detaljneStatistike': {
+      'sr': 'Detaljne statistike',
+      'en': 'Detailed statistics',
+      'ru': 'Подробная статистика',
+      'de': 'Detaillierte Statistik',
+      'zh': '详细统计'
+    },
+    'uredi': {
+      'sr': 'Uredi',
+      'en': 'Edit',
+      'ru': 'Изменить',
+      'de': 'Bearbeiten',
+      'zh': '编辑'
+    },
+    'kontaktiraj': {
+      'sr': 'Kontaktiraj',
+      'en': 'Contact',
+      'ru': 'Связаться с',
+      'de': 'Kontaktieren',
+      'zh': '联系'
+    },
+    'sms': {'sr': 'SMS', 'en': 'SMS', 'ru': 'SMS', 'de': 'SMS', 'zh': '短信'},
+    'unesiteImeIliTelefon': {
+      'sr': '⚠️ Unesite makar ime ili broj telefona',
+      'en': '⚠️ Enter at least a name or phone number',
+      'ru': '⚠️ Введите хотя бы имя или номер телефона',
+      'de': '⚠️ Geben Sie mindestens einen Namen oder eine Telefonnummer ein',
+      'zh': '⚠️ 请至少输入姓名或电话号码',
+    },
+    'putnikDodan': {
+      'sr': '✅ Putnik dodan',
+      'en': '✅ Passenger added',
+      'ru': '✅ Пассажир добавлен',
+      'de': '✅ Passagier hinzugefügt',
+      'zh': '✅ 乘客已添加'
+    },
+    'putnikSacuvan': {
+      'sr': '✅ Putnik sačuvan',
+      'en': '✅ Passenger saved',
+      'ru': '✅ Пассажир сохранен',
+      'de': '✅ Passagier gespeichert',
+      'zh': '✅ 乘客已保存'
+    },
+    'greska': {
+      'sr': 'Greška',
+      'en': 'Error',
+      'ru': 'Ошибка',
+      'de': 'Fehler',
+      'zh': '错误'
+    },
+    'nijeOdabrano': {
+      'sr': '— nije odabrano —',
+      'en': '— not selected —',
+      'ru': '— не выбрано —',
+      'de': '— nicht ausgewählt —',
+      'zh': '— 未选择 —'
+    },
+    'urediPutnika': {
+      'sr': 'Uredi putnika',
+      'en': 'Edit passenger',
+      'ru': 'Изменить пассажира',
+      'de': 'Passagier bearbeiten',
+      'zh': '编辑乘客'
+    },
+    'noviPutnik': {
+      'sr': 'Novi putnik',
+      'en': 'New passenger',
+      'ru': 'Новый пассажир',
+      'de': 'Neuer Passagier',
+      'zh': '新乘客'
+    },
+    'azurirajPodatke': {
+      'sr': 'Ažuriraj podatke i sačuvaj izmene',
+      'en': 'Update the details and save changes',
+      'ru': 'Обновите данные и сохраните изменения',
+      'de': 'Daten aktualisieren und Änderungen speichern',
+      'zh': '更新信息并保存更改',
+    },
+    'unesiPodatke': {
+      'sr': 'Unesi podatke i dodaj putnika',
+      'en': 'Enter the details and add passenger',
+      'ru': 'Введите данные и добавьте пассажира',
+      'de': 'Daten eingeben und Passagier hinzufügen',
+      'zh': '输入信息并添加乘客',
+    },
+    'osnovniPodaci': {
+      'sr': 'Osnovni podaci',
+      'en': 'Basic details',
+      'ru': 'Основные данные',
+      'de': 'Grunddaten',
+      'zh': '基本信息'
+    },
+    'tipPutnika': {
+      'sr': 'Tip putnika',
+      'en': 'Passenger type',
+      'ru': 'Тип пассажира',
+      'de': 'Passagiertyp',
+      'zh': '乘客类型'
+    },
+    'radnik': {
+      'sr': '👷 Radnik',
+      'en': '👷 Worker',
+      'ru': '👷 Рабочий',
+      'de': '👷 Arbeiter',
+      'zh': '👷 工人'
+    },
+    'ucenik': {
+      'sr': '🎒 Učenik',
+      'en': '🎒 Student',
+      'ru': '🎒 Ученик',
+      'de': '🎒 Schüler',
+      'zh': '🎒 学生'
+    },
+    'dnevni': {
+      'sr': '🚶 Dnevni',
+      'en': '🚶 Daily',
+      'ru': '🚶 Ежедневный',
+      'de': '🚶 Täglich',
+      'zh': '🚶 日常'
+    },
+    'posiljka': {
+      'sr': '📦 Pošiljka',
+      'en': '📦 Shipment',
+      'ru': '📦 Посылка',
+      'de': '📦 Sendung',
+      'zh': '📦 包裹'
+    },
+    'imePrezime': {
+      'sr': 'Ime i prezime',
+      'en': 'First and last name',
+      'ru': 'Имя и фамилия',
+      'de': 'Vor- und Nachname',
+      'zh': '姓名'
+    },
+    'telefon1': {
+      'sr': 'Telefon 1 *',
+      'en': 'Phone 1 *',
+      'ru': 'Телефон 1 *',
+      'de': 'Telefon 1 *',
+      'zh': '电话 1 *'
+    },
+    'telefon2': {
+      'sr': 'Telefon 2 (opciono)',
+      'en': 'Phone 2 (optional)',
+      'ru': 'Телефон 2 (опционально)',
+      'de': 'Telefon 2 (optional)',
+      'zh': '电话 2（可选）'
+    },
+    'cenaPoVoznji': {
+      'sr': 'Cena po vožnji',
+      'en': 'Price per ride',
+      'ru': 'Цена за поездку',
+      'de': 'Preis pro Fahrt',
+      'zh': '每次价格'
+    },
+    'cenaPoDanu': {
+      'sr': 'Cena po danu',
+      'en': 'Price per day',
+      'ru': 'Цена за день',
+      'de': 'Preis pro Tag',
+      'zh': '每日价格'
+    },
+    'adreseBc': {
+      'sr': 'Adrese — Bela Crkva',
+      'en': 'Addresses — Bela Crkva',
+      'ru': 'Адреса — Бела-Црква',
+      'de': 'Adressen — Bela Crkva',
+      'zh': '地址 — Bela Crkva'
+    },
+    'adreseVs': {
+      'sr': 'Adrese — Vršac',
+      'en': 'Addresses — Vršac',
+      'ru': 'Адреса — Вршац',
+      'de': 'Adressen — Vršac',
+      'zh': '地址 — Vršac'
+    },
+    'bcAdresa1': {
+      'sr': 'BC — Adresa 1',
+      'en': 'BC — Address 1',
+      'ru': 'BC — Адрес 1',
+      'de': 'BC — Adresse 1',
+      'zh': 'BC — 地址 1'
+    },
+    'bcAdresa2': {
+      'sr': 'BC — Adresa 2 (opciono)',
+      'en': 'BC — Address 2 (optional)',
+      'ru': 'BC — Адрес 2 (опционально)',
+      'de': 'BC — Adresse 2 (optional)',
+      'zh': 'BC — 地址 2（可选）'
+    },
+    'vsAdresa1': {
+      'sr': 'VS — Adresa 1',
+      'en': 'VS — Address 1',
+      'ru': 'VS — Адрес 1',
+      'de': 'VS — Adresse 1',
+      'zh': 'VS — 地址 1'
+    },
+    'vsAdresa2': {
+      'sr': 'VS — Adresa 2 (opciono)',
+      'en': 'VS — Address 2 (optional)',
+      'ru': 'VS — Адрес 2 (опционально)',
+      'de': 'VS — Adresse 2 (optional)',
+      'zh': 'VS — 地址 2（可选）'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'dodaj': {
+      'sr': 'Dodaj',
+      'en': 'Add',
+      'ru': 'Добавить',
+      'de': 'Hinzufügen',
+      'zh': '添加'
+    },
+  },
+  'putnikProfilScreenProfileDialogT': {
+    'izmeniProfilTitle': {
+      'sr': 'Izmeni profil',
+      'en': 'Edit profile',
+      'ru': 'Изменить профиль',
+      'de': 'Profil bearbeiten',
+      'zh': '编辑资料',
+    },
+    'azurirajImeTel': {
+      'sr': 'Ažuriraj ime i broj telefona',
+      'en': 'Update name and phone number',
+      'ru': 'Обновите имя и номер телефона',
+      'de': 'Name und Telefonnummer aktualisieren',
+      'zh': '更新姓名和电话号码',
+    },
+    'imePrezime': {
+      'sr': 'Ime i prezime',
+      'en': 'Full name',
+      'ru': 'Имя и фамилия',
+      'de': 'Vor- und Nachname',
+      'zh': '姓名'
+    },
+    'telefon1': {
+      'sr': 'Telefon 1',
+      'en': 'Phone 1',
+      'ru': 'Телефон 1',
+      'de': 'Telefon 1',
+      'zh': '电话 1'
+    },
+    'telefon2': {
+      'sr': 'Telefon 2',
+      'en': 'Phone 2',
+      'ru': 'Телефон 2',
+      'de': 'Telefon 2',
+      'zh': '电话 2'
+    },
+    'promeniPin': {
+      'sr': 'Promeni PIN',
+      'en': 'Change PIN',
+      'ru': 'Изменить PIN',
+      'de': 'PIN ändern',
+      'zh': '更改PIN码'
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'dodaj': {
+      'sr': '➕ dodaj',
+      'en': '➕ add',
+      'ru': '➕ добавить',
+      'de': '➕ hinzufügen',
+      'zh': '➕ 添加'
+    },
+    'imeNeSmeBitiPrazno': {
+      'sr': '⚠️ Ime i prezime ne sme biti prazno',
+      'en': '⚠️ Full name must not be empty',
+      'ru': '⚠️ Имя и фамилия не должны быть пустыми',
+      'de': '⚠️ Vor- und Nachname dürfen nicht leer sein',
+      'zh': '⚠️ 姓名不能为空',
+    },
+    'profilSacuvan': {
+      'sr': '✅ Profil sačuvan',
+      'en': '✅ Profile saved',
+      'ru': '✅ Профиль сохранён',
+      'de': '✅ Profil gespeichert',
+      'zh': '✅ 资料已保存',
+    },
+    'greska': {
+      'sr': 'Greška',
+      'en': 'Error',
+      'ru': 'Ошибка',
+      'de': 'Fehler',
+      'zh': '错误'
+    },
+    'promeniPinTitle': {
+      'sr': 'Promeni PIN',
+      'en': 'Change PIN',
+      'ru': 'Изменить PIN',
+      'de': 'PIN ändern',
+      'zh': '更改PIN码'
+    },
+    'unesiPinSubtitle': {
+      'sr': 'Unesi trenutni i novi PIN (6 cifara)',
+      'en': 'Enter current and new PIN (6 digits)',
+      'ru': 'Введите текущий и новый PIN (6 цифр)',
+      'de': 'Aktuelle und neue PIN eingeben (6 Ziffern)',
+      'zh': '输入当前和新的PIN码（6位数字）',
+    },
+    'trenutniPin': {
+      'sr': 'Trenutni PIN',
+      'en': 'Current PIN',
+      'ru': 'Текущий PIN',
+      'de': 'Aktuelle PIN',
+      'zh': '当前PIN码'
+    },
+    'noviPin': {
+      'sr': 'Novi PIN',
+      'en': 'New PIN',
+      'ru': 'Новый PIN',
+      'de': 'Neue PIN',
+      'zh': '新PIN码'
+    },
+    'ponoviNoviPin': {
+      'sr': 'Ponovi novi PIN',
+      'en': 'Repeat new PIN',
+      'ru': 'Повторите новый PIN',
+      'de': 'Neue PIN wiederholen',
+      'zh': '重复新PIN码',
+    },
+    'trenutniPinMora6Cifara': {
+      'sr': 'Trenutni PIN mora imati tačno 6 cifara.',
+      'en': 'Current PIN must have exactly 6 digits.',
+      'ru': 'Текущий PIN должен содержать ровно 6 цифр.',
+      'de': 'Die aktuelle PIN muss genau 6 Ziffern haben.',
+      'zh': '当前PIN码必须正好是6位数字。',
+    },
+    'noviPinMora6Cifara': {
+      'sr': 'Novi PIN mora imati tačno 6 cifara.',
+      'en': 'New PIN must have exactly 6 digits.',
+      'ru': 'Новый PIN должен содержать ровно 6 цифр.',
+      'de': 'Die neue PIN muss genau 6 Ziffern haben.',
+      'zh': '新PIN码必须正好是6位数字。',
+    },
+    'noviPinoviSeNePoklapaju': {
+      'sr': 'Novi PIN-ovi se ne poklapaju.',
+      'en': 'New PINs do not match.',
+      'ru': 'Новые PIN-коды не совпадают.',
+      'de': 'Die neuen PINs stimmen nicht überein.',
+      'zh': '新PIN码不匹配。',
+    },
+    'noviPinMoraBitiRazlicit': {
+      'sr': 'Novi PIN mora biti različit od trenutnog.',
+      'en': 'New PIN must be different from the current one.',
+      'ru': 'Новый PIN должен отличаться от текущего.',
+      'de': 'Die neue PIN muss sich von der aktuellen unterscheiden.',
+      'zh': '新PIN码必须与当前不同。',
+    },
+    'trenutniPinNijeIspravan': {
+      'sr': 'Trenutni PIN nije ispravan.',
+      'en': 'Current PIN is incorrect.',
+      'ru': 'Текущий PIN неверен.',
+      'de': 'Die aktuelle PIN ist falsch.',
+      'zh': '当前PIN码不正确。',
+    },
+    'nalogNemaPin': {
+      'sr': 'Nalog nema podešen PIN.',
+      'en': 'Account has no PIN set.',
+      'ru': 'У аккаунта не установлен PIN.',
+      'de': 'Für das Konto ist keine PIN festgelegt.',
+      'zh': '该账户未设置PIN码。',
+    },
+    'greskaPromenaPin': {
+      'sr': 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+      'en': 'Error changing PIN. Please try again.',
+      'ru': 'Ошибка при смене PIN. Попробуйте снова.',
+      'de': 'Fehler beim Ändern der PIN. Bitte versuche es erneut.',
+      'zh': '更改PIN码时出错。请重试。',
+    },
+    'pinPromenjen': {
+      'sr': '✅ PIN je uspešno promenjen.',
+      'en': '✅ PIN has been changed successfully.',
+      'ru': '✅ PIN успешно изменён.',
+      'de': '✅ PIN wurde erfolgreich geändert.',
+      'zh': '✅ PIN码已成功更改。',
+    },
+  },
+  'putnikProfilScreen': {
+    'tema': {
+      'sr': 'Tema',
+      'en': 'Theme',
+      'ru': 'Тема',
+      'de': 'Thema',
+      'zh': '主题'
+    },
+    'izmeniProfil': {
+      'sr': 'Izmeni profil',
+      'en': 'Edit profile',
+      'ru': 'Изменить профиль',
+      'de': 'Profil bearbeiten',
+      'zh': '编辑资料'
+    },
+    'odjava': {
+      'sr': 'Odjava',
+      'en': 'Log out',
+      'ru': 'Выйти',
+      'de': 'Abmelden',
+      'zh': '退出登录'
+    },
+    'tipUcenik': {
+      'sr': '🎓 Učenik',
+      'en': '🎓 Student',
+      'ru': '🎓 Ученик',
+      'de': '🎓 Schüler',
+      'zh': '🎓 学生'
+    },
+    'tipPosiljka': {
+      'sr': '📦 Pošiljka',
+      'en': '📦 Parcel',
+      'ru': '📦 Посылка',
+      'de': '📦 Paket',
+      'zh': '📦 包裹'
+    },
+    'tipDnevni': {
+      'sr': '📅 Dnevni',
+      'en': '📅 Daily',
+      'ru': '📅 Ежедневно',
+      'de': '📅 Täglich',
+      'zh': '📅 日常'
+    },
+    'tipRadnik': {
+      'sr': '💼 Radnik',
+      'en': '💼 Worker',
+      'ru': '💼 Рабочий',
+      'de': '💼 Arbeiter',
+      'zh': '💼 工人'
+    },
+    'tipPutnik': {
+      'sr': '👤 Putnik',
+      'en': '👤 Passenger',
+      'ru': '👤 Пассажир',
+      'de': '👤 Fahrgast',
+      'zh': '👤 乘客'
+    },
+    'uputstvo': {
+      'sr': 'Uputstvo za korišćenje',
+      'en': 'Usage instructions',
+      'ru': 'Инструкция по использованию',
+      'de': 'Gebrauchsanweisung',
+      'zh': '使用说明',
+    },
+    'cenaPoVoznji': {
+      'sr': 'Cena po vožnji',
+      'en': 'Price per ride',
+      'ru': 'Цена за поездку',
+      'de': 'Preis pro Fahrt',
+      'zh': '每次价格'
+    },
+    'cenaPoDanu': {
+      'sr': 'Cena po danu',
+      'en': 'Price per day',
+      'ru': 'Цена за день',
+      'de': 'Preis pro Tag',
+      'zh': '每日价格'
+    },
+    'operativnaNedelja': {
+      'sr': 'Operativna nedelja',
+      'en': 'Operating week',
+      'ru': 'Рабочая неделя',
+      'de': 'Betriebswoche',
+      'zh': '营运周',
+    },
+    'stanjeVoznji': {
+      'sr': 'Stanje vožnji i naplate',
+      'en': 'Ride and payment status',
+      'ru': 'Состояние поездок и оплаты',
+      'de': 'Status der Fahrten und Zahlungen',
+      'zh': '行程与付款状态',
+    },
+    'voznji': {
+      'sr': 'Vožnji',
+      'en': 'Rides',
+      'ru': 'Поездок',
+      'de': 'Fahrten',
+      'zh': '行程'
+    },
+    'otkazano': {
+      'sr': 'Otkazano',
+      'en': 'Canceled',
+      'ru': 'Отменено',
+      'de': 'Storniert',
+      'zh': '已取消'
+    },
+    'placeno': {
+      'sr': 'Plaćeno',
+      'en': 'Paid',
+      'ru': 'Оплачено',
+      'de': 'Bezahlt',
+      'zh': '已支付'
+    },
+    'dug': {
+      'sr': 'Dug',
+      'en': 'Debt',
+      'ru': 'Долг',
+      'de': 'Schuld',
+      'zh': '欠款'
+    },
+    'ukupanDug': {
+      'sr': 'Ukupan dug',
+      'en': 'Total debt',
+      'ru': 'Общий долг',
+      'de': 'Gesamtschuld',
+      'zh': '总欠款'
+    },
+    'poslednjaUplata': {
+      'sr': 'Poslednja uplata',
+      'en': 'Last payment',
+      'ru': 'Последний платеж',
+      'de': 'Letzte Zahlung',
+      'zh': '最后付款',
+    },
+    'modelCenaPoDanu': {
+      'sr':
+          'Model: cena po danu (jedna cena za jednu ili vise voznji u toku dana).',
+      'en': 'Model: price per day (one price for one or more rides per day).',
+      'ru':
+          'Модель: цена за день (одна цена за одну или несколько поездок в течение дня).',
+      'de':
+          'Modell: Preis pro Tag (ein Preis für eine oder mehrere Fahrten pro Tag).',
+      'zh': '模式：按天计价（一天内一次或多次行程统一收费）。',
+    },
+    'modelCenaPoVoznji': {
+      'sr': 'Model: cena po voznji (svaka voznja se naplaćuje).',
+      'en': 'Model: price per ride (every ride is charged).',
+      'ru': 'Модель: цена за поездку (каждая поездка оплачивается).',
+      'de': 'Modell: Preis pro Fahrt (jede Fahrt wird berechnet).',
+      'zh': '模式：按次计价（每次行程都收费）。',
+    },
+    'detaljneStatistike': {
+      'sr': 'Detaljne statistike',
+      'en': 'Detailed statistics',
+      'ru': 'Подробная статистика',
+      'de': 'Detaillierte Statistiken',
+      'zh': '详细统计',
+    },
+    'pregledPoMesecima': {
+      'sr': 'Pregled po mesecima',
+      'en': 'Monthly overview',
+      'ru': 'Обзор по месяцам',
+      'de': 'Monatsübersicht',
+      'zh': '月度概览',
+    },
+    'otvoriDetaljneStatistike': {
+      'sr': 'Otvori detaljne statistike',
+      'en': 'Open detailed statistics',
+      'ru': 'Открыть подробную статистику',
+      'de': 'Detaillierte Statistiken öffnen',
+      'zh': '打开详细统计',
+    },
+    'rasporedTermina': {
+      'sr': '🕐 Raspored termina',
+      'en': '🕐 Schedule',
+      'ru': '🕐 Расписание',
+      'de': '🕐 Zeitplan',
+      'zh': '🕐 日程安排'
+    },
+    'belaCrkva': {
+      'sr': 'Bela Crkva',
+      'en': 'Bela Crkva',
+      'ru': 'Бела Црква',
+      'de': 'Bela Crkva',
+      'zh': 'Bela Crkva'
+    },
+    'vrsac': {
+      'sr': 'Vrsac',
+      'en': 'Vrsac',
+      'ru': 'Вршац',
+      'de': 'Vrsac',
+      'zh': 'Vrsac'
+    },
+    'glavnaAdresa': {
+      'sr': 'Glavna adresa',
+      'en': 'Main address',
+      'ru': 'Основной адрес',
+      'de': 'Hauptadresse',
+      'zh': '主要地址'
+    },
+    'drugaAdresa': {
+      'sr': 'Druga adresa',
+      'en': 'Second address',
+      'ru': 'Второй адрес',
+      'de': 'Zweite Adresse',
+      'zh': '第二地址'
+    },
+    'primarnaAdresa': {
+      'sr': 'Primarna adresa',
+      'en': 'Primary address',
+      'ru': 'Основной адрес',
+      'de': 'Primäre Adresse',
+      'zh': '主要地址',
+    },
+    'bcPolazak': {
+      'sr': '🏙️ BC polazak',
+      'en': '🏙️ BC departure',
+      'ru': '🏙️ Отправление БC',
+      'de': '🏙️ BC Abfahrt',
+      'zh': '🏙️ BC出发'
+    },
+    'vsPolazak': {
+      'sr': '🌆 VS polazak',
+      'en': '🌆 VS departure',
+      'ru': '🌆 Отправление VS',
+      'de': '🌆 VS Abfahrt',
+      'zh': '🌆 VS出发'
+    },
+    'otkaziTermin': {
+      'sr': 'Otkaži termin',
+      'en': 'Cancel appointment',
+      'ru': 'Отменить запись',
+      'de': 'Termin stornieren',
+      'zh': '取消预约',
+    },
+    'zatvori': {
+      'sr': 'Zatvori',
+      'en': 'Close',
+      'ru': 'Закрыть',
+      'de': 'Schließen',
+      'zh': '关闭'
+    },
+    'odjavaTitle': {
+      'sr': 'Odjava',
+      'en': 'Log out',
+      'ru': 'Выход',
+      'de': 'Abmelden',
+      'zh': '退出登录'
+    },
+    'odjavaMessage': {
+      'sr': 'Da li ste sigurni da želite da se odjavite?',
+      'en': 'Are you sure you want to log out?',
+      'ru': 'Вы уверены, что хотите выйти?',
+      'de': 'Möchten Sie sich wirklich abmelden?',
+      'zh': '您确定要退出登录吗？',
+    },
+    'odjaviSe': {
+      'sr': 'Odjavi se',
+      'en': 'Log out',
+      'ru': 'Выйти',
+      'de': 'Abmelden',
+      'zh': '退出登录'
+    },
+    'otkaziBtn': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'danas': {
+      'sr': 'danas',
+      'en': 'today',
+      'ru': 'сегодня',
+      'de': 'heute',
+      'zh': '今天'
+    },
+    'sutra': {
+      'sr': 'sutra',
+      'en': 'tomorrow',
+      'ru': 'завтра',
+      'de': 'morgen',
+      'zh': '明天'
+    },
+    'danPonedeljak': {
+      'sr': 'Ponedeljak',
+      'en': 'Monday',
+      'ru': 'Понедельник',
+      'de': 'Montag',
+      'zh': '星期一'
+    },
+    'danUtorak': {
+      'sr': 'Utorak',
+      'en': 'Tuesday',
+      'ru': 'Вторник',
+      'de': 'Dienstag',
+      'zh': '星期二'
+    },
+    'danSreda': {
+      'sr': 'Sreda',
+      'en': 'Wednesday',
+      'ru': 'Среда',
+      'de': 'Mittwoch',
+      'zh': '星期三'
+    },
+    'danCetvrtak': {
+      'sr': 'Četvrtak',
+      'en': 'Thursday',
+      'ru': 'Четверг',
+      'de': 'Donnerstag',
+      'zh': '星期四'
+    },
+    'danPetak': {
+      'sr': 'Petak',
+      'en': 'Friday',
+      'ru': 'Пятница',
+      'de': 'Freitag',
+      'zh': '星期五'
+    },
+    'danSubota': {
+      'sr': 'Subota',
+      'en': 'Saturday',
+      'ru': 'Суббота',
+      'de': 'Samstag',
+      'zh': '星期六'
+    },
+    'danNedelja': {
+      'sr': 'Nedelja',
+      'en': 'Sunday',
+      'ru': 'Воскресенье',
+      'de': 'Sonntag',
+      'zh': '星期日'
+    },
+    'jezik': {
+      'sr': 'Jezik',
+      'en': 'Language',
+      'ru': 'Язык',
+      'de': 'Sprache',
+      'zh': '语言'
+    },
+  },
+  'putnikStatistikaScreen': {
+    'detaljneStatistike': {
+      'sr': 'Detaljne statistike',
+      'en': 'Detailed statistics',
+      'ru': 'Подробная статистика',
+      'de': 'Detaillierte Statistik',
+      'zh': '详细统计',
+    },
+    'tipRadnik': {
+      'sr': 'Tip: Radnik (model po danu)',
+      'en': 'Type: Worker (per-day model)',
+      'ru': 'Тип: Рабочий (модель по дням)',
+      'de': 'Typ: Arbeiter (Modell pro Tag)',
+      'zh': '类型：工人（按天计费模式）',
+    },
+    'tipUcenik': {
+      'sr': 'Tip: Učenik (model po danu)',
+      'en': 'Type: Student (per-day model)',
+      'ru': 'Тип: Ученик (модель по дням)',
+      'de': 'Typ: Schüler (Modell pro Tag)',
+      'zh': '类型：学生（按天计费模式）',
+    },
+    'tipPosiljka': {
+      'sr': 'Tip: Pošiljka (model po vožnji)',
+      'en': 'Type: Shipment (per-ride model)',
+      'ru': 'Тип: Посылка (модель по поездкам)',
+      'de': 'Typ: Sendung (Modell pro Fahrt)',
+      'zh': '类型：包裹（按次计费模式）',
+    },
+    'tipDnevni': {
+      'sr': 'Tip: Dnevni (model po vožnji)',
+      'en': 'Type: Daily (per-ride model)',
+      'ru': 'Тип: Ежедневный (модель по поездкам)',
+      'de': 'Typ: Täglich (Modell pro Fahrt)',
+      'zh': '类型：日常（按次计费模式）',
+    },
+    'prikazPoMesecima': {
+      'sr': 'Prikaz po mesecima (januar-decembar %s)',
+      'en': 'Monthly view (January-December %s)',
+      'ru': 'Ежемесячный просмотр (январь-декабрь %s)',
+      'de': 'Monatsansicht (Januar-Dezember %s)',
+      'zh': '按月查看（一月-十二月 %s）',
+    },
+    'voznji': {
+      'sr': 'Vožnji',
+      'en': 'Rides',
+      'ru': 'Поездки',
+      'de': 'Fahrten',
+      'zh': '行程'
+    },
+    'otkazano': {
+      'sr': 'Otkazano',
+      'en': 'Canceled',
+      'ru': 'Отменено',
+      'de': 'Storniert',
+      'zh': '已取消'
+    },
+    'obaveza': {
+      'sr': 'Obaveza',
+      'en': 'Amount due',
+      'ru': 'Задолженность',
+      'de': 'Fälliger Betrag',
+      'zh': '应付金额'
+    },
+    'placeno': {
+      'sr': 'Plaćeno',
+      'en': 'Paid',
+      'ru': 'Оплачено',
+      'de': 'Bezahlt',
+      'zh': '已支付'
+    },
+    'dug': {
+      'sr': 'Dug',
+      'en': 'Debt',
+      'ru': 'Долг',
+      'de': 'Schulden',
+      'zh': '欠款'
+    },
+    'visak': {
+      'sr': 'Višak',
+      'en': 'Credit',
+      'ru': 'Переплата',
+      'de': 'Guthaben',
+      'zh': '余额'
+    },
+    'ukupanDug': {
+      'sr': 'Ukupan dug',
+      'en': 'Total debt',
+      'ru': 'Общий долг',
+      'de': 'Gesamtschulden',
+      'zh': '总欠款',
+    },
+    'ukupanVisak': {
+      'sr': 'Ukupan višak',
+      'en': 'Total credit',
+      'ru': 'Общая переплата',
+      'de': 'Gesamtguthaben',
+      'zh': '总余额',
+    },
+    'poslednjaUplata': {
+      'sr': 'Poslednja uplata',
+      'en': 'Last payment',
+      'ru': 'Последний платеж',
+      'de': 'Letzte Zahlung',
+      'zh': '最后付款',
+    },
+  },
+  'putnikVoznjeMesecScreen': {
+    'dnevniPregled': {
+      'sr': 'Dnevni pregled vožnji',
+      'en': 'Daily ride overview',
+      'ru': 'Ежедневный обзор поездок',
+      'de': 'Tägliche Fahrtenübersicht',
+      'zh': '每日行程概览',
+    },
+    'nemaVoznji': {
+      'sr': 'Nema vožnji u izabranom mesecu.',
+      'en': 'No rides in the selected month.',
+      'ru': 'В выбранном месяце нет поездок.',
+      'de': 'Keine Fahrten im ausgewählten Monat.',
+      'zh': '所选月份没有行程。',
+    },
+    'voznji': {
+      'sr': 'vožnji',
+      'en': 'rides',
+      'ru': 'поездок',
+      'de': 'Fahrten',
+      'zh': '次行程'
+    },
+    'voznja': {
+      'sr': 'vožnja',
+      'en': 'ride',
+      'ru': 'поездка',
+      'de': 'Fahrt',
+      'zh': '行程'
+    },
+    'voznje': {
+      'sr': 'vožnje',
+      'en': 'rides',
+      'ru': 'поездки',
+      'de': 'Fahrten',
+      'zh': '行程'
+    },
+    'uplata': {
+      'sr': 'Uplata',
+      'en': 'Payment',
+      'ru': 'Оплата',
+      'de': 'Zahlung',
+      'zh': '付款'
+    },
+    'vozac': {
+      'sr': 'Vozač',
+      'en': 'Driver',
+      'ru': 'Водитель',
+      'de': 'Fahrer',
+      'zh': '司机'
+    },
+    'pokupio': {
+      'sr': 'Pokupio',
+      'en': 'Picked up',
+      'ru': 'Подобрал',
+      'de': 'Abgeholt',
+      'zh': '已接载'
+    },
+    'vreme': {
+      'sr': 'vreme',
+      'en': 'time',
+      'ru': 'время',
+      'de': 'Zeit',
+      'zh': '时间'
+    },
+    'ukupno': {
+      'sr': 'Ukupno',
+      'en': 'Total',
+      'ru': 'Всего',
+      'de': 'Gesamt',
+      'zh': '总计'
+    },
+    'otkazano': {
+      'sr': 'Otkazano',
+      'en': 'Canceled',
+      'ru': 'Отменено',
+      'de': 'Storniert',
+      'zh': '已取消'
+    },
+    'otkazaoPutnik': {
+      'sr': 'Otkazao putnik',
+      'en': 'Canceled by passenger',
+      'ru': 'Отменил пассажир',
+      'de': 'Vom Fahrgast storniert',
+      'zh': '乘客已取消',
+    },
+    'otkazaoVozac': {
+      'sr': 'Otkazao vozač',
+      'en': 'Canceled by driver',
+      'ru': 'Отменил водитель',
+      'de': 'Vom Fahrer storniert',
+      'zh': '司机已取消',
+    },
+  },
+  'radniciZahteviScreen': {
+    'monitoringZahteva': {
+      'sr': 'Monitoring zahteva',
+      'en': 'Request monitoring',
+      'ru': 'Мониторинг запросов',
+      'de': 'Anfragenüberwachung',
+      'zh': '请求监控',
+    },
+    'obrada': {
+      'sr': 'obrada',
+      'en': 'processing',
+      'ru': 'обработка',
+      'de': 'Bearbeitung',
+      'zh': '处理中'
+    },
+    'odobreno': {
+      'sr': 'odobreno',
+      'en': 'approved',
+      'ru': 'одобрено',
+      'de': 'genehmigt',
+      'zh': '已批准'
+    },
+    'odbijeno': {
+      'sr': 'odbijeno',
+      'en': 'rejected',
+      'ru': 'отклонено',
+      'de': 'abgelehnt',
+      'zh': '已拒绝'
+    },
+    'otkazano': {
+      'sr': 'otkazano',
+      'en': 'canceled',
+      'ru': 'отменено',
+      'de': 'storniert',
+      'zh': '已取消'
+    },
+    'nemaZahteva': {
+      'sr': 'Nema zahteva',
+      'en': 'No requests',
+      'ru': 'Нет запросов',
+      'de': 'Keine Anfragen',
+      'zh': '没有请求'
+    },
+    'putnik': {
+      'sr': 'Putnik',
+      'en': 'Passenger',
+      'ru': 'Пассажир',
+      'de': 'Fahrgast',
+      'zh': '乘客'
+    },
+  },
+  'smsLoginScreen': {
+    'prijava': {
+      'sr': 'Prijava',
+      'en': 'Login',
+      'ru': 'Вход',
+      'de': 'Anmeldung',
+      'zh': '登录'
+    },
+    'unesitePhone': {
+      'sr': 'Unesite broj telefona za prijavu.',
+      'en': 'Enter your phone number to log in.',
+      'ru': 'Введите номер телефона для входа.',
+      'de': 'Geben Sie Ihre Telefonnummer ein, um sich anzumelden.',
+      'zh': '请输入手机号码以登录。',
+    },
+    'povezivanje': {
+      'sr': 'Povezivanje sa serverom u toku, sačekajte...',
+      'en': 'Connecting to server, please wait...',
+      'ru': 'Идёт подключение к серверу, подождите...',
+      'de': 'Verbindung zum Server wird hergestellt, bitte warten...',
+      'zh': '正在连接服务器，请稍候...',
+    },
+    'brojTelefona': {
+      'sr': 'Broj telefona',
+      'en': 'Phone number',
+      'ru': 'Номер телефона',
+      'de': 'Telefonnummer',
+      'zh': '电话号码'
+    },
+    'phoneHint': {
+      'sr': '06x xxx xxxx',
+      'en': '06x xxx xxxx',
+      'ru': '06x xxx xxxx',
+      'de': '06x xxx xxxx',
+      'zh': '06x xxx xxxx'
+    },
+    'nalepi': {
+      'sr': 'Nalepi',
+      'en': 'Paste',
+      'ru': 'Вставить',
+      'de': 'Einfügen',
+      'zh': '粘贴'
+    },
+    'nastavi': {
+      'sr': 'Nastavi',
+      'en': 'Continue',
+      'ru': 'Продолжить',
+      'de': 'Weiter',
+      'zh': '继续'
+    },
+    'ucitavanje': {
+      'sr': 'Učitavanje...',
+      'en': 'Loading...',
+      'ru': 'Загрузка...',
+      'de': 'Wird geladen...',
+      'zh': '加载中...'
+    },
+    'prijavaBiometrijom': {
+      'sr': 'Prijava biometrijom',
+      'en': 'Log in with biometrics',
+      'ru': 'Вход по биометрии',
+      'de': 'Mit Biometrie anmelden',
+      'zh': '生物识别登录',
+    },
+    'biometrijaNijePodesena': {
+      'sr':
+          'Biometrija nije podešena na uređaju. Uključite je u podešavanjima telefona.',
+      'en':
+          'Biometrics is not set up on this device. Enable it in your phone settings.',
+      'ru':
+          'Биометрия не настроена на устройстве. Включите её в настройках телефона.',
+      'de':
+          'Biometrie ist auf diesem Gerät nicht eingerichtet. Aktivieren Sie sie in den Telefoneinstellungen.',
+      'zh': '此设备未设置生物识别。请在手机设置中启用它。',
+    },
+    'sigurnosnaObavestenja': {
+      'sr': 'Poštovani korisnici, zbog dodatnih bezbednosnih usklađivanja sa zahtevima platformi (Google Play i '
+          'iOS), kao i završetka sertifikacionih procedura radi veće zaštite vaših podataka, produžen je period '
+          'ograničene dostupnosti aplikacije. Ove mere su uvedene kako bi se smanjio rizik od zloupotreba, '
+          'uključujući pokušaje phishing napada, krađe vaših podataka i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
+      'en': 'Dear users, due to additional security alignment with platform requirements (Google Play and iOS), '
+          'as well as the completion of certification procedures for stronger data protection, the period of '
+          'limited app availability has been extended. These measures were introduced to reduce the risk of '
+          'misuse, including phishing attempts, data theft and unauthorized advertising. Thank you for your '
+          'patience and understanding.',
+      'ru': 'Уважаемые пользователи, в связи с дополнительными мерами безопасности в соответствии с требованиями '
+          'платформ (Google Play и iOS), а также завершением сертификационных процедур для усиления защиты ваших '
+          'данных, продлён период ограниченной доступности приложения. Эти меры введены для снижения риска '
+          'злоупотреблений, включая попытки фишинга, кражу ваших данных и несанкционированную рекламу. Спасибо за '
+          'терпение и понимание.',
+      'de': 'Sehr geehrte Nutzer, aufgrund zusätzlicher Sicherheitsanpassungen an die Anforderungen der Plattformen '
+          '(Google Play und iOS) sowie des Abschlusses von Zertifizierungsverfahren zum besseren Schutz Ihrer Daten '
+          'wurde der Zeitraum der eingeschränkten App-Verfügbarkeit verlängert. Diese Maßnahmen wurden eingeführt, '
+          'um das Risiko von Missbrauch zu verringern, einschließlich Phishing-Versuchen, Datendiebstahl und '
+          'unbefugter Werbung. Vielen Dank für Ihre Geduld und Ihr Verständnis.',
+    },
+    'unesitePodatke': {
+      'sr': 'Unesite podatke za nalog',
+      'en': 'Enter account details for',
+      'ru': 'Введите данные учётной записи для',
+      'de': 'Geben Sie die Kontodaten ein für',
+      'zh': '请输入账户信息：',
+    },
+    'ime': {
+      'sr': 'Ime',
+      'en': 'First name',
+      'ru': 'Имя',
+      'de': 'Vorname',
+      'zh': '名字'
+    },
+    'prezime': {
+      'sr': 'Prezime',
+      'en': 'Last name',
+      'ru': 'Фамилия',
+      'de': 'Nachname',
+      'zh': '姓氏'
+    },
+    'kategorija': {
+      'sr': 'Kategorija',
+      'en': 'Category',
+      'ru': 'Категория',
+      'de': 'Kategorie',
+      'zh': '类别'
+    },
+    'izaberiteKategoriju': {
+      'sr': 'Izaberite kategoriju',
+      'en': 'Select category',
+      'ru': 'Выберите категорию',
+      'de': 'Kategorie auswählen',
+      'zh': '选择类别',
+    },
+    'radnik': {
+      'sr': '👷 Radnik',
+      'en': '👷 Worker',
+      'ru': '👷 Рабочий',
+      'de': '👷 Arbeiter',
+      'zh': '👷 工人'
+    },
+    'ucenik': {
+      'sr': '🎒 Učenik',
+      'en': '🎒 Student',
+      'ru': '🎒 Ученик',
+      'de': '🎒 Schüler',
+      'zh': '🎒 学生'
+    },
+    'dnevni': {
+      'sr': '📅 Dnevni',
+      'en': '📅 Daily',
+      'ru': '📅 Ежедневно',
+      'de': '📅 Täglich',
+      'zh': '📅 每日'
+    },
+    'posiljka': {
+      'sr': '📦 Pošiljka',
+      'en': '📦 Parcel',
+      'ru': '📦 Посылка',
+      'de': '📦 Paket',
+      'zh': '📦 包裹'
+    },
+    'adresaBc': {
+      'sr': 'Adresa BC *',
+      'en': 'BC address *',
+      'ru': 'Адрес БЦ *',
+      'de': 'BC-Adresse *',
+      'zh': 'BC地址 *'
+    },
+    'adresaVs': {
+      'sr': 'Adresa VS *',
+      'en': 'VS address *',
+      'ru': 'Адрес ВС *',
+      'de': 'VS-Adresse *',
+      'zh': 'VS地址 *'
+    },
+    'noviPin': {
+      'sr': 'Novi PIN kod (6 cifara) *',
+      'en': 'New PIN code (6 digits) *',
+      'ru': 'Новый PIN-код (6 цифр) *',
+      'de': 'Neue PIN (6 Ziffern) *',
+      'zh': '新PIN码（6位数字）*',
+    },
+    'unesitePin': {
+      'sr': 'Unesite PIN kod (6 cifara) *',
+      'en': 'Enter PIN code (6 digits) *',
+      'ru': 'Введите PIN-код (6 цифр) *',
+      'de': 'PIN eingeben (6 Ziffern) *',
+      'zh': '请输入PIN码（6位数字）*',
+    },
+    'ponoviPin': {
+      'sr': 'Ponovi PIN kod *',
+      'en': 'Repeat PIN code *',
+      'ru': 'Повторите PIN-код *',
+      'de': 'PIN wiederholen *',
+      'zh': '重复PIN码 *',
+    },
+    'sacuvajNastavi': {
+      'sr': 'Sačuvaj i nastavi',
+      'en': 'Save and continue',
+      'ru': 'Сохранить и продолжить',
+      'de': 'Speichern und fortfahren',
+      'zh': '保存并继续',
+    },
+    'adresaBcKratko': {
+      'sr': 'adresa BC',
+      'en': 'BC address',
+      'ru': 'адрес БЦ',
+      'de': 'BC-Adresse',
+      'zh': 'BC地址'
+    },
+    'adresaVsKratko': {
+      'sr': 'adresa VS',
+      'en': 'VS address',
+      'ru': 'адрес ВС',
+      'de': 'VS-Adresse',
+      'zh': 'VS地址'
+    },
+    'pinKod': {
+      'sr': 'PIN kod',
+      'en': 'PIN code',
+      'ru': 'PIN-код',
+      'de': 'PIN-Code',
+      'zh': 'PIN码'
+    },
+    'tip': {
+      'sr': 'tip',
+      'en': 'category',
+      'ru': 'категория',
+      'de': 'Kategorie',
+      'zh': '类别'
+    },
+    'dopunitePolja': {
+      'sr': 'Dopunite',
+      'en': 'Please complete',
+      'ru': 'Дополните',
+      'de': 'Bitte ergänzen',
+      'zh': '请补充'
+    },
+    'daNastavite': {
+      'sr': 'da nastavite.',
+      'en': 'to continue.',
+      'ru': 'чтобы продолжить.',
+      'de': 'um fortzufahren.',
+      'zh': '以继续。'
+    },
+    'dopuniteObavezna': {
+      'sr': 'Dopunite obavezna polja',
+      'en': 'Please complete required fields',
+      'ru': 'Заполните обязательные поля',
+      'de': 'Bitte Pflichtfelder ausfüllen',
+      'zh': '请填写必填字段',
+    },
+    'potvrdaIdentiteta': {
+      'sr': 'Za potvrdu identiteta unesite Vaš PIN kod (6 cifara).',
+      'en': 'To confirm your identity, enter your PIN code (6 digits).',
+      'ru': 'Для подтверждения личности введите ваш PIN-код (6 цифр).',
+      'de': 'Geben Sie zur Identitätsbestätigung Ihre PIN (6 Ziffern) ein.',
+      'zh': '为确认您的身份，请输入您的PIN码（6位数字）。',
+    },
+    'podesitePin': {
+      'sr':
+          'Iz sigurnosnih razloga potrebno je da podesite PIN kod (6 cifara).',
+      'en': 'For security reasons you need to set up a PIN code (6 digits).',
+      'ru':
+          'Из соображений безопасности необходимо установить PIN-код (6 цифр).',
+      'de':
+          'Aus Sicherheitsgründen müssen Sie eine PIN (6 Ziffern) einrichten.',
+      'zh': '出于安全原因，您需要设置PIN码（6位数字）。',
+    },
+    'imeKratko': {
+      'sr': 'ime',
+      'en': 'name',
+      'ru': 'имя',
+      'de': 'Name',
+      'zh': '名字'
+    },
+    'kategorijuKratko': {
+      'sr': 'kategoriju',
+      'en': 'category',
+      'ru': 'категорию',
+      'de': 'Kategorie',
+      'zh': '类别'
+    },
+    'deviceLimitReached': {
+      'sr':
+          '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
+      'en': '❌ Device limit of 2 per account reached. Contact admin.',
+      'ru':
+          '❌ Достигнут лимит в 2 устройства на аккаунт. Свяжитесь с администратором.',
+      'de':
+          '❌ Limit von 2 Geräten pro Konto erreicht. Kontaktieren Sie den Administrator.',
+      'zh': '❌ 每个账户最多2台设备的限制已达到。请联系管理员。',
+    },
+    'telefonNijeUparen': {
+      'sr': '❌ Telefon nije uparen sa UUID nalogom.',
+      'en': '❌ Phone is not paired with the account.',
+      'ru': '❌ Телефон не привязан к учётной записи UUID.',
+      'de': '❌ Telefon ist nicht mit dem UUID-Konto verknüpft.',
+      'zh': '❌ 手机未与该账户配对。',
+    },
+    'nisteUSistemu': {
+      'sr':
+          '❌ Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+      'en':
+          '❌ This is a closed application and you are not in the system. Contact admin.',
+      'ru':
+          '❌ Это приложение закрытого типа, и вы не зарегистрированы в системе. Свяжитесь с администратором.',
+      'de':
+          '❌ Dies ist eine geschlossene Anwendung und Sie sind nicht im System. Kontaktieren Sie den Administrator.',
+      'zh': '❌ 这是一个封闭式应用，您不在系统中。请联系管理员。',
+    },
+    'unosNijeKompletan': {
+      'sr': '❌ Upis nije kompletan. Nedostaje:',
+      'en': '❌ Entry is incomplete. Missing:',
+      'ru': '❌ Запись неполная. Отсутствует:',
+      'de': '❌ Eintrag ist unvollständig. Es fehlt:',
+      'zh': '❌ 条目不完整。缺少：',
+    },
+    'greskaCuvanjePin': {
+      'sr': '❌ Greška pri čuvanju PIN koda. Pokušaj ponovo.',
+      'en': '❌ Error saving PIN code. Please try again.',
+      'ru': '❌ Ошибка при сохранении PIN-кода. Попробуйте снова.',
+      'de': '❌ Fehler beim Speichern der PIN. Bitte versuchen Sie es erneut.',
+      'zh': '❌ 保存PIN码时出错。请重试。',
+    },
+    'profilSacuvan': {
+      'sr': '✅ Profil sačuvan.',
+      'en': '✅ Profile saved.',
+      'ru': '✅ Профиль сохранён.',
+      'de': '✅ Profil gespeichert.',
+      'zh': '✅ 个人资料已保存。',
+    },
+    'cuvanjeProfilaGreska': {
+      'sr': '❌ Čuvanje profila trenutno nije moguće. Pokušajte ponovo.',
+      'en': '❌ Saving profile is currently not possible. Please try again.',
+      'ru': '❌ Сохранение профиля сейчас невозможно. Попробуйте снова.',
+      'de':
+          '❌ Profil kann derzeit nicht gespeichert werden. Bitte versuchen Sie es erneut.',
+      'zh': '❌ 目前无法保存个人资料。请重试。',
+    },
+    'sesijaIstekla': {
+      'sr': '❌ Sesija je istekla. Počni ponovo.',
+      'en': '❌ Session expired. Please start again.',
+      'ru': '❌ Сессия истекла. Начните заново.',
+      'de': '❌ Sitzung abgelaufen. Bitte beginnen Sie erneut.',
+      'zh': '❌ 会话已过期。请重新开始。',
+    },
+    'uuidNedostaje': {
+      'sr': '❌ UUID naloga nedostaje. Prijavi se ponovo.',
+      'en': '❌ Account UUID is missing. Please log in again.',
+      'ru': '❌ Отсутствует UUID аккаунта. Войдите снова.',
+      'de': '❌ Konto-UUID fehlt. Bitte erneut anmelden.',
+      'zh': '❌ 账户UUID缺失。请重新登录。',
+    },
+    'prijavaNijeMoguca': {
+      'sr': '❌ Prijava trenutno nije moguća. Pokušajte ponovo.',
+      'en': '❌ Login is currently not possible. Please try again.',
+      'ru': '❌ Вход сейчас невозможен. Попробуйте снова.',
+      'de':
+          '❌ Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.',
+      'zh': '❌ 目前无法登录。请重试。',
+    },
+    'biometrijaNijeUspela': {
+      'sr': '❌ Biometrijska autentifikacija nije uspela',
+      'en': '❌ Biometric authentication failed',
+      'ru': '❌ Биометрическая аутентификация не удалась',
+      'de': '❌ Biometrische Authentifizierung fehlgeschlagen',
+      'zh': '❌ 生物识别认证失败',
+    },
+    'sacuvanTelefonNijeIspravan': {
+      'sr': '❌ Sačuvan telefon nije ispravan. Prijavi se brojem telefona.',
+      'en':
+          '❌ Saved phone number is invalid. Please log in using your phone number.',
+      'ru':
+          '❌ Сохранённый номер телефона неверен. Войдите с помощью номера телефона.',
+      'de':
+          '❌ Gespeicherte Telefonnummer ist ungültig. Bitte mit Telefonnummer anmelden.',
+      'zh': '❌ 保存的电话号码无效。请使用手机号码登录。',
+    },
+    'brojNijePronadjen': {
+      'sr': '❌ Broj telefona i UUID reda nisu pronađeni.',
+      'en': '❌ Phone number and account UUID were not found.',
+      'ru': '❌ Номер телефона и UUID записи не найдены.',
+      'de': '❌ Telefonnummer und Konto-UUID wurden nicht gefunden.',
+      'zh': '❌ 未找到电话号码和账户UUID。',
+    },
+    'uneseiteBrojTelefona': {
+      'sr': 'Unesite broj telefona.',
+      'en': 'Enter your phone number.',
+      'ru': 'Введите номер телефона.',
+      'de': 'Geben Sie Ihre Telefonnummer ein.',
+      'zh': '请输入您的电话号码。',
+    },
+    'proveravamBroj': {
+      'sr': '🔍 Proveravam broj...',
+      'en': '🔍 Checking number...',
+      'ru': '🔍 Проверяю номер...',
+      'de': '🔍 Nummer wird geprüft...',
+      'zh': '🔍 正在检查号码...',
+    },
+    'zahtevGreska': {
+      'sr': '❌ Trenutno ne možemo da obradimo zahtev. Pokušajte ponovo.',
+      'en': '❌ We cannot process your request right now. Please try again.',
+      'ru': '❌ Сейчас мы не можем обработать ваш запрос. Попробуйте снова.',
+      'de':
+          '❌ Ihre Anfrage kann derzeit nicht bearbeitet werden. Bitte versuchen Sie es erneut.',
+      'zh': '❌ 目前无法处理您的请求。请重试。',
+    },
+    'pinNisuIsti': {
+      'sr': 'PIN-ovi se ne poklapaju.',
+      'en': 'PIN codes do not match.',
+      'ru': 'PIN-коды не совпадают.',
+      'de': 'Die PINs stimmen nicht überein.',
+      'zh': 'PIN码不匹配。',
+    },
+    'cuvamPin': {
+      'sr': '💾 Čuvam PIN...',
+      'en': '💾 Saving PIN...',
+      'ru': '💾 Сохраняю PIN...',
+      'de': '💾 PIN wird gespeichert...',
+      'zh': '💾 正在保存PIN...'
+    },
+    'pinPodesen': {
+      'sr': '✅ PIN je uspešno podešen.',
+      'en': '✅ PIN successfully set.',
+      'ru': '✅ PIN успешно установлен.',
+      'de': '✅ PIN erfolgreich eingerichtet.',
+      'zh': '✅ PIN设置成功。',
+    },
+    'pinMora6Cifara': {
+      'sr': 'PIN mora imati tačno 6 cifara.',
+      'en': 'PIN must be exactly 6 digits.',
+      'ru': 'PIN должен содержать ровно 6 цифр.',
+      'de': 'Die PIN muss genau 6 Ziffern haben.',
+      'zh': 'PIN必须恰好为6位数字。',
+    },
+    'previseGreskihPokusaja': {
+      'sr': '❌ Previše pogrešnih pokušaja. Kontaktirajte admina.',
+      'en': '❌ Too many failed attempts. Please contact admin.',
+      'ru': '❌ Слишком много неудачных попыток. Свяжитесь с администратором.',
+      'de':
+          '❌ Zu viele fehlgeschlagene Versuche. Bitte kontaktieren Sie den Administrator.',
+      'zh': '❌ 失败尝试次数过多。请联系管理员。',
+    },
+    'proveravamPin': {
+      'sr': '🔐 Proveravam PIN...',
+      'en': '🔐 Verifying PIN...',
+      'ru': '🔐 Проверяю PIN...',
+      'de': '🔐 PIN wird überprüft...',
+      'zh': '🔐 正在验证PIN...',
+    },
+    'previseGreskihPokusajaZa': {
+      'sr': '❌ Previše pogrešnih pokušaja. Pokušajte ponovo za',
+      'en': '❌ Too many failed attempts. Please try again in',
+      'ru': '❌ Слишком много неудачных попыток. Повторите попытку через',
+      'de': '❌ Zu viele fehlgeschlagene Versuche. Versuchen Sie es erneut in',
+      'zh': '❌ 失败尝试次数过多。请稍后重试，剩余时间：',
+    },
+    'pinNijeIspravanPreostalo': {
+      'sr': '❌ PIN nije ispravan. Preostalo pokušaja:',
+      'en': '❌ Incorrect PIN. Attempts remaining:',
+      'ru': '❌ Неверный PIN. Осталось попыток:',
+      'de': '❌ PIN ist falsch. Verbleibende Versuche:',
+      'zh': '❌ PIN不正确。剩余尝试次数：',
+    },
+    'identitetUredjajaNedostupan': {
+      'sr': '❌ Identitet uređaja nije dostupan.',
+      'en': '❌ Device identity is not available.',
+      'ru': '❌ Идентификатор устройства недоступен.',
+      'de': '❌ Geräteidentität ist nicht verfügbar.',
+      'zh': '❌ 设备标识不可用。',
+    },
+    'pinPotvrdjenUredjaj': {
+      'sr': '✅ PIN potvrđen. Uređaj je verifikovan.',
+      'en': '✅ PIN confirmed. Device verified.',
+      'ru': '✅ PIN подтверждён. Устройство проверено.',
+      'de': '✅ PIN bestätigt. Gerät verifiziert.',
+      'zh': '✅ PIN已确认。设备已验证。',
+    },
+    'pinPotvrdaGreska': {
+      'sr': '❌ PIN potvrda trenutno nije moguća. Pokušajte ponovo.',
+      'en': '❌ PIN confirmation is currently not possible. Please try again.',
+      'ru': '❌ Подтверждение PIN сейчас невозможно. Попробуйте снова.',
+      'de':
+          '❌ PIN-Bestätigung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.',
+      'zh': '❌ 目前无法确认PIN。请重试。',
+    },
+    'uneseiteImePrezime': {
+      'sr': 'Unesite ime i prezime.',
+      'en': 'Enter first and last name.',
+      'ru': 'Введите имя и фамилию.',
+      'de': 'Geben Sie Vor- und Nachname ein.',
+      'zh': '请输入姓名。',
+    },
+    'izaberiteTipPutnika': {
+      'sr': 'Izaberite tip putnika.',
+      'en': 'Select passenger category.',
+      'ru': 'Выберите категорию пассажира.',
+      'de': 'Wählen Sie die Fahrgastkategorie.',
+      'zh': '请选择乘客类别。',
+    },
+    'izaberiteAdreseBcVs': {
+      'sr': 'Izaberite po jednu adresu za BC i VS.',
+      'en': 'Select one address each for BC and VS.',
+      'ru': 'Выберите по одному адресу для БЦ и ВС.',
+      'de': 'Wählen Sie je eine Adresse für BC und VS.',
+      'zh': '请分别为BC和VS选择一个地址。',
+    },
+    'izaberiBcAdresu': {
+      'sr': 'Izaberi BC adresu.',
+      'en': 'Select BC address.',
+      'ru': 'Выберите адрес БЦ.',
+      'de': 'BC-Adresse auswählen.',
+      'zh': '请选择BC地址。',
+    },
+    'izaberiVsAdresu': {
+      'sr': 'Izaberi VS adresu.',
+      'en': 'Select VS address.',
+      'ru': 'Выберите адрес ВС.',
+      'de': 'VS-Adresse auswählen.',
+      'zh': '请选择VS地址。',
+    },
+  },
+  'uceniciZahteviScreen': {
+    'monitoringZahteva': {
+      'sr': 'Monitoring zahteva',
+      'en': 'Request monitoring',
+      'ru': 'Мониторинг запросов',
+      'de': 'Anfragenüberwachung',
+      'zh': '请求监控'
+    },
+    'obrada': {
+      'sr': 'obrada',
+      'en': 'processing',
+      'ru': 'обработка',
+      'de': 'Bearbeitung',
+      'zh': '处理中'
+    },
+    'odobreno': {
+      'sr': 'odobreno',
+      'en': 'approved',
+      'ru': 'одобрено',
+      'de': 'genehmigt',
+      'zh': '已批准'
+    },
+    'odbijeno': {
+      'sr': 'odbijeno',
+      'en': 'rejected',
+      'ru': 'отклонено',
+      'de': 'abgelehnt',
+      'zh': '已拒绝'
+    },
+    'otkazano': {
+      'sr': 'otkazano',
+      'en': 'canceled',
+      'ru': 'отменено',
+      'de': 'storniert',
+      'zh': '已取消'
+    },
+    'nemaZahteva': {
+      'sr': 'Nema zahteva',
+      'en': 'No requests',
+      'ru': 'Нет запросов',
+      'de': 'Keine Anfragen',
+      'zh': '无请求'
+    },
+    'putnik': {
+      'sr': 'Putnik',
+      'en': 'Passenger',
+      'ru': 'Пассажир',
+      'de': 'Fahrgast',
+      'zh': '乘客'
+    },
+    'ucenik': {
+      'sr': 'Učenik',
+      'en': 'Student',
+      'ru': 'Ученик',
+      'de': 'Schüler',
+      'zh': '学生'
+    },
+  },
+  'uplataPazaraScreen': {
+    'uplataPazara': {
+      'sr': 'Uplata pazara',
+      'en': 'Cash payment',
+      'ru': 'Оплата выручки',
+      'de': 'Kassenzahlung',
+      'zh': '现金付款'
+    },
+    'vozac': {
+      'sr': 'Vozač',
+      'en': 'Driver',
+      'ru': 'Водитель',
+      'de': 'Fahrer',
+      'zh': '司机'
+    },
+    'datum': {
+      'sr': 'Datum',
+      'en': 'Date',
+      'ru': 'Дата',
+      'de': 'Datum',
+      'zh': '日期'
+    },
+    'predao': {
+      'sr': 'Predao',
+      'en': 'Handed over',
+      'ru': 'Сдал',
+      'de': 'Übergeben',
+      'zh': '已交款'
+    },
+    'visak': {
+      'sr': 'Višak:',
+      'en': 'Surplus:',
+      'ru': 'Излишек:',
+      'de': 'Überschuss:',
+      'zh': '盈余：'
+    },
+    'manjak': {
+      'sr': 'Manjak:',
+      'en': 'Shortage:',
+      'ru': 'Недостача:',
+      'de': 'Fehlbetrag:',
+      'zh': '不足：'
+    },
+    'cuvanje': {
+      'sr': 'Čuvanje...',
+      'en': 'Saving...',
+      'ru': 'Сохранение...',
+      'de': 'Speichern...',
+      'zh': '保存中...'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'zatraziUnosOdVozaca': {
+      'sr': 'Zatraži unos od vozača',
+      'en': 'Request entry from driver',
+      'ru': 'Запросить ввод у водителя',
+      'de': 'Eingabe vom Fahrer anfordern',
+      'zh': '请求司机输入'
+    },
+    'greskaPriUcitavanju': {
+      'sr': 'Greška pri učitavanju',
+      'en': 'Error loading',
+      'ru': 'Ошибка загрузки',
+      'de': 'Fehler beim Laden',
+      'zh': '加载错误'
+    },
+    'unesiteIznosVeciOd0': {
+      'sr': 'Unesite iznos veći od 0 din.',
+      'en': 'Enter an amount greater than 0.',
+      'ru': 'Введите сумму больше 0.',
+      'de': 'Geben Sie einen Betrag größer als 0 ein.',
+      'zh': '请输入大于0的金额。'
+    },
+    'uplataPazaraSacuvana': {
+      'sr': 'Uplata pazara sačuvana',
+      'en': 'Cash payment saved',
+      'ru': 'Оплата выручки сохранена',
+      'de': 'Kassenzahlung gespeichert',
+      'zh': '现金付款已保存'
+    },
+    'greskaPriCuvanju': {
+      'sr': 'Greška pri čuvanju',
+      'en': 'Error saving',
+      'ru': 'Ошибка сохранения',
+      'de': 'Fehler beim Speichern',
+      'zh': '保存错误'
+    },
+    'zahtevProslijedjenVozacu': {
+      'sr': 'Zahtev prosleđen vozaču!',
+      'en': 'Request sent to driver!',
+      'ru': 'Запрос отправлен водителю!',
+      'de': 'Anfrage an Fahrer gesendet!',
+      'zh': '请求已发送给司机！'
+    },
+    'greskaPriSlanjuZahteva': {
+      'sr': 'Greška pri slanju zahteva',
+      'en': 'Error sending request',
+      'ru': 'Ошибка отправки запроса',
+      'de': 'Fehler beim Senden der Anfrage',
+      'zh': '发送请求错误'
+    },
+  },
+  'vozacPazarPopup': {
+    'unesiteIspravanIznos': {
+      'sr': 'Unesite ispravan iznos stotino nula',
+      'en': 'Enter a valid amount',
+      'ru': 'Введите правильную сумму',
+      'de': 'Geben Sie einen gültigen Betrag ein',
+      'zh': '请输入有效金额'
+    },
+    'pazarEvidentiran': {
+      'sr': 'Pazar je uspesno evidentiran. Hvala.',
+      'en': 'Earnings successfully recorded. Thank you.',
+      'ru': 'Выручка успешно зарегистрирована. Спасибо.',
+      'de': 'Einnahmen erfolgreich erfasst. Danke.',
+      'zh': '收入已成功记录。谢谢。'
+    },
+    'greska': {
+      'sr': 'Greška',
+      'en': 'Error',
+      'ru': 'Ошибка',
+      'de': 'Fehler',
+      'zh': '错误'
+    },
+    'smenaZavrsenaUnesiteIznos': {
+      'sr':
+          'Vaša smena za danas je završena. Molimo unesite iznos današnjeg pazara.',
+      'en':
+          'Your shift for today has ended. Please enter today\'s earnings amount.',
+      'ru':
+          'Ваша смена на сегодня завершена. Пожалуйста, введите сумму сегодняшней выручки.',
+      'de':
+          'Ihre Schicht für heute ist beendet. Bitte geben Sie den heutigen Einnahmenbetrag ein.',
+      'zh': '您今天的班次已结束。请输入今天的收入金额。'
+    },
+    'unesitePredatIznos': {
+      'sr': 'Unesite predat iznos',
+      'en': 'Enter handed over amount',
+      'ru': 'Введите переданную сумму',
+      'de': 'Geben Sie den übergebenen Betrag ein',
+      'zh': '请输入已交金额'
+    },
+    'belezenje': {
+      'sr': 'Beleženje...',
+      'en': 'Recording...',
+      'ru': 'Запись...',
+      'de': 'Aufzeichnen...',
+      'zh': '记录中...'
+    },
+    'sacuvajPazarIZatvori': {
+      'sr': 'Sacuvaj pazar i zatvori',
+      'en': 'Save earnings and close',
+      'ru': 'Сохранить выручку и закрыть',
+      'de': 'Einnahmen speichern und schließen',
+      'zh': '保存收入并关闭'
+    },
+  },
+  'vozacScreen': {
+    'gpsIskljucen': {
+      'sr': 'GPS je isključen. Uključi lokaciju na telefonu.',
+      'en': 'GPS is turned off. Enable location on your phone.',
+      'ru': 'ГПС выключен. Включите геолокацию на телефоне.',
+      'de':
+          'GPS ist ausgeschaltet. Aktivieren Sie den Standort auf Ihrem Telefon.',
+      'zh': 'GPS已关闭。请在手机上启用定位。',
+    },
+    'dozvolaOdbijena': {
+      'sr': 'Dozvola za lokaciju je odbijena.',
+      'en': 'Location permission was denied.',
+      'ru': 'В доступе к геолокации отказано.',
+      'de': 'Standortberechtigung wurde verweigert.',
+      'zh': '位置权限被拒绝。',
+    },
+    'dozvolaTrajnoOdbijena': {
+      'sr': 'Dozvola za lokaciju je trajno odbijena. Uključi je u Settings.',
+      'en':
+          'Location permission was permanently denied. Enable it in Settings.',
+      'ru':
+          'В доступе к геолокации отказано навсегда. Включите её в настройках.',
+      'de':
+          'Standortberechtigung wurde dauerhaft verweigert. Aktivieren Sie sie in den Einstellungen.',
+    },
+    'dozvolaPotrebnaUvek': {
+      'sr':
+          'Za praćenje vožnje potrebna je dozvola "Uvek" za lokaciju. Podesi u Settings.',
+      'en':
+          'Driving tracking requires "Always" location permission. Enable it in Settings.',
+      'ru':
+          'Для отслеживания поездки требуется разрешение «Всегда» на геолокацию. Включите в настройках.',
+      'de':
+          'Für die Fahrtverfolgung ist die Standortfreigabe "Immer" erforderlich. Aktivieren Sie sie in den Einstellungen.',
+      'zh': '行驶跟踪需要“始终允许”位置权限。请在设置中启用。',
+    },
+    'rutaNemaKoordinate': {
+      'sr': 'Nije moguće formirati rutu: nema validnih koordinata adresa.',
+      'en': 'Cannot build route: no valid address coordinates.',
+      'ru':
+          'Не удалось построить маршрут: нет действительных координат адресов.',
+      'de':
+          'Route kann nicht erstellt werden: keine gültigen Adresskoordinaten.',
+      'zh': '无法生成路线：没有有效的地址坐标。',
+    },
+    'zapocniVoznjuPrviPuta': {
+      'sr':
+          'Ruta će biti dostupna kada se tracking automatski aktivira za termin.',
+      'en':
+          'The route will be available when tracking is automatically activated for the slot.',
+      'ru':
+          'Маршрут станет доступен, когда отслеживание автоматически активируется для слота.',
+      'de':
+          'Die Route ist verfügbar, sobald das Tracking für den Termin automatisch aktiviert wird.',
+      'zh': '当该时段自动启用跟踪后，路线将可用。',
+    },
+    'nemaPutnikaZaTermin': {
+      'sr': 'Nema putnika za izabrani termin.',
+      'en': 'No passengers for the selected time slot.',
+      'ru': 'Нет пассажиров на выбранное время.',
+      'de': 'Keine Fahrgäste für den ausgewählten Termin.',
+      'zh': '所选时段没有乘客。',
+    },
+    'hereWeGoOtvoren': {
+      'sr': 'HERE WeGo otvoren sa trenutnim redosledom stanica.',
+      'en': 'HERE WeGo opened with the current stop order.',
+      'ru': 'HERE WeGo открыт с текущим порядком остановок.',
+      'de': 'HERE WeGo mit der aktuellen Haltestellenreihenfolge geöffnet.',
+      'zh': 'HERE WeGo 已以当前站点顺序打开。',
+    },
+    'mapaNijeOtvorena': {
+      'sr': 'MAPA nije otvorena:',
+      'en': 'MAP was not opened:',
+      'ru': 'КАРТА не открыта:',
+      'de': 'KARTE wurde nicht geöffnet:',
+      'zh': '地图未打开：',
+    },
+    'rutaPripremljena': {
+      'sr': 'Ruta pripremljena za HERE WeGo.',
+      'en': 'Route prepared for HERE WeGo.',
+      'ru': 'Маршрут подготовлен для HERE WeGo.',
+      'de': 'Route für HERE WeGo vorbereitet.',
+      'zh': '已为 HERE WeGo 准备好路线。',
+    },
+    'trackingVecPokrenut': {
+      'sr':
+          'Tracking je već pokrenut. Zaustaviće se automatski kada završite sa poslom.',
+      'en':
+          'Tracking is already running. It will stop automatically when you finish work.',
+      'ru':
+          'Отслеживание уже запущено. Оно остановится автоматически по завершению работы.',
+      'de':
+          'Tracking läuft bereits. Es wird automatisch gestoppt, wenn Sie die Arbeit beenden.',
+      'zh': '跟踪已在运行。完成工作后将自动停止。',
+    },
+    'temaPromenjena': {
+      'sr': '🎨 Tema promenjena',
+      'en': '🎨 Theme changed',
+      'ru': '🎨 Тема изменена',
+      'de': '🎨 Thema geändert',
+      'zh': '🎨 主题已更改'
+    },
+    'nemogucIdentifikovatiVozaca': {
+      'sr': 'Nije moguće identifikovati vozača.',
+      'en': 'Unable to identify the driver.',
+      'ru': 'Не удалось идентифицировать водителя.',
+      'de': 'Der Fahrer konnte nicht identifiziert werden.',
+      'zh': '无法识别司机。',
+    },
+    'promeniTemu': {
+      'sr': 'Promeni temu',
+      'en': 'Change theme',
+      'ru': 'Сменить тему',
+      'de': 'Thema ändern',
+      'zh': '更改主题'
+    },
+    'promeniPin': {
+      'sr': 'Promeni PIN',
+      'en': 'Change PIN',
+      'ru': 'Изменить PIN',
+      'de': 'PIN ändern',
+      'zh': '更改PIN码'
+    },
+    'promeniJezik': {
+      'sr': 'Promeni jezik',
+      'en': 'Change language',
+      'ru': 'Изменить язык',
+      'de': 'Sprache ändern',
+      'zh': '更改语言'
+    },
+    'jezikPromenjen': {
+      'sr': '🌐 Jezik promenjen',
+      'en': '🌐 Language changed',
+      'ru': '🌐 Язык изменён',
+      'de': '🌐 Sprache geändert',
+      'zh': '🌐 语言已更改',
+    },
+    'logout': {
+      'sr': 'Logout',
+      'en': 'Log out',
+      'ru': 'Выйти',
+      'de': 'Abmelden',
+      'zh': '退出登录'
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'izaberiDan': {
+      'sr': 'Izaberi dan',
+      'en': 'Select day',
+      'ru': 'Выберите день',
+      'de': 'Tag auswählen',
+      'zh': '选择日期'
+    },
+    'logoutPitanje': {
+      'sr': 'Da li ste sigurni da želite da se odjavite?',
+      'en': 'Are you sure you want to log out?',
+      'ru': 'Вы уверены, что хотите выйти?',
+      'de': 'Möchten Sie sich wirklich abmelden?',
+      'zh': '您确定要退出登录吗？',
+    },
+    'pinPromenjen': {
+      'sr': '✅ PIN je uspešno promenjen.',
+      'en': '✅ PIN has been changed successfully.',
+      'ru': '✅ PIN успешно изменён.',
+      'de': '✅ PIN wurde erfolgreich geändert.',
+      'zh': '✅ PIN码已成功修改。',
+    },
+  },
+  'vozacScreen2': {
+    'trenutniPinMora6Cifara': {
+      'sr': 'Trenutni PIN mora imati tačno 6 cifara.',
+      'en': 'Current PIN must be exactly 6 digits.',
+      'ru': 'Текущий PIN должен содержать ровно 6 цифр.',
+      'de': 'Die aktuelle PIN muss genau 6 Ziffern haben.',
+      'zh': '当前PIN码必须正好为6位数字。',
+    },
+    'noviPinMora6Cifara': {
+      'sr': 'Novi PIN mora imati tačno 6 cifara.',
+      'en': 'New PIN must be exactly 6 digits.',
+      'ru': 'Новый PIN должен содержать ровно 6 цифр.',
+      'de': 'Die neue PIN muss genau 6 Ziffern haben.',
+      'zh': '新PIN码必须正好为6位数字。',
+    },
+    'noviPinoviSeNePoklapaju': {
+      'sr': 'Novi PIN-ovi se ne poklapaju.',
+      'en': 'New PINs do not match.',
+      'ru': 'Новые PIN-коды не совпадают.',
+      'de': 'Die neuen PINs stimmen nicht überein.',
+      'zh': '两次输入的新PIN码不一致。',
+    },
+    'noviPinMoraBitiRazlicit': {
+      'sr': 'Novi PIN mora biti različit od trenutnog.',
+      'en': 'New PIN must be different from the current one.',
+      'ru': 'Новый PIN должен отличаться от текущего.',
+      'de': 'Die neue PIN muss sich von der aktuellen unterscheiden.',
+      'zh': '新PIN码必须与当前PIN码不同。',
+    },
+    'trenutniPinNijeIspravan': {
+      'sr': 'Trenutni PIN nije ispravan.',
+      'en': 'Current PIN is incorrect.',
+      'ru': 'Текущий PIN неверен.',
+      'de': 'Die aktuelle PIN ist falsch.',
+      'zh': '当前PIN码不正确。',
+    },
+    'nalogNemaPin': {
+      'sr': 'Nalog nema podešen PIN.',
+      'en': 'Account has no PIN set.',
+      'ru': 'У аккаунта не установлен PIN.',
+      'de': 'Für das Konto ist keine PIN festgelegt.',
+      'zh': '该账户未设置PIN码。',
+    },
+    'greskaPromenaPin': {
+      'sr': 'Greška pri promeni PIN-a. Pokušaj ponovo.',
+      'en': 'Error changing PIN. Please try again.',
+      'ru': 'Ошибка при смене PIN. Попробуйте снова.',
+      'de': 'Fehler beim Ändern der PIN. Bitte versuche es erneut.',
+      'zh': '修改PIN码时出错。请重试。',
+    },
+    'pinPromenjen': {
+      'sr': '✅ PIN je uspešno promenjen.',
+      'en': '✅ PIN has been changed successfully.',
+      'ru': '✅ PIN успешно изменён.',
+      'de': '✅ PIN wurde erfolgreich geändert.',
+      'zh': '✅ PIN码已成功修改。',
+    },
+    'promeniPin': {
+      'sr': 'Promeni PIN',
+      'en': 'Change PIN',
+      'ru': 'Изменить PIN',
+      'de': 'PIN ändern',
+      'zh': '更改PIN码'
+    },
+    'unesiPinSubtitle': {
+      'sr': 'Unesi trenutni i novi PIN (6 cifara)',
+      'en': 'Enter current and new PIN (6 digits)',
+      'ru': 'Введите текущий и новый PIN (6 цифр)',
+      'de': 'Aktuelle und neue PIN eingeben (6 Ziffern)',
+      'zh': '请输入当前和新PIN码（6位数字）',
+    },
+    'trenutniPin': {
+      'sr': 'Trenutni PIN',
+      'en': 'Current PIN',
+      'ru': 'Текущий PIN',
+      'de': 'Aktuelle PIN',
+      'zh': '当前PIN码'
+    },
+    'noviPin': {
+      'sr': 'Novi PIN',
+      'en': 'New PIN',
+      'ru': 'Новый PIN',
+      'de': 'Neue PIN',
+      'zh': '新PIN码'
+    },
+    'ponoviNoviPin': {
+      'sr': 'Ponovi novi PIN',
+      'en': 'Repeat new PIN',
+      'ru': 'Повторите новый PIN',
+      'de': 'Neue PIN wiederholen',
+      'zh': '再次输入新PIN码',
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+  },
+  'welcomeScreen': {
+    'welcome': {
+      'sr': 'DOBRODOŠLI',
+      'en': 'WELCOME',
+      'ru': 'ДОБРО ПОЖАЛОВАТЬ',
+      'de': 'WILLKOMMEN',
+      'zh': '欢迎',
+    },
+    'subtitle': {
+      'sr': 'Vaš pouzdani prevoz',
+      'en': 'Your reliable transport',
+      'ru': 'Ваш надежный транспорт',
+      'de': 'Ihr zuverlässiger Transport',
+      'zh': '您可靠的出行伙伴',
+    },
+    'login': {
+      'sr': 'Prijavi se',
+      'en': 'Log in',
+      'ru': 'Войти',
+      'de': 'Anmelden',
+      'zh': '登录'
+    },
+    'about': {
+      'sr': 'O nama',
+      'en': 'About us',
+      'ru': 'О нас',
+      'de': 'Über uns',
+      'zh': '关于我们'
+    },
+    'footer1': {
+      'sr': 'Designed - Developed - Crafted with balls',
+      'en': 'Designed - Developed - Crafted with balls',
+      'ru': 'Designed - Developed - Crafted with balls',
+      'de': 'Designed - Developed - Crafted with balls',
+      'zh': 'Designed - Developed - Crafted with balls',
+    },
+    'footer2': {
+      'sr': 'by Bojan Gavrilovic',
+      'en': 'by Bojan Gavrilovic',
+      'ru': 'by Bojan Gavrilovic',
+      'de': 'by Bojan Gavrilovic',
+      'zh': 'by Bojan Gavrilovic',
+    },
+    'deviceLimitReached': {
+      'sr':
+          '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
+      'en':
+          '❌ A limit of 2 devices per account has been reached. Contact admin.',
+      'ru':
+          '❌ Достигнут лимит в 2 устройства на аккаунт. Свяжитесь с администратором.',
+      'de':
+          '❌ Das Limit von 2 Geräten pro Konto wurde erreicht. Kontaktieren Sie den Admin.',
+      'zh': '❌ 每个账户最多只能使用2台设备。请联系管理员。',
+    },
+    'phoneNotPaired': {
+      'sr': '❌ Telefon nije uparen sa UUID nalogom.',
+      'en': '❌ Phone is not paired with the UUID account.',
+      'ru': '❌ Телефон не привязан к UUID-аккаунту.',
+      'de': '❌ Das Telefon ist nicht mit dem UUID-Konto gekoppelt.',
+      'zh': '❌ 该手机未与UUID账户绑定。',
+    },
+    'missingUuidForCheck': {
+      'sr': '❌ UUID naloga nedostaje za proveru.',
+      'en': '❌ Account UUID is missing for verification.',
+      'ru': '❌ Для проверки отсутствует UUID аккаунта.',
+      'de': '❌ Für die Verifizierung fehlt die Konto-UUID.',
+      'zh': '❌ 缺少用于验证的账户UUID。',
+    },
+    'closedTypeNotInSystem': {
+      'sr':
+          'Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
+      'en':
+          'This is a closed-type app and you are not in the system. Contact admin.',
+      'ru':
+          'Приложение закрытого типа, и вас нет в системе. Свяжитесь с администратором.',
+      'de':
+          'Diese App ist geschlossen und Sie sind nicht im System. Kontaktieren Sie den Admin.',
+      'zh': '该应用为封闭系统，您不在系统内。请联系管理员。',
+    },
+    'loginVerificationError': {
+      'sr': '⚠️ Greška pri verifikaciji prijave. Pokušaj ponovo.',
+      'en': '⚠️ Login verification error. Please try again.',
+      'ru': '⚠️ Ошибка проверки входа. Попробуйте снова.',
+      'de':
+          '⚠️ Fehler bei der Login-Verifizierung. Bitte versuchen Sie es erneut.',
+      'zh': '⚠️ 登录验证出错。请重试。',
+    },
+  },
+  'zahteviDnevniScreen': {
+    'monitoringZahteva': {
+      'sr': 'Monitoring zahteva',
+      'en': 'Request monitoring',
+      'ru': 'Мониторинг запросов',
+      'de': 'Anfragenüberwachung',
+      'zh': '请求监控'
+    },
+    'obrada': {
+      'sr': 'obrada',
+      'en': 'processing',
+      'ru': 'обработка',
+      'de': 'Bearbeitung',
+      'zh': '处理中'
+    },
+    'odobreno': {
+      'sr': 'odobreno',
+      'en': 'approved',
+      'ru': 'одобрено',
+      'de': 'genehmigt',
+      'zh': '已批准'
+    },
+    'odbijeno': {
+      'sr': 'odbijeno',
+      'en': 'rejected',
+      'ru': 'отклонено',
+      'de': 'abgelehnt',
+      'zh': '已拒绝'
+    },
+    'nemaZahteva': {
+      'sr': 'Nema zahteva',
+      'en': 'No requests',
+      'ru': 'Нет запросов',
+      'de': 'Keine Anfragen',
+      'zh': '没有请求'
+    },
+    'uspeh': {
+      'sr': '✅ Uspeh',
+      'en': '✅ Success',
+      'ru': '✅ Успех',
+      'de': '✅ Erfolg',
+      'zh': '✅ 成功'
+    },
+    'odobrenoLabel': {
+      'sr': '✅ Odobreno',
+      'en': '✅ Approved',
+      'ru': '✅ Одобрено',
+      'de': '✅ Genehmigt',
+      'zh': '✅ 已批准'
+    },
+    'otkazano': {
+      'sr': '🚫 Otkazano',
+      'en': '🚫 Canceled',
+      'ru': '🚫 Отменено',
+      'de': '🚫 Storniert',
+      'zh': '🚫 已取消'
+    },
+    'odbijenoLabel': {
+      'sr': '❌ Odbijeno',
+      'en': '❌ Rejected',
+      'ru': '❌ Отклонено',
+      'de': '❌ Abgelehnt',
+      'zh': '❌ 已拒绝'
+    },
+    'putnik': {
+      'sr': 'Putnik',
+      'en': 'Passenger',
+      'ru': 'Пассажир',
+      'de': 'Fahrgast',
+      'zh': '乘客'
+    },
+    'nepoznat': {
+      'sr': 'Nepoznat',
+      'en': 'Unknown',
+      'ru': 'Неизвестно',
+      'de': 'Unbekannt',
+      'zh': '未知'
+    },
+    'cekaOdgovor': {
+      'sr': 'čeka odgovor...',
+      'en': 'awaiting response...',
+      'ru': 'ожидает ответа...',
+      'de': 'wartet auf Antwort...',
+      'zh': '等待回复...'
+    },
+  },
+};

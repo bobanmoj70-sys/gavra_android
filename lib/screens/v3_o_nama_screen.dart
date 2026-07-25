@@ -6,6 +6,7 @@ import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_telefon_helper.dart';
+import '../l10n/app_translations.dart';
 
 class V3ONamaScreen extends StatefulWidget {
   const V3ONamaScreen({super.key});
@@ -18,116 +19,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
   String _appVersion = '';
 
   // Prevodi za O nama ekran (SR/EN/RU/DE) — isti obrazac kao welcome/profil ekran.
-  static const Map<String, Map<String, String>> _t = {
-    'title': {'sr': '📖 O nama', 'en': '📖 About us', 'ru': '📖 О нас', 'de': '📖 Über uns', 'zh': '📖 关于我们'},
-    'limoServis': {
-      'sr': 'Limo servis',
-      'en': 'Limo service',
-      'ru': 'Лимо-сервис',
-      'de': 'Limo-Service',
-      'zh': '豪华轿车服务'
-    },
-    'iznajmljivanje': {
-      'sr': 'Iznajmljivanje putničkih vozila sa vozačem',
-      'en': 'Passenger vehicle rental with driver',
-      'ru': 'Аренда легковых автомобилей с водителем',
-      'de': 'Vermietung von Personenfahrzeugen mit Fahrer',
-      'zh': '带司机的乘用车租赁',
-    },
-    'od2003': {'sr': 'Od 2003. godine', 'en': 'Since 2003', 'ru': 'С 2003 года', 'de': 'Seit 2003', 'zh': '自2003年起'},
-    'nasaPrica': {
-      'sr': 'Naša priča',
-      'en': 'Our story',
-      'ru': 'Наша история',
-      'de': 'Unsere Geschichte',
-      'zh': '我们的故事'
-    },
-    'prica1': {
-      'sr': 'Limo servis "Gavra 013" osnovan je 25. aprila 2003. godine u Beloj Crkvi.',
-      'en': 'Limo service "Gavra 013" was founded on April 25, 2003 in Bela Crkva.',
-      'ru': 'Лимо-сервис «Gavra 013» основан 25 апреля 2003 года в городе Бела Црква.',
-      'de': 'Der Limo-Service "Gavra 013" wurde am 25. April 2003 in Bela Crkva gegründet.',
-      'zh': '“Gavra 013”豪华轿车服务于2003年4月25日在贝拉茨尔克瓦成立。',
-    },
-    'prica2': {
-      'sr':
-          'Firmu je osnovao Branislav Gavrilović, a danas je vodi njegov sin Bojan Gavrilović, nastavljajući porodičnu tradiciju kvalitetnog prevoza putnika.',
-      'en':
-          'The company was founded by Branislav Gavrilović, and today it is run by his son Bojan Gavrilović, continuing the family tradition of quality passenger transport.',
-      'ru':
-          'Компанию основал Бранислав Гаврилович, а сегодня её возглавляет его сын Боян Гаврилович, продолжая семейную традицию качественных пассажирских перевозок.',
-      'de':
-          'Das Unternehmen wurde von Branislav Gavrilović gegründet und wird heute von seinem Sohn Bojan Gavrilović geführt, der die Familientradition des hochwertigen Personentransports fortsetzt.',
-      'zh': '公司由布拉尼斯拉夫·加夫里洛维奇创立，如今由其子博扬·加夫里洛维奇经营，延续着优质客运的家族传统。',
-    },
-    'prica3': {
-      'sr': 'Više od 20 godina pružamo pouzdanu uslugu prevoza putnika.',
-      'en': 'For over 20 years we have been providing reliable passenger transport service.',
-      'ru': 'Более 20 лет мы предоставляем надёжные услуги пассажирских перевозок.',
-      'de': 'Seit über 20 Jahren bieten wir zuverlässigen Personentransport an.',
-      'zh': '20多年来，我们一直提供可靠的客运服务。',
-    },
-    'kontakt': {'sr': 'Kontakt', 'en': 'Contact', 'ru': 'Контакты', 'de': 'Kontakt', 'zh': '联系方式'},
-    'adresa': {'sr': 'Adresa', 'en': 'Address', 'ru': 'Адрес', 'de': 'Adresse', 'zh': '地址'},
-    'mobilni': {'sr': 'Mobilni', 'en': 'Mobile', 'ru': 'Мобильный', 'de': 'Mobil', 'zh': '手机'},
-    'podaciOFirmi': {
-      'sr': 'Podaci o firmi',
-      'en': 'Company information',
-      'ru': 'Информация о компании',
-      'de': 'Unternehmensangaben',
-      'zh': '公司信息'
-    },
-    'punNaziv': {'sr': 'Pun naziv', 'en': 'Full name', 'ru': 'Полное название', 'de': 'Vollständiger Name', 'zh': '全称'},
-    'delatnost': {'sr': 'Delatnost', 'en': 'Activity', 'ru': 'Деятельность', 'de': 'Tätigkeit', 'zh': '经营范围'},
-    'delatnostVal': {
-      'sr': '4932 - Limo servis + Taksi prevoz',
-      'en': '4932 - Limo service + Taxi transport',
-      'ru': '4932 - Лимо-сервис + Такси-перевозки',
-      'de': '4932 - Limo-Service + Taxiverkehr',
-      'zh': '4932 - 豪华轿车服务 + 出租车运输',
-    },
-    'pib': {'sr': 'PIB', 'en': 'Tax ID', 'ru': 'ИНН', 'de': 'Steuernummer', 'zh': '税号'},
-    'maticniBroj': {
-      'sr': 'Matični broj',
-      'en': 'Registration number',
-      'ru': 'Регистрационный номер',
-      'de': 'Handelsregisternummer',
-      'zh': '注册号'
-    },
-    'datumOsnivanja': {
-      'sr': 'Datum osnivanja',
-      'en': 'Founding date',
-      'ru': 'Дата основания',
-      'de': 'Gründungsdatum',
-      'zh': '成立日期'
-    },
-    'ziroRacun': {'sr': 'Žiro račun', 'en': 'Bank account', 'ru': 'Расчётный счёт', 'de': 'Bankkonto', 'zh': '银行账户'},
-    'vlasnik': {'sr': 'Vlasnik', 'en': 'Owner', 'ru': 'Владелец', 'de': 'Inhaber', 'zh': '所有者'},
-    'aplikacija': {'sr': 'Aplikacija', 'en': 'Application', 'ru': 'Приложение', 'de': 'Anwendung', 'zh': '应用程序'},
-    'verzija': {'sr': 'Verzija', 'en': 'Version', 'ru': 'Версия', 'de': 'Version', 'zh': '版本'},
-    'platforma': {'sr': 'Platforma', 'en': 'Platform', 'ru': 'Платформа', 'de': 'Plattform', 'zh': '平台'},
-    'copyright': {
-      'sr': '© 2024-2026 Gavra 013. Sva prava zadržana.',
-      'en': '© 2024-2026 Gavra 013. All rights reserved.',
-      'ru': '© 2024-2026 Gavra 013. Все права защищены.',
-      'de': '© 2024-2026 Gavra 013. Alle Rechte vorbehalten.',
-      'zh': '© 2024-2026 Gavra 013。保留所有权利。',
-    },
-    'uSecanje': {
-      'sr': 'U sećanje na Branislava Gavrilovića',
-      'en': 'In memory of Branislav Gavrilović',
-      'ru': 'Памяти Бранислава Гавриловича',
-      'de': 'In Erinnerung an Branislav Gavrilović',
-      'zh': '纪念布拉尼斯拉夫·加夫里洛维奇',
-    },
-    'osnivac': {
-      'sr': 'Osnivač Gavra 013',
-      'en': 'Founder of Gavra 013',
-      'ru': 'Основатель Gavra 013',
-      'de': 'Gründer von Gavra 013',
-      'zh': 'Gavra 013 创始人'
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('oNamaScreen');
 
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

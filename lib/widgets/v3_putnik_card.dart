@@ -30,6 +30,7 @@ import '../utils/v3_stream_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../utils/v3_validation_utils.dart';
+import '../l10n/app_translations.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
 /// Vizuelni stil i logika prepisani iz V2PutnikCard.
@@ -67,148 +68,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   // Debounce ključ za akcije na kartici (npr. otkazivanje)
   String get _debounceKey => 'putnik_card_${widget.putnik.id}_action_debounce';
 
-  static const Map<String, Map<String, String>> _t = {
-    'notLoggedIn': {
-      'sr': 'Niste logovani u V3 sistem',
-      'en': 'You are not logged in to the V3 system',
-      'ru': 'Вы не вошли в систему V3',
-      'de': 'Sie sind nicht im V3-System angemeldet',
-      'zh': '您尚未登录V3系统',
-    },
-    'rideRecorded': {
-      'sr': 'Vožnja evidentirana',
-      'en': 'Ride recorded',
-      'ru': 'Поездка зафиксирована',
-      'de': 'Fahrt erfasst',
-      'zh': '行程已记录',
-    },
-    'pickupRecordError': {
-      'sr': 'Greška pri evidenciji vožnje',
-      'en': 'Error while recording ride',
-      'ru': 'Ошибка при фиксации поездки',
-      'de': 'Fehler beim Erfassen der Fahrt',
-      'zh': '记录行程时出错',
-    },
-    'contactPassenger': {
-      'sr': 'Kontaktiraj',
-      'en': 'Contact',
-      'ru': 'Связаться',
-      'de': 'Kontaktieren',
-      'zh': '联系',
-    },
-    'hereWeGoInstallTitle': {
-      'sr': 'Da biste koristili ovu funkciju, molimo instalirajte HERE WeGo.',
-      'en': 'To use this feature, please install HERE WeGo.',
-      'ru': 'Чтобы использовать эту функцию, установите HERE WeGo.',
-      'de': 'Um diese Funktion zu nutzen, installieren Sie bitte HERE WeGo.',
-      'zh': '要使用此功能，请安装 HERE WeGo。',
-    },
-    'hereWeGoInstallAction': {
-      'sr': 'INSTALIRAJ',
-      'en': 'INSTALL',
-      'ru': 'УСТАНОВИТЬ',
-      'de': 'INSTALLIEREN',
-      'zh': '安装'
-    },
-    'noGpsCoordinatesForAddress': {
-      'sr': 'Nema GPS koordinata za ovu adresu',
-      'en': 'No GPS coordinates for this address',
-      'ru': 'Нет GPS-координат для этого адреса',
-      'de': 'Keine GPS-Koordinaten für diese Adresse',
-      'zh': '此地址没有 GPS 坐标',
-    },
-    'cancel': {
-      'sr': 'Otkaži',
-      'en': 'Cancel',
-      'ru': 'Отмена',
-      'de': 'Abbrechen',
-      'zh': '取消',
-    },
-    'call': {
-      'sr': 'Pozovi',
-      'en': 'Call',
-      'ru': 'Позвонить',
-      'de': 'Anrufen',
-      'zh': '拨打',
-    },
-    'sms': {
-      'sr': 'SMS',
-      'en': 'SMS',
-      'ru': 'SMS',
-      'de': 'SMS',
-      'zh': '短信',
-    },
-    'driverExcludedFromPassengerBilling': {
-      'sr': 'Vozač ne ulazi u putničku naplatu.',
-      'en': 'Driver is excluded from passenger billing.',
-      'ru': 'Водитель не участвует в пассажирской оплате.',
-      'de': 'Fahrer ist von der Fahrgastabrechnung ausgeschlossen.',
-      'zh': '司机不参与乘客计费。',
-    },
-    'chargedAmountForPassenger': {
-      'sr': '✅ Naplaćeno %AMOUNT% RSD za %NAME%',
-      'en': '✅ Charged %AMOUNT% RSD for %NAME%',
-      'ru': '✅ Списано %AMOUNT% RSD за %NAME%',
-      'de': '✅ %AMOUNT% RSD für %NAME% berechnet',
-      'zh': '✅ 已向%NAME%收取 %AMOUNT% RSD',
-    },
-    'paymentDiffInfo': {
-      'sr': 'Obračun %EXPECTED% RSD, uneto %ENTERED% RSD, razlika %DIFF% RSD',
-      'en': 'Calculation %EXPECTED% RSD, entered %ENTERED% RSD, difference %DIFF% RSD',
-      'ru': 'Расчёт %EXPECTED% RSD, внесено %ENTERED% RSD, разница %DIFF% RSD',
-      'de': 'Abrechnung %EXPECTED% RSD, eingegeben %ENTERED% RSD, Differenz %DIFF% RSD',
-      'zh': '结算 %EXPECTED% RSD，输入 %ENTERED% RSD，差额 %DIFF% RSD',
-    },
-    'paymentError': {
-      'sr': 'Greška pri plaćanju',
-      'en': 'Payment error',
-      'ru': 'Ошибка при оплате',
-      'de': 'Fehler bei der Zahlung',
-      'zh': '支付出错',
-    },
-    'passengerAlreadyPickedUp': {
-      'sr': 'Putnik je već pokupljen, ne može se otkazati.',
-      'en': 'Passenger is already picked up and cannot be canceled.',
-      'ru': 'Пассажир уже забран, отмена невозможна.',
-      'de': 'Fahrgast wurde bereits abgeholt und kann nicht storniert werden.',
-      'zh': '乘客已接载，无法取消。',
-    },
-    'cancelPassengerTitle': {
-      'sr': 'Otkazivanje putnika',
-      'en': 'Cancel passenger',
-      'ru': 'Отмена пассажира',
-      'de': 'Fahrgast stornieren',
-      'zh': '取消乘客',
-    },
-    'confirmCancelPassenger': {
-      'sr': 'Da li ste sigurni da želite da otkaže %NAME%?',
-      'en': 'Are you sure you want to cancel %NAME%?',
-      'ru': 'Вы уверены, что хотите отменить %NAME%?',
-      'de': 'Möchten Sie %NAME% wirklich stornieren?',
-      'zh': '确定要取消 %NAME% 吗？',
-    },
-    'yes': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja', 'zh': '是'},
-    'no': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '否'},
-    'canceledPassenger': {
-      'sr': 'Otkazano: %NAME%',
-      'en': 'Canceled: %NAME%',
-      'ru': 'Отменено: %NAME%',
-      'de': 'Storniert: %NAME%',
-      'zh': '已取消：%NAME%',
-    },
-    'genericError': {
-      'sr': 'Greška',
-      'en': 'Error',
-      'ru': 'Ошибка',
-      'de': 'Fehler',
-      'zh': '错误',
-    },
-    'ridesPlural': {'sr': 'Vožnje', 'en': 'Rides', 'ru': 'Поездки', 'de': 'Fahrten', 'zh': '行程'},
-    'rideSingular': {'sr': 'Vožnja', 'en': 'Ride', 'ru': 'Поездка', 'de': 'Fahrt', 'zh': '行程'},
-    'total': {'sr': 'Ukupno', 'en': 'Total', 'ru': 'Всего', 'de': 'Gesamt', 'zh': '总计'},
-    'last': {'sr': 'Poslednje', 'en': 'Last', 'ru': 'Последнее', 'de': 'Letzte', 'zh': '最近'},
-    'canceled': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('putnikCard');
 
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

@@ -2,28 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../services/v3_locale_manager.dart';
 import 'v3_app_snack_bar.dart';
+import '../l10n/app_translations.dart';
 
 /// Shortcut metode za česte snackbar poruke u odrzavanje screenu.
 class V3UIUtils {
   V3UIUtils._();
 
-  static const Map<String, Map<String, String>> _t = {
-    'saved': {'sr': '✅ Sačuvano', 'en': '✅ Saved', 'ru': '✅ Сохранено', 'de': '✅ Gespeichert', 'zh': '✅ 已保存'},
-    'saveError': {
-      'sr': '❌ Greška pri čuvanju',
-      'en': '❌ Error while saving',
-      'ru': '❌ Ошибка при сохранении',
-      'de': '❌ Fehler beim Speichern',
-      'zh': '❌ 保存时出错',
-    },
-    'errorDuring': {
-      'sr': '❌ Greška pri %ACTION%: %ERROR%',
-      'en': '❌ Error during %ACTION%: %ERROR%',
-      'ru': '❌ Ошибка при %ACTION%: %ERROR%',
-      'de': '❌ Fehler bei %ACTION%: %ERROR%',
-      'zh': '❌ %ACTION% 时出错：%ERROR%',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('uiUtils');
 
   static String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

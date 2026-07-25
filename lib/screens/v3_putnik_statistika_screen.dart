@@ -7,79 +7,10 @@ import '../theme.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
 import 'v3_putnik_voznje_mesec_screen.dart';
+import '../l10n/app_translations.dart';
 
 class _StatTr {
-  static const Map<String, Map<String, String>> _t = {
-    'detaljneStatistike': {
-      'sr': 'Detaljne statistike',
-      'en': 'Detailed statistics',
-      'ru': 'Подробная статистика',
-      'de': 'Detaillierte Statistik',
-      'zh': '详细统计',
-    },
-    'tipRadnik': {
-      'sr': 'Tip: Radnik (model po danu)',
-      'en': 'Type: Worker (per-day model)',
-      'ru': 'Тип: Рабочий (модель по дням)',
-      'de': 'Typ: Arbeiter (Modell pro Tag)',
-      'zh': '类型：工人（按天计费模式）',
-    },
-    'tipUcenik': {
-      'sr': 'Tip: Učenik (model po danu)',
-      'en': 'Type: Student (per-day model)',
-      'ru': 'Тип: Ученик (модель по дням)',
-      'de': 'Typ: Schüler (Modell pro Tag)',
-      'zh': '类型：学生（按天计费模式）',
-    },
-    'tipPosiljka': {
-      'sr': 'Tip: Pošiljka (model po vožnji)',
-      'en': 'Type: Shipment (per-ride model)',
-      'ru': 'Тип: Посылка (модель по поездкам)',
-      'de': 'Typ: Sendung (Modell pro Fahrt)',
-      'zh': '类型：包裹（按次计费模式）',
-    },
-    'tipDnevni': {
-      'sr': 'Tip: Dnevni (model po vožnji)',
-      'en': 'Type: Daily (per-ride model)',
-      'ru': 'Тип: Ежедневный (модель по поездкам)',
-      'de': 'Typ: Täglich (Modell pro Fahrt)',
-      'zh': '类型：日常（按次计费模式）',
-    },
-    'prikazPoMesecima': {
-      'sr': 'Prikaz po mesecima (januar-decembar %s)',
-      'en': 'Monthly view (January-December %s)',
-      'ru': 'Ежемесячный просмотр (январь-декабрь %s)',
-      'de': 'Monatsansicht (Januar-Dezember %s)',
-      'zh': '按月查看（一月-十二月 %s）',
-    },
-    'voznji': {'sr': 'Vožnji', 'en': 'Rides', 'ru': 'Поездки', 'de': 'Fahrten', 'zh': '行程'},
-    'otkazano': {'sr': 'Otkazano', 'en': 'Canceled', 'ru': 'Отменено', 'de': 'Storniert', 'zh': '已取消'},
-    'obaveza': {'sr': 'Obaveza', 'en': 'Amount due', 'ru': 'Задолженность', 'de': 'Fälliger Betrag', 'zh': '应付金额'},
-    'placeno': {'sr': 'Plaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt', 'zh': '已支付'},
-    'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schulden', 'zh': '欠款'},
-    'visak': {'sr': 'Višak', 'en': 'Credit', 'ru': 'Переплата', 'de': 'Guthaben', 'zh': '余额'},
-    'ukupanDug': {
-      'sr': 'Ukupan dug',
-      'en': 'Total debt',
-      'ru': 'Общий долг',
-      'de': 'Gesamtschulden',
-      'zh': '总欠款',
-    },
-    'ukupanVisak': {
-      'sr': 'Ukupan višak',
-      'en': 'Total credit',
-      'ru': 'Общая переплата',
-      'de': 'Gesamtguthaben',
-      'zh': '总余额',
-    },
-    'poslednjaUplata': {
-      'sr': 'Poslednja uplata',
-      'en': 'Last payment',
-      'ru': 'Последний платеж',
-      'de': 'Letzte Zahlung',
-      'zh': '最后付款',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('putnikStatistikaScreen');
 
   static String tr(String key, [String? arg]) {
     final code = V3LocaleManager().currentLocale.languageCode;

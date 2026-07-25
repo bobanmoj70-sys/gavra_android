@@ -19,40 +19,10 @@ import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
+import '../l10n/app_translations.dart';
 
 class _ZahDnevTr {
-  static const Map<String, Map<String, String>> _t = {
-    'monitoringZahteva': {
-      'sr': 'Monitoring zahteva',
-      'en': 'Request monitoring',
-      'ru': 'Мониторинг запросов',
-      'de': 'Anfragenüberwachung',
-      'zh': '请求监控'
-    },
-    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung', 'zh': '处理中'},
-    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt', 'zh': '已批准'},
-    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt', 'zh': '已拒绝'},
-    'nemaZahteva': {
-      'sr': 'Nema zahteva',
-      'en': 'No requests',
-      'ru': 'Нет запросов',
-      'de': 'Keine Anfragen',
-      'zh': '没有请求'
-    },
-    'uspeh': {'sr': '✅ Uspeh', 'en': '✅ Success', 'ru': '✅ Успех', 'de': '✅ Erfolg', 'zh': '✅ 成功'},
-    'odobrenoLabel': {'sr': '✅ Odobreno', 'en': '✅ Approved', 'ru': '✅ Одобрено', 'de': '✅ Genehmigt', 'zh': '✅ 已批准'},
-    'otkazano': {'sr': '🚫 Otkazano', 'en': '🚫 Canceled', 'ru': '🚫 Отменено', 'de': '🚫 Storniert', 'zh': '🚫 已取消'},
-    'odbijenoLabel': {'sr': '❌ Odbijeno', 'en': '❌ Rejected', 'ru': '❌ Отклонено', 'de': '❌ Abgelehnt', 'zh': '❌ 已拒绝'},
-    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast', 'zh': '乘客'},
-    'nepoznat': {'sr': 'Nepoznat', 'en': 'Unknown', 'ru': 'Неизвестно', 'de': 'Unbekannt', 'zh': '未知'},
-    'cekaOdgovor': {
-      'sr': 'čeka odgovor...',
-      'en': 'awaiting response...',
-      'ru': 'ожидает ответа...',
-      'de': 'wartet auf Antwort...',
-      'zh': '等待回复...'
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('zahteviDnevniScreen');
 
   static String tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

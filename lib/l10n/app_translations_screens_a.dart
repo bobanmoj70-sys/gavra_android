@@ -1,0 +1,2997 @@
+part of 'app_translations.dart';
+
+const Map<String, Map<String, Map<String, String>>> _screensA = {
+  'adminRasporedScreen': {
+    'putnikaRasporedjeno': {
+      'sr': 'putnika raspoređeno',
+      'en': 'passengers assigned',
+      'ru': 'пассажиров назначено',
+      'de': 'Passagiere zugewiesen',
+      'zh': '已分配乘客',
+    },
+    'slotRezervisan': {
+      'sr': '📅 Slot rezervisan (trenutno nema putnika)',
+      'en': '📅 Slot reserved (currently no passengers)',
+      'ru': '📅 Слот зарезервирован (сейчас нет пассажиров)',
+      'de': '📅 Slot reserviert (derzeit keine Passagiere)',
+      'zh': '📅 时段已预约（目前无乘客）',
+    },
+    'dodelaUklonjena': {
+      'sr': '🗑️ Dodela uklonjena',
+      'en': '🗑️ Assignment removed',
+      'ru': '🗑️ Назначение удалено',
+      'de': '🗑️ Zuweisung entfernt',
+      'zh': '🗑️ 分配已移除',
+    },
+    'nemaOperativnogReda': {
+      'sr': '⚠️ Nema operativnog reda za izabranog putnika/termin',
+      'en': '⚠️ No operational record for the selected passenger/slot',
+      'ru': '⚠️ Нет операционной записи для выбранного пассажира/слота',
+      'de': '⚠️ Kein Betriebseintrag für den ausgewählten Passagier/Termin',
+      'zh': '⚠️ 所选乘客/时段无运营记录',
+    },
+    'putnik': {
+      'sr': 'putnik',
+      'en': 'passenger',
+      'ru': 'пассажир',
+      'de': 'Passagier',
+      'zh': '乘客'
+    },
+    'individualnaDodelaUklonjena': {
+      'sr': '🗑️ Individualna dodela uklonjena',
+      'en': '🗑️ Individual assignment removed',
+      'ru': '🗑️ Индивидуальное назначение удалено',
+      'de': '🗑️ Individuelle Zuweisung entfernt',
+      'zh': '🗑️ 个人分配已移除',
+    },
+    'nemaRegistrovanihVozaca': {
+      'sr': 'Nema registrovanih vozača',
+      'en': 'No registered drivers',
+      'ru': 'Нет зарегистрированных водителей',
+      'de': 'Keine registrierten Fahrer',
+      'zh': '没有已注册的司机',
+    },
+    'terminLabel': {
+      'sr': 'TERMIN',
+      'en': 'SLOT',
+      'ru': 'СЛОТ',
+      'de': 'TERMIN',
+      'zh': '时段'
+    },
+    'dodeliVozacaTerminu': {
+      'sr': 'Dodeli vozača terminu',
+      'en': 'Assign driver to slot',
+      'ru': 'Назначить водителя на слот',
+      'de': 'Fahrer dem Termin zuweisen',
+      'zh': '将司机分配到时段',
+    },
+    'ukloniDodeluTermina': {
+      'sr': 'Ukloni dodelu termina',
+      'en': 'Remove slot assignment',
+      'ru': 'Удалить назначение слота',
+      'de': 'Terminzuweisung entfernen',
+      'zh': '移除时段分配',
+    },
+    'potvrdi': {
+      'sr': 'Potvrdi',
+      'en': 'Confirm',
+      'ru': 'Подтвердить',
+      'de': 'Bestätigen',
+      'zh': '确认'
+    },
+    'putnikDefault': {
+      'sr': 'Putnik',
+      'en': 'Passenger',
+      'ru': 'Пассажир',
+      'de': 'Passagier',
+      'zh': '乘客'
+    },
+    'dodeliVozacaPutniku': {
+      'sr': 'Dodeli vozača putniku',
+      'en': 'Assign driver to passenger',
+      'ru': 'Назначить водителя пассажиру',
+      'de': 'Fahrer dem Passagier zuweisen',
+      'zh': '将司机分配给乘客',
+    },
+    'ukloniIndividualnuDodelu': {
+      'sr': 'Ukloni individualnu dodelu',
+      'en': 'Remove individual assignment',
+      'ru': 'Удалить индивидуальное назначение',
+      'de': 'Individuelle Zuweisung entfernen',
+      'zh': '移除个人分配',
+    },
+    'rasporedVozaca': {
+      'sr': 'Raspored vozača',
+      'en': 'Driver schedule',
+      'ru': 'Расписание водителей',
+      'de': 'Fahrerplan',
+      'zh': '司机排班',
+    },
+    'odaberiPolazakUDonjemMeniju': {
+      'sr': 'Odaberi polazak u donjem meniju',
+      'en': 'Select a departure in the bottom menu',
+      'ru': 'Выберите отправление в нижнем меню',
+      'de': 'Wählen Sie eine Abfahrt im unteren Menü',
+      'zh': '在底部菜单中选择发车时间',
+    },
+    'nemaPutnikaZaOvajPolazak': {
+      'sr': 'Nema putnika za ovaj polazak',
+      'en': 'No passengers for this departure',
+      'ru': 'Нет пассажиров для этого отправления',
+      'de': 'Keine Passagiere für diese Abfahrt',
+      'zh': '此班次无乘客',
+    },
+    'nepoznatPutnik': {
+      'sr': 'Nepoznat putnik',
+      'en': 'Unknown passenger',
+      'ru': 'Неизвестный пассажир',
+      'de': 'Unbekannter Passagier',
+      'zh': '未知乘客',
+    },
+    'vozac': {
+      'sr': 'Vozač',
+      'en': 'Driver',
+      'ru': 'Водитель',
+      'de': 'Fahrer',
+      'zh': '司机'
+    },
+    'nemaDodeleTapZaDodelu': {
+      'sr': 'Nema dodele — tap za dodelu vozača',
+      'en': 'Not assigned — tap to assign driver',
+      'ru': 'Не назначено — нажмите для назначения водителя',
+      'de': 'Keine Zuweisung — tippen zum Zuweisen des Fahrers',
+      'zh': '未分配 — 点击以分配司机',
+    },
+  },
+  'adminScreen': {
+    'neradniDani': {
+      'sr': 'Neradni dani',
+      'en': 'Non-working days',
+      'ru': 'Нерабочие дни',
+      'de': 'Arbeitsfreie Tage',
+      'zh': '非工作日',
+    },
+    'datumBiraSeIzKalendara': {
+      'sr': 'Datum se bira iz kalendara.',
+      'en': 'The date is chosen from the calendar.',
+      'ru': 'Дата выбирается из календаря.',
+      'de': 'Das Datum wird aus dem Kalender ausgewählt.',
+      'zh': '日期从日历中选择。',
+    },
+    'datum': {
+      'sr': 'Datum',
+      'en': 'Date',
+      'ru': 'Дата',
+      'de': 'Datum',
+      'zh': '日期'
+    },
+    'izaberiDatum': {
+      'sr': 'Izaberi datum',
+      'en': 'Select date',
+      'ru': 'Выберите дату',
+      'de': 'Datum auswählen',
+      'zh': '选择日期',
+    },
+    'scope': {
+      'sr': 'Scope',
+      'en': 'Scope',
+      'ru': 'Область',
+      'de': 'Bereich',
+      'zh': '范围'
+    },
+    'sviAll': {
+      'sr': 'Svi (ALL)',
+      'en': 'All (ALL)',
+      'ru': 'Все (ALL)',
+      'de': 'Alle (ALL)',
+      'zh': '全部 (ALL)'
+    },
+    'razlog': {
+      'sr': 'Razlog',
+      'en': 'Reason',
+      'ru': 'Причина',
+      'de': 'Grund',
+      'zh': '原因'
+    },
+    'drzavniPraznik': {
+      'sr': 'Državni praznik',
+      'en': 'Public holiday',
+      'ru': 'Государственный праздник',
+      'de': 'Feiertag',
+      'zh': '公共假日',
+    },
+    'dodajZameni': {
+      'sr': 'Dodaj / Zameni',
+      'en': 'Add / Replace',
+      'ru': 'Добавить / Заменить',
+      'de': 'Hinzufügen / Ersetzen',
+      'zh': '添加 / 替换',
+    },
+    'aktivnaPravila': {
+      'sr': 'Aktivna pravila',
+      'en': 'Active rules',
+      'ru': 'Активные правила',
+      'de': 'Aktive Regeln',
+      'zh': '有效规则',
+    },
+    'nemaUnosa': {
+      'sr': 'Nema unosa',
+      'en': 'No entries',
+      'ru': 'Нет записей',
+      'de': 'Keine Einträge',
+      'zh': '无记录'
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'cuvam': {
+      'sr': 'Čuvam...',
+      'en': 'Saving...',
+      'ru': 'Сохранение...',
+      'de': 'Speichern...',
+      'zh': '保存中...'
+    },
+    'izaberiDatumIzKalendara': {
+      'sr': 'Izaberi datum iz kalendara.',
+      'en': 'Select a date from the calendar.',
+      'ru': 'Выберите дату из календаря.',
+      'de': 'Datum aus dem Kalender auswählen.',
+      'zh': '从日历中选择日期。',
+    },
+    'datumNijeValidan': {
+      'sr': 'Datum nije validan kalendarski.',
+      'en': 'The date is not a valid calendar date.',
+      'ru': 'Дата не является допустимой календарной датой.',
+      'de': 'Das Datum ist kein gültiges Kalenderdatum.',
+      'zh': '该日期不是有效的日历日期。',
+    },
+    'dodajBarJedanNeradanDan': {
+      'sr': 'Dodaj bar jedan neradan dan pre čuvanja.',
+      'en': 'Add at least one non-working day before saving.',
+      'ru': 'Добавьте хотя бы один нерабочий день перед сохранением.',
+      'de':
+          'Fügen Sie mindestens einen arbeitsfreien Tag hinzu, bevor Sie speichern.',
+      'zh': '保存前请至少添加一个非工作日。',
+    },
+    'neradniDaniSacuvani': {
+      'sr': '✅ Neradni dani sačuvani',
+      'en': '✅ Non-working days saved',
+      'ru': '✅ Нерабочие дни сохранены',
+      'de': '✅ Arbeitsfreie Tage gespeichert',
+      'zh': '✅ 非工作日已保存',
+    },
+    'greskaPriCuvanju': {
+      'sr': 'Greška pri čuvanju:',
+      'en': 'Error while saving:',
+      'ru': 'Ошибка при сохранении:',
+      'de': 'Fehler beim Speichern:',
+      'zh': '保存时出错：',
+    },
+    'greskaPriUcitavanjuNeradnih': {
+      'sr': 'Greška pri učitavanju neradnih dana:',
+      'en': 'Error loading non-working days:',
+      'ru': 'Ошибка при загрузке нерабочих дней:',
+      'de': 'Fehler beim Laden der arbeitsfreien Tage:',
+      'zh': '加载非工作日时出错：',
+    },
+    'customVremenaPolazaka': {
+      'sr': 'Custom vremena polazaka',
+      'en': 'Custom departure times',
+      'ru': 'Пользовательское время отправления',
+      'de': 'Benutzerdefinierte Abfahrtszeiten',
+      'zh': '自定义发车时间',
+    },
+    'unosFormataHint': {
+      'sr': 'Unos formata HH:mm, razdvojeno zarezom.',
+      'en': 'Enter in HH:mm format, comma-separated.',
+      'ru': 'Введите в формате ЧЧ:мм, через запятую.',
+      'de': 'Eingabe im Format HH:mm, durch Komma getrennt.',
+      'zh': '请按 HH:mm 格式输入，用逗号分隔。',
+    },
+    'neispravnoVreme': {
+      'sr': 'Neispravno vreme:',
+      'en': 'Invalid time:',
+      'ru': 'Неверное время:',
+      'de': 'Ungültige Zeit:',
+      'zh': '时间无效：',
+    },
+    'customVremenaSacuvana': {
+      'sr': '✅ Custom vremena sačuvana',
+      'en': '✅ Custom times saved',
+      'ru': '✅ Пользовательское время сохранено',
+      'de': '✅ Benutzerdefinierte Zeiten gespeichert',
+      'zh': '✅ 自定义时间已保存',
+    },
+    'greskaPriUcitavanjuCustom': {
+      'sr': 'Greška pri učitavanju custom vremena:',
+      'en': 'Error loading custom times:',
+      'ru': 'Ошибка при загрузке пользовательского времени:',
+      'de': 'Fehler beim Laden der benutzerdefinierten Zeiten:',
+      'zh': '加载自定义时间时出错：',
+    },
+    'infoBaner': {
+      'sr': '📢 Info baner',
+      'en': '📢 Info banner',
+      'ru': '📢 Информационный баннер',
+      'de': '📢 Info-Banner',
+      'zh': '📢 信息横幅',
+    },
+    'infoBanerHint': {
+      'sr':
+          'Jedna poruka prikazana odabranoj grupi korisnika. Isključi kada ne treba da se prikazuje.',
+      'en':
+          'A single message shown to the selected group of users. Turn off when it should not be shown.',
+      'ru':
+          'Одно сообщение, показываемое выбранной группе пользователей. Отключите, если не нужно показывать.',
+      'de':
+          'Eine einzelne Nachricht für die ausgewählte Nutzergruppe. Deaktivieren, wenn sie nicht angezeigt werden soll.',
+      'zh': '向选定用户组显示的单条消息。不需要显示时请关闭。',
+    },
+    'prikaziBaner': {
+      'sr': 'Prikaži baner',
+      'en': 'Show banner',
+      'ru': 'Показать баннер',
+      'de': 'Banner anzeigen',
+      'zh': '显示横幅',
+    },
+    'naslov': {
+      'sr': 'Naslov',
+      'en': 'Title',
+      'ru': 'Заголовок',
+      'de': 'Titel',
+      'zh': '标题'
+    },
+    'obavestenje': {
+      'sr': 'Obaveštenje',
+      'en': 'Notice',
+      'ru': 'Уведомление',
+      'de': 'Hinweis',
+      'zh': '通知'
+    },
+    'poruka': {
+      'sr': 'Poruka',
+      'en': 'Message',
+      'ru': 'Сообщение',
+      'de': 'Nachricht',
+      'zh': '消息'
+    },
+    'unesiTekstObavestenja': {
+      'sr': 'Unesi tekst obaveštenja...',
+      'en': 'Enter notice text...',
+      'ru': 'Введите текст уведомления...',
+      'de': 'Hinweistext eingeben...',
+      'zh': '输入通知内容...',
+    },
+    'bojaBanera': {
+      'sr': 'Boja banera',
+      'en': 'Banner color',
+      'ru': 'Цвет баннера',
+      'de': 'Bannerfarbe',
+      'zh': '横幅颜色',
+    },
+    'prikaziKorisnicima': {
+      'sr': 'Prikaži korisnicima',
+      'en': 'Show to users',
+      'ru': 'Показать пользователям',
+      'de': 'Nutzern anzeigen',
+      'zh': '向用户显示',
+    },
+    'bakerUkljucenValidacija': {
+      'sr': 'Ako je baner uključen, moraš uneti i naslov i poruku.',
+      'en':
+          'If the banner is enabled, you must enter both a title and a message.',
+      'ru': 'Если баннер включен, необходимо ввести заголовок и сообщение.',
+      'de':
+          'Wenn der Banner aktiviert ist, müssen Titel und Nachricht eingegeben werden.',
+      'zh': '如果横幅已启用，必须输入标题和消息。',
+    },
+    'infoBanerSacuvan': {
+      'sr': '✅ Info baner sačuvan',
+      'en': '✅ Info banner saved',
+      'ru': '✅ Информационный баннер сохранен',
+      'de': '✅ Info-Banner gespeichert',
+      'zh': '✅ 信息横幅已保存',
+    },
+    'greskaPriUcitavanjuBanera': {
+      'sr': 'Greška pri učitavanju info banera:',
+      'en': 'Error loading info banner:',
+      'ru': 'Ошибка при загрузке информационного баннера:',
+      'de': 'Fehler beim Laden des Info-Banners:',
+      'zh': '加载信息横幅时出错：',
+    },
+    'audSvi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle', 'zh': '全部'},
+    'audPutnici': {
+      'sr': 'Putnici',
+      'en': 'Passengers',
+      'ru': 'Пассажиры',
+      'de': 'Passagiere',
+      'zh': '乘客'
+    },
+    'audVozaci': {
+      'sr': 'Vozači',
+      'en': 'Drivers',
+      'ru': 'Водители',
+      'de': 'Fahrer',
+      'zh': '司机'
+    },
+    'audRadnici': {
+      'sr': 'Radnici',
+      'en': 'Workers',
+      'ru': 'Рабочие',
+      'de': 'Arbeiter',
+      'zh': '员工'
+    },
+    'audUcenici': {
+      'sr': 'Učenici',
+      'en': 'Students',
+      'ru': 'Ученики',
+      'de': 'Schüler',
+      'zh': '学生'
+    },
+    'updateVerzije': {
+      'sr': 'Update verzije',
+      'en': 'Update versions',
+      'ru': 'Версии обновления',
+      'de': 'Update-Versionen',
+      'zh': '更新版本',
+    },
+    'androidLatest': {
+      'sr': 'Android latest',
+      'en': 'Android latest',
+      'ru': 'Android последняя',
+      'de': 'Android neueste',
+      'zh': 'Android 最新版',
+    },
+    'androidMin': {
+      'sr': 'Android min',
+      'en': 'Android min',
+      'ru': 'Android минимальная',
+      'de': 'Android min',
+      'zh': 'Android 最低版本',
+    },
+    'iosLatest': {
+      'sr': 'iOS latest',
+      'en': 'iOS latest',
+      'ru': 'iOS последняя',
+      'de': 'iOS neueste',
+      'zh': 'iOS 最新版',
+    },
+    'iosMin': {
+      'sr': 'iOS min',
+      'en': 'iOS min',
+      'ru': 'iOS минимальная',
+      'de': 'iOS min',
+      'zh': 'iOS 最低版本'
+    },
+    'forceAndroid': {
+      'sr': 'Force Android',
+      'en': 'Force Android',
+      'ru': 'Принудительно Android',
+      'de': 'Android erzwingen',
+      'zh': '强制 Android 更新',
+    },
+    'forceIos': {
+      'sr': 'Force iOS',
+      'en': 'Force iOS',
+      'ru': 'Принудительно iOS',
+      'de': 'iOS erzwingen',
+      'zh': '强制 iOS 更新',
+    },
+    'maintenanceAndroid': {
+      'sr': 'Maintenance Android',
+      'en': 'Maintenance Android',
+      'ru': 'Обслуживание Android',
+      'de': 'Wartung Android',
+      'zh': 'Android 维护模式',
+    },
+    'maintenanceIos': {
+      'sr': 'Maintenance iOS',
+      'en': 'Maintenance iOS',
+      'ru': 'Обслуживание iOS',
+      'de': 'Wartung iOS',
+      'zh': 'iOS 维护模式',
+    },
+    'androidVerzijaFormat': {
+      'sr': 'Android verzija mora biti u formatu npr. 6.0.192',
+      'en': 'Android version must be in format e.g. 6.0.192',
+      'ru': 'Версия Android должна быть в формате, например, 6.0.192',
+      'de': 'Die Android-Version muss z. B. im Format 6.0.192 vorliegen',
+      'zh': 'Android 版本格式必须为例如 6.0.192',
+    },
+    'iosVerzijaFormat': {
+      'sr': 'iOS verzija mora biti u formatu npr. 6.0.192',
+      'en': 'iOS version must be in format e.g. 6.0.192',
+      'ru': 'Версия iOS должна быть в формате, например, 6.0.192',
+      'de': 'Die iOS-Version muss z. B. im Format 6.0.192 vorliegen',
+      'zh': 'iOS 版本格式必须为例如 6.0.192',
+    },
+    'updateVerzijeSacuvane': {
+      'sr': '✅ Update verzije sačuvane',
+      'en': '✅ Update versions saved',
+      'ru': '✅ Версии обновления сохранены',
+      'de': '✅ Update-Versionen gespeichert',
+      'zh': '✅ 更新版本已保存',
+    },
+    'uceniciBezVsTermina': {
+      'sr': 'Učenici bez VS termina',
+      'en': 'Students without VS slot',
+      'ru': 'Ученики без слота VS',
+      'de': 'Schüler ohne VS-Termin',
+      'zh': '没有 VS 时段的学生',
+    },
+    'bezVs': {
+      'sr': 'Bez VS',
+      'en': 'Without VS',
+      'ru': 'Без VS',
+      'de': 'Ohne VS',
+      'zh': '无 VS'
+    },
+    'sviImajuVsTermin': {
+      'sr': '— svi imaju VS termin —',
+      'en': '— everyone has a VS slot —',
+      'ru': '— у всех есть слот VS —',
+      'de': '— alle haben einen VS-Termin —',
+      'zh': '— 所有人都有 VS 时段 —',
+    },
+    'zatvori': {
+      'sr': 'Zatvori',
+      'en': 'Close',
+      'ru': 'Закрыть',
+      'de': 'Schließen',
+      'zh': '关闭'
+    },
+    'tipRasporeda': {
+      'sr': 'Tip rasporeda',
+      'en': 'Schedule type',
+      'ru': 'Тип расписания',
+      'de': 'Zeitplantyp',
+      'zh': '排班类型',
+    },
+    'custom': {
+      'sr': '🛠️  Custom',
+      'en': '🛠️  Custom',
+      'ru': '🛠️  Настраиваемый',
+      'de': '🛠️  Benutzerdefiniert',
+      'zh': '🛠️  自定义',
+    },
+    'urediCustomVremena': {
+      'sr': '⏱️  Uredi custom vremena',
+      'en': '⏱️  Edit custom times',
+      'ru': '⏱️  Изменить пользовательское время',
+      'de': '⏱️  Benutzerdefinierte Zeiten bearbeiten',
+      'zh': '⏱️  编辑自定义时间',
+    },
+    'urediNeradneDane': {
+      'sr': '📅  Uredi neradne dane',
+      'en': '📅  Edit non-working days',
+      'ru': '📅  Изменить нерабочие дни',
+      'de': '📅  Arbeitsfreie Tage bearbeiten',
+      'zh': '📅  编辑非工作日',
+    },
+    'urediInfoBaner': {
+      'sr': '📢  Uredi info baner',
+      'en': '📢  Edit info banner',
+      'ru': '📢  Изменить информационный баннер',
+      'de': '📢  Info-Banner bearbeiten',
+      'zh': '📢  编辑信息横幅',
+    },
+    'duznici': {
+      'sr': 'Dužnici',
+      'en': 'Debtors',
+      'ru': 'Должники',
+      'de': 'Schuldner',
+      'zh': '欠款人'
+    },
+    'ukupanPazar': {
+      'sr': 'UKUPAN PAZAR',
+      'en': 'TOTAL EARNINGS',
+      'ru': 'ОБЩАЯ ВЫРУЧКА',
+      'de': 'GESAMTEINNAHMEN',
+      'zh': '总收入',
+    },
+  },
+  'adreseScreen': {
+    'naslov': {
+      'sr': '📍 Adrese',
+      'en': '📍 Addresses',
+      'ru': '📍 Адреса',
+      'de': '📍 Adressen',
+      'zh': '📍 地址'
+    },
+    'greska': {
+      'sr': 'Greška:',
+      'en': 'Error:',
+      'ru': 'Ошибка:',
+      'de': 'Fehler:',
+      'zh': '错误：'
+    },
+    'dodaj': {
+      'sr': 'Dodaj',
+      'en': 'Add',
+      'ru': 'Добавить',
+      'de': 'Hinzufügen',
+      'zh': '添加'
+    },
+    'adresaDodata': {
+      'sr': '✅ Adresa dodata',
+      'en': '✅ Address added',
+      'ru': '✅ Адрес добавлен',
+      'de': '✅ Adresse hinzugefügt',
+      'zh': '✅ 已添加地址',
+    },
+    'adresaIzmenjena': {
+      'sr': '✅ Adresa izmenjena',
+      'en': '✅ Address updated',
+      'ru': '✅ Адрес изменён',
+      'de': '✅ Adresse geändert',
+      'zh': '✅ 已更新地址',
+    },
+    'potvrdaBrisanja': {
+      'sr': 'Potvrda brisanja',
+      'en': 'Confirm deletion',
+      'ru': 'Подтвердите удаление',
+      'de': 'Löschen bestätigen',
+      'zh': '确认删除',
+    },
+    'daLiSteSigurniObrisati': {
+      'sr': 'Da li ste sigurni da želite obrisati adresu',
+      'en': 'Are you sure you want to delete the address',
+      'ru': 'Вы уверены, что хотите удалить адрес',
+      'de': 'Möchten Sie die Adresse wirklich löschen',
+      'zh': '您确定要删除此地址吗',
+    },
+    'da': {'sr': 'DA', 'en': 'YES', 'ru': 'ДА', 'de': 'JA', 'zh': '是'},
+    'ne': {'sr': 'NE', 'en': 'NO', 'ru': 'НЕТ', 'de': 'NEIN', 'zh': '否'},
+    'adresaObrisana': {
+      'sr': '🗑️ Adresa obrisana',
+      'en': '🗑️ Address deleted',
+      'ru': '🗑️ Адрес удалён',
+      'de': '🗑️ Adresse gelöscht',
+      'zh': '🗑️ 已删除地址',
+    },
+    'ukupno': {
+      'sr': 'Ukupno',
+      'en': 'Total',
+      'ru': 'Всего',
+      'de': 'Gesamt',
+      'zh': '总计'
+    },
+    'belaCrkvaKratko': {
+      'sr': 'B. Crkva',
+      'en': 'B. Crkva',
+      'ru': 'Б. Црква',
+      'de': 'B. Crkva',
+      'zh': 'B. Crkva'
+    },
+    'vrsac': {
+      'sr': 'Vrsac',
+      'en': 'Vrsac',
+      'ru': 'Вршац',
+      'de': 'Vrsac',
+      'zh': 'Vrsac'
+    },
+    'belaCrkvaPuno': {
+      'sr': 'Bela Crkva',
+      'en': 'Bela Crkva',
+      'ru': 'Бела Црква',
+      'de': 'Bela Crkva',
+      'zh': 'Bela Crkva'
+    },
+    'vrsacDijakritik': {
+      'sr': 'Vršac',
+      'en': 'Vrsac',
+      'ru': 'Вршац',
+      'de': 'Vrsac',
+      'zh': 'Vrsac'
+    },
+    'pretraziAdrese': {
+      'sr': 'Pretraži adrese...',
+      'en': 'Search addresses...',
+      'ru': 'Поиск адресов...',
+      'de': 'Adressen suchen...',
+      'zh': '搜索地址...',
+    },
+    'svi': {'sr': 'Svi', 'en': 'All', 'ru': 'Все', 'de': 'Alle', 'zh': '全部'},
+    'nemaAdresa': {
+      'sr': 'Nema adresa',
+      'en': 'No addresses',
+      'ru': 'Нет адресов',
+      'de': 'Keine Adressen',
+      'zh': '没有地址'
+    },
+    'novaAdresa': {
+      'sr': 'Nova Adresa',
+      'en': 'New Address',
+      'ru': 'Новый адрес',
+      'de': 'Neue Adresse',
+      'zh': '新地址'
+    },
+    'izmeniAdresu': {
+      'sr': 'Izmeni Adresu',
+      'en': 'Edit Address',
+      'ru': 'Изменить адрес',
+      'de': 'Adresse bearbeiten',
+      'zh': '编辑地址',
+    },
+    'nazivAdrese': {
+      'sr': 'Naziv adrese',
+      'en': 'Address name',
+      'ru': 'Название адреса',
+      'de': 'Adressname',
+      'zh': '地址名称'
+    },
+    'grad': {
+      'sr': 'Grad',
+      'en': 'City',
+      'ru': 'Город',
+      'de': 'Stadt',
+      'zh': '城市'
+    },
+    'odustani': {
+      'sr': 'ODUSTANI',
+      'en': 'CANCEL',
+      'ru': 'ОТМЕНА',
+      'de': 'ABBRECHEN',
+      'zh': '取消'
+    },
+    'sacuvaj': {
+      'sr': 'SAČUVAJ',
+      'en': 'SAVE',
+      'ru': 'СОХРАНИТЬ',
+      'de': 'SPEICHERN',
+      'zh': '保存'
+    },
+  },
+  'dnevnikVozacaScreen': {
+    'dnevnikVozaca': {
+      'sr': 'Dnevnik vozača',
+      'en': 'Driver log',
+      'ru': 'Журнал водителя',
+      'de': 'Fahrertagebuch',
+      'zh': '司机日志'
+    },
+    'sacuvajPdf': {
+      'sr': 'Sačuvaj PDF',
+      'en': 'Save PDF',
+      'ru': 'Сохранить PDF',
+      'de': 'PDF speichern',
+      'zh': '保存PDF'
+    },
+    'kopirajIzvestaj': {
+      'sr': 'Kopiraj izveštaj',
+      'en': 'Copy report',
+      'ru': 'Копировать отчёт',
+      'de': 'Bericht kopieren',
+      'zh': '复制报告',
+    },
+    'vozacHint': {
+      'sr': 'Vozač',
+      'en': 'Driver',
+      'ru': 'Водитель',
+      'de': 'Fahrer',
+      'zh': '司机'
+    },
+    'izaberiVozacaIDatum': {
+      'sr': 'Izaberi vozača i datum',
+      'en': 'Select driver and date',
+      'ru': 'Выберите водителя и дату',
+      'de': 'Fahrer und Datum auswählen',
+      'zh': '选择司机和日期',
+    },
+    'nemaAkcijaZa': {
+      'sr': 'Nema akcija za',
+      'en': 'No actions for',
+      'ru': 'Нет действий для',
+      'de': 'Keine Aktionen für',
+      'zh': '没有操作记录：',
+    },
+    'nepoznato': {
+      'sr': 'Nepoznato',
+      'en': 'Unknown',
+      'ru': 'Неизвестно',
+      'de': 'Unbekannt',
+      'zh': '未知'
+    },
+    'pokupio': {
+      'sr': 'POKUPIO',
+      'en': 'PICKED UP',
+      'ru': 'ЗАБРАЛ',
+      'de': 'ABGEHOLT',
+      'zh': '已接送'
+    },
+    'dodao': {
+      'sr': 'DODAO',
+      'en': 'ADDED',
+      'ru': 'ДОБАВИЛ',
+      'de': 'HINZUGEFÜGT',
+      'zh': '已添加'
+    },
+    'otkazao': {
+      'sr': 'OTKAZAO',
+      'en': 'CANCELED',
+      'ru': 'ОТМЕНИЛ',
+      'de': 'STORNIERT',
+      'zh': '已取消'
+    },
+    'ukupnoNaplaceno': {
+      'sr': 'Ukupno naplaćeno:',
+      'en': 'Total collected:',
+      'ru': 'Всего взыскано:',
+      'de': 'Insgesamt eingezogen:',
+      'zh': '总收款：',
+    },
+    'predao': {
+      'sr': 'Predao:',
+      'en': 'Handed over:',
+      'ru': 'Сдал:',
+      'de': 'Übergeben:',
+      'zh': '已上交：'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'visak': {
+      'sr': 'Višak:',
+      'en': 'Surplus:',
+      'ru': 'Излишек:',
+      'de': 'Überschuss:',
+      'zh': '盈余：'
+    },
+    'manjak': {
+      'sr': 'Manjak:',
+      'en': 'Shortage:',
+      'ru': 'Недостача:',
+      'de': 'Fehlbetrag:',
+      'zh': '短缺：'
+    },
+    'unesiteIznosPredajeVeciOd0': {
+      'sr': 'Unesite iznos predaje veći od 0 din.',
+      'en': 'Enter a handover amount greater than 0.',
+      'ru': 'Введите сумму передачи больше 0.',
+      'de': 'Geben Sie einen Übergabebetrag größer als 0 ein.',
+      'zh': '请输入大于0的上交金额。',
+    },
+    'predajaSacuvana': {
+      'sr': '✅ Predaja sačuvana',
+      'en': '✅ Handover saved',
+      'ru': '✅ Передача сохранена',
+      'de': '✅ Übergabe gespeichert',
+      'zh': '✅ 已保存上交记录',
+    },
+    'greskaPriCuvanju': {
+      'sr': '❌ Greška pri čuvanju',
+      'en': '❌ Error saving',
+      'ru': '❌ Ошибка при сохранении',
+      'de': '❌ Fehler beim Speichern',
+      'zh': '❌ 保存出错',
+    },
+    'kopiranoUClipboard': {
+      'sr': '📋 Kopirano u clipboard',
+      'en': '📋 Copied to clipboard',
+      'ru': '📋 Скопировано в буфер обмена',
+      'de': '📋 In die Zwischenablage kopiert',
+      'zh': '📋 已复制到剪贴板',
+    },
+    'greskaPriIzvozuPdf': {
+      'sr': '❌ Greška pri izvozu PDF',
+      'en': '❌ Error exporting PDF',
+      'ru': '❌ Ошибка экспорта PDF',
+      'de': '❌ Fehler beim PDF-Export',
+      'zh': '❌ PDF导出出错',
+    },
+    'pokupljeni': {
+      'sr': 'Pokupljeni',
+      'en': 'Picked up',
+      'ru': 'Забрано',
+      'de': 'Abgeholt',
+      'zh': '已接送'
+    },
+    'otkazani': {
+      'sr': 'Otkazani',
+      'en': 'Canceled',
+      'ru': 'Отменено',
+      'de': 'Storniert',
+      'zh': '已取消'
+    },
+    'naplaceno': {
+      'sr': 'Naplaćeno',
+      'en': 'Collected',
+      'ru': 'Взыскано',
+      'de': 'Eingezogen',
+      'zh': '已收款'
+    },
+    'dodati': {
+      'sr': 'Dodati',
+      'en': 'Added',
+      'ru': 'Добавлено',
+      'de': 'Hinzugefügt',
+      'zh': '已添加'
+    },
+    'datum': {
+      'sr': 'Datum',
+      'en': 'Date',
+      'ru': 'Дата',
+      'de': 'Datum',
+      'zh': '日期'
+    },
+    'vozac': {
+      'sr': 'Vozač',
+      'en': 'Driver',
+      'ru': 'Водитель',
+      'de': 'Fahrer',
+      'zh': '司机'
+    },
+    'pokupljeniPutnici': {
+      'sr': 'POKUPLJENI PUTNICI',
+      'en': 'PICKED UP PASSENGERS',
+      'ru': 'ЗАБРАННЫЕ ПАССАЖИРЫ',
+      'de': 'ABGEHOLTE FAHRGÄSTE',
+      'zh': '已接送乘客',
+    },
+    'otkazaneVoznje': {
+      'sr': 'OTKAZANE VOŽNJE',
+      'en': 'CANCELLED RIDES',
+      'ru': 'ОТМЕНЁННЫЕ ПОЕЗДКИ',
+      'de': 'STORNIERTE FAHRTEN',
+      'zh': '已取消行程',
+    },
+    'naplate': {
+      'sr': 'NAPLATE',
+      'en': 'PAYMENTS',
+      'ru': 'ОПЛАТЫ',
+      'de': 'ZAHLUNGEN',
+      'zh': '付款'
+    },
+    'ukupno': {
+      'sr': 'UKUPNO',
+      'en': 'TOTAL',
+      'ru': 'ИТОГО',
+      'de': 'GESAMT',
+      'zh': '总计'
+    },
+    'uplata': {
+      'sr': 'uplata',
+      'en': 'payment',
+      'ru': 'оплата',
+      'de': 'Zahlung',
+      'zh': '付款'
+    },
+    'ime': {'sr': 'Ime', 'en': 'Name', 'ru': 'Имя', 'de': 'Name', 'zh': '姓名'},
+    'vreme': {
+      'sr': 'Vreme',
+      'en': 'Time',
+      'ru': 'Время',
+      'de': 'Uhrzeit',
+      'zh': '时间'
+    },
+    'termin': {
+      'sr': 'Termin',
+      'en': 'Term',
+      'ru': 'Срок',
+      'de': 'Termin',
+      'zh': '时间'
+    },
+    'iznos': {
+      'sr': 'Iznos',
+      'en': 'Amount',
+      'ru': 'Сумма',
+      'de': 'Betrag',
+      'zh': '金额'
+    },
+    'broj': {'sr': '#', 'en': '#', 'ru': '#', 'de': '#', 'zh': '#'},
+  },
+  'dugoviScreen': {
+    'dugovanja': {
+      'sr': 'Dugovanja',
+      'en': 'Debts',
+      'ru': 'Долги',
+      'de': 'Schulden',
+      'zh': '欠款'
+    },
+    'ukupnoDugova': {
+      'sr': 'Ukupno dugova',
+      'en': 'Total debts',
+      'ru': 'Всего долгов',
+      'de': 'Gesamtschulden',
+      'zh': '欠款总数'
+    },
+    'ukupanIznos': {
+      'sr': 'Ukupan iznos',
+      'en': 'Total amount',
+      'ru': 'Общая сумма',
+      'de': 'Gesamtbetrag',
+      'zh': '总金额'
+    },
+    'pretraziPutnike': {
+      'sr': '🔍  Pretraži putnike...',
+      'en': '🔍  Search passengers...',
+      'ru': '🔍  Поиск пассажиров...',
+      'de': '🔍  Passagiere suchen...',
+      'zh': '🔍  搜索乘客...',
+    },
+    'nemaEvidentiranihDugovanja': {
+      'sr': 'Nema evidentiranih dugovanja',
+      'en': 'No recorded debts',
+      'ru': 'Нет зарегистрированных долгов',
+      'de': 'Keine erfassten Schulden',
+      'zh': '没有记录的欠款',
+    },
+    'nemaRezultataZa': {
+      'sr': 'Nema rezultata za',
+      'en': 'No results for',
+      'ru': 'Нет результатов для',
+      'de': 'Keine Ergebnisse für',
+      'zh': '没有找到结果：',
+    },
+    'naplaceno': {
+      'sr': 'Naplaćeno',
+      'en': 'Collected',
+      'ru': 'Взыскано',
+      'de': 'Eingezogen',
+      'zh': '已收款'
+    },
+    'za': {'sr': 'za', 'en': 'for', 'ru': 'для', 'de': 'für', 'zh': '为'},
+    'period': {
+      'sr': 'Period',
+      'en': 'Period',
+      'ru': 'Период',
+      'de': 'Zeitraum',
+      'zh': '周期'
+    },
+    'obracun': {
+      'sr': 'Obračun',
+      'en': 'Calculation',
+      'ru': 'Расчёт',
+      'de': 'Abrechnung',
+      'zh': '结算'
+    },
+    'uplaceno': {
+      'sr': 'Uplaćeno',
+      'en': 'Paid',
+      'ru': 'Оплачено',
+      'de': 'Bezahlt',
+      'zh': '已支付'
+    },
+    'dug': {
+      'sr': 'Dug',
+      'en': 'Debt',
+      'ru': 'Долг',
+      'de': 'Schuld',
+      'zh': '欠款'
+    },
+    'pokupio': {
+      'sr': 'Pokupio',
+      'en': 'Collected by',
+      'ru': 'Забрал',
+      'de': 'Abgeholt von',
+      'zh': '收款人'
+    },
+    'naplatio': {
+      'sr': 'Naplatio',
+      'en': 'Charged by',
+      'ru': 'Взыскал',
+      'de': 'Eingezogen von',
+      'zh': '收取人'
+    },
+    'naplacenoCreatedAt': {
+      'sr': 'Naplaćeno (created_at)',
+      'en': 'Collected (created_at)',
+      'ru': 'Взыскано (created_at)',
+      'de': 'Eingezogen (created_at)',
+      'zh': '已收款 (created_at)',
+    },
+    'updatedAt': {
+      'sr': 'Updated at',
+      'en': 'Updated at',
+      'ru': 'Обновлено',
+      'de': 'Aktualisiert am',
+      'zh': '更新时间'
+    },
+    'finansijeNaziv': {
+      'sr': 'Finansije naziv',
+      'en': 'Finance name',
+      'ru': 'Название финансов',
+      'de': 'Finanzname',
+      'zh': '财务名称'
+    },
+    'naplati': {
+      'sr': 'NAPLATI',
+      'en': 'COLLECT',
+      'ru': 'ВЗЫСКАТЬ',
+      'de': 'EINZIEHEN',
+      'zh': '收款'
+    },
+  },
+  'finansijeScreen': {
+    'finansije': {
+      'sr': 'Finansije',
+      'en': 'Finances',
+      'ru': 'Финансы',
+      'de': 'Finanzen',
+      'zh': '财务'
+    },
+    'potrazivanjaDugovi': {
+      'sr': 'Potraživanja (Dugovi)',
+      'en': 'Receivables (Debts)',
+      'ru': 'Дебиторская задолженность (Долги)',
+      'de': 'Forderungen (Schulden)',
+      'zh': '应收账款（欠款）',
+    },
+    'neplaceneVoznjeSvihPutnika': {
+      'sr': 'Neplaćene vožnje svih putnika',
+      'en': 'Unpaid rides of all passengers',
+      'ru': 'Неоплаченные поездки всех пассажиров',
+      'de': 'Unbezahlte Fahrten aller Passagiere',
+      'zh': '所有乘客的未付车费',
+    },
+    'krediti': {
+      'sr': 'Krediti',
+      'en': 'Loans',
+      'ru': 'Кредиты',
+      'de': 'Kredite',
+      'zh': '贷款'
+    },
+    'preostaliDugZaKredite': {
+      'sr': 'Preostali dug za kredite',
+      'en': 'Remaining loan debt',
+      'ru': 'Остаток долга по кредитам',
+      'de': 'Verbleibende Kreditschuld',
+      'zh': '剩余贷款欠款',
+    },
+    'danas': {
+      'sr': 'Danas',
+      'en': 'Today',
+      'ru': 'Сегодня',
+      'de': 'Heute',
+      'zh': '今天'
+    },
+    'ovaNedelja': {
+      'sr': 'Ova nedelja',
+      'en': 'This week',
+      'ru': 'Эта неделя',
+      'de': 'Diese Woche',
+      'zh': '本周'
+    },
+    'ovajMesec': {
+      'sr': 'Ovaj mesec',
+      'en': 'This month',
+      'ru': 'Этот месяц',
+      'de': 'Dieser Monat',
+      'zh': '本月'
+    },
+    'ovaGodina': {
+      'sr': 'Ova godina',
+      'en': 'This year',
+      'ru': 'Этот год',
+      'de': 'Dieses Jahr',
+      'zh': '今年'
+    },
+    'ceoGodisnjiBilans': {
+      'sr': 'Ceo godišnji bilans',
+      'en': 'Full yearly balance',
+      'ru': 'Полный годовой баланс',
+      'de': 'Gesamte Jahresbilanz',
+      'zh': '全年结余',
+    },
+    'uplata': {
+      'sr': 'uplata',
+      'en': 'payments',
+      'ru': 'платежей',
+      'de': 'Zahlungen',
+      'zh': '付款'
+    },
+    'prihod': {
+      'sr': 'Prihod',
+      'en': 'Income',
+      'ru': 'Доход',
+      'de': 'Einnahmen',
+      'zh': '收入'
+    },
+    'troskovi': {
+      'sr': 'Troškovi',
+      'en': 'Expenses',
+      'ru': 'Расходы',
+      'de': 'Ausgaben',
+      'zh': '支出'
+    },
+    'neto': {
+      'sr': 'NETO',
+      'en': 'NET',
+      'ru': 'НЕТТО',
+      'de': 'NETTO',
+      'zh': '净额'
+    },
+    'mesecniTroskovi': {
+      'sr': '📋 Mesečni troškovi',
+      'en': '📋 Monthly expenses',
+      'ru': '📋 Ежемесячные расходы',
+      'de': '📋 Monatliche Ausgaben',
+      'zh': '📋 月度支出',
+    },
+    'nemaTroskovaZaOvajMesec': {
+      'sr': 'Nema troškova za ovaj mesec',
+      'en': 'No expenses for this month',
+      'ru': 'Нет расходов за этот месяц',
+      'de': 'Keine Ausgaben für diesen Monat',
+      'zh': '本月没有支出',
+    },
+    'dodajTroskove': {
+      'sr': 'Dodaj troškove',
+      'en': 'Add expenses',
+      'ru': 'Добавить расходы',
+      'de': 'Ausgaben hinzufügen',
+      'zh': '添加支出',
+    },
+    'unesiIznosDodas': {
+      'sr': 'Unesi iznos koji želiš da DODAŠ na trenutni trošak.',
+      'en': 'Enter the amount you want to ADD to the current expense.',
+      'ru': 'Введите сумму, которую хотите ДОБАВИТЬ к текущему расходу.',
+      'de':
+          'Geben Sie den Betrag ein, den Sie zur aktuellen Ausgabe HINZUFÜGEN möchten.',
+      'zh': '输入您想要添加到当前支出的金额。',
+    },
+    'trenutno': {
+      'sr': 'Trenutno:',
+      'en': 'Current:',
+      'ru': 'Текущее:',
+      'de': 'Aktuell:',
+      'zh': '当前：'
+    },
+    'dodajDots': {
+      'sr': 'Dodaj...',
+      'en': 'Add...',
+      'ru': 'Добавить...',
+      'de': 'Hinzufügen...',
+      'zh': '添加...'
+    },
+    'kojiKreditSeOtplacuje': {
+      'sr': 'Koji kredit se otplaćuje?',
+      'en': 'Which loan is being repaid?',
+      'ru': 'Какой кредит погашается?',
+      'de': 'Welcher Kredit wird zurückgezahlt?',
+      'zh': '哪笔贷款正在偿还？',
+    },
+    'troskoviDodati': {
+      'sr': '✅ Troškovi dodati',
+      'en': '✅ Expenses added',
+      'ru': '✅ Расходы добавлены',
+      'de': '✅ Ausgaben hinzugefügt',
+      'zh': '✅ 支出已添加',
+    },
+    'katGorivo': {
+      'sr': 'Gorivo',
+      'en': 'Fuel',
+      'ru': 'Топливо',
+      'de': 'Kraftstoff',
+      'zh': '燃油'
+    },
+    'katOdrzavanje': {
+      'sr': 'Održavanje',
+      'en': 'Maintenance',
+      'ru': 'Обслуживание',
+      'de': 'Wartung',
+      'zh': '维护'
+    },
+    'katPlate': {
+      'sr': 'Plate',
+      'en': 'Salaries',
+      'ru': 'Зарплаты',
+      'de': 'Gehälter',
+      'zh': '工资'
+    },
+    'katKredit': {
+      'sr': 'Kredit',
+      'en': 'Loan',
+      'ru': 'Кредит',
+      'de': 'Kredit',
+      'zh': '贷款'
+    },
+    'katRegistracija': {
+      'sr': 'Registracija',
+      'en': 'Registration',
+      'ru': 'Регистрация',
+      'de': 'Zulassung',
+      'zh': '注册'
+    },
+    'katYuAuto': {
+      'sr': 'YU auto',
+      'en': 'YU auto',
+      'ru': 'YU авто',
+      'de': 'YU Auto',
+      'zh': 'YU 汽车'
+    },
+    'katMajstori': {
+      'sr': 'Majstori',
+      'en': 'Repairmen',
+      'ru': 'Мастера',
+      'de': 'Handwerker',
+      'zh': '维修工'
+    },
+    'katPorez': {
+      'sr': 'Porez',
+      'en': 'Tax',
+      'ru': 'Налог',
+      'de': 'Steuer',
+      'zh': '税费'
+    },
+    'katAlimentacija': {
+      'sr': 'Alimentacija',
+      'en': 'Child support',
+      'ru': 'Алименты',
+      'de': 'Unterhalt',
+      'zh': '抚养费'
+    },
+    'katRacuni': {
+      'sr': 'Računi',
+      'en': 'Bills',
+      'ru': 'Счета',
+      'de': 'Rechnungen',
+      'zh': '账单'
+    },
+    'katOstalo': {
+      'sr': 'Ostalo',
+      'en': 'Other',
+      'ru': 'Прочее',
+      'de': 'Sonstiges',
+      'zh': '其他'
+    },
+  },
+  'gorivoScreen': {
+    'gorivo': {
+      'sr': 'Gorivo',
+      'en': 'Fuel',
+      'ru': 'Топливо',
+      'de': 'Kraftstoff',
+      'zh': '燃油'
+    },
+    'nemaRedaZaDopunu': {
+      'sr': 'Nema reda za dopunu. Prvo dodaj početne podatke.',
+      'en': 'No record to refill. First add initial data.',
+      'ru': 'Нет записи для заправки. Сначала добавьте начальные данные.',
+      'de': 'Kein Eintrag zum Auffüllen. Zuerst Anfangsdaten hinzufügen.',
+      'zh': '没有可加油的记录。请先添加初始数据。',
+    },
+    'dodajGorivo': {
+      'sr': 'Dodaj gorivo',
+      'en': 'Add fuel',
+      'ru': 'Добавить топливо',
+      'de': 'Kraftstoff hinzufügen',
+      'zh': '添加燃油'
+    },
+    'trenutnoKapacitet': {
+      'sr': 'Trenutno',
+      'en': 'Current',
+      'ru': 'Текущее',
+      'de': 'Aktuell',
+      'zh': '当前',
+    },
+    'kapacitet': {
+      'sr': 'kapacitet',
+      'en': 'capacity',
+      'ru': 'ёмкость',
+      'de': 'Kapazität',
+      'zh': '容量'
+    },
+    'kolikoLitaraJeDopunjeno': {
+      'sr': 'Koliko litara je dopunjeno (L)',
+      'en': 'How many liters were refilled (L)',
+      'ru': 'Сколько литров было заправлено (л)',
+      'de': 'Wie viele Liter wurden nachgefüllt (L)',
+      'zh': '加油了多少升（L）',
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'unesiPozitivanBrojLitara': {
+      'sr': 'Unesi pozitivan broj litara.',
+      'en': 'Enter a positive number of liters.',
+      'ru': 'Введите положительное число литров.',
+      'de': 'Geben Sie eine positive Literzahl ein.',
+      'zh': '请输入正数升数。',
+    },
+    'prekoracenjeKapaciteta': {
+      'sr': 'Prekoračenje kapaciteta',
+      'en': 'Capacity exceeded',
+      'ru': 'Превышение ёмкости',
+      'de': 'Kapazität überschritten',
+      'zh': '超出容量',
+    },
+    'novoStanjeQPremasujeKapacitet': {
+      'sr': 'Novo stanje %NOVO% L premašuje kapacitet %KAP% L.\n\nIpak dodati?',
+      'en': 'New level %NOVO% L exceeds capacity %KAP% L.\n\nAdd anyway?',
+      'ru':
+          'Новый уровень %NOVO% л превышает ёмкость %KAP% л.\n\nВсё равно добавить?',
+      'de':
+          'Neuer Stand %NOVO% L überschreitet die Kapazität %KAP% L.\n\nTrotzdem hinzufügen?',
+      'zh': '新液位 %NOVO% 升超过容量 %KAP% 升。\n\n仍要添加吗？',
+    },
+    'ne': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '否'},
+    'da': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja', 'zh': '是'},
+    'dodaj': {
+      'sr': 'Dodaj',
+      'en': 'Add',
+      'ru': 'Добавить',
+      'de': 'Hinzufügen',
+      'zh': '添加'
+    },
+    'gorivoDodatoNovoStanje': {
+      'sr': 'Gorivo dodato. Novo stanje: %NOVO% L',
+      'en': 'Fuel added. New level: %NOVO% L',
+      'ru': 'Топливо добавлено. Новый уровень: %NOVO% л',
+      'de': 'Kraftstoff hinzugefügt. Neuer Stand: %NOVO% L',
+      'zh': '已添加燃油。新液位：%NOVO% L',
+    },
+    'greskaPriDodavanjuGoriva': {
+      'sr': 'Greška pri dodavanju goriva.',
+      'en': 'Error adding fuel.',
+      'ru': 'Ошибка при добавлении топлива.',
+      'de': 'Fehler beim Hinzufügen von Kraftstoff.',
+      'zh': '添加燃油时出错。',
+    },
+    'nemaRedaZaIzmenu': {
+      'sr': 'Nema reda za izmenu. Prvo dodaj početne podatke.',
+      'en': 'No record to edit. First add initial data.',
+      'ru': 'Нет записи для изменения. Сначала добавьте начальные данные.',
+      'de': 'Kein Eintrag zum Bearbeiten. Zuerst Anfangsdaten hinzufügen.',
+      'zh': '没有可编辑的记录。请先添加初始数据。',
+    },
+    'urediGorivo': {
+      'sr': 'Uredi gorivo',
+      'en': 'Edit fuel',
+      'ru': 'Изменить топливо',
+      'de': 'Kraftstoff bearbeiten',
+      'zh': '编辑燃油'
+    },
+    'kapacitetRezervoaraL': {
+      'sr': 'Kapacitet rezervoara (L)',
+      'en': 'Tank capacity (L)',
+      'ru': 'Ёмкость бака (л)',
+      'de': 'Tankkapazität (L)',
+      'zh': '油箱容量（L）',
+    },
+    'alarmNivoL': {
+      'sr': 'Alarm nivo (L)',
+      'en': 'Alarm level (L)',
+      'ru': 'Уровень тревоги (л)',
+      'de': 'Alarmstand (L)',
+      'zh': '警报液位（L）'
+    },
+    'brojacPistoljaL': {
+      'sr': 'Brojač pištolja (L)',
+      'en': 'Nozzle counter (L)',
+      'ru': 'Счётчик пистолета (л)',
+      'de': 'Zapfpistolenzähler (L)',
+      'zh': '加油枪计数器（L）',
+    },
+    'trenutnoStanjeSeRacunaAutomatski': {
+      'sr':
+          'Upiši novo (rastuće) očitanje sa pištolja. Trenutno stanje se automatski umanjuje za razliku (potrošnju).',
+      'en':
+          'Enter the new (increasing) nozzle reading. Current level is automatically reduced by the difference (consumption).',
+      'ru':
+          'Введите новое (возрастающее) показание пистолета. Текущий уровень автоматически уменьшается на разницу (расход).',
+      'de':
+          'Neuen (steigenden) Zapfpistolenstand eingeben. Der aktuelle Stand wird automatisch um die Differenz (Verbrauch) verringert.',
+      'zh': '输入新的（递增）加油枪读数。当前液位将根据差值（消耗）自动减少。',
+    },
+    'cenaPoLitru': {
+      'sr': 'Cena po litru (RSD)',
+      'en': 'Price per liter (RSD)',
+      'ru': 'Цена за литр (RSD)',
+      'de': 'Preis pro Liter (RSD)',
+      'zh': '每升价格（RSD）'
+    },
+    'dugRsd': {
+      'sr': 'Dug (RSD)',
+      'en': 'Debt (RSD)',
+      'ru': 'Долг (RSD)',
+      'de': 'Schulden (RSD)',
+      'zh': '欠款（RSD）'
+    },
+    'vrednostiNeMoguBitiNegativne': {
+      'sr': 'Vrednosti ne mogu biti negativne.',
+      'en': 'Values cannot be negative.',
+      'ru': 'Значения не могут быть отрицательными.',
+      'de': 'Werte dürfen nicht negativ sein.',
+      'zh': '数值不能为负。',
+    },
+    'brojacNeMozeBitiManji': {
+      'sr': 'Brojač pištolja ne može biti manji od trenutnog stanja.',
+      'en': 'The nozzle counter cannot be lower than the current value.',
+      'ru': 'Счётчик пистолета не может быть меньше текущего значения.',
+      'de':
+          'Der Zapfpistolenzähler darf nicht kleiner als der aktuelle Wert sein.',
+      'zh': '加油枪计数器不能低于当前值。',
+    },
+    'podaciOGorivuSuSacuvani': {
+      'sr': 'Podaci o gorivu su sačuvani.',
+      'en': 'Fuel data saved.',
+      'ru': 'Данные о топливе сохранены.',
+      'de': 'Kraftstoffdaten gespeichert.',
+      'zh': '燃油数据已保存。',
+    },
+    'greskaPriCuvanjuPodataka': {
+      'sr': 'Greška pri čuvanju podataka.',
+      'en': 'Error saving data.',
+      'ru': 'Ошибка при сохранении данных.',
+      'de': 'Fehler beim Speichern der Daten.',
+      'zh': '保存数据时出错。',
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'obaveznoPolje': {
+      'sr': 'Obavezno polje',
+      'en': 'Required field',
+      'ru': 'Обязательное поле',
+      'de': 'Pflichtfeld',
+      'zh': '必填项'
+    },
+    'unesiBroj': {
+      'sr': 'Unesi broj',
+      'en': 'Enter a number',
+      'ru': 'Введите число',
+      'de': 'Zahl eingeben',
+      'zh': '请输入数字'
+    },
+    'pocetniPodaciZaGorivoSuKreirani': {
+      'sr': 'Početni podaci za gorivo su kreirani.',
+      'en': 'Initial fuel data has been created.',
+      'ru': 'Начальные данные о топливе созданы.',
+      'de': 'Anfängliche Kraftstoffdaten wurden erstellt.',
+      'zh': '已创建燃油初始数据。',
+    },
+    'neuspesnoKreiranjePocetnihPodataka': {
+      'sr': 'Neuspešno kreiranje početnih podataka.',
+      'en': 'Failed to create initial data.',
+      'ru': 'Не удалось создать начальные данные.',
+      'de': 'Erstellen der Anfangsdaten fehlgeschlagen.',
+      'zh': '创建初始数据失败。',
+    },
+    'dodavanjeDots': {
+      'sr': 'Dodavanje...',
+      'en': 'Adding...',
+      'ru': 'Добавление...',
+      'de': 'Wird hinzugefügt...',
+      'zh': '添加中...'
+    },
+    'nemaPodatakaOGorivuUBazi': {
+      'sr': 'Nema podataka o gorivu u bazi',
+      'en': 'No fuel data in the database',
+      'ru': 'Нет данных о топливе в базе',
+      'de': 'Keine Kraftstoffdaten in der Datenbank',
+      'zh': '数据库中没有燃油数据',
+    },
+    'kreiranjeDots': {
+      'sr': 'Kreiranje...',
+      'en': 'Creating...',
+      'ru': 'Создание...',
+      'de': 'Wird erstellt...',
+      'zh': '创建中...'
+    },
+    'dodajPocetnePodatke': {
+      'sr': 'Dodaj početne podatke',
+      'en': 'Add initial data',
+      'ru': 'Добавить начальные данные',
+      'de': 'Anfangsdaten hinzufügen',
+      'zh': '添加初始数据',
+    },
+    'alarmNivoRezervoara': {
+      'sr': '🔔 Alarm nivo rezervoara',
+      'en': '🔔 Tank alarm level',
+      'ru': '🔔 Уровень тревоги бака',
+      'de': '🔔 Tank-Alarmstand',
+      'zh': '🔔 油箱警报液位',
+    },
+    'stanjeBrojacaPistolja': {
+      'sr': '🔫 Stanje brojača pištolja',
+      'en': '🔫 Nozzle counter state',
+      'ru': '🔫 Состояние счётчика пистолета',
+      'de': '🔫 Zapfpistolenzählerstand',
+      'zh': '🔫 加油枪计数器状态',
+    },
+    'cenaPoLitruEmoji': {
+      'sr': '💰 Cena po litru',
+      'en': '💰 Price per liter',
+      'ru': '💰 Цена за литр',
+      'de': '💰 Preis pro Liter',
+      'zh': '💰 每升价格',
+    },
+    'dugIznos': {
+      'sr': '💳 Dug (iznos)',
+      'en': '💳 Debt (amount)',
+      'ru': '💳 Долг (сумма)',
+      'de': '💳 Schulden (Betrag)',
+      'zh': '💳 欠款（金额）'
+    },
+    'uneziIzmeniPodatke': {
+      'sr': 'Unesi / izmeni podatke',
+      'en': 'Enter / edit data',
+      'ru': 'Ввести / изменить данные',
+      'de': 'Daten eingeben / bearbeiten',
+      'zh': '输入/编辑数据',
+    },
+    'maloGoriva': {
+      'sr': '⚠️ MALO GORIVA',
+      'en': '⚠️ LOW FUEL',
+      'ru': '⚠️ МАЛО ТОПЛИВА',
+      'de': '⚠️ WENIG KRAFTSTOFF',
+      'zh': '⚠️ 燃油不足'
+    },
+    'odKapaciteta': {
+      'sr': 'od',
+      'en': 'of',
+      'ru': 'из',
+      'de': 'von',
+      'zh': '之'
+    },
+    'kapacitetaL': {
+      'sr': 'kapaciteta',
+      'en': 'capacity',
+      'ru': 'ёмкости',
+      'de': 'Kapazität',
+      'zh': '容量'
+    },
+  },
+  'helpScreen': {
+    'appBarTitle': {
+      'sr': '❓ Uputstvo za korišćenje',
+      'en': '❓ User guide',
+      'ru': '❓ Инструкция по использованию',
+      'de': '❓ Bedienungsanleitung',
+      'zh': '❓ 使用指南',
+    },
+    'secBezbednost': {
+      'sr': 'Bezbednost i sertifikati',
+      'en': 'Security and certifications',
+      'ru': 'Безопасность и сертификаты',
+      'de': 'Sicherheit und Zertifizierungen',
+      'zh': '安全与认证',
+    },
+    'secPrijava': {
+      'sr': 'Prijava (Log in)',
+      'en': 'Login',
+      'ru': 'Вход',
+      'de': 'Anmeldung',
+      'zh': '登录'
+    },
+    'secZakazivanje': {
+      'sr': 'Zakazivanje prevoza',
+      'en': 'Scheduling a ride',
+      'ru': 'Планирование поездки',
+      'de': 'Fahrt planen',
+      'zh': '安排行程',
+    },
+    'secObavestenja': {
+      'sr': 'Obaveštenja (Push notifikacije)',
+      'en': 'Notifications (Push)',
+      'ru': 'Уведомления (Push)',
+      'de': 'Benachrichtigungen (Push)',
+      'zh': '通知（推送）',
+    },
+    'secBiometrija': {
+      'sr': 'Biometrijska prijava',
+      'en': 'Biometric login',
+      'ru': 'Биометрический вход',
+      'de': 'Biometrische Anmeldung',
+      'zh': '生物识别登录',
+    },
+    'secAdrese': {
+      'sr': 'Adrese',
+      'en': 'Addresses',
+      'ru': 'Адреса',
+      'de': 'Adressen',
+      'zh': '地址'
+    },
+    'secAlternativa': {
+      'sr': 'Alternativni termin',
+      'en': 'Alternative time slot',
+      'ru': 'Альтернативное время',
+      'de': 'Alternativer Termin',
+      'zh': '备选时段',
+    },
+    'secNeradniDani': {
+      'sr': 'Neradni dani',
+      'en': 'Non-working days',
+      'ru': 'Нерабочие дни',
+      'de': 'Arbeitsfreie Tage',
+      'zh': '非工作日',
+    },
+    'secTipoviPutnika': {
+      'sr': 'Tipovi putnika',
+      'en': 'Passenger types',
+      'ru': 'Типы пассажиров',
+      'de': 'Fahrgastarten',
+      'zh': '乘客类型',
+    },
+  },
+  'homeScreen': {
+    'dodajRezervaciju': {
+      'sr': 'Dodaj Rezervaciju',
+      'en': 'Add Reservation',
+      'ru': 'Добавить резервацию',
+      'de': 'Reservierung hinzufügen',
+      'zh': '添加预约',
+    },
+    'termin': {
+      'sr': 'Termin',
+      'en': 'Appointment',
+      'ru': 'Время',
+      'de': 'Termin',
+      'zh': '预约时间'
+    },
+    'vreme': {
+      'sr': '⏰ Vreme:',
+      'en': '⏰ Time:',
+      'ru': '⏰ Время:',
+      'de': '⏰ Zeit:',
+      'zh': '⏰ 时间：'
+    },
+    'grad': {
+      'sr': '📍 Grad:',
+      'en': '📍 City:',
+      'ru': '📍 Город:',
+      'de': '📍 Stadt:',
+      'zh': '📍 城市：'
+    },
+    'dan': {
+      'sr': '📅 Dan:',
+      'en': '📅 Day:',
+      'ru': '📅 День:',
+      'de': '📅 Tag:',
+      'zh': '📅 日期：'
+    },
+    'izaberiPutnika': {
+      'sr': 'Izaberi putnika',
+      'en': 'Select passenger',
+      'ru': 'Выберите пассажира',
+      'de': 'Fahrgast auswählen',
+      'zh': '选择乘客',
+    },
+    'pretrazi': {
+      'sr': 'Pretraži...',
+      'en': 'Search...',
+      'ru': 'Поиск...',
+      'de': 'Suchen...',
+      'zh': '搜索...'
+    },
+    'passengerAddressPlaceholder': {
+      'sr': '— putnikova adresa —',
+      'en': '— passenger address —',
+      'ru': '— адрес пассажира —',
+      'de': '— Adresse des Fahrgasts —',
+      'zh': '— 乘客地址 —',
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'izaberitePutnika': {
+      'sr': '⚠️ Izaberite putnika',
+      'en': '⚠️ Select a passenger',
+      'ru': '⚠️ Выберите пассажира',
+      'de': '⚠️ Bitte Fahrgast auswählen',
+      'zh': '⚠️ 请选择乘客',
+    },
+    'putnikNemaId': {
+      'sr': '⚠️ Putnik nema validan ID',
+      'en': '⚠️ Passenger has no valid ID',
+      'ru': '⚠️ У пассажира нет действительного ID',
+      'de': '⚠️ Fahrgast hat keine gültige ID',
+      'zh': '⚠️ 乘客没有有效 ID',
+    },
+    'rezervacijaDodana': {
+      'sr': '✅ Rezervacija dodana',
+      'en': '✅ Reservation added',
+      'ru': '✅ Резервация добавлена',
+      'de': '✅ Reservierung hinzugefügt',
+      'zh': '✅ 预约已添加',
+    },
+    'greskaPrefix': {
+      'sr': '❌ Greška:',
+      'en': '❌ Error:',
+      'ru': '❌ Ошибка:',
+      'de': '❌ Fehler:',
+      'zh': '❌ 错误：'
+    },
+    'dodaje': {
+      'sr': 'Dodaje...',
+      'en': 'Adding...',
+      'ru': 'Добавление...',
+      'de': 'Wird hinzugefügt...',
+      'zh': '添加中...'
+    },
+    'dodaj': {
+      'sr': 'Dodaj',
+      'en': 'Add',
+      'ru': 'Добавить',
+      'de': 'Hinzufügen',
+      'zh': '添加'
+    },
+    'noviRacun': {
+      'sr': 'Novi račun',
+      'en': 'New invoice',
+      'ru': 'Новый счет',
+      'de': 'Neue Rechnung',
+      'zh': '新建发票'
+    },
+    'imePrezimeKupca': {
+      'sr': 'Ime i prezime kupca',
+      'en': 'Customer full name',
+      'ru': 'ФИО покупателя',
+      'de': 'Name des Kunden',
+      'zh': '客户姓名',
+    },
+    'adresaKupca': {
+      'sr': 'Adresa kupca',
+      'en': 'Customer address',
+      'ru': 'Адрес покупателя',
+      'de': 'Adresse des Kunden',
+      'zh': '客户地址'
+    },
+    'opisUsluge': {
+      'sr': 'Opis usluge',
+      'en': 'Service description',
+      'ru': 'Описание услуги',
+      'de': 'Leistungsbeschreibung',
+      'zh': '服务描述'
+    },
+    'cena': {
+      'sr': 'Cena',
+      'en': 'Price',
+      'ru': 'Цена',
+      'de': 'Preis',
+      'zh': '价格'
+    },
+    'kolicina': {
+      'sr': 'Količina',
+      'en': 'Quantity',
+      'ru': 'Количество',
+      'de': 'Menge',
+      'zh': '数量'
+    },
+    'jedinicaMere': {
+      'sr': 'Jedinica mere',
+      'en': 'Unit of measure',
+      'ru': 'Единица измерения',
+      'de': 'Maßeinheit',
+      'zh': '计量单位'
+    },
+    'jmUsluga': {
+      'sr': 'usluga',
+      'en': 'service',
+      'ru': 'услуга',
+      'de': 'Leistung',
+      'zh': '服务'
+    },
+    'jmDan': {'sr': 'dan', 'en': 'day', 'ru': 'день', 'de': 'Tag', 'zh': '天'},
+    'jmKom': {'sr': 'kom', 'en': 'pcs', 'ru': 'шт', 'de': 'Stk', 'zh': '件'},
+    'jmSat': {
+      'sr': 'sat',
+      'en': 'hour',
+      'ru': 'час',
+      'de': 'Stunde',
+      'zh': '小时'
+    },
+    'jmKm': {'sr': 'km', 'en': 'km', 'ru': 'км', 'de': 'km', 'zh': '公里'},
+    'mesecIzdavanja': {
+      'sr': 'Mesec izdavanja:',
+      'en': 'Issue month:',
+      'ru': 'Месяц выставления:',
+      'de': 'Ausstellungsmonat:',
+      'zh': '开具月份：'
+    },
+    'izaberiMesec': {
+      'sr': 'Izaberi mesec',
+      'en': 'Select month',
+      'ru': 'Выберите месяц',
+      'de': 'Monat auswählen',
+      'zh': '选择月份'
+    },
+    'datumIzdavanja': {
+      'sr': 'Datum izdavanja:',
+      'en': 'Issue date:',
+      'ru': 'Дата выставления:',
+      'de': 'Ausstellungsdatum:',
+      'zh': '开具日期：'
+    },
+    'popuniteImeOpis': {
+      'sr': '⚠️ Popunite ime i opis',
+      'en': '⚠️ Fill in name and description',
+      'ru': '⚠️ Заполните имя и описание',
+      'de': '⚠️ Name und Beschreibung ausfüllen',
+      'zh': '⚠️ 请填写名称和描述',
+    },
+    'uneseiteIspravnuCenu': {
+      'sr': '⚠️ Unesite ispravnu cenu',
+      'en': '⚠️ Enter a valid price',
+      'ru': '⚠️ Введите правильную цену',
+      'de': '⚠️ Gültigen Preis eingeben',
+      'zh': '⚠️ 请输入有效价格',
+    },
+    'stampaj': {
+      'sr': 'Štampaj',
+      'en': 'Print',
+      'ru': 'Печать',
+      'de': 'Drucken',
+      'zh': '打印'
+    },
+    'stampajSpisak': {
+      'sr': 'Štampaj spisak',
+      'en': 'Print list',
+      'ru': 'Печать списка',
+      'de': 'Liste drucken',
+      'zh': '打印列表',
+    },
+    'racunPostojeci': {
+      'sr': 'Račun - postojeći',
+      'en': 'Invoice - existing',
+      'ru': 'Счёт - существующий',
+      'de': 'Rechnung - vorhanden',
+      'zh': '发票 - 现有',
+    },
+    'racunNovi': {
+      'sr': 'Račun - novi',
+      'en': 'Invoice - new',
+      'ru': 'Счёт - новый',
+      'de': 'Rechnung - neu',
+      'zh': '发票 - 新建',
+    },
+    'racunFirma': {
+      'sr': 'Račun — firma',
+      'en': 'Invoice — company',
+      'ru': 'Счёт — компания',
+      'de': 'Rechnung — Firma',
+      'zh': '发票 — 公司'
+    },
+    'novaFirma': {
+      'sr': 'Nova firma?',
+      'en': 'New company?',
+      'ru': 'Новая компания?',
+      'de': 'Neue Firma?',
+      'zh': '新公司？'
+    },
+    'nemaRezultata': {
+      'sr': 'Nema rezultata',
+      'en': 'No results',
+      'ru': 'Нет результатов',
+      'de': 'Keine Ergebnisse',
+      'zh': '无结果'
+    },
+    'adresaOpciono': {
+      'sr': 'Adresa (opciono)',
+      'en': 'Address (optional)',
+      'ru': 'Адрес (необязательно)',
+      'de': 'Adresse (optional)',
+      'zh': '地址（可选）',
+    },
+    'nemaFirmiUBazi': {
+      'sr': '⚠️ Nema firmi u bazi (v3_racuni je prazan)',
+      'en': '⚠️ No companies in database (v3_racuni is empty)',
+      'ru': '⚠️ Нет компаний в базе (v3_racuni пуст)',
+      'de': '⚠️ Keine Firmen in der Datenbank (v3_racuni ist leer)',
+      'zh': '⚠️ 数据库中没有公司（v3_racuni 为空）',
+    },
+    'odaberitePutnika': {
+      'sr': '⚠️ Odaberite putnika',
+      'en': '⚠️ Select a passenger',
+      'ru': '⚠️ Выберите пассажира',
+      'de': '⚠️ Fahrgast auswählen',
+      'zh': '⚠️ 请选择乘客',
+    },
+    'sekcijaFirma': {
+      'sr': 'FIRMA',
+      'en': 'COMPANY',
+      'ru': 'КОМПАНИЯ',
+      'de': 'FIRMA',
+      'zh': '公司'
+    },
+    'sekcijaPutnik': {
+      'sr': 'PUTNIK',
+      'en': 'PASSENGER',
+      'ru': 'ПАССАЖИР',
+      'de': 'FAHRGAST',
+      'zh': '乘客'
+    },
+    'sekcijaMesecIDatumi': {
+      'sr': 'MESEC I DATUMI',
+      'en': 'MONTH AND DATES',
+      'ru': 'МЕСЯЦ И ДАТЫ',
+      'de': 'MONAT UND DATEN',
+      'zh': '月份与日期'
+    },
+    'sekcijaIznos': {
+      'sr': 'IZNOS',
+      'en': 'AMOUNT',
+      'ru': 'СУММА',
+      'de': 'BETRAG',
+      'zh': '金额'
+    },
+    'dodajNovuFirmu': {
+      'sr': 'Dodaj novu firmu',
+      'en': 'Add new company',
+      'ru': 'Добавить новую компанию',
+      'de': 'Neue Firma hinzufügen',
+      'zh': '添加新公司',
+    },
+  },
+  'kapacitetScreen': {
+    'kapacitetPolazaka': {
+      'sr': 'Kapacitet Polazaka',
+      'en': 'Departure Capacity',
+      'ru': 'Вместимость рейсов',
+      'de': 'Abfahrtskapazität',
+      'zh': '发车容量',
+    },
+    'belaCrkva': {
+      'sr': 'Bela Crkva',
+      'en': 'Bela Crkva',
+      'ru': 'Бела-Црква',
+      'de': 'Bela Crkva',
+      'zh': 'Bela Crkva'
+    },
+    'vrsac': {
+      'sr': 'Vršac',
+      'en': 'Vršac',
+      'ru': 'Вршац',
+      'de': 'Vršac',
+      'zh': 'Vršac'
+    },
+    'greskaPriCuvanju': {
+      'sr': '❌ Greška pri čuvanju',
+      'en': '❌ Error saving',
+      'ru': '❌ Ошибка при сохранении',
+      'de': '❌ Fehler beim Speichern',
+      'zh': '❌ 保存时出错',
+    },
+    'mesta': {
+      'sr': 'mesta',
+      'en': 'seats',
+      'ru': 'мест',
+      'de': 'Plätze',
+      'zh': '座位'
+    },
+    'kapacitetLabel': {
+      'sr': 'Kapacitet',
+      'en': 'Capacity',
+      'ru': 'Вместимость',
+      'de': 'Kapazität',
+      'zh': '容量'
+    },
+    'nijePostavljen': {
+      'sr': 'nije postavljen',
+      'en': 'not set',
+      'ru': 'не установлено',
+      'de': 'nicht festgelegt',
+      'zh': '未设置',
+    },
+    'unesiteMaksimalanBrojMesta': {
+      'sr': 'Unesite maksimalan broj mesta:',
+      'en': 'Enter the maximum number of seats:',
+      'ru': 'Введите максимальное количество мест:',
+      'de': 'Geben Sie die maximale Platzanzahl ein:',
+      'zh': '请输入最大座位数：',
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'unesiteBrojIzmedju1i20': {
+      'sr': 'Unesite broj između 1 i 20',
+      'en': 'Enter a number between 1 and 20',
+      'ru': 'Введите число от 1 до 20',
+      'de': 'Geben Sie eine Zahl zwischen 1 und 20 ein',
+      'zh': '请输入 1 到 20 之间的数字',
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+  },
+  'kreditiScreen': {
+    'mojiKrediti': {
+      'sr': 'Moji krediti',
+      'en': 'My loans',
+      'ru': 'Мои кредиты',
+      'de': 'Meine Kredite',
+      'zh': '我的贷款'
+    },
+    'nemaEvidentiranihKredita': {
+      'sr': 'Nema evidentiranih kredita',
+      'en': 'No recorded loans',
+      'ru': 'Нет зарегистрированных кредитов',
+      'de': 'Keine erfassten Kredite',
+      'zh': '没有记录的贷款',
+    },
+    'dodajKredit': {
+      'sr': 'Dodaj kredit',
+      'en': 'Add loan',
+      'ru': 'Добавить кредит',
+      'de': 'Kredit hinzufügen',
+      'zh': '添加贷款'
+    },
+    'preostalaDugovanja': {
+      'sr': 'Preostala dugovanja',
+      'en': 'Remaining debts',
+      'ru': 'Оставшиеся долги',
+      'de': 'Verbleibende Schulden',
+      'zh': '剩余债务',
+    },
+    'ukupnoPreostaloZaOtplatu': {
+      'sr': 'Ukupno preostalo za otplatu',
+      'en': 'Total remaining to repay',
+      'ru': 'Всего осталось погасить',
+      'de': 'Insgesamt zu zahlender Restbetrag',
+      'zh': '剩余待还总额',
+    },
+    'kreditDodat': {
+      'sr': '✅ Kredit dodat',
+      'en': '✅ Loan added',
+      'ru': '✅ Кредит добавлен',
+      'de': '✅ Kredit hinzugefügt',
+      'zh': '✅ 贷款已添加',
+    },
+    'kreditIzmenjen': {
+      'sr': '✅ Kredit izmenjen',
+      'en': '✅ Loan updated',
+      'ru': '✅ Кредит изменён',
+      'de': '✅ Kredit aktualisiert',
+      'zh': '✅ 贷款已更新',
+    },
+    'uplataEvidentirana': {
+      'sr': '✅ Uplata evidentirana',
+      'en': '✅ Payment recorded',
+      'ru': '✅ Платёж зарегистрирован',
+      'de': '✅ Zahlung erfasst',
+      'zh': '✅ 付款已记录',
+    },
+    'obrisiKredit': {
+      'sr': 'Obriši kredit',
+      'en': 'Delete loan',
+      'ru': 'Удалить кредит',
+      'de': 'Kredit löschen',
+      'zh': '删除贷款'
+    },
+    'daLiSteSigurniObrisatiKredit': {
+      'sr': 'Da li si siguran da želiš da obrišeš „%NAZIV%"?',
+      'en': 'Are you sure you want to delete "%NAZIV%"?',
+      'ru': 'Вы уверены, что хотите удалить «%NAZIV%»?',
+      'de': 'Möchten Sie „%NAZIV%" wirklich löschen?',
+      'zh': '您确定要删除"%NAZIV%"吗？',
+    },
+    'obrisi': {
+      'sr': 'Obriši',
+      'en': 'Delete',
+      'ru': 'Удалить',
+      'de': 'Löschen',
+      'zh': '删除'
+    },
+    'kreditObrisan': {
+      'sr': '✅ Kredit obrisan',
+      'en': '✅ Loan deleted',
+      'ru': '✅ Кредит удалён',
+      'de': '✅ Kredit gelöscht',
+      'zh': '✅ 贷款已删除',
+    },
+    'istorijaUplata': {
+      'sr': 'Istorija uplata',
+      'en': 'Payment history',
+      'ru': 'История платежей',
+      'de': 'Zahlungsverlauf',
+      'zh': '付款历史',
+    },
+    'nemaEvidentiranihUplata': {
+      'sr': 'Nema evidentiranih uplata',
+      'en': 'No recorded payments',
+      'ru': 'Нет зарегистрированных платежей',
+      'de': 'Keine erfassten Zahlungen',
+      'zh': '没有记录的付款',
+    },
+    'obrisiUplatu': {
+      'sr': 'Obriši uplatu',
+      'en': 'Delete payment',
+      'ru': 'Удалить платёж',
+      'de': 'Zahlung löschen',
+      'zh': '删除付款'
+    },
+    'daLiSteSigurniObrisatiUplatu': {
+      'sr': 'Da li si siguran da želiš da obrišeš ovu uplatu?',
+      'en': 'Are you sure you want to delete this payment?',
+      'ru': 'Вы уверены, что хотите удалить этот платёж?',
+      'de': 'Möchten Sie diese Zahlung wirklich löschen?',
+      'zh': '您确定要删除此付款吗？',
+    },
+    'uplataObrisana': {
+      'sr': '✅ Uplata obrisana',
+      'en': '✅ Payment deleted',
+      'ru': '✅ Платёж удалён',
+      'de': '✅ Zahlung gelöscht',
+      'zh': '✅ 付款已删除',
+    },
+    'zatvori': {
+      'sr': 'Zatvori',
+      'en': 'Close',
+      'ru': 'Закрыть',
+      'de': 'Schließen',
+      'zh': '关闭'
+    },
+    'otplaceno': {
+      'sr': 'OTPLAĆENO',
+      'en': 'PAID OFF',
+      'ru': 'ПОГАШЕНО',
+      'de': 'ABBEZAHLT',
+      'zh': '已还清'
+    },
+    'kraj': {
+      'sr': 'Kraj',
+      'en': 'End',
+      'ru': 'Конец',
+      'de': 'Ende',
+      'zh': '结束'
+    },
+    'ukupanIznos': {
+      'sr': 'Ukupan iznos',
+      'en': 'Total amount',
+      'ru': 'Общая сумма',
+      'de': 'Gesamtbetrag',
+      'zh': '总金额'
+    },
+    'uplaceno': {
+      'sr': 'Uplaćeno',
+      'en': 'Paid',
+      'ru': 'Оплачено',
+      'de': 'Bezahlt',
+      'zh': '已付'
+    },
+    'preostalo': {
+      'sr': 'Preostalo',
+      'en': 'Remaining',
+      'ru': 'Осталось',
+      'de': 'Verbleibend',
+      'zh': '剩余'
+    },
+    'uplati': {
+      'sr': 'UPLATI',
+      'en': 'PAY',
+      'ru': 'ОПЛАТИТЬ',
+      'de': 'ZAHLEN',
+      'zh': '支付'
+    },
+    'uplateStat': {
+      'sr': 'Uplate',
+      'en': 'Payments',
+      'ru': 'Платежи',
+      'de': 'Zahlungen',
+      'zh': '付款'
+    },
+    'prosek': {
+      'sr': 'Prosek',
+      'en': 'Average',
+      'ru': 'Среднее',
+      'de': 'Durchschnitt',
+      'zh': '平均'
+    },
+    'najveca': {
+      'sr': 'Najveća',
+      'en': 'Largest',
+      'ru': 'Наибольший',
+      'de': 'Größte',
+      'zh': '最大'
+    },
+    'grafikUplataPoMesecima': {
+      'sr': 'Grafik uplata po mesecima',
+      'en': 'Payments by month chart',
+      'ru': 'График платежей по месяцам',
+      'de': 'Zahlungsdiagramm nach Monaten',
+      'zh': '按月付款图表',
+    },
+    'nazivPlaceholder': {
+      'sr': 'Naziv (npr. BMW, Mama)',
+      'en': 'Name (e.g. BMW, Mom)',
+      'ru': 'Название (напр. BMW, Мама)',
+      'de': 'Name (z.B. BMW, Mama)',
+      'zh': '名称（例如 BMW、妈妈）',
+    },
+    'ukupanIznosRsd': {
+      'sr': 'Ukupan iznos (RSD)',
+      'en': 'Total amount (RSD)',
+      'ru': 'Общая сумма (RSD)',
+      'de': 'Gesamtbetrag (RSD)',
+      'zh': '总金额（RSD）',
+    },
+    'napomenaOpciono': {
+      'sr': 'Napomena (opciono)',
+      'en': 'Note (optional)',
+      'ru': 'Примечание (опционально)',
+      'de': 'Notiz (optional)',
+      'zh': '备注（可选）',
+    },
+    'krajKreditaOpciono': {
+      'sr': 'Kraj kredita (opciono)',
+      'en': 'Loan end (optional)',
+      'ru': 'Конец кредита (опционально)',
+      'de': 'Kreditende (optional)',
+      'zh': '贷款结束（可选）',
+    },
+    'krajKreditaZadnjaRata': {
+      'sr': 'Kraj kredita / zadnja rata',
+      'en': 'Loan end / last installment',
+      'ru': 'Конец кредита / последний платёж',
+      'de': 'Kreditende / letzte Rate',
+      'zh': '贷款结束/最后一期',
+    },
+    'izaberiDatum': {
+      'sr': 'Izaberi datum',
+      'en': 'Select date',
+      'ru': 'Выберите дату',
+      'de': 'Datum wählen',
+      'zh': '选择日期'
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'nazivJeObavezan': {
+      'sr': 'Naziv je obavezan',
+      'en': 'Name is required',
+      'ru': 'Название обязательно',
+      'de': 'Name ist erforderlich',
+      'zh': '名称为必填项',
+    },
+    'iznosNeMozeBitiNegativan': {
+      'sr': 'Iznos ne može biti negativan',
+      'en': 'Amount cannot be negative',
+      'ru': 'Сумма не может быть отрицательной',
+      'de': 'Betrag darf nicht negativ sein',
+      'zh': '金额不能为负数',
+    },
+    'uplataNaziv': {
+      'sr': 'Uplata',
+      'en': 'Payment',
+      'ru': 'Платёж',
+      'de': 'Zahlung',
+      'zh': '付款',
+    },
+    'iznosUplate': {
+      'sr': 'Iznos uplate',
+      'en': 'Payment amount',
+      'ru': 'Сумма платежа',
+      'de': 'Zahlungsbetrag',
+      'zh': '付款金额'
+    },
+    'iznosMoraBitiVeciOdNule': {
+      'sr': 'Iznos mora biti veći od nule',
+      'en': 'Amount must be greater than zero',
+      'ru': 'Сумма должна быть больше нуля',
+      'de': 'Betrag muss größer als null sein',
+      'zh': '金额必须大于零',
+    },
+    'dodajKreditTitle': {
+      'sr': 'Dodaj kredit',
+      'en': 'Add loan',
+      'ru': 'Добавить кредит',
+      'de': 'Kredit hinzufügen',
+      'zh': '添加贷款'
+    },
+    'izmeniKredit': {
+      'sr': 'Izmeni kredit',
+      'en': 'Edit loan',
+      'ru': 'Изменить кредит',
+      'de': 'Kredit bearbeiten',
+      'zh': '编辑贷款'
+    },
+  },
+  'oNamaScreen': {
+    'title': {
+      'sr': '📖 O nama',
+      'en': '📖 About us',
+      'ru': '📖 О нас',
+      'de': '📖 Über uns',
+      'zh': '📖 关于我们'
+    },
+    'limoServis': {
+      'sr': 'Limo servis',
+      'en': 'Limo service',
+      'ru': 'Лимо-сервис',
+      'de': 'Limo-Service',
+      'zh': '豪华轿车服务'
+    },
+    'iznajmljivanje': {
+      'sr': 'Iznajmljivanje putničkih vozila sa vozačem',
+      'en': 'Passenger vehicle rental with driver',
+      'ru': 'Аренда легковых автомобилей с водителем',
+      'de': 'Vermietung von Personenfahrzeugen mit Fahrer',
+      'zh': '带司机的乘用车租赁',
+    },
+    'od2003': {
+      'sr': 'Od 2003. godine',
+      'en': 'Since 2003',
+      'ru': 'С 2003 года',
+      'de': 'Seit 2003',
+      'zh': '自2003年起'
+    },
+    'nasaPrica': {
+      'sr': 'Naša priča',
+      'en': 'Our story',
+      'ru': 'Наша история',
+      'de': 'Unsere Geschichte',
+      'zh': '我们的故事'
+    },
+    'prica1': {
+      'sr':
+          'Limo servis "Gavra 013" osnovan je 25. aprila 2003. godine u Beloj Crkvi.',
+      'en':
+          'Limo service "Gavra 013" was founded on April 25, 2003 in Bela Crkva.',
+      'ru':
+          'Лимо-сервис «Gavra 013» основан 25 апреля 2003 года в городе Бела Црква.',
+      'de':
+          'Der Limo-Service "Gavra 013" wurde am 25. April 2003 in Bela Crkva gegründet.',
+      'zh': '“Gavra 013”豪华轿车服务于2003年4月25日在贝拉茨尔克瓦成立。',
+    },
+    'prica2': {
+      'sr':
+          'Firmu je osnovao Branislav Gavrilović, a danas je vodi njegov sin Bojan Gavrilović, nastavljajući porodičnu tradiciju kvalitetnog prevoza putnika.',
+      'en':
+          'The company was founded by Branislav Gavrilović, and today it is run by his son Bojan Gavrilović, continuing the family tradition of quality passenger transport.',
+      'ru':
+          'Компанию основал Бранислав Гаврилович, а сегодня её возглавляет его сын Боян Гаврилович, продолжая семейную традицию качественных пассажирских перевозок.',
+      'de':
+          'Das Unternehmen wurde von Branislav Gavrilović gegründet und wird heute von seinem Sohn Bojan Gavrilović geführt, der die Familientradition des hochwertigen Personentransports fortsetzt.',
+      'zh': '公司由布拉尼斯拉夫·加夫里洛维奇创立，如今由其子博扬·加夫里洛维奇经营，延续着优质客运的家族传统。',
+    },
+    'prica3': {
+      'sr': 'Više od 20 godina pružamo pouzdanu uslugu prevoza putnika.',
+      'en':
+          'For over 20 years we have been providing reliable passenger transport service.',
+      'ru':
+          'Более 20 лет мы предоставляем надёжные услуги пассажирских перевозок.',
+      'de':
+          'Seit über 20 Jahren bieten wir zuverlässigen Personentransport an.',
+      'zh': '20多年来，我们一直提供可靠的客运服务。',
+    },
+    'kontakt': {
+      'sr': 'Kontakt',
+      'en': 'Contact',
+      'ru': 'Контакты',
+      'de': 'Kontakt',
+      'zh': '联系方式'
+    },
+    'adresa': {
+      'sr': 'Adresa',
+      'en': 'Address',
+      'ru': 'Адрес',
+      'de': 'Adresse',
+      'zh': '地址'
+    },
+    'mobilni': {
+      'sr': 'Mobilni',
+      'en': 'Mobile',
+      'ru': 'Мобильный',
+      'de': 'Mobil',
+      'zh': '手机'
+    },
+    'podaciOFirmi': {
+      'sr': 'Podaci o firmi',
+      'en': 'Company information',
+      'ru': 'Информация о компании',
+      'de': 'Unternehmensangaben',
+      'zh': '公司信息'
+    },
+    'punNaziv': {
+      'sr': 'Pun naziv',
+      'en': 'Full name',
+      'ru': 'Полное название',
+      'de': 'Vollständiger Name',
+      'zh': '全称'
+    },
+    'delatnost': {
+      'sr': 'Delatnost',
+      'en': 'Activity',
+      'ru': 'Деятельность',
+      'de': 'Tätigkeit',
+      'zh': '经营范围'
+    },
+    'delatnostVal': {
+      'sr': '4932 - Limo servis + Taksi prevoz',
+      'en': '4932 - Limo service + Taxi transport',
+      'ru': '4932 - Лимо-сервис + Такси-перевозки',
+      'de': '4932 - Limo-Service + Taxiverkehr',
+      'zh': '4932 - 豪华轿车服务 + 出租车运输',
+    },
+    'pib': {
+      'sr': 'PIB',
+      'en': 'Tax ID',
+      'ru': 'ИНН',
+      'de': 'Steuernummer',
+      'zh': '税号'
+    },
+    'maticniBroj': {
+      'sr': 'Matični broj',
+      'en': 'Registration number',
+      'ru': 'Регистрационный номер',
+      'de': 'Handelsregisternummer',
+      'zh': '注册号'
+    },
+    'datumOsnivanja': {
+      'sr': 'Datum osnivanja',
+      'en': 'Founding date',
+      'ru': 'Дата основания',
+      'de': 'Gründungsdatum',
+      'zh': '成立日期'
+    },
+    'ziroRacun': {
+      'sr': 'Žiro račun',
+      'en': 'Bank account',
+      'ru': 'Расчётный счёт',
+      'de': 'Bankkonto',
+      'zh': '银行账户'
+    },
+    'vlasnik': {
+      'sr': 'Vlasnik',
+      'en': 'Owner',
+      'ru': 'Владелец',
+      'de': 'Inhaber',
+      'zh': '所有者'
+    },
+    'aplikacija': {
+      'sr': 'Aplikacija',
+      'en': 'Application',
+      'ru': 'Приложение',
+      'de': 'Anwendung',
+      'zh': '应用程序'
+    },
+    'verzija': {
+      'sr': 'Verzija',
+      'en': 'Version',
+      'ru': 'Версия',
+      'de': 'Version',
+      'zh': '版本'
+    },
+    'platforma': {
+      'sr': 'Platforma',
+      'en': 'Platform',
+      'ru': 'Платформа',
+      'de': 'Plattform',
+      'zh': '平台'
+    },
+    'copyright': {
+      'sr': '© 2024-2026 Gavra 013. Sva prava zadržana.',
+      'en': '© 2024-2026 Gavra 013. All rights reserved.',
+      'ru': '© 2024-2026 Gavra 013. Все права защищены.',
+      'de': '© 2024-2026 Gavra 013. Alle Rechte vorbehalten.',
+      'zh': '© 2024-2026 Gavra 013。保留所有权利。',
+    },
+    'uSecanje': {
+      'sr': 'U sećanje na Branislava Gavrilovića',
+      'en': 'In memory of Branislav Gavrilović',
+      'ru': 'Памяти Бранислава Гавриловича',
+      'de': 'In Erinnerung an Branislav Gavrilović',
+      'zh': '纪念布拉尼斯拉夫·加夫里洛维奇',
+    },
+    'osnivac': {
+      'sr': 'Osnivač Gavra 013',
+      'en': 'Founder of Gavra 013',
+      'ru': 'Основатель Gavra 013',
+      'de': 'Gründer von Gavra 013',
+      'zh': 'Gavra 013 创始人'
+    },
+  },
+  'odrzavanjeScreen': {
+    'kolskaKnjiga': {
+      'sr': '📖 Kolska knjiga',
+      'en': '📖 Vehicle logbook',
+      'ru': '📖 Автомобильный журнал',
+      'de': '📖 Fahrzeugbuch',
+      'zh': '📖 车辆日志'
+    },
+    'greska': {
+      'sr': 'Greška',
+      'en': 'Error',
+      'ru': 'Ошибка',
+      'de': 'Fehler',
+      'zh': '错误'
+    },
+    'nemaVozila': {
+      'sr': 'Nema vozila.',
+      'en': 'No vehicles.',
+      'ru': 'Нет автомобилей.',
+      'de': 'Keine Fahrzeuge.',
+      'zh': '没有车辆。'
+    },
+    'registracija': {
+      'sr': 'Registracija',
+      'en': 'Registration',
+      'ru': 'Регистрация',
+      'de': 'Registrierung',
+      'zh': '登记'
+    },
+    'godinaLabel': {
+      'sr': 'Godina',
+      'en': 'Year',
+      'ru': 'Год',
+      'de': 'Jahr',
+      'zh': '年份'
+    },
+    'kilometraza': {
+      'sr': 'Kilometraža: ',
+      'en': 'Mileage: ',
+      'ru': 'Пробег: ',
+      'de': 'Kilometerstand: ',
+      'zh': '里程: '
+    },
+    'brojSasijeVin': {
+      'sr': 'Broj šasije (VIN)',
+      'en': 'Chassis number (VIN)',
+      'ru': 'Номер шасси (VIN)',
+      'de': 'Fahrgestellnummer (VIN)',
+      'zh': '底盘号 (VIN)'
+    },
+    'brojSasije': {
+      'sr': 'Broj šasije',
+      'en': 'Chassis number',
+      'ru': 'Номер шасси',
+      'de': 'Fahrgestellnummer',
+      'zh': '底盘号'
+    },
+    'registracijaVaziDo': {
+      'sr': 'Registracija važi do',
+      'en': 'Registration valid until',
+      'ru': 'Регистрация действительна до',
+      'de': 'Zulassung gültig bis',
+      'zh': '注册有效期至'
+    },
+    'istekla': {
+      'sr': 'ISTEKLA!',
+      'en': 'EXPIRED!',
+      'ru': 'ИСТЕКЛА!',
+      'de': 'ABGELAUFEN!',
+      'zh': '已过期！'
+    },
+    'dana': {'sr': 'dana', 'en': 'days', 'ru': 'дней', 'de': 'Tage', 'zh': '天'},
+    'napomena': {
+      'sr': 'Napomena',
+      'en': 'Note',
+      'ru': 'Примечание',
+      'de': 'Notiz',
+      'zh': '备注'
+    },
+    'maliServis': {
+      'sr': 'Mali servis',
+      'en': 'Minor service',
+      'ru': 'Малое ТО',
+      'de': 'Kleiner Service',
+      'zh': '小保养'
+    },
+    'velikiServis': {
+      'sr': 'Veliki servis',
+      'en': 'Major service',
+      'ru': 'Большое ТО',
+      'de': 'Großer Service',
+      'zh': '大保养'
+    },
+    'alternator': {
+      'sr': 'Alternator',
+      'en': 'Alternator',
+      'ru': 'Генератор',
+      'de': 'Lichtmaschine',
+      'zh': '发电机'
+    },
+    'akumulator': {
+      'sr': 'Akumulator',
+      'en': 'Battery',
+      'ru': 'Аккумулятор',
+      'de': 'Batterie',
+      'zh': '蓄电池'
+    },
+    'plocicePrednje': {
+      'sr': 'Pločice prednje',
+      'en': 'Front brake pads',
+      'ru': 'Передние колодки',
+      'de': 'Vordere Bremsbeläge',
+      'zh': '前制动片'
+    },
+    'plociceZadnje': {
+      'sr': 'Pločice zadnje',
+      'en': 'Rear brake pads',
+      'ru': 'Задние колодки',
+      'de': 'Hintere Bremsbeläge',
+      'zh': '后制动片'
+    },
+    'trap': {
+      'sr': 'Trap',
+      'en': 'Chassis/suspension',
+      'ru': 'Ходовая',
+      'de': 'Fahrwerk',
+      'zh': '底盘/悬架'
+    },
+    'gumePrednje': {
+      'sr': 'Gume prednje',
+      'en': 'Front tires',
+      'ru': 'Передние шины',
+      'de': 'Vorderreifen',
+      'zh': '前轮轮胎'
+    },
+    'gumeZadnje': {
+      'sr': 'Gume zadnje',
+      'en': 'Rear tires',
+      'ru': 'Задние шины',
+      'de': 'Hinterreifen',
+      'zh': '后轮轮胎'
+    },
+    'menjane': {
+      'sr': 'Menjane',
+      'en': 'Changed',
+      'ru': 'Заменено',
+      'de': 'Gewechselt',
+      'zh': '已更换'
+    },
+    'radioCode': {
+      'sr': 'Radio code',
+      'en': 'Radio code',
+      'ru': 'Код радио',
+      'de': 'Radio-Code',
+      'zh': '收音机密码'
+    },
+    'unesi': {
+      'sr': 'Unesi',
+      'en': 'Enter',
+      'ru': 'Введите',
+      'de': 'Eingeben',
+      'zh': '输入'
+    },
+    'otkazi': {
+      'sr': 'Otkaži',
+      'en': 'Cancel',
+      'ru': 'Отмена',
+      'de': 'Abbrechen',
+      'zh': '取消'
+    },
+    'sacuvaj': {
+      'sr': 'Sačuvaj',
+      'en': 'Save',
+      'ru': 'Сохранить',
+      'de': 'Speichern',
+      'zh': '保存'
+    },
+    'datum': {
+      'sr': 'Datum',
+      'en': 'Date',
+      'ru': 'Дата',
+      'de': 'Datum',
+      'zh': '日期'
+    },
+    'izaberiDatum': {
+      'sr': 'Izaberi datum',
+      'en': 'Select date',
+      'ru': 'Выберите дату',
+      'de': 'Datum wählen',
+      'zh': '选择日期'
+    },
+    'kilometrazaServisa': {
+      'sr': 'Kilometraža servisa',
+      'en': 'Service mileage',
+      'ru': 'Пробег на ТО',
+      'de': 'Service-Kilometerstand',
+      'zh': '保养里程'
+    },
+    'trenutno': {
+      'sr': 'Trenutno',
+      'en': 'Current',
+      'ru': 'Текущий',
+      'de': 'Aktuell',
+      'zh': '当前'
+    },
+    'tipGuma': {
+      'sr': 'Tip guma:',
+      'en': 'Tire type:',
+      'ru': 'Тип шин:',
+      'de': 'Reifentyp:',
+      'zh': '轮胎类型：'
+    },
+    'letnje': {
+      'sr': '☀️ Letnje',
+      'en': '☀️ Summer',
+      'ru': '☀️ Летние',
+      'de': '☀️ Sommer',
+      'zh': '☀️ 夏季'
+    },
+    'zimske': {
+      'sr': '❄️ Zimske',
+      'en': '❄️ Winter',
+      'ru': '❄️ Зимние',
+      'de': '❄️ Winter',
+      'zh': '❄️ 冬季'
+    },
+    'markaIDimenzija': {
+      'sr': 'Marka i dimenzija',
+      'en': 'Brand and size',
+      'ru': 'Марка и размер',
+      'de': 'Marke und Größe',
+      'zh': '品牌和尺寸'
+    },
+    'nprMichelin': {
+      'sr': 'npr. Michelin 215/65 R16',
+      'en': 'e.g. Michelin 215/65 R16',
+      'ru': 'напр. Michelin 215/65 R16',
+      'de': 'z.B. Michelin 215/65 R16',
+      'zh': '例如 Michelin 215/65 R16'
+    },
+    'datumZamene': {
+      'sr': 'Datum zamene',
+      'en': 'Replacement date',
+      'ru': 'Дата замены',
+      'de': 'Wechseldatum',
+      'zh': '更换日期'
+    },
+    'kilometrazaZamene': {
+      'sr': 'Kilometraža zamene',
+      'en': 'Replacement mileage',
+      'ru': 'Пробег при замене',
+      'de': 'Kilometerstand beim Wechsel',
+      'zh': '更换里程'
+    },
+    'dodajVozilo': {
+      'sr': 'Dodaj vozilo',
+      'en': 'Add vehicle',
+      'ru': 'Добавить автомобиль',
+      'de': 'Fahrzeug hinzufügen',
+      'zh': '添加车辆'
+    },
+    'obrisiVozilo': {
+      'sr': 'Obriši vozilo',
+      'en': 'Delete vehicle',
+      'ru': 'Удалить автомобиль',
+      'de': 'Fahrzeug löschen',
+      'zh': '删除车辆'
+    },
+    'potvrdiBrisanjeVozila': {
+      'sr': 'Potvrdi brisanje',
+      'en': 'Confirm deletion',
+      'ru': 'Подтвердить удаление',
+      'de': 'Löschen bestätigen',
+      'zh': '确认删除'
+    },
+    'potvrdiBrisanjeVozilaPoruka': {
+      'sr': 'Da li sigurno želiš da obrišeš ovo vozilo?',
+      'en': 'Are you sure you want to delete this vehicle?',
+      'ru': 'Вы уверены, что хотите удалить этот автомобиль?',
+      'de': 'Möchten Sie dieses Fahrzeug wirklich löschen?',
+      'zh': '确定要删除此车辆吗？'
+    },
+    'marka': {
+      'sr': 'Marka',
+      'en': 'Brand',
+      'ru': 'Марка',
+      'de': 'Marke',
+      'zh': '品牌'
+    },
+    'model': {
+      'sr': 'Model',
+      'en': 'Model',
+      'ru': 'Модель',
+      'de': 'Modell',
+      'zh': '型号'
+    },
+    'registracijaObavezna': {
+      'sr': 'Registracija je obavezna',
+      'en': 'Registration is required',
+      'ru': 'Регистрация обязательна',
+      'de': 'Registrierung ist erforderlich',
+      'zh': '必须填写登记号'
+    },
+    'voziloDodato': {
+      'sr': '✅ Vozilo dodato',
+      'en': '✅ Vehicle added',
+      'ru': '✅ Автомобиль добавлен',
+      'de': '✅ Fahrzeug hinzugefügt',
+      'zh': '✅ 车辆已添加'
+    },
+    'voziloObrisano': {
+      'sr': '✅ Vozilo obrisano',
+      'en': '✅ Vehicle deleted',
+      'ru': '✅ Автомобиль удалён',
+      'de': '✅ Fahrzeug gelöscht',
+      'zh': '✅ 车辆已删除'
+    },
+    'greskaPriBrisanju': {
+      'sr': 'Greška pri brisanju',
+      'en': 'Error deleting',
+      'ru': 'Ошибка удаления',
+      'de': 'Fehler beim Löschen',
+      'zh': '删除时出错'
+    },
+  },
+  'posiljkeZahteviScreen': {
+    'posiljke': {
+      'sr': 'Pošiljke',
+      'en': 'Shipments',
+      'ru': 'Посылки',
+      'de': 'Sendungen',
+      'zh': '包裹'
+    },
+    'obrada': {
+      'sr': 'obrada',
+      'en': 'processing',
+      'ru': 'обработка',
+      'de': 'Bearbeitung',
+      'zh': '处理中'
+    },
+    'odobreno': {
+      'sr': 'odobreno',
+      'en': 'approved',
+      'ru': 'одобрено',
+      'de': 'genehmigt',
+      'zh': '已批准'
+    },
+    'odbijeno': {
+      'sr': 'odbijeno',
+      'en': 'rejected',
+      'ru': 'отклонено',
+      'de': 'abgelehnt',
+      'zh': '已拒绝'
+    },
+    'nemaPosiljki': {
+      'sr': 'Nema pošiljki',
+      'en': 'No shipments',
+      'ru': 'Нет посылок',
+      'de': 'Keine Sendungen',
+      'zh': '没有包裹'
+    },
+    'posiljka': {
+      'sr': 'Pošiljka',
+      'en': 'Shipment',
+      'ru': 'Посылка',
+      'de': 'Sendung',
+      'zh': '包裹'
+    },
+    'vreme': {
+      'sr': 'Vreme',
+      'en': 'Time',
+      'ru': 'Время',
+      'de': 'Zeit',
+      'zh': '时间'
+    },
+  },
+};

@@ -11,51 +11,10 @@ import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../l10n/app_translations.dart';
 
 class _KapTr {
-  static const Map<String, Map<String, String>> _t = {
-    'kapacitetPolazaka': {
-      'sr': 'Kapacitet Polazaka',
-      'en': 'Departure Capacity',
-      'ru': 'Вместимость рейсов',
-      'de': 'Abfahrtskapazität',
-      'zh': '发车容量',
-    },
-    'belaCrkva': {'sr': 'Bela Crkva', 'en': 'Bela Crkva', 'ru': 'Бела-Црква', 'de': 'Bela Crkva', 'zh': 'Bela Crkva'},
-    'vrsac': {'sr': 'Vršac', 'en': 'Vršac', 'ru': 'Вршац', 'de': 'Vršac', 'zh': 'Vršac'},
-    'greskaPriCuvanju': {
-      'sr': '❌ Greška pri čuvanju',
-      'en': '❌ Error saving',
-      'ru': '❌ Ошибка при сохранении',
-      'de': '❌ Fehler beim Speichern',
-      'zh': '❌ 保存时出错',
-    },
-    'mesta': {'sr': 'mesta', 'en': 'seats', 'ru': 'мест', 'de': 'Plätze', 'zh': '座位'},
-    'kapacitetLabel': {'sr': 'Kapacitet', 'en': 'Capacity', 'ru': 'Вместимость', 'de': 'Kapazität', 'zh': '容量'},
-    'nijePostavljen': {
-      'sr': 'nije postavljen',
-      'en': 'not set',
-      'ru': 'не установлено',
-      'de': 'nicht festgelegt',
-      'zh': '未设置',
-    },
-    'unesiteMaksimalanBrojMesta': {
-      'sr': 'Unesite maksimalan broj mesta:',
-      'en': 'Enter the maximum number of seats:',
-      'ru': 'Введите максимальное количество мест:',
-      'de': 'Geben Sie die maximale Platzanzahl ein:',
-      'zh': '请输入最大座位数：',
-    },
-    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
-    'unesiteBrojIzmedju1i20': {
-      'sr': 'Unesite broj između 1 i 20',
-      'en': 'Enter a number between 1 and 20',
-      'ru': 'Введите число от 1 до 20',
-      'de': 'Geben Sie eine Zahl zwischen 1 und 20 ein',
-      'zh': '请输入 1 到 20 之间的数字',
-    },
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('kapacitetScreen');
 
   static String tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

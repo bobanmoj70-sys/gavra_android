@@ -4,6 +4,7 @@ import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
+import '../l10n/app_translations.dart';
 
 class V3HelpScreen extends StatelessWidget {
   const V3HelpScreen({super.key});
@@ -14,66 +15,7 @@ class V3HelpScreen extends StatelessWidget {
   }
 
   // Naslovi sekcija i sadržaj su prevedeni za SR/EN/RU/DE.
-  static const Map<String, Map<String, String>> _t = {
-    'appBarTitle': {
-      'sr': '❓ Uputstvo za korišćenje',
-      'en': '❓ User guide',
-      'ru': '❓ Инструкция по использованию',
-      'de': '❓ Bedienungsanleitung',
-      'zh': '❓ 使用指南',
-    },
-    'secBezbednost': {
-      'sr': 'Bezbednost i sertifikati',
-      'en': 'Security and certifications',
-      'ru': 'Безопасность и сертификаты',
-      'de': 'Sicherheit und Zertifizierungen',
-      'zh': '安全与认证',
-    },
-    'secPrijava': {'sr': 'Prijava (Log in)', 'en': 'Login', 'ru': 'Вход', 'de': 'Anmeldung', 'zh': '登录'},
-    'secZakazivanje': {
-      'sr': 'Zakazivanje prevoza',
-      'en': 'Scheduling a ride',
-      'ru': 'Планирование поездки',
-      'de': 'Fahrt planen',
-      'zh': '安排行程',
-    },
-    'secObavestenja': {
-      'sr': 'Obaveštenja (Push notifikacije)',
-      'en': 'Notifications (Push)',
-      'ru': 'Уведомления (Push)',
-      'de': 'Benachrichtigungen (Push)',
-      'zh': '通知（推送）',
-    },
-    'secBiometrija': {
-      'sr': 'Biometrijska prijava',
-      'en': 'Biometric login',
-      'ru': 'Биометрический вход',
-      'de': 'Biometrische Anmeldung',
-      'zh': '生物识别登录',
-    },
-    'secAdrese': {'sr': 'Adrese', 'en': 'Addresses', 'ru': 'Адреса', 'de': 'Adressen', 'zh': '地址'},
-    'secAlternativa': {
-      'sr': 'Alternativni termin',
-      'en': 'Alternative time slot',
-      'ru': 'Альтернативное время',
-      'de': 'Alternativer Termin',
-      'zh': '备选时段',
-    },
-    'secNeradniDani': {
-      'sr': 'Neradni dani',
-      'en': 'Non-working days',
-      'ru': 'Нерабочие дни',
-      'de': 'Arbeitsfreie Tage',
-      'zh': '非工作日',
-    },
-    'secTipoviPutnika': {
-      'sr': 'Tipovi putnika',
-      'en': 'Passenger types',
-      'ru': 'Типы пассажиров',
-      'de': 'Fahrgastarten',
-      'zh': '乘客类型',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('helpScreen');
 
   @override
   Widget build(BuildContext context) {

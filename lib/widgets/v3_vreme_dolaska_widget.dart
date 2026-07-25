@@ -8,6 +8,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_string_utils.dart';
+import '../l10n/app_translations.dart';
 
 class V3VremeDolaskaWidget extends StatefulWidget {
   const V3VremeDolaskaWidget({
@@ -45,48 +46,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   static const String _colComputedAt = 'computed_at';
 
   // Prevodi za ETA widget (SR/EN/RU/DE).
-  static const Map<String, Map<String, String>> _t = {
-    'procenjenoVreme': {
-      'sr': 'Procenjeno vreme dolaska',
-      'en': 'Estimated arrival time',
-      'ru': 'Ориентировочное время прибытия',
-      'de': 'Geschätzte Ankunftszeit',
-      'zh': '预计到达时间',
-    },
-    'zaMin': {'sr': 'za', 'en': 'in', 'ru': 'через', 'de': 'in', 'zh': '还有'},
-    'min': {'sr': 'min', 'en': 'min', 'ru': 'мин', 'de': 'Min', 'zh': '分钟'},
-    'sledecaVoznja': {
-      'sr': 'Sledeća vožnja',
-      'en': 'Next ride',
-      'ru': 'Следующая поездка',
-      'de': 'Nächste Fahrt',
-      'zh': '下一趟行程',
-    },
-    'nemaZakazaneVoznje': {
-      'sr': 'Nema zakazane vožnje',
-      'en': 'No scheduled ride',
-      'ru': 'Нет запланированной поездки',
-      'de': 'Keine geplante Fahrt',
-      'zh': '没有安排的行程',
-    },
-    'cekaNa': {'sr': 'Čeka na', 'en': 'Waiting at', 'ru': 'Ожидает у', 'de': 'Wartet bei', 'zh': '等待于'},
-    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
-    'u': {'sr': 'u', 'en': 'at', 'ru': 'в', 'de': 'um', 'zh': '于'},
-    'noGpsForAddress': {
-      'sr': 'Nema GPS koordinata za ovu adresu',
-      'en': 'No GPS coordinates for this address',
-      'ru': 'Для этого адреса нет GPS-координат',
-      'de': 'Keine GPS-Koordinaten für diese Adresse',
-      'zh': '此地址没有GPS坐标',
-    },
-    'cannotOpenGoogleMaps': {
-      'sr': 'Ne mogu da otvorim Google Maps',
-      'en': 'Cannot open Google Maps',
-      'ru': 'Не удается открыть Google Maps',
-      'de': 'Google Maps kann nicht geöffnet werden',
-      'zh': '无法打开Google地图',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('vremeDolaskaWidget');
 
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

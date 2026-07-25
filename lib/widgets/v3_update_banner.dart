@@ -8,44 +8,9 @@ import '../services/v3_locale_manager.dart';
 import '../utils/v3_animation_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
+import '../l10n/app_translations.dart';
 
-const Map<String, Map<String, String>> _updateBannerTranslations = {
-  'maintenanceWorkInProgress': {
-    'sr': '⛔ Radovi u toku — ne diraj kablove 😄',
-    'en': '⛔ Maintenance in progress — please do not touch cables 😄',
-    'ru': '⛔ Идут работы — пожалуйста, не трогайте кабели 😄',
-    'de': '⛔ Wartungsarbeiten laufen — bitte keine Kabel berühren 😄',
-    'zh': '⛔ 维护进行中——请勿触碰电缆 😄',
-  },
-  'updateRequired': {
-    'sr': 'Potrebno ažuriranje',
-    'en': 'Update required',
-    'ru': 'Требуется обновление',
-    'de': 'Update erforderlich',
-    'zh': '需要更新',
-  },
-  'versionLabel': {
-    'sr': 'verzija',
-    'en': 'version',
-    'ru': 'версия',
-    'de': 'Version',
-    'zh': '版本',
-  },
-  'unsupportedVersionMessage': {
-    'sr': 'Ova verzija aplikacije više nije podržana. Ažurirajte aplikaciju da biste nastavili rad.',
-    'en': 'This app version is no longer supported. Please update the app to continue.',
-    'ru': 'Эта версия приложения больше не поддерживается. Обновите приложение, чтобы продолжить работу.',
-    'de': 'Diese App-Version wird nicht mehr unterstützt. Bitte aktualisieren Sie die App, um fortzufahren.',
-    'zh': '此应用版本已不再受支持。请更新应用后继续使用。',
-  },
-  'updateApp': {
-    'sr': 'Ažuriraj aplikaciju',
-    'en': 'Update app',
-    'ru': 'Обновить приложение',
-    'de': 'App aktualisieren',
-    'zh': '更新应用',
-  },
-};
+final Map<String, Map<String, String>> _updateBannerTranslations = AppTranslations.ns('updateBannerUpdateBannerTranslations');
 
 String _trUpdateBanner(String key) {
   final code = V3LocaleManager().currentLocale.languageCode;

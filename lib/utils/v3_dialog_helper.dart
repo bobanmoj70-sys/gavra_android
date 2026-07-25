@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/v3_locale_manager.dart';
 import 'v3_button_utils.dart';
+import '../l10n/app_translations.dart';
 
 /// 🎖️💥 V3DIALOGHELPER - CENTRALIZOVANI DIALOG DUPLIKATE ELIMINATOR! 💥🎖️
 /// Konsoliduje sve showDialog, showModalBottomSheet, showConfirmDialog duplikate
@@ -9,33 +10,7 @@ import 'v3_button_utils.dart';
 class V3DialogHelper {
   V3DialogHelper._();
 
-  static const Map<String, Map<String, String>> _t = {
-    'yes': {'sr': 'Da', 'en': 'Yes', 'ru': 'Да', 'de': 'Ja', 'zh': '是'},
-    'no': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '否'},
-    'ok': {'sr': 'U redu', 'en': 'OK', 'ru': 'ОК', 'de': 'OK', 'zh': '确定'},
-    'loading': {
-      'sr': 'Učitavanje...',
-      'en': 'Loading...',
-      'ru': 'Загрузка...',
-      'de': 'Wird geladen...',
-      'zh': '加载中...',
-    },
-    'confirm': {
-      'sr': 'Potvrdi',
-      'en': 'Confirm',
-      'ru': 'Подтвердить',
-      'de': 'Bestätigen',
-      'zh': '确认',
-    },
-    'cancel': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
-    'working': {
-      'sr': 'Radi...',
-      'en': 'Working...',
-      'ru': 'Выполняется...',
-      'de': 'Wird ausgeführt...',
-      'zh': '处理中...'
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('dialogHelper');
 
   static String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

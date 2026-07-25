@@ -12,30 +12,10 @@ import '../utils/v3_dan_helper.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
+import '../l10n/app_translations.dart';
 
 class _UcenZahTr {
-  static const Map<String, Map<String, String>> _t = {
-    'monitoringZahteva': {
-      'sr': 'Monitoring zahteva',
-      'en': 'Request monitoring',
-      'ru': 'Мониторинг запросов',
-      'de': 'Anfragenüberwachung',
-      'zh': '请求监控'
-    },
-    'obrada': {'sr': 'obrada', 'en': 'processing', 'ru': 'обработка', 'de': 'Bearbeitung', 'zh': '处理中'},
-    'odobreno': {'sr': 'odobreno', 'en': 'approved', 'ru': 'одобрено', 'de': 'genehmigt', 'zh': '已批准'},
-    'odbijeno': {'sr': 'odbijeno', 'en': 'rejected', 'ru': 'отклонено', 'de': 'abgelehnt', 'zh': '已拒绝'},
-    'otkazano': {'sr': 'otkazano', 'en': 'canceled', 'ru': 'отменено', 'de': 'storniert', 'zh': '已取消'},
-    'nemaZahteva': {
-      'sr': 'Nema zahteva',
-      'en': 'No requests',
-      'ru': 'Нет запросов',
-      'de': 'Keine Anfragen',
-      'zh': '无请求'
-    },
-    'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast', 'zh': '乘客'},
-    'ucenik': {'sr': 'Učenik', 'en': 'Student', 'ru': 'Ученик', 'de': 'Schüler', 'zh': '学生'},
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('uceniciZahteviScreen');
 
   static String tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;

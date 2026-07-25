@@ -25,6 +25,7 @@ import 'v3_home_screen.dart';
 import 'v3_o_nama_screen.dart';
 import 'v3_putnik_profil_screen.dart';
 import 'v3_sms_login_screen.dart';
+import '../l10n/app_translations.dart';
 
 class V3WelcomeScreen extends StatefulWidget {
   const V3WelcomeScreen({super.key});
@@ -54,73 +55,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
   String _appVersion = '';
 
   // Prevodi za welcome ekran (SR/EN/RU/DE) — jednostavna mapa dok se ne uvede puni l10n sistem.
-  static const Map<String, Map<String, String>> _t = {
-    'welcome': {
-      'sr': 'DOBRODOŠLI',
-      'en': 'WELCOME',
-      'ru': 'ДОБРО ПОЖАЛОВАТЬ',
-      'de': 'WILLKOMMEN',
-      'zh': '欢迎',
-    },
-    'subtitle': {
-      'sr': 'Vaš pouzdani prevoz',
-      'en': 'Your reliable transport',
-      'ru': 'Ваш надежный транспорт',
-      'de': 'Ihr zuverlässiger Transport',
-      'zh': '您可靠的出行伙伴',
-    },
-    'login': {'sr': 'Prijavi se', 'en': 'Log in', 'ru': 'Войти', 'de': 'Anmelden', 'zh': '登录'},
-    'about': {'sr': 'O nama', 'en': 'About us', 'ru': 'О нас', 'de': 'Über uns', 'zh': '关于我们'},
-    'footer1': {
-      'sr': 'Designed - Developed - Crafted with balls',
-      'en': 'Designed - Developed - Crafted with balls',
-      'ru': 'Designed - Developed - Crafted with balls',
-      'de': 'Designed - Developed - Crafted with balls',
-      'zh': 'Designed - Developed - Crafted with balls',
-    },
-    'footer2': {
-      'sr': 'by Bojan Gavrilovic',
-      'en': 'by Bojan Gavrilovic',
-      'ru': 'by Bojan Gavrilovic',
-      'de': 'by Bojan Gavrilovic',
-      'zh': 'by Bojan Gavrilovic',
-    },
-    'deviceLimitReached': {
-      'sr': '❌ Dostignut je limit od 2 uređaja po nalogu. Kontaktirajte admina.',
-      'en': '❌ A limit of 2 devices per account has been reached. Contact admin.',
-      'ru': '❌ Достигнут лимит в 2 устройства на аккаунт. Свяжитесь с администратором.',
-      'de': '❌ Das Limit von 2 Geräten pro Konto wurde erreicht. Kontaktieren Sie den Admin.',
-      'zh': '❌ 每个账户最多只能使用2台设备。请联系管理员。',
-    },
-    'phoneNotPaired': {
-      'sr': '❌ Telefon nije uparen sa UUID nalogom.',
-      'en': '❌ Phone is not paired with the UUID account.',
-      'ru': '❌ Телефон не привязан к UUID-аккаунту.',
-      'de': '❌ Das Telefon ist nicht mit dem UUID-Konto gekoppelt.',
-      'zh': '❌ 该手机未与UUID账户绑定。',
-    },
-    'missingUuidForCheck': {
-      'sr': '❌ UUID naloga nedostaje za proveru.',
-      'en': '❌ Account UUID is missing for verification.',
-      'ru': '❌ Для проверки отсутствует UUID аккаунта.',
-      'de': '❌ Für die Verifizierung fehlt die Konto-UUID.',
-      'zh': '❌ 缺少用于验证的账户UUID。',
-    },
-    'closedTypeNotInSystem': {
-      'sr': 'Aplikacija je zatvorenog tipa i Vi niste u sistemu. Kontaktirajte admina.',
-      'en': 'This is a closed-type app and you are not in the system. Contact admin.',
-      'ru': 'Приложение закрытого типа, и вас нет в системе. Свяжитесь с администратором.',
-      'de': 'Diese App ist geschlossen und Sie sind nicht im System. Kontaktieren Sie den Admin.',
-      'zh': '该应用为封闭系统，您不在系统内。请联系管理员。',
-    },
-    'loginVerificationError': {
-      'sr': '⚠️ Greška pri verifikaciji prijave. Pokušaj ponovo.',
-      'en': '⚠️ Login verification error. Please try again.',
-      'ru': '⚠️ Ошибка проверки входа. Попробуйте снова.',
-      'de': '⚠️ Fehler bei der Login-Verifizierung. Bitte versuchen Sie es erneut.',
-      'zh': '⚠️ 登录验证出错。请重试。',
-    },
-  };
+  static final Map<String, Map<String, String>> _t = AppTranslations.ns('welcomeScreen');
 
   String _tr(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;
