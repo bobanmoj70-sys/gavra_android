@@ -939,7 +939,9 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 ? '🇷🇺'
                 : code == 'de'
                     ? '🇩🇪'
-                    : '🇷🇸';
+                    : code == 'zh'
+                        ? '🇨🇳'
+                        : '🇷🇸';
         return PopupMenuButton<String>(
           tooltip: _tr('jezik'),
           offset: const Offset(0, 44),
@@ -996,6 +998,19 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                   Text(
                     'Deutsch',
                     style: TextStyle(color: Colors.white.withValues(alpha: code == 'de' ? 1 : 0.6)),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'zh',
+              child: Row(
+                children: [
+                  const Text('🇨🇳', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    '中文',
+                    style: TextStyle(color: Colors.white.withValues(alpha: code == 'zh' ? 1 : 0.6)),
                   ),
                 ],
               ),

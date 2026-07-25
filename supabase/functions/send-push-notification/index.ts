@@ -19,7 +19,7 @@ type PushPayload = {
 };
 
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
-const supportedLocaleCodes = new Set(['sr', 'en', 'ru', 'de']);
+const supportedLocaleCodes = new Set(['sr', 'en', 'ru', 'de', 'zh']);
 
 let cachedFcmToken: { token: string; exp: number; projectId: string } | null = null;
 

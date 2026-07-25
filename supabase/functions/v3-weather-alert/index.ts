@@ -19,6 +19,8 @@ type DangerAlert = {
   body_ru: string;
   title_de: string;
   body_de: string;
+  title_zh: string;
+  body_zh: string;
 };
 
 const SNOW_CODES = new Set([71, 73, 75, 77, 85, 86]);
@@ -44,6 +46,8 @@ function detectAlerts(weatherCode: number, tempC: number, grad: string): DangerA
       body_ru: "Снег и возможная гололедица на дороге. Будьте предельно осторожны.",
       title_de: `❄️ Warnung: Schnee (${grad})`,
       body_de: "Schnee und mögliches Glatteis. Fahren Sie äußerst vorsichtig.",
+      title_zh: `❄️ 警告：降雪 (${grad})`,
+      body_zh: "降雪且路面可能结冰。请极其小心驾驶，降低车速。",
     });
   } else if (RAIN_CODES.has(weatherCode) && tempC <= 2) {
     // Kiša na temperaturi blizu nule -> rizik od poledice (freezing rain risk)
@@ -58,6 +62,8 @@ function detectAlerts(weatherCode: number, tempC: number, grad: string): DangerA
       body_ru: "Дождь при околонулевой температуре - возможен гололёд. Будьте осторожны.",
       title_de: `🧊 Warnung: Glatteisgefahr (${grad})`,
       body_de: "Regen bei Temperaturen um den Gefrierpunkt - mögliches Glatteis.",
+      title_zh: `🧊 警告：结冰风险 (${grad})`,
+      body_zh: "接近冰点的降雨 - 路面可能结冰。请小心驾驶。",
     });
   }
 
@@ -74,6 +80,8 @@ function detectAlerts(weatherCode: number, tempC: number, grad: string): DangerA
       body_ru: "Пониженная видимость из-за тумана. Включите фары, снизьте скорость.",
       title_de: `🌫️ Warnung: Nebel (${grad})`,
       body_de: "Eingeschränkte Sicht durch Nebel. Licht einschalten, langsamer fahren.",
+      title_zh: `🌫️ 警告：雾 (${grad})`,
+      body_zh: "雾导致能见度降低。请开启车灯，减速行驶。",
     });
   }
 
@@ -90,6 +98,8 @@ function detectAlerts(weatherCode: number, tempC: number, grad: string): DangerA
       body_ru: "Гроза в разгаре. Будьте осторожны, возможен сильный ветер и ливень.",
       title_de: `⛈️ Warnung: Gewitter (${grad})`,
       body_de: "Gewitter im Gange. Vorsicht, möglicher starker Wind und Regenguss.",
+      title_zh: `⛈️ 警告：暴风雨 (${grad})`,
+      body_zh: "雷暴天气进行中。请小心驾驶，可能有强风和暴雨。",
     });
   } else if (HEAVY_RAIN_CODES.has(weatherCode)) {
     // Jaka kiša (bez grmljavine) -> rizik od aquaplaninga / klizanja
@@ -104,6 +114,8 @@ function detectAlerts(weatherCode: number, tempC: number, grad: string): DangerA
       body_ru: "Сильный дождь - риск заноса и аквапланирования. Снизьте скорость.",
       title_de: `🌧️ Warnung: starker Regen (${grad})`,
       body_de: "Starker Regen - Rutsch- und Aquaplaninggefahr. Geschwindigkeit reduzieren.",
+      title_zh: `🌧️ 警告：大雨 (${grad})`,
+      body_zh: "大雨 - 有打滑和水滑风险。请减速行驶。",
     });
   }
 
@@ -120,6 +132,8 @@ function detectAlerts(weatherCode: number, tempC: number, grad: string): DangerA
       body_ru: `Температура ${Math.round(tempC)}°C. Пейте больше воды, избегайте перегрева авто.`,
       title_de: `☀️ Warnung: extreme Hitze (${grad})`,
       body_de: `Temperatur ${Math.round(tempC)}°C. Ausreichend trinken, Fahrzeugüberhitzung vermeiden.`,
+      title_zh: `☀️ 警告：极端高温 (${grad})`,
+      body_zh: `温度 ${Math.round(tempC)}°C。请多喝水，避免车辆过热。`,
     });
   }
 
@@ -182,6 +196,8 @@ Deno.serve(async (_req: Request) => {
           p_body_ru: alert.body_ru,
           p_title_de: alert.title_de,
           p_body_de: alert.body_de,
+          p_title_zh: alert.title_zh,
+          p_body_zh: alert.body_zh,
         });
 
         results.push({

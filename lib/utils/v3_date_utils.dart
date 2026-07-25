@@ -77,6 +77,22 @@ class V3DateUtils {
     'Dezember',
   ];
 
+  static const List<String> _meseciZh = <String>[
+    '',
+    '一月',
+    '二月',
+    '三月',
+    '四月',
+    '五月',
+    '六月',
+    '七月',
+    '八月',
+    '九月',
+    '十月',
+    '十一月',
+    '十二月',
+  ];
+
   static const String _belgradeTzName = 'Europe/Belgrade';
   static bool _tzInitialized = false;
   static tz.Location? _belgradeLocation;
@@ -172,6 +188,7 @@ class V3DateUtils {
         'en' => _meseciEn,
         'ru' => _meseciRu,
         'de' => _meseciDe,
+        'zh' => _meseciZh,
         _ => _meseciSr,
       };
       return months[mesec];

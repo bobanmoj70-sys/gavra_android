@@ -30,7 +30,7 @@ function deriveIncomingInstallationId(params: {
 
 function normalizeLocaleCode(value: unknown): string {
   const code = String(value ?? "").trim().toLowerCase();
-  return ["sr", "en", "ru", "de"].includes(code) ? code : "";
+  return ["sr", "en", "ru", "de", "zh"].includes(code) ? code : "";
 }
 
 Deno.serve(async (req) => {

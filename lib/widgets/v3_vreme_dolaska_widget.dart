@@ -51,19 +51,27 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       'en': 'Estimated arrival time',
       'ru': 'Ориентировочное время прибытия',
       'de': 'Geschätzte Ankunftszeit',
+      'zh': '预计到达时间',
     },
-    'zaMin': {'sr': 'za', 'en': 'in', 'ru': 'через', 'de': 'in'},
-    'min': {'sr': 'min', 'en': 'min', 'ru': 'мин', 'de': 'Min'},
-    'sledecaVoznja': {'sr': 'Sledeća vožnja', 'en': 'Next ride', 'ru': 'Следующая поездка', 'de': 'Nächste Fahrt'},
+    'zaMin': {'sr': 'za', 'en': 'in', 'ru': 'через', 'de': 'in', 'zh': '还有'},
+    'min': {'sr': 'min', 'en': 'min', 'ru': 'мин', 'de': 'Min', 'zh': '分钟'},
+    'sledecaVoznja': {
+      'sr': 'Sledeća vožnja',
+      'en': 'Next ride',
+      'ru': 'Следующая поездка',
+      'de': 'Nächste Fahrt',
+      'zh': '下一趟行程',
+    },
     'nemaZakazaneVoznje': {
       'sr': 'Nema zakazane vožnje',
       'en': 'No scheduled ride',
       'ru': 'Нет запланированной поездки',
       'de': 'Keine geplante Fahrt',
+      'zh': '没有安排的行程',
     },
-    'cekaNa': {'sr': 'Čeka na', 'en': 'Waiting at', 'ru': 'Ожидает у', 'de': 'Wartet bei'},
-    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer'},
-    'u': {'sr': 'u', 'en': 'at', 'ru': 'в', 'de': 'um'},
+    'cekaNa': {'sr': 'Čeka na', 'en': 'Waiting at', 'ru': 'Ожидает у', 'de': 'Wartet bei', 'zh': '等待于'},
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
+    'u': {'sr': 'u', 'en': 'at', 'ru': 'в', 'de': 'um', 'zh': '于'},
   };
 
   String _tr(String key) {

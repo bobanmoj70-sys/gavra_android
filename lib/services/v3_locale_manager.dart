@@ -9,12 +9,13 @@ class V3LocaleManager {
     _localeNotifier = ValueNotifier(_defaultLocale);
   }
   static final V3LocaleManager _instance = V3LocaleManager._internal();
-  static const List<String> _supportedLocaleCodes = <String>['sr', 'en', 'ru', 'de'];
+  static const List<String> _supportedLocaleCodes = <String>['sr', 'en', 'ru', 'de', 'zh'];
   static const List<Locale> supportedLocales = <Locale>[
     Locale('sr'),
     Locale('en'),
     Locale('ru'),
     Locale('de'),
+    Locale('zh'),
   ];
   static const FlutterSecureStorage _secureStorage =
       FlutterSecureStorage(aOptions: AndroidOptions(encryptedSharedPreferences: true));
@@ -38,6 +39,9 @@ class V3LocaleManager {
 
   /// Da li je trenutni jezik nemački.
   bool get isGerman => _localeNotifier.value.languageCode == 'de';
+
+  /// Da li je trenutni jezik kineski.
+  bool get isChinese => _localeNotifier.value.languageCode == 'zh';
 
   /// Promeni jezik i sačuvaj izbor.
   Future<void> changeLocale(Locale locale) async {

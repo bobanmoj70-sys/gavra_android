@@ -42,6 +42,7 @@ Future<void>? _supabaseInitInFlight;
 Future<void>? _fcmChannelInitInFlight;
 Future<void>? _iosFcmHandlersInitInFlight;
 String _lastSyncedPushToken = '';
+DateTime? _lastLocaleResumeSyncAt;
 bool _fcmChannelInitialized = false;
 bool _iosFcmHandlersInitialized = false;
 final Map<String, DateTime> _canceledStatusPushSeenAt = <String, DateTime>{};
@@ -691,6 +692,47 @@ Future<void> _syncRefreshedPushToken(String token) async {
         }
       }),
     );
+  }
+}
+
+/// Sinhronizuje trenutni locale_code (i osvežava last_seen_at) kada se app
+/// vrati iz pozadine (resume), bez čekanja na hladan restart ili FCM token
+/// refresh. Throttle-ovano na jednom u 6h da ne spamuje edge funkciju kod
+/// korisnika koji često prebacuju app u pozadinu i nazad.
+Future<void> _syncLocaleOnResume() async {
+  final now = DateTime.now();
+  if (_lastLocaleResumeSyncAt != null && now.difference(_lastLocaleResumeSyncAt!) < const Duration(hours: 6)) {
+    return;
+  }
+
+  final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
+  final vozacId = (V3VozacService.currentVozac?.id ?? '').trim();
+  if (putnikId.isEmpty && vozacId.isEmpty) return;
+
+  try {
+    final installationId = (await V3PushTokenProvider.getInstallationId())?.trim() ?? '';
+    if (installationId.isEmpty) return;
+    final hardwareId = await V3DeviceIdentityService.getHardwareId();
+
+    if (putnikId.isNotEmpty) {
+      await V3PutnikService.writePushTokenOnLogin(
+        putnikId: putnikId,
+        pushToken: '',
+        installationId: installationId,
+        hardwareId: hardwareId,
+      ).timeout(const Duration(seconds: 5));
+    } else if (vozacId.isNotEmpty) {
+      await V3VozacService.writePushTokenOnLogin(
+        vozacId: vozacId,
+        pushToken: '',
+        installationId: installationId,
+        hardwareId: hardwareId,
+      ).timeout(const Duration(seconds: 5));
+    }
+
+    _lastLocaleResumeSyncAt = now;
+  } catch (e) {
+    debugPrint('[main] _syncLocaleOnResume error: $e');
   }
 }
 
@@ -1511,7 +1553,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {}
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncLocaleOnResume());
+    }
+  }
 
   Future<void> _initializeApp() async {}
 

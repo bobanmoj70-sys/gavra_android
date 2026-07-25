@@ -686,10 +686,12 @@ Deno.serve(async (req) => {
                 title_en: "Appointment in 10 minutes",
                 title_ru: "Термин через 10 минут",
                 title_de: "Termin in 10 Minuten",
+                title_zh: "10分钟后有预约",
                 body_sr: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
                 body_en: `Tap to start tracking for ${grad} ${vreme}.`,
                 body_ru: `Нажмите, чтобы начать отслеживание для ${grad} ${vreme}.`,
                 body_de: `Tippen Sie, um die Verfolgung für ${grad} ${vreme} zu starten.`,
+                body_zh: `点击开始跟踪 ${grad} ${vreme}。`,
                 data: {
                   type: "vozac_auto_start_tracking",
                   event_id: eventId,
@@ -703,10 +705,12 @@ Deno.serve(async (req) => {
                   title_en: "Appointment in 10 minutes",
                   title_ru: "Термин через 10 минут",
                   title_de: "Termin in 10 Minuten",
+                  title_zh: "10分钟后有预约",
                   body_sr: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
                   body_en: `Tap to start tracking for ${grad} ${vreme}.`,
                   body_ru: `Нажмите, чтобы начать отслеживание для ${grad} ${vreme}.`,
                   body_de: `Tippen Sie, um die Verfolgung für ${grad} ${vreme} zu starten.`,
+                  body_zh: `点击开始跟踪 ${grad} ${vreme}。`,
                 },
               });
               console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);

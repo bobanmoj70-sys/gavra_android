@@ -1478,7 +1478,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                     if (!mounted) return;
                                     V3AppSnackBar.info(context, _tr('temaPromenjena'));
                                   } else if (val == 'jezik') {
-                                    const codes = ['sr', 'en', 'ru', 'de'];
+                                    const codes = ['sr', 'en', 'ru', 'de', 'zh'];
                                     final current = V3LocaleManager().currentLocale.languageCode;
                                     final idx = codes.indexOf(current);
                                     final next = codes[(idx + 1) % codes.length];

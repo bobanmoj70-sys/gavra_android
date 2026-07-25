@@ -970,7 +970,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                 ? '🇷🇺'
                 : code == 'de'
                     ? '🇩🇪'
-                    : '🇷🇸';
+                    : code == 'zh'
+                        ? '🇨🇳'
+                        : '🇷🇸';
         return PopupMenuButton<String>(
           tooltip: '',
           offset: const Offset(0, 44),
@@ -1027,6 +1029,19 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                   Text(
                     'Deutsch',
                     style: TextStyle(color: Colors.white.withValues(alpha: code == 'de' ? 1 : 0.6)),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'zh',
+              child: Row(
+                children: [
+                  const Text('🇨🇳', style: TextStyle(fontSize: 20)),
+                  const SizedBox(width: 10),
+                  Text(
+                    '中文',
+                    style: TextStyle(color: Colors.white.withValues(alpha: code == 'zh' ? 1 : 0.6)),
                   ),
                 ],
               ),
