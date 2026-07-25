@@ -496,6 +496,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (!mounted) return;
       _refreshPutniciOrderFromEtaCache();
       debugPrint('[RESTORE] cards re-sorted by OSRM order');
+      unawaited(_syncMapRouteIfNeeded(reason: 'restore_from_last_known_position'));
     } catch (e) {
       debugPrint('[RESTORE] ETA restore error: $e');
     }
