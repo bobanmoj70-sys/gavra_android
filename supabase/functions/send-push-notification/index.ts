@@ -120,8 +120,11 @@ function resolveLocalizedText(
 }
 
 async function resolveRecipientLocale(payload: PushPayload, data: Record<string, string>): Promise<string> {
-  const explicit = normalizeLocaleCode(data.locale_code ?? payload._secrets?.locale_code);
-  if (explicit) return explicit;
+  // VAŽNO: normalizeLocaleCode uvek vraća string (default 'sr'), pa ne sme da se koristi
+  // za proveru "da li je locale_code eksplicitno prosleđen". Prvo proveravamo sirovu
+  // vrednost — samo ako je stvarno prosleđena, koristimo je bez upita ka bazi.
+  const rawExplicit = String(data.locale_code ?? payload._secrets?.locale_code ?? '').trim();
+  if (rawExplicit) return normalizeLocaleCode(rawExplicit);
 
   const recipientId = String(payload.recipient_id ?? data.recipient_id ?? '').trim();
   if (!recipientId) return 'sr';
