@@ -57,12 +57,20 @@ class _StatTr {
     'obaveza': {'sr': 'Obaveza', 'en': 'Amount due', 'ru': 'Задолженность', 'de': 'Fälliger Betrag', 'zh': '应付金额'},
     'placeno': {'sr': 'Plaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt', 'zh': '已支付'},
     'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schulden', 'zh': '欠款'},
+    'visak': {'sr': 'Višak', 'en': 'Credit', 'ru': 'Переплата', 'de': 'Guthaben', 'zh': '余额'},
     'ukupanDug': {
       'sr': 'Ukupan dug',
       'en': 'Total debt',
       'ru': 'Общий долг',
       'de': 'Gesamtschulden',
       'zh': '总欠款',
+    },
+    'ukupanVisak': {
+      'sr': 'Ukupan višak',
+      'en': 'Total credit',
+      'ru': 'Общая переплата',
+      'de': 'Gesamtguthaben',
+      'zh': '总余额',
     },
     'poslednjaUplata': {
       'sr': 'Poslednja uplata',
@@ -184,6 +192,11 @@ class _MesecCard extends StatelessWidget {
       godina: stats.godina,
       mesec: stats.mesec,
     );
+    final ukupanVisak = V3PutnikStatistikaService.getUkupanViskDoMeseca(
+      putnikId: putnikId,
+      godina: stats.godina,
+      mesec: stats.mesec,
+    );
     final putnikData = V3MasterRealtimeManager.instance.putniciCache[putnikId] ?? const <String, dynamic>{};
     final tipPutnika = (putnikData['tip_putnika'] as String? ?? '').trim();
     final ime = (putnikData['ime'] as String? ?? '').trim();
@@ -233,20 +246,24 @@ class _MesecCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                  Row(
+                    children: [
+                      Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                      if ((stats.ukupnoVoznji * stats.cena - stats.ukupnaObaveza).abs() > 0.009) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '(${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)})',
+                          style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11),
+                        ),
+                      ],
+                    ],
+                  ),
                   Text(
                     '${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
                     style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
-              if ((stats.ukupnoVoznji * stats.cena - stats.ukupnaObaveza).abs() > 0.009) ...[
-                const SizedBox(height: 2),
-                Text(
-                  '${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)}',
-                  style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11),
-                ),
-              ],
               const SizedBox(height: 4),
             ],
             Row(
@@ -271,6 +288,19 @@ class _MesecCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (stats.visakIznos > 0.009) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_StatTr.tr('visak'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                  Text(
+                    '${stats.visakIznos.toStringAsFixed(0)} RSD',
+                    style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ],
             if (stats.poslednjaUplata != null) ...[
               const SizedBox(height: 4),
               Row(
@@ -297,6 +327,19 @@ class _MesecCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (ukupanVisak > 0.009) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_StatTr.tr('ukupanVisak'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                  Text(
+                    '${ukupanVisak.toStringAsFixed(0)} RSD',
+                    style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

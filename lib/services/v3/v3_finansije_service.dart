@@ -230,7 +230,15 @@ class V3FinansijeService {
     });
   }
 
-  static List<Map<String, dynamic>> _consumeNenaplaceneVoznje({
+  /// Iznos trenutnog "viška" (kredita/preplate) na master redu, koji se troši
+  /// pre nego što se generiše nova stavka duga za narednu vožnju.
+  static double _readVisak(Map<String, dynamic> row) => (row['visak_iznos'] as num?)?.toDouble() ?? 0.0;
+
+  /// Rezultat trošenja nenaplaćenih stavki nakon uplate: preostale nenaplaćene
+  /// stavke i eventualan "preostatak" uplate koji nije mogao da se iskoristi
+  /// (jer je iznos veći od svih nenaplaćenih vožnji) — taj preostatak postaje
+  /// višak/kredit, umesto da se izgubi.
+  static ({List<Map<String, dynamic>> stavke, double preostalo}) _consumeNenaplaceneVoznje({
     required List<Map<String, dynamic>> stavke,
     required double uplacenIznos,
     required double defaultCena,
@@ -249,7 +257,8 @@ class V3FinansijeService {
       queue.removeAt(0);
     }
 
-    return queue;
+    if (queue.isNotEmpty) preostalo = 0;
+    return (stavke: queue, preostalo: preostalo);
   }
 
   static Iterable<Map<String, dynamic>> _naplataRows() {
@@ -493,6 +502,63 @@ class V3FinansijeService {
     return ukupno;
   }
 
+  /// Vraća ukupan "višak" (kredit/preplatu) za putnika u zadatom periodu —
+  /// novac koji je uplaćen unapred, a još nije iskorišćen na nijednu vožnju.
+  static double getVisakIznosForPutnik({
+    required String putnikId,
+    int? godina,
+    int? mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0.0;
+
+    final naplataRows = _naplataRows().where((row) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnik.toLowerCase()) return false;
+      if (godina != null) {
+        final rowGodina = _parseInternalInt(row['godina']);
+        if (rowGodina != godina) return false;
+      }
+      if (mesec != null) {
+        final rowMesec = _parseInternalInt(row['mesec']);
+        if (rowMesec != mesec) return false;
+      }
+      return true;
+    });
+
+    var ukupno = 0.0;
+    for (final row in naplataRows) {
+      ukupno += _readVisak(row);
+    }
+    return ukupno;
+  }
+
+  /// Pronalazi hronološki poslednji master red za putnika STROGO pre
+  /// zadatog (godina, mesec) — koristi se za prenos viška u novi mesec.
+  static Map<String, dynamic>? _findPrethodniRed({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final target = godina * 12 + mesec;
+    Map<String, dynamic>? best;
+    var bestKey = -1;
+    for (final row in _naplataRows()) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnikId.trim().toLowerCase()) continue;
+      final rG = _parseInternalInt(row['godina']);
+      final rM = _parseInternalInt(row['mesec']);
+      if (rG == null || rM == null) continue;
+      final key = rG * 12 + rM;
+      if (key >= target) continue;
+      if (key > bestKey) {
+        bestKey = key;
+        best = row;
+      }
+    }
+    return best;
+  }
+
   static Future<void> evidentirajRealizacijuPriPokupljanju({
     required String putnikId,
     required String tipPutnika,
@@ -576,12 +642,22 @@ class V3FinansijeService {
           if (isPoDanu && _containsNenaplacenaForDay(stavke: currentNenaplacene, datum: datum)) {
             return;
           }
-          final updatedNenaplacene = _appendNenaplacenaVoznja(
-            stavke: currentNenaplacene,
-            operativnaId: operativnaId,
-            datum: datum,
-            cena: cenaVoznje,
-          );
+          // Prvo pokušaj da pokriješ cenu ove vožnje iz postojećeg viška
+          // (kredita/preplate) pre nego što se doda nova stavka duga. Ako je
+          // putnik već platio unapred, nova vožnja se ne tretira kao dug dok
+          // god ima pokrića u višku.
+          final trenutniVisak = _readVisak(latest);
+          final preostalaCena = (cenaVoznje - trenutniVisak) > 0.009 ? cenaVoznje - trenutniVisak : 0.0;
+          final noviVisak = (trenutniVisak - cenaVoznje) > 0.009 ? trenutniVisak - cenaVoznje : 0.0;
+
+          final updatedNenaplacene = preostalaCena > 0.009
+              ? _appendNenaplacenaVoznja(
+                  stavke: currentNenaplacene,
+                  operativnaId: operativnaId,
+                  datum: datum,
+                  cena: preostalaCena,
+                )
+              : currentNenaplacene;
           // NAPOMENA: Ovde se NE dodaje lažna "uplata" u uplate_json — vožnja se
           // evidentira kao NENAPLAĆENA (currentNenaplacene/updatedNenaplacene) i
           // stvarni zapis o uplati se pravi tek kada putnik zaista plati
@@ -593,6 +669,7 @@ class V3FinansijeService {
           // database trigger v3_sync_realizovane_voznje_to_finansije.
           final updatePayload = <String, dynamic>{
             _nenaplaceneVoznjeKey: updatedNenaplacene,
+            'visak_iznos': noviVisak,
             'updated_at': V3DateUtils.nowIsoUtc(),
           };
           final updated = await _repo.updateByIdReturning(latestId, updatePayload);
@@ -608,19 +685,46 @@ class V3FinansijeService {
         operativnaId: safeOperativnaId,
         isPoDanu: isPoDanu,
       );
+
+      // Prenesi eventualni višak (kredit) iz prethodnog meseca — ako je
+      // putnik preplatio prošli mesec, taj višak prvo pokriva ovu (prvu)
+      // vožnju novog meseca pre nego što se ona upiše kao dug.
+      final prethodniRed = _findPrethodniRed(
+        putnikId: safePutnikId,
+        godina: datum.year,
+        mesec: datum.month,
+      );
+      final prenetiVisak = prethodniRed != null ? _readVisak(prethodniRed) : 0.0;
+      final preostalaCenaNoviMesec = (cenaVoznje - prenetiVisak) > 0.009 ? cenaVoznje - prenetiVisak : 0.0;
+      final noviVisakNoviMesec = (prenetiVisak - cenaVoznje) > 0.009 ? prenetiVisak - cenaVoznje : 0.0;
+
+      if (prethodniRed != null && prenetiVisak > 0.009) {
+        final prethodniId = (prethodniRed['id'] ?? '').toString();
+        if (prethodniId.isNotEmpty) {
+          final updatedPrethodni = await _repo.updateByIdReturning(prethodniId, {
+            'visak_iznos': 0,
+            'updated_at': V3DateUtils.nowIsoUtc(),
+          });
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updatedPrethodni);
+        }
+      }
+
       final row = await _repo.insertReturning({
         'naziv': 'Evidencija prevoza ${datum.month}/${datum.year}',
         'kategorija': _masterKategorija(),
         'tip': 'prihod',
         'iznos': 0,
         'putnik_v3_auth_id': safePutnikId,
-        _nenaplaceneVoznjeKey: [
-          {
-            'operativna_id': operativnaId,
-            'datum': datum.toIso8601String(),
-            'cena': cenaVoznje,
-          }
-        ],
+        _nenaplaceneVoznjeKey: preostalaCenaNoviMesec > 0.009
+            ? [
+                {
+                  'operativna_id': operativnaId,
+                  'datum': datum.toIso8601String(),
+                  'cena': preostalaCenaNoviMesec,
+                }
+              ]
+            : <Map<String, dynamic>>[],
+        'visak_iznos': noviVisakNoviMesec,
         'mesec': datum.month,
         'godina': datum.year,
       });
@@ -1060,11 +1164,16 @@ class V3FinansijeService {
 
         final currentNenaplacene = _readNenaplaceneVoznje(latest);
         final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
-        final updatedNenaplacene = _consumeNenaplaceneVoznje(
+        final consumeResult = _consumeNenaplaceneVoznje(
           stavke: currentNenaplacene,
           uplacenIznos: iznos,
           defaultCena: cenaVoznje,
         );
+        final updatedNenaplacene = consumeResult.stavke;
+        // Iznos uplate koji je premašio sve tekuće nenaplaćene vožnje se ne
+        // gubi — postaje višak (kredit) koji će pokriti naredne vožnje pre
+        // nego što se one uopšte upišu kao dug.
+        final updatedVisak = _readVisak(latest) + consumeResult.preostalo;
         // Broj vožnji se izvodi isključivo iz realizovane_voznje_json, ne iz
         // skalarne kolone. Pri plaćanju se broj vožnji ne menja.
         final currentUplate = _readUplate(latest);
@@ -1078,6 +1187,7 @@ class V3FinansijeService {
           'naplaceno_by': updatedNaplatioBy,
           _nenaplaceneVoznjeKey: updatedNenaplacene,
           _uplateKey: updatedUplate,
+          'visak_iznos': updatedVisak,
           'updated_at': V3DateUtils.toIsoUtc(now),
         });
       } else {
@@ -1085,6 +1195,21 @@ class V3FinansijeService {
         final initialUplate = [uplataStavka];
         final initialIznos = _getUkupanIznosUplata(<String, dynamic>{_uplateKey: initialUplate});
         final initialNaplatioBy = _getNaplatioBy(<String, dynamic>{_uplateKey: initialUplate});
+
+        // Prenesi eventualni višak iz prethodnog meseca, ako postoji —
+        // uplata se prvo primenjuje na taj preneti višak.
+        final prethodniRed = _findPrethodniRed(putnikId: safePutnikId, godina: godina, mesec: mesec);
+        final prenetiVisak = prethodniRed != null ? _readVisak(prethodniRed) : 0.0;
+        if (prethodniRed != null && prenetiVisak > 0.009) {
+          final prethodniId = (prethodniRed['id'] ?? '').toString();
+          if (prethodniId.isNotEmpty) {
+            final updatedPrethodni = await _repo.updateByIdReturning(prethodniId, {
+              'visak_iznos': 0,
+              'updated_at': V3DateUtils.toIsoUtc(now),
+            });
+            V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updatedPrethodni);
+          }
+        }
 
         row = await _repo.insertReturning({
           'naziv': 'Evidencija prevoza $mesec/$godina',
@@ -1095,6 +1220,7 @@ class V3FinansijeService {
           'naplaceno_by': initialNaplatioBy,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           _uplateKey: initialUplate,
+          'visak_iznos': prenetiVisak + iznos,
           'mesec': mesec,
           'godina': godina,
         });
