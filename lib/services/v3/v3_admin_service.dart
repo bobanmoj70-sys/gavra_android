@@ -65,4 +65,3 @@ class V3AdminService {
     await V3VozacService.updateUloga(vozacId: vozacId, uloga: uloga);
   }
 }
-

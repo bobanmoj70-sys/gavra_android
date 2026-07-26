@@ -2,6 +2,14 @@ part of 'app_translations.dart';
 
 const Map<String, Map<String, Map<String, String>>> _screensB = {
   'putniciScreen': {
+    'uloge': {'sr': 'Uloge', 'en': 'Roles', 'ru': 'Роли', 'de': 'Rollen', 'zh': '角色'},
+    'greskaCuvanja': {
+      'sr': 'Greška pri čuvanju',
+      'en': 'Error saving',
+      'ru': 'Ошибка сохранения',
+      'de': 'Fehler beim Speichern',
+      'zh': '保存出错'
+    },
     'dodajPutnika': {
       'sr': 'Dodaj putnika',
       'en': 'Add passenger',

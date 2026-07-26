@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_translations.dart';
 import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
+import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_admin_service.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_putnik_service.dart';
+import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -22,7 +26,6 @@ import '../utils/v3_text_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import 'v3_putnik_statistika_screen.dart';
-import '../l10n/app_translations.dart';
 
 class _PutTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('putniciScreen');
@@ -127,6 +130,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                               _filterBtn('dnevni', Icons.today, const Color(0xFFFF6B6B), const Color(0xFFFF8E53)),
                               _filterBtn(
                                   'posiljka', Icons.local_shipping, const Color(0xFFFF8C00), const Color(0xFFE65C00)),
+                              IconButton(
+                                icon: const Icon(Icons.admin_panel_settings,
+                                    color: Colors.white,
+                                    shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                                tooltip: _PutTr.tr('uloge'),
+                                onPressed: _showUlogeDialog,
+                              ),
                               IconButton(
                                 icon: const Icon(Icons.person_add,
                                     color: Colors.white,
@@ -320,6 +330,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
   // ─── Add / Edit dialog ────────────────────────────────────────────────────
   void _showAddDialog() => _showPutnikDialog(null);
   void _showEditDialog(V3Putnik p) => _showPutnikDialog(p);
+
+  void _showUlogeDialog() {
+    V3DialogHelper.showDialogBuilder<void>(
+      context: context,
+      builder: (_) => const _UlogeDialog(),
+    );
+  }
 
   void _showPutnikDialog(V3Putnik? existing) {
     V3DialogHelper.showDialogBuilder<void>(
@@ -1051,6 +1068,147 @@ class _PutnikDialogState extends State<_PutnikDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Uloge Dialog (admin/dispecer/vozac) ──────────────────────────────────────
+
+class _UlogeDialog extends StatefulWidget {
+  const _UlogeDialog();
+
+  @override
+  State<_UlogeDialog> createState() => _UlogeDialogState();
+}
+
+class _UlogeDialogState extends State<_UlogeDialog> {
+  final Set<String> _saving = <String>{};
+
+  Color _colorForUloga(String uloga) {
+    switch (uloga) {
+      case V3AdminService.roleAdmin:
+        return const Color(0xFFE65C00);
+      case V3AdminService.roleDispecer:
+        return const Color(0xFF3B7DD8);
+      default:
+        return Colors.white54;
+    }
+  }
+
+  Future<void> _promeniUlogu(V3Vozac vozac, String novaUloga) async {
+    if (vozac.uloga == novaUloga) return;
+    setState(() => _saving.add(vozac.id));
+    try {
+      await V3AdminService.setUloga(vozacId: vozac.id, uloga: novaUloga);
+    } catch (e) {
+      if (mounted) V3AppSnackBar.error(context, _PutTr.tr('greskaCuvanja'));
+    } finally {
+      if (mounted) setState(() => _saving.remove(vozac.id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_auth'),
+      builder: (context, _) {
+        final vozaci = V3VozacService.getAllVozaci();
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+          child: V3ContainerUtils.gradientContainer(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E2235), Color(0xFF252840)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 520),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 16, 12, 8),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.admin_panel_settings, color: Colors.white, size: 22),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_PutTr.tr('uloge'),
+                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white)),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white54),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(color: Colors.white12, height: 1),
+                  Flexible(
+                    child: vozaci.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(_PutTr.tr('nemaPutnika'), style: const TextStyle(color: Colors.white60)),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shrinkWrap: true,
+                            itemCount: vozaci.length,
+                            itemBuilder: (context, i) {
+                              final v = vozaci[i];
+                              final isSaving = _saving.contains(v.id);
+                              final boja = _colorForUloga(v.uloga);
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: boja.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: boja.withValues(alpha: 0.35)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(v.imePrezime,
+                                          style: const TextStyle(
+                                              fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                                    ),
+                                    if (isSaving)
+                                      const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    else
+                                      DropdownButton<String>(
+                                        value: v.uloga,
+                                        dropdownColor: const Color(0xFF252840),
+                                        underline: const SizedBox.shrink(),
+                                        style: TextStyle(color: boja, fontWeight: FontWeight.bold, fontSize: 13),
+                                        items: V3AdminService.allRoles
+                                            .map((r) => DropdownMenuItem<String>(value: r, child: Text(r)))
+                                            .toList(),
+                                        onChanged: (novaUloga) {
+                                          if (novaUloga != null) _promeniUlogu(v, novaUloga);
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
