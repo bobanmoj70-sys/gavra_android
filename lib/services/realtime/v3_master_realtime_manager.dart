@@ -210,6 +210,7 @@ class V3MasterRealtimeManager {
                 'push_token': row['push_token'],
                 'push_token_2': row['push_token_2'],
                 'pin_hash': row['pin_hash'],
+                'uloga': row['uloga'],
                 'created_at': row['created_at'],
                 'updated_at': row['updated_at'],
               }

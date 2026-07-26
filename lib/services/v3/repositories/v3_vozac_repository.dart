@@ -64,6 +64,7 @@ class V3VozacRepository {
     }
 
     final authId = payload['id']?.toString().trim();
+    final uloga = payload['uloga']?.toString().trim();
     final mapped = <String, dynamic>{
       'id': authId != null && authId.isNotEmpty ? authId : const Uuid().v4(),
       'ime': payload['ime_prezime'],
@@ -72,6 +73,7 @@ class V3VozacRepository {
       'boja': payload['boja'],
       'push_token': payload['push_token'],
       'tip': 'vozac',
+      if (uloga != null && uloga.isNotEmpty) 'uloga': uloga,
     };
     return supabase.from('v3_auth').insert(mapped).select('$_authVozacSelect, tip').single();
   }
@@ -85,6 +87,7 @@ class V3VozacRepository {
     if (payload.containsKey('boja')) out['boja'] = payload['boja'];
     if (payload.containsKey('push_token')) out['push_token'] = payload['push_token'];
     if (payload.containsKey('push_token_2')) out['push_token_2'] = payload['push_token_2'];
+    if (payload.containsKey('uloga')) out['uloga'] = payload['uloga'];
 
     return out;
   }

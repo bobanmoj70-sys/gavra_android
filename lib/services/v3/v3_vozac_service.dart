@@ -51,12 +51,13 @@ class V3VozacService {
           if (actorUuid != null) 'updated_by': actorUuid,
         });
       } else {
-        // Add — insert novog vozača (bez push_token, dobija ga pri prvom loginu)
+        // Add — insert novog vozača (bez push_token i pin-a, dobija ih pri prvom loginu)
         row = await _repo.insertReturning({
           'ime_prezime': vozac.imePrezime,
           'telefon_1': vozac.telefon1,
           'telefon_2': vozac.telefon2,
           'boja': vozac.boja,
+          'uloga': vozac.uloga,
           if (actorUuid != null) 'created_by': actorUuid,
           if (actorUuid != null) 'updated_by': actorUuid,
         });
@@ -121,4 +122,3 @@ class V3VozacService {
     }
   }
 }
-

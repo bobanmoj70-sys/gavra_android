@@ -667,6 +667,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
     return (cena != null && cena > 0) ? cena.toStringAsFixed(0) : '';
   }());
   late String _tip = widget.existing?.tipPutnika ?? 'radnik';
+  String _ulogaVozaca = V3AdminService.roleVozac;
 
   // Adrese
   V3Adresa? _adresaBc1;
@@ -705,6 +706,23 @@ class _PutnikDialogState extends State<_PutnikDialog> {
 
     V3StateUtils.safeSetState(this, () => _saving = true);
     try {
+      if (_tip == 'vozac') {
+        final vozac = V3Vozac(
+          id: widget.existing?.id ?? '',
+          imePrezime: imeVal,
+          telefon1: V3PhoneUtils.normalizeOrNull(_tel1.text),
+          telefon2: V3PhoneUtils.normalizeOrNull(_tel2.text),
+          uloga: _ulogaVozaca,
+        );
+        await V3VozacService.addUpdateVozac(vozac);
+        if (mounted) {
+          V3AppSnackBar.success(
+              context, widget.existing == null ? _PutTr.tr('putnikDodan') : _PutTr.tr('putnikSacuvan'));
+          Navigator.pop(context);
+        }
+        return;
+      }
+
       final putnik = V3Putnik(
         id: widget.existing?.id ?? '',
         imePrezime: imeVal,
@@ -913,6 +931,7 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           DropdownMenuItem(value: 'ucenik', child: Text(_PutTr.tr('ucenik'))),
                           DropdownMenuItem(value: 'dnevni', child: Text(_PutTr.tr('dnevni'))),
                           DropdownMenuItem(value: 'posiljka', child: Text(_PutTr.tr('posiljka'))),
+                          const DropdownMenuItem(value: 'vozac', child: Text('Vozač')),
                         ],
                         onChanged: (v) {
                           if (v == null) return;
@@ -953,88 +972,125 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         validator: (v) => V3InputUtils.phoneValidator(v, isRequired: false),
                       ),
                       const SizedBox(height: 10),
-                      // Cena
-                      V3InputUtils.formField(
-                        controller: _cenaDan,
-                        label: (_tip == 'dnevni' || _tip == 'posiljka')
-                            ? _PutTr.tr('cenaPoVoznji')
-                            : _PutTr.tr('cenaPoDanu'),
-                        icon: Icons.numbers,
-                        keyboardType: TextInputType.number,
-                        suffixText: 'din',
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
-                      ),
+                      // Cena (samo za putnike, ne za vozače)
+                      if (_tip != 'vozac')
+                        V3InputUtils.formField(
+                          controller: _cenaDan,
+                          label: (_tip == 'dnevni' || _tip == 'posiljka')
+                              ? _PutTr.tr('cenaPoVoznji')
+                              : _PutTr.tr('cenaPoDanu'),
+                          icon: Icons.numbers,
+                          keyboardType: TextInputType.number,
+                          suffixText: 'din',
+                          fillColor: inputFill,
+                          borderColor: inputBorder,
+                          focusedBorderColor: Colors.white,
+                        ),
+                      // Uloga (samo za vozače)
+                      if (_tip == 'vozac')
+                        DropdownButtonFormField<String>(
+                          value: _ulogaVozaca,
+                          dropdownColor: Colors.black.withValues(alpha: 0.75),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Uloga',
+                            labelStyle: const TextStyle(color: labelColor),
+                            isDense: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: inputBorder),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: inputBorder),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Colors.white),
+                            ),
+                            filled: true,
+                            fillColor: inputFill,
+                            prefixIcon: const Icon(Icons.admin_panel_settings_outlined, color: labelColor),
+                          ),
+                          items: V3AdminService.allRoles
+                              .map((r) => DropdownMenuItem<String>(value: r, child: Text(r)))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            V3StateUtils.safeSetState(this, () => _ulogaVozaca = v);
+                          },
+                        ),
                       const SizedBox(height: 14),
-                      // ── Adrese BC ──
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.lightBlueAccent.withValues(alpha: 0.4)),
+                      // ── Adrese BC (samo za putnike) ──
+                      if (_tip != 'vozac') ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.lightBlueAccent.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 16, color: Colors.lightBlueAccent),
+                              const SizedBox(width: 4),
+                              Text(_PutTr.tr('adreseBc'),
+                                  style: const TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent)),
+                            ],
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on, size: 16, color: Colors.lightBlueAccent),
-                            const SizedBox(width: 4),
-                            Text(_PutTr.tr('adreseBc'),
-                                style: const TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent)),
-                          ],
+                        const SizedBox(height: 8),
+                        _adresaDropdown(
+                          label: _PutTr.tr('bcAdresa1'),
+                          grad: 'BC',
+                          value: _adresaBc1,
+                          onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc1 = v),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      _adresaDropdown(
-                        label: _PutTr.tr('bcAdresa1'),
-                        grad: 'BC',
-                        value: _adresaBc1,
-                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc1 = v),
-                      ),
-                      const SizedBox(height: 8),
-                      _adresaDropdown(
-                        label: _PutTr.tr('bcAdresa2'),
-                        grad: 'BC',
-                        value: _adresaBc2,
-                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc2 = v),
-                      ),
-                      const SizedBox(height: 14),
-                      // ── Adrese VS ──
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+                        const SizedBox(height: 8),
+                        _adresaDropdown(
+                          label: _PutTr.tr('bcAdresa2'),
+                          grad: 'BC',
+                          value: _adresaBc2,
+                          onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc2 = v),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on, size: 16, color: Colors.orangeAccent),
-                            const SizedBox(width: 4),
-                            Text(_PutTr.tr('adreseVs'),
-                                style: const TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
-                          ],
+                        const SizedBox(height: 14),
+                        // ── Adrese VS ──
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 16, color: Colors.orangeAccent),
+                              const SizedBox(width: 4),
+                              Text(_PutTr.tr('adreseVs'),
+                                  style: const TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orangeAccent)),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      _adresaDropdown(
-                        label: _PutTr.tr('vsAdresa1'),
-                        grad: 'VS',
-                        value: _adresaVs1,
-                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs1 = v),
-                      ),
-                      const SizedBox(height: 8),
-                      _adresaDropdown(
-                        label: _PutTr.tr('vsAdresa2'),
-                        grad: 'VS',
-                        value: _adresaVs2,
-                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs2 = v),
-                      ),
-                      const SizedBox(height: 8),
+                        const SizedBox(height: 8),
+                        _adresaDropdown(
+                          label: _PutTr.tr('vsAdresa1'),
+                          grad: 'VS',
+                          value: _adresaVs1,
+                          onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs1 = v),
+                        ),
+                        const SizedBox(height: 8),
+                        _adresaDropdown(
+                          label: _PutTr.tr('vsAdresa2'),
+                          grad: 'VS',
+                          value: _adresaVs2,
+                          onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs2 = v),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                     ],
                   ),
                 ),

@@ -19,8 +19,11 @@ class V3AdminService {
   static const String roleVozac = 'vozac';
   static const String roleAdmin = 'admin';
   static const String roleDispecer = 'dispecer';
+  static const String rolePutnik = 'putnik';
 
-  /// Sve dostupne role (za budući admin UI za dodelu uloga).
+  /// Sve dostupne role za vozac-tip naloge (za budući admin UI za dodelu uloga).
+  /// [rolePutnik] se NE dodeljuje kroz ovaj UI — to je automatska uloga
+  /// putnik-tip naloga i ne prolazi kroz [setUloga].
   static const List<String> allRoles = <String>[roleVozac, roleAdmin, roleDispecer];
 
   static String _rolaOf(V3Vozac? vozac) {
