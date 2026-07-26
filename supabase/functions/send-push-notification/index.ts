@@ -361,6 +361,38 @@ async function sendFcm(
 
 
 
+function isDeadFcmToken(status: number | undefined, error: string | undefined): boolean {
+  if (status === 404) return true; // NotRegistered
+  if (status === 400 && String(error ?? '').includes('InvalidRegistration')) return true;
+  if (String(error ?? '').includes('UNREGISTERED')) return true;
+  return false;
+}
+
+async function clearDeadTokens(tokens: string[]): Promise<void> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (!supabaseUrl || !serviceRoleKey) return;
+
+  try {
+    const client = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    for (const token of tokens) {
+      try {
+        await client.from('v3_auth').update({ push_token: null }).eq('push_token', token);
+        await client.from('v3_auth').update({ push_token_2: null }).eq('push_token_2', token);
+      } catch (e) {
+        console.error('clearDeadTokens per-token failed', e);
+      }
+    }
+
+    console.log(JSON.stringify({ event: 'push_dead_tokens_cleared', count: tokens.length }));
+  } catch (e) {
+    console.error('clearDeadTokens failed', e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
@@ -411,6 +443,16 @@ Deno.serve(async (req) => {
 
     const sent = results.filter((entry) => entry.ok).length;
     const failed = results.length - sent;
+
+    // Token je trajno nevažeći (app deinstaliran, podaci obrisani, token rotiran) — čistimo ga
+    // iz baze da se u budućnosti ne pokušava slanje na mrtav token i da app pri sledećem
+    // pokretanju upiše svež FCM token bez konflikta.
+    const deadTokens = results
+      .filter((entry) => !entry.ok && isDeadFcmToken(entry.status, entry.error))
+      .map((entry) => entry.token);
+    if (deadTokens.length > 0) {
+      await clearDeadTokens(deadTokens);
+    }
     const byProvider = {
       fcm: {
         sent: results.filter((entry) => entry.provider === 'fcm' && entry.ok).length,
