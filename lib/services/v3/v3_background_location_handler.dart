@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,6 +46,15 @@ import 'v3_tracking_config.dart';
 const String _kActionStop = 'stop';
 const String _kReady = 'ready';
 const Duration _kInterval = Duration(seconds: 20);
+
+/// Ime sledećeg putnika + ETA se upisuje DIREKTNO u istu notifikaciju koju
+/// koristi foreground GPS servis (isti `id` i isti notifikacioni kanal kao u
+/// `AndroidConfiguration` iz `main.dart`) — Android to tretira kao ažuriranje
+/// postojeće notifikacije (isti `NotificationManager`), pa vozač vidi SAMO
+/// jednu notifikaciju, ne dve. Ažurira se na svaki tick (20s).
+const int _kForegroundNotifId = 888;
+const String _kForegroundChannelId = 'gavra_gps_tracking';
+const String _kForegroundChannelName = 'GPS Tracking';
 
 /// Ključevi "željenog stanja" — MORAJU biti identični sa
 /// `GavraFcmService.KEY_ACTIVE_*` konstantama na native (Kotlin) strani
@@ -326,12 +336,120 @@ Future<void> _bgStopTracking({String reason = 'unspecified'}) async {
   if (vozacIdToClean != null && vozacIdToClean.isNotEmpty) {
     await _bgClearEtaForVozac(vozacIdToClean);
   }
+  await _bgResetForegroundNotification();
   _bgMainTimer?.cancel();
   _bgMainTimer = null;
   _bgSupabaseUrl = '';
   _bgSupabaseAnonKey = '';
   _bgSupabaseClient = null;
   service?.stopSelf();
+}
+
+FlutterLocalNotificationsPlugin? _bgLocalNotifications;
+bool _bgLocalNotificationsInitialized = false;
+
+/// Lokalne notifikacije rade u zasebnom (headless) isolate-u, pa je potrebna
+/// sopstvena instanca plugina i sopstvena inicijalizacija — nezavisno od
+/// main isolate-a koji ima svoju (globalnu) instancu u `main.dart`.
+Future<void> _bgEnsureLocalNotifications() async {
+  if (_bgLocalNotificationsInitialized) return;
+  try {
+    final plugin = FlutterLocalNotificationsPlugin();
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    await plugin.initialize(const InitializationSettings(android: androidInit));
+    _bgLocalNotifications = plugin;
+    _bgLocalNotificationsInitialized = true;
+  } catch (e) {
+    debugPrint('[BG] Local notifications init greška: $e');
+  }
+}
+
+/// Ažurira postojeću foreground "GPS Tracking" notifikaciju da prikazuje ime
+/// sledećeg putnika i ETA (jedna notifikacija umesto dve). Poziva se posle
+/// svakog uspešnog ETA tick-a. `putnikId == null` znači da nema više
+/// preostalih putnika (svi pokupljeni/otkazani) — u tom slučaju se prikazuje
+/// generička poruka dok se tracking sam ne zaustavi (auto-stop provera je
+/// odvojena, ovo je samo UI).
+Future<void> _bgUpdateNextPassengerNotification({
+  required String? putnikId,
+  required int? etaSeconds,
+  required int remainingCount,
+}) async {
+  await _bgEnsureLocalNotifications();
+  final plugin = _bgLocalNotifications;
+  if (plugin == null) return;
+
+  String title;
+  String body;
+
+  if (putnikId == null || remainingCount == 0) {
+    title = 'GPS Tracking';
+    body = 'Nema više putnika za pokupljanje.';
+  } else {
+    var ime = 'sledeći putnik';
+    try {
+      final client = _bgSupabaseClient;
+      if (client != null) {
+        final row = await client.from('v3_auth').select('ime_prezime').eq('id', putnikId).maybeSingle();
+        final fetchedIme = (row?['ime_prezime'] as String?)?.trim();
+        if (fetchedIme != null && fetchedIme.isNotEmpty) ime = fetchedIme;
+      }
+    } catch (e) {
+      debugPrint('[BG] Greška pri dohvatanju imena putnika za notifikaciju: $e');
+    }
+
+    final etaMin = etaSeconds != null && etaSeconds >= 0 ? (etaSeconds / 60).round() : null;
+    final etaText = etaMin != null ? ' · ETA $etaMin min' : '';
+    final putnikLabel = remainingCount == 1 ? 'putnik' : 'putnika';
+    title = 'GPS Tracking — $remainingCount $putnikLabel';
+    body = 'Sledeći: $ime$etaText';
+  }
+
+  const androidDetails = AndroidNotificationDetails(
+    _kForegroundChannelId,
+    _kForegroundChannelName,
+    importance: Importance.low,
+    priority: Priority.low,
+    ongoing: true,
+    autoCancel: false,
+    showWhen: false,
+    onlyAlertOnce: true,
+  );
+
+  try {
+    await plugin.show(
+      _kForegroundNotifId,
+      title,
+      body,
+      const NotificationDetails(android: androidDetails),
+    );
+  } catch (e) {
+    debugPrint('[BG] Greška pri ažuriranju foreground notifikacije: $e');
+  }
+}
+
+Future<void> _bgResetForegroundNotification() async {
+  try {
+    await _bgLocalNotifications?.show(
+      _kForegroundNotifId,
+      _kForegroundChannelName,
+      'Praćenje lokacije aktivno',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _kForegroundChannelId,
+          _kForegroundChannelName,
+          importance: Importance.low,
+          priority: Priority.low,
+          ongoing: true,
+          autoCancel: false,
+          showWhen: false,
+          onlyAlertOnce: true,
+        ),
+      ),
+    );
+  } catch (_) {
+    // ignoriši — nije kritično, servis se ionako gasi odmah nakon ovoga
+  }
 }
 
 /// Top-level callback za flutter_background_service.
@@ -421,6 +539,26 @@ Future<void> _bgSendLocation() async {
     } else {
       debugPrint(
           '[BG] Lokacija poslata: ${position.latitude}, ${position.longitude} updated=${responseData is Map ? responseData['updated'] : '?'}');
+    }
+
+    // Ažuriraj persistentnu notifikaciju sa imenom sledećeg putnika + ETA,
+    // na osnovu redosleda koji je server već optimizovao (eta_results je
+    // sortiran po trip rangu — prvi element je sledeći na redu).
+    if (responseData is Map) {
+      final etaResultsRaw = responseData['eta_results'];
+      final etaResults = etaResultsRaw is List ? etaResultsRaw : const [];
+      if (etaResults.isEmpty) {
+        unawaited(_bgUpdateNextPassengerNotification(putnikId: null, etaSeconds: null, remainingCount: 0));
+      } else {
+        final first = etaResults.first;
+        final nextPutnikId = first is Map ? first['putnik_id']?.toString() : null;
+        final nextEtaSeconds = first is Map ? (first['eta_seconds'] as num?)?.toInt() : null;
+        unawaited(_bgUpdateNextPassengerNotification(
+          putnikId: nextPutnikId,
+          etaSeconds: nextEtaSeconds,
+          remainingCount: etaResults.length,
+        ));
+      }
     }
 
     // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.

@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../globals.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_time_utils.dart';
+import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
@@ -19,6 +21,17 @@ enum V3LocationPrereqStatus {
   serviceDisabled,
   denied,
 }
+
+/// iOS ekvivalent Android-ove foreground notifikacije koja se ažurira sa
+/// imenom sledećeg putnika + ETA. iOS nema pravi "ongoing" foreground-service
+/// koncept, pa se koristi obična lokalna notifikacija sa FIKSNIM id-jem —
+/// svaki `show()` poziv sa istim id-jem zamenjuje prethodnu (iOS notification
+/// center tretira to kao update, ne kao novu notifikaciju), uz
+/// `interruptionLevel: passive` da se izbegne zvuk/vibracija na svako
+/// osvežavanje. Za razliku od Androida, korisnik je može ručno obrisati
+/// (swipe) — tracking i dalje radi u pozadini, samo se notifikacija gubi dok
+/// je sledeći tick ne prikaže ponovo.
+const int _kIosTrackingNotifId = 890;
 
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
@@ -48,6 +61,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   bool _iosInFlight = false;
   Timer? _iosMainTimer;
   static const Duration _iosTickInterval = Duration(seconds: 20);
+  FlutterLocalNotificationsPlugin? _iosNotificationsPlugin;
+  bool _iosNotificationsInitialized = false;
 
   // Supabase kredencijali i dalje idu preko SecureStorage (osetljivi podaci).
   // Mora biti identično sa konstantama u v3_background_location_handler.dart
@@ -416,6 +431,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _iosPositionSub = null;
     _iosMainTimer?.cancel();
     _iosMainTimer = null;
+    if (Platform.isIOS) {
+      unawaited(_iosCancelTrackingNotification());
+    }
 
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
@@ -701,7 +719,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         }
       }
 
-      await computeEta(
+      final etaResult = await computeEta(
         vozacId: _activeVozacId,
         lat: position.latitude,
         lng: position.longitude,
@@ -710,6 +728,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         datumIso: _activeDatumIso,
       );
       onLocationSent?.call(position);
+
+      unawaited(_iosUpdateTrackingNotification(
+        order: etaResult.order,
+        etaMap: etaResult.etaMap,
+      ));
 
       // Auto-stop: ako su svi putnici pokupljeni/otkazani, zaustavi tracking.
       if (await _allPassengersCompleted()) {
@@ -720,6 +743,80 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       debugPrint('[V3VozacLocationTrackingService][iOS] computeEta error: $e');
     } finally {
       _iosInFlight = false;
+    }
+  }
+
+  Future<void> _iosEnsureNotifications() async {
+    if (_iosNotificationsInitialized) return;
+    try {
+      final plugin = FlutterLocalNotificationsPlugin();
+      const iosInit = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+      );
+      await plugin.initialize(const InitializationSettings(iOS: iosInit));
+      _iosNotificationsPlugin = plugin;
+      _iosNotificationsInitialized = true;
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService][iOS] notifications init greška: $e');
+    }
+  }
+
+  /// Prikazuje/ažurira notifikaciju sa imenom sledećeg putnika + ETA, koristeći
+  /// FIKSAN id (`_kIosTrackingNotifId`) tako da svaki poziv zameni prethodnu
+  /// (isti mehanizam kao Android-ova ongoing notifikacija, samo bez "ongoing"
+  /// zaključavanja — iOS to ne podržava za obične lokalne notifikacije).
+  Future<void> _iosUpdateTrackingNotification({
+    required List<String> order,
+    required Map<String, int> etaMap,
+  }) async {
+    await _iosEnsureNotifications();
+    final plugin = _iosNotificationsPlugin;
+    if (plugin == null) return;
+
+    String title;
+    String body;
+
+    if (order.isEmpty) {
+      title = 'GPS Tracking';
+      body = 'Nema više putnika za pokupljanje.';
+    } else {
+      final nextPutnikId = order.first;
+      final ime =
+          (V3MasterRealtimeManager.instance.putniciCache[nextPutnikId]?['ime_prezime'] as String?)?.trim() ?? '';
+      final etaSeconds = etaMap[nextPutnikId];
+      final etaMin = etaSeconds != null && etaSeconds >= 0 ? (etaSeconds / 60).round() : null;
+      final etaText = etaMin != null ? ' · ETA $etaMin min' : '';
+      final putnikLabel = order.length == 1 ? 'putnik' : 'putnika';
+      title = 'GPS Tracking — ${order.length} $putnikLabel';
+      body = 'Sledeći: ${ime.isNotEmpty ? ime : 'sledeći putnik'}$etaText';
+    }
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+      interruptionLevel: InterruptionLevel.passive,
+    );
+
+    try {
+      await plugin.show(
+        _kIosTrackingNotifId,
+        title,
+        body,
+        const NotificationDetails(iOS: iosDetails),
+      );
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService][iOS] notifikacija update greška: $e');
+    }
+  }
+
+  Future<void> _iosCancelTrackingNotification() async {
+    try {
+      await _iosNotificationsPlugin?.cancel(_kIosTrackingNotifId);
+    } catch (_) {
+      // ignoriši — nije kritično
     }
   }
 

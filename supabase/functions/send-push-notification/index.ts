@@ -390,7 +390,11 @@ Deno.serve(async (req) => {
     const resolvedTitle = resolveLocalizedText(title, data, 'title', localeCode);
     const resolvedBody = resolveLocalizedText(body, data, 'body', localeCode);
 
-    if (String(data.type ?? '').trim() === 'v3_alternativa') {
+    const pushType = String(data.type ?? '').trim();
+    if (pushType === 'v3_alternativa' || pushType === 'vozac_auto_start_tracking') {
+      // v3_alternativa: klikabilna akciona notifikacija se gradi ručno na Android strani.
+      // vozac_auto_start_tracking: tracking se pokreće tiho (bez tap-a) — foreground GPS
+      // servis već prikazuje sopstvenu trajnu notifikaciju, pa ovde ne treba duplikat.
       dataOnly = true;
     }
 
