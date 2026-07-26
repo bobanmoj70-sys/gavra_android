@@ -1275,7 +1275,9 @@ class _UlogeDialogState extends State<_UlogeDialog> {
                                       )
                                     else
                                       DropdownButton<String>(
-                                        value: v.uloga,
+                                        value: V3AdminService.allRoles.contains(v.uloga)
+                                            ? v.uloga
+                                            : V3AdminService.roleVozac,
                                         dropdownColor: const Color(0xFF252840),
                                         underline: const SizedBox.shrink(),
                                         style: TextStyle(color: boja, fontWeight: FontWeight.bold, fontSize: 13),
