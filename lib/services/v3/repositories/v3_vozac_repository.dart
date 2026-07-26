@@ -10,6 +10,37 @@ class V3VozacRepository {
     return Future.value();
   }
 
+  /// Menja ulogu vozača preko edge funkcije `v3-set-uloga`, koja server-side
+  /// proverava da pozivalac ([actorId]) zaista ima `uloga='admin'` u bazi
+  /// pre nego što dozvoli izmenu. Ne oslanja se samo na klijent-side UI gate.
+  Future<Map<String, dynamic>> updateUlogaViaEdge({
+    required String actorId,
+    required String targetId,
+    required String uloga,
+  }) async {
+    final response = await supabase.functions.invoke(
+      'v3-set-uloga',
+      body: {
+        'actor_v3_auth_id': actorId,
+        'target_v3_auth_id': targetId,
+        'uloga': uloga,
+      },
+    );
+
+    final status = response.status;
+    final data = response.data;
+    if (status < 200 || status >= 300 || data is! Map || data['ok'] != true) {
+      final reason = (data is Map ? data['reason']?.toString() : null) ?? 'edge_error';
+      throw Exception('v3-set-uloga failed: $reason');
+    }
+
+    final row = data['row'];
+    if (row is! Map) {
+      throw Exception('v3-set-uloga: missing row in response');
+    }
+    return Map<String, dynamic>.from(row);
+  }
+
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) async {
     final mapped = _mapUpdatePayloadToAuth(payload);
     // Uvek postavi tip na 'vozac' — dozvoljava konverziju putnika u vozača
@@ -17,16 +48,6 @@ class V3VozacRepository {
     // ako je red trenutno drugog tipa, pa bi vratio 0 redova / PGRST116).
     mapped['tip'] = 'vozac';
     return supabase.from('v3_auth').update(mapped).eq('id', id).select('$_authVozacSelect, tip').single();
-  }
-
-  Future<Map<String, dynamic>> updateUlogaByIdReturning(String id, String uloga) {
-    return supabase
-        .from('v3_auth')
-        .update({'uloga': uloga})
-        .eq('id', id)
-        .eq('tip', 'vozac')
-        .select('$_authVozacSelect, tip')
-        .single();
   }
 
   Future<Map<String, dynamic>?> getActiveByIdAndPushToken({

@@ -60,6 +60,19 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'obrisi': {'sr': 'Obriši', 'en': 'Delete', 'ru': 'Удалить', 'de': 'Löschen', 'zh': '删除'},
     'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
     'obrisan': {'sr': 'obrisan', 'en': 'deleted', 'ru': 'удален', 'de': 'gelöscht', 'zh': '已删除'},
+    'potvrda': {'sr': 'Potvrda', 'en': 'Confirm', 'ru': 'Подтверждение', 'de': 'Bestätigung', 'zh': '确认'},
+    'nastavi': {'sr': 'Nastavi', 'en': 'Continue', 'ru': 'Продолжить', 'de': 'Weiter', 'zh': '继续'},
+    'konverzijaPutnikaUVozacaUpozorenje': {
+      'sr':
+          'Menjate tip naloga u "Vozač". Podaci specifični za putnika (tip putnika, adrese, cene) će biti trajno izgubljeni. Da li želite da nastavite?',
+      'en':
+          'You are changing the account type to "Driver". Passenger-specific data (passenger type, addresses, prices) will be permanently lost. Do you want to continue?',
+      'ru':
+          'Вы меняете тип аккаунта на "Водитель". Данные, специфичные для пассажира (тип пассажира, адреса, цены), будут безвозвратно утеряны. Продолжить?',
+      'de':
+          'Sie ändern den Kontotyp auf "Fahrer". Passagierspezifische Daten (Passagiertyp, Adressen, Preise) gehen dauerhaft verloren. Möchten Sie fortfahren?',
+      'zh': '您正在将账户类型更改为"司机"。乘客特定数据（乘客类型、地址、价格）将永久丢失。是否继续？',
+    },
     'pozovi': {'sr': 'Pozovi', 'en': 'Call', 'ru': 'Позвонить', 'de': 'Anrufen', 'zh': '打电话'},
     'detaljneStatistike': {
       'sr': 'Detaljne statistike',

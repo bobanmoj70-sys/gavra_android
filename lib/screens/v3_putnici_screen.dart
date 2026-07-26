@@ -738,6 +738,23 @@ class _PutnikDialogState extends State<_PutnikDialog> {
       return;
     }
 
+    // Konverzija postojećeg putnika u vozača briše putnik-specifične podatke
+    // (tip_putnika, adrese, cene) — traži eksplicitnu potvrdu da se izbegne
+    // slučajan gubitak podataka pri promeni dropdown-a.
+    final isConvertingPutnikToVozac =
+        widget.existing != null && widget.existing!.tipPutnika != 'vozac' && _tip == 'vozac';
+    if (isConvertingPutnikToVozac) {
+      final potvrda = await V3DialogHelper.showConfirmDialog(
+        context,
+        title: _PutTr.tr('potvrda'),
+        message: _PutTr.tr('konverzijaPutnikaUVozacaUpozorenje'),
+        confirmText: _PutTr.tr('nastavi'),
+        cancelText: _PutTr.tr('otkazi'),
+        isDangerous: true,
+      );
+      if (potvrda != true || !mounted) return;
+    }
+
     V3StateUtils.safeSetState(this, () => _saving = true);
     try {
       if (_tip == 'vozac') {

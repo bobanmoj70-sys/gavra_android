@@ -108,13 +108,20 @@ class V3VozacService {
     return row != null;
   }
 
-  /// Ažurira ulogu (`uloga`) vozača u bazi — koristi [V3AdminService] za validaciju
-  /// dozvoljenih vrednosti pre poziva ove metode.
+  /// Ažurira ulogu (`uloga`) vozača preko edge funkcije `v3-set-uloga`.
+  /// [V3AdminService] validira dozvoljene vrednosti pre poziva ove metode,
+  /// ali stvarna autorizacija (da li pozivalac sme da menja uloge) se
+  /// proverava server-side u edge funkciji na osnovu trenutno ulogovanog
+  /// naloga ([currentVozac]) — klijent ne može da je zaobiđe.
   static Future<void> updateUloga({required String vozacId, required String uloga}) async {
     final id = vozacId.trim();
     if (id.isEmpty) return;
+    final actorId = currentVozac?.id.trim() ?? '';
+    if (actorId.isEmpty) {
+      throw StateError('Nema ulogovanog naloga za izmenu uloge.');
+    }
     try {
-      final row = await _repo.updateUlogaByIdReturning(id, uloga);
+      final row = await _repo.updateUlogaViaEdge(actorId: actorId, targetId: id, uloga: uloga);
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_auth', row);
     } catch (e) {
       debugPrint('[V3VozacService] updateUloga error: $e');

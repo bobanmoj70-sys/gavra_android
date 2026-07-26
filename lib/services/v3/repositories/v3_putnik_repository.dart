@@ -38,11 +38,18 @@ class V3PutnikRepository {
   Future<Map<String, dynamic>> upsertReturning(Map<String, dynamic> data) {
     final payload = Map<String, dynamic>.from(data);
     final id = payload['id']?.toString().trim() ?? '';
-    if (id.isEmpty) {
+    final isNew = id.isEmpty;
+    if (isNew) {
       payload['id'] = const Uuid().v4();
     }
 
     final mapped = _mapPayload(payload);
+    // Novi putnik-nalozi moraju dobiti uloga='putnik' eksplicitno — kolona
+    // ima NOT NULL DEFAULT 'vozac' u bazi, pa bi bez ovoga svaki novi putnik
+    // pogrešno završio sa uloga='vozac' (v. migraciju 20260726b_add_putnik_uloga).
+    if (isNew) {
+      mapped['uloga'] = 'putnik';
+    }
     return supabase.from('v3_auth').upsert(mapped, onConflict: 'id').select(_authRawSelect).single();
   }
 
