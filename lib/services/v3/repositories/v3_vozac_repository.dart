@@ -47,6 +47,13 @@ class V3VozacRepository {
     // (bez ovoga, filter .eq('tip','vozac') na update-u ne bi pogodio red
     // ako je red trenutno drugog tipa, pa bi vratio 0 redova / PGRST116).
     mapped['tip'] = 'vozac';
+    // Ako se konvertuje putnik u vozača (ili uloga nije eksplicitno prosleđena),
+    // osiguraj da 'uloga' ne ostane na nevalidnoj vrednosti 'putnik' — u tom
+    // slučaju je resetuj na 'vozac' (podrazumevana vozačka rola).
+    final ulogaValue = mapped['uloga']?.toString().trim();
+    if (ulogaValue == null || ulogaValue.isEmpty || ulogaValue == 'putnik') {
+      mapped['uloga'] = 'vozac';
+    }
     return supabase.from('v3_auth').update(mapped).eq('id', id).select('$_authVozacSelect, tip').single();
   }
 
