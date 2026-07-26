@@ -77,6 +77,8 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
         .length;
   }
 
+  int _countVozaci() => V3MasterRealtimeManager.instance.vozaciCache.length;
+
   // ─── Filtered list ────────────────────────────────────────────────────────
   List<V3Putnik> _filtriraj() {
     var lista = V3MasterRealtimeManager.instance.putniciCache.values.map((r) => V3Putnik.fromJson(r)).toList();
@@ -130,13 +132,45 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
                               _filterBtn('dnevni', Icons.today, const Color(0xFFFF6B6B), const Color(0xFFFF8E53)),
                               _filterBtn(
                                   'posiljka', Icons.local_shipping, const Color(0xFFFF8C00), const Color(0xFFE65C00)),
-                              IconButton(
-                                icon: const Icon(Icons.admin_panel_settings,
-                                    color: Colors.white,
-                                    shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
-                                tooltip: _PutTr.tr('uloge'),
-                                onPressed: _showUlogeDialog,
+                              Stack(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.admin_panel_settings,
+                                        color: Colors.white,
+                                        shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)]),
+                                    tooltip: _PutTr.tr('uloge'),
+                                    onPressed: _showUlogeDialog,
+                                  ),
+                                  if (_countVozaci() > 0)
+                                    Positioned(
+                                      right: 2,
+                                      top: 2,
+                                      child: V3ContainerUtils.gradientContainer(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                                        gradient: const LinearGradient(colors: [Color(0xFF5A5DE8), Color(0xFF3B7DD8)]),
+                                        borderRadius: BorderRadius.circular(9),
+                                        boxShadow: const [
+                                          BoxShadow(color: Color(0x803B7DD8), blurRadius: 4, offset: Offset(0, 2)),
+                                        ],
+                                        width: _countVozaci() >= 1000
+                                            ? 34
+                                            : _countVozaci() >= 100
+                                                ? 30
+                                                : _countVozaci() >= 10
+                                                    ? 24
+                                                    : 18,
+                                        height: V3ContainerUtils.responsiveHeight(context, 18),
+                                        child: Text(
+                                          '${_countVozaci()}',
+                                          style: const TextStyle(
+                                              color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
+
                               IconButton(
                                 icon: const Icon(Icons.person_add,
                                     color: Colors.white,
