@@ -12,16 +12,11 @@ class V3VozacRepository {
 
   Future<Map<String, dynamic>> updateByIdReturning(String id, Map<String, dynamic> payload) async {
     final mapped = _mapUpdatePayloadToAuth(payload);
-    if (mapped.isEmpty) {
-      return supabase.from('v3_auth').select('$_authVozacSelect, tip').eq('id', id).eq('tip', 'vozac').single();
-    }
-    return supabase
-        .from('v3_auth')
-        .update(mapped)
-        .eq('id', id)
-        .eq('tip', 'vozac')
-        .select('$_authVozacSelect, tip')
-        .single();
+    // Uvek postavi tip na 'vozac' — dozvoljava konverziju putnika u vozača
+    // (bez ovoga, filter .eq('tip','vozac') na update-u ne bi pogodio red
+    // ako je red trenutno drugog tipa, pa bi vratio 0 redova / PGRST116).
+    mapped['tip'] = 'vozac';
+    return supabase.from('v3_auth').update(mapped).eq('id', id).select('$_authVozacSelect, tip').single();
   }
 
   Future<Map<String, dynamic>> updateUlogaByIdReturning(String id, String uloga) {
