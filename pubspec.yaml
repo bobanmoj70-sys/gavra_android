@@ -64,6 +64,10 @@ dependencies:
   # 🔐 BIOMETRIC AUTHENTICATION (otisak prsta, Face ID)
   local_auth: ^2.1.0
 
+  # 🗺️ MAPA (besplatno, bez API ključa) — prikaz trenutne pozicije vozača adminu
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -80,6 +80,44 @@ String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
 ServiceInstance? _bgService;
 
+// 🗺️ Realtime broadcast kanal (samo poslednja pozicija, bez čuvanja u bazi) —
+// isti kanal kao u foreground servisu, koristi ga admin ekran za live mapu.
+RealtimeChannel? _bgPozicijaChannel;
+String? _bgPozicijaChannelVozacId;
+
+Future<void> _bgBroadcastPozicija({
+  required SupabaseClient client,
+  required String vozacId,
+  required double lat,
+  required double lng,
+}) async {
+  try {
+    if (_bgPozicijaChannel == null || _bgPozicijaChannelVozacId != vozacId) {
+      final old = _bgPozicijaChannel;
+      if (old != null) {
+        unawaited(client.removeChannel(old));
+      }
+      final channel = client.channel('v3-vozac-pozicija-$vozacId');
+      _bgPozicijaChannel = channel;
+      _bgPozicijaChannelVozacId = vozacId;
+      channel.subscribe();
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    await _bgPozicijaChannel?.sendBroadcastMessage(
+      event: 'pozicija',
+      payload: <String, dynamic>{
+        'lat': lat,
+        'lng': lng,
+        'ts': DateTime.now().toIso8601String(),
+      },
+    );
+  } catch (e) {
+    debugPrint('[BG] broadcast pozicija greška: $e');
+    _bgPozicijaChannel = null;
+    _bgPozicijaChannelVozacId = null;
+  }
+}
+
 bool get _bgCanSendLocation =>
     _bgVozacId != null && _bgVozacId!.isNotEmpty && _bgDatumIso.isNotEmpty && _bgGrad.isNotEmpty && _bgVreme.isNotEmpty;
 
@@ -376,6 +414,7 @@ Future<void> _bgSendLocation() async {
         'datum_iso': _bgDatumIso,
       },
     );
+    unawaited(_bgBroadcastPozicija(client: client, vozacId: vozacId, lat: position.latitude, lng: position.longitude));
     final responseData = etaResponse.data;
     if (responseData is Map && responseData['ok'] != true) {
       debugPrint('[BG] ETA greška: reason=${responseData['reason']} warning=${responseData['warning']}');

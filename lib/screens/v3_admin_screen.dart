@@ -16,6 +16,7 @@ import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
 import 'v3_admin_raspored_screen.dart';
+import 'v3_admin_vozac_pozicija_screen.dart';
 import 'v3_adrese_screen.dart';
 import 'v3_dnevnik_vozaca_screen.dart';
 import 'v3_dugovi_screen.dart';
@@ -1249,6 +1250,28 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                 child: Row(
                   children: [
                     Expanded(child: _buildSaVsWidget(context)),
+                    const SizedBox(width: 6),
+                    _NavBtn(
+                      color: Colors.red,
+                      height: V3ContainerUtils.responsiveHeight(context, 50),
+                      width: V3ContainerUtils.responsiveHeight(context, 50),
+                      onTap: () => V3NavigationUtils.pushScreen<void>(
+                        context,
+                        const V3AdminVozacPozicijaScreen(),
+                      ),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '🛰️',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Colors.white,
+                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     _NavBtn(
                       color: Colors.green,

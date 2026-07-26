@@ -77,6 +77,48 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// Poziva se nakon svakog uspešnog slanja GPS pozicije (foreground).
   void Function(Position position)? onLocationSent;
 
+  // 🗺️ Realtime broadcast kanal — samo poslednja pozicija vozača, bez čuvanja
+  // u bazi. Koristi ga admin ekran da uživo prikaže marker na mapi (besplatno,
+  // preko postojećeg Supabase Realtime broadcast-a, nema dodatnih troškova).
+  RealtimeChannel? _pozicijaChannel;
+  String? _pozicijaChannelVozacId;
+
+  static String pozicijaChannelName(String vozacId) => 'v3-vozac-pozicija-$vozacId';
+
+  Future<void> _broadcastPozicija({
+    required String vozacId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final supabase = Supabase.instance.client;
+      if (_pozicijaChannel == null || _pozicijaChannelVozacId != vozacId) {
+        final old = _pozicijaChannel;
+        if (old != null) {
+          unawaited(supabase.removeChannel(old));
+        }
+        final channel = supabase.channel(pozicijaChannelName(vozacId));
+        _pozicijaChannel = channel;
+        _pozicijaChannelVozacId = vozacId;
+        channel.subscribe();
+        // Kratka pauza da se kanal poveže pre prvog slanja poruke.
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      await _pozicijaChannel?.sendBroadcastMessage(
+        event: 'pozicija',
+        payload: <String, dynamic>{
+          'lat': lat,
+          'lng': lng,
+          'ts': DateTime.now().toIso8601String(),
+        },
+      );
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] broadcast pozicija greška: $e');
+      _pozicijaChannel = null;
+      _pozicijaChannelVozacId = null;
+    }
+  }
+
   bool get isRunning => _isRunning;
 
   String? get activeVozacId => _activeVozacId.isNotEmpty ? _activeVozacId : null;
@@ -356,6 +398,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _optimizedPutnikIds.clear();
     _etaSecondsCache.clear();
 
+    final channelToRemove = _pozicijaChannel;
+    _pozicijaChannel = null;
+    _pozicijaChannelVozacId = null;
+    if (channelToRemove != null) {
+      unawaited(Supabase.instance.client.removeChannel(channelToRemove));
+    }
+
     unawaited(_clearDesiredState());
     unawaited(_secureStorage.delete(key: 'vozac_tracking_started_at'));
     unawaited(_secureStorage.delete(key: 'vozac_tracking_vozac_id'));
@@ -438,6 +487,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     String? datumIso,
   }) async {
     final supabase = Supabase.instance.client;
+    unawaited(_broadcastPozicija(vozacId: vozacId, lat: lat, lng: lng));
     final response = await supabase.functions.invoke(
       'v3-compute-eta',
       body: <String, dynamic>{
