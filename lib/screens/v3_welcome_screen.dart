@@ -418,6 +418,16 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     }
   }
 
+  /// Upisuje push token pri loginu. Radi samo JEDAN pokušaj dobavljanja
+  /// tokena (native FCM/APNs poziv sam po sebi već ima svoje retry-eve u
+  /// [V3PushTokenProvider]) i upisuje šta god dobije — installation_id se
+  /// svakako upisuje da bi slot bio dodeljen.
+  ///
+  /// Ako token nije dobijen (npr. svež iOS instal gde APNs registracija
+  /// kasni), NE blokiramo se dodatnim internim retry petljama ovde: app-wide
+  /// resume hook (`_syncLocaleOnResume` u main.dart) automatski pokušava
+  /// ponovo pri svakom sledećem otvaranju aplikacije, sve dok token ne bude
+  /// potvrđen.
   Future<void> _writePushTokenOnLogin({
     required String v3AuthId,
     required bool isVozac,
@@ -427,28 +437,15 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       if (installationId.isEmpty) return;
       final hardwareId = await V3DeviceIdentityService.getHardwareId();
 
-      String token = '';
-      var resolvedInstallationId = installationId;
-
-      for (var attempt = 1; attempt <= 4; attempt++) {
-        final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => null,
-        );
-        token = tokenResult?.token.trim() ?? '';
-        resolvedInstallationId = tokenResult?.installationId?.trim() ?? installationId;
-
-        if (token.isNotEmpty && resolvedInstallationId.isNotEmpty) {
-          break;
-        }
-
-        if (attempt < 4) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-        }
-      }
+      final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
+        const Duration(seconds: 18),
+        onTimeout: () => null,
+      );
+      final token = tokenResult?.token.trim() ?? '';
+      final resolvedInstallationId = tokenResult?.installationId?.trim() ?? installationId;
 
       if (resolvedInstallationId.isEmpty) {
-        debugPrint('[V3WelcomeScreen] installation id unavailable after login sync attempts.');
+        debugPrint('[V3WelcomeScreen] installation id unavailable after login sync attempt.');
         return;
       }
 
@@ -459,15 +456,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           installationId: resolvedInstallationId,
           hardwareId: hardwareId,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
-        if (token.isEmpty) {
-          unawaited(
-            _retryPushTokenWriteAfterLogin(
-              v3AuthId: v3AuthId,
-              isVozac: isVozac,
-              installationId: resolvedInstallationId,
-            ),
-          );
-        }
         return;
       }
 
@@ -477,63 +465,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         installationId: resolvedInstallationId,
         hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
-      if (token.isEmpty) {
-        unawaited(
-          _retryPushTokenWriteAfterLogin(
-            v3AuthId: v3AuthId,
-            isVozac: isVozac,
-            installationId: resolvedInstallationId,
-          ),
-        );
-      }
     } catch (e) {
       debugPrint('[V3WelcomeScreen] push token write error: $e');
-    }
-  }
-
-  Future<void> _retryPushTokenWriteAfterLogin({
-    required String v3AuthId,
-    required bool isVozac,
-    required String installationId,
-  }) async {
-    try {
-      await Future<void>.delayed(const Duration(seconds: 8));
-      final hardwareId = await V3DeviceIdentityService.getHardwareId();
-
-      String token = '';
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => null,
-        );
-        token = tokenResult?.token.trim() ?? '';
-        if (token.isNotEmpty) break;
-
-        if (attempt < 3) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-        }
-      }
-
-      if (token.isEmpty) return;
-
-      if (isVozac) {
-        await V3VozacService.writePushTokenOnLogin(
-          vozacId: v3AuthId,
-          pushToken: token,
-          installationId: installationId,
-          hardwareId: hardwareId,
-        ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
-        return;
-      }
-
-      await V3PutnikService.writePushTokenOnLogin(
-        putnikId: v3AuthId,
-        pushToken: token,
-        installationId: installationId,
-        hardwareId: hardwareId,
-      ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
-    } catch (e) {
-      debugPrint('[V3WelcomeScreen] delayed push token write error: $e');
     }
   }
 

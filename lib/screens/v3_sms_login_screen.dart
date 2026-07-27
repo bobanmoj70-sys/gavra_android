@@ -614,7 +614,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       final installationId = (await V3DeviceIdentityService.getStableDeviceId()).trim();
       final hardwareId = await V3DeviceIdentityService.getHardwareId();
       final pushTokenResult = await V3PushTokenProvider.getBestToken().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 18),
         onTimeout: () => null,
       );
       final pushToken = pushTokenResult?.token.trim() ?? '';

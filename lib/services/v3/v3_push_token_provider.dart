@@ -74,6 +74,7 @@ class V3PushTokenProvider {
             .timeout(const Duration(seconds: 4), onTimeout: () => null);
         final safeToken = (token ?? '').trim();
         if (safeToken.isNotEmpty) {
+          await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
           return V3PushTokenResult(token: safeToken);
         }
       } catch (e) {
@@ -83,6 +84,14 @@ class V3PushTokenProvider {
       if (attempt < 2) {
         await Future<void>.delayed(const Duration(milliseconds: 300));
       }
+    }
+
+    // Isti fallback kao na iOS-u: ako native poziv ne uspe, koristimo
+    // poslednji poznati FCM token iz secure storage-a.
+    final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
+    if (fallbackToken.isNotEmpty) {
+      debugPrint('[PushTokenProvider] Android using last known FCM token fallback.');
+      return V3PushTokenResult(token: fallbackToken);
     }
 
     return null;
@@ -108,34 +117,21 @@ class V3PushTokenProvider {
         }
       } catch (_) {}
 
-      // Ne gubimo puno vremena na APNs, ako postoji učita ga
-      String? apnsToken;
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        apnsToken = await messaging.getAPNSToken().timeout(const Duration(seconds: 2), onTimeout: () => null);
-        if ((apnsToken ?? '').trim().isNotEmpty) break;
-        if (attempt < 3) {
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        }
-      }
-
+      // APNs token je best-effort samo za lokalni debug/log — ne blokiramo
+      // (Firebase getToken() interno čeka APNs kada je to potrebno).
+      final apnsToken = await messaging.getAPNSToken().timeout(const Duration(seconds: 2), onTimeout: () => null);
       final safeApnsToken = (apnsToken ?? '').trim();
       if (safeApnsToken.isNotEmpty) {
         await _writeTokenSafely(_lastApnsTokenStorageKey, safeApnsToken);
       }
 
-      // Prelazimo na dobavljanje Firebase tokena.
-      // Ignorišemo greške APNs-a kakve god bile i probamo generisanje Firebase tokena
-      String? token;
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        token = await messaging.getToken().timeout(const Duration(seconds: 4), onTimeout: () => null);
-        final safeToken = (token ?? '').trim();
-        if (safeToken.isNotEmpty) {
-          await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
-          return V3PushTokenResult(token: safeToken, apnsToken: safeApnsToken);
-        }
-        if (attempt < 3) {
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-        }
+      // Na svežem instalu APNs registracija ume da potraje, zato dajemo
+      // getToken() dovoljno vremena (15s) umesto kratkog timeout-a.
+      final token = await messaging.getToken().timeout(const Duration(seconds: 15), onTimeout: () => null);
+      final safeToken = (token ?? '').trim();
+      if (safeToken.isNotEmpty) {
+        await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
+        return V3PushTokenResult(token: safeToken, apnsToken: safeApnsToken);
       }
 
       final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();

@@ -43,6 +43,7 @@ Future<void>? _fcmChannelInitInFlight;
 Future<void>? _iosFcmHandlersInitInFlight;
 String _lastSyncedPushToken = '';
 DateTime? _lastLocaleResumeSyncAt;
+bool _pushTokenConfirmed = false;
 bool _fcmChannelInitialized = false;
 bool _iosFcmHandlersInitialized = false;
 final Map<String, DateTime> _canceledStatusPushSeenAt = <String, DateTime>{};
@@ -681,6 +682,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
     final synced = await doSyncAttempt().timeout(const Duration(seconds: 5));
     if (synced) {
       _lastSyncedPushToken = safeToken;
+      _pushTokenConfirmed = true;
     }
   } catch (e) {
     debugPrint('[FCM] Token refresh sync prvi pokušaj nije uspeo: $e');
@@ -690,6 +692,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
           final synced = await doSyncAttempt().timeout(const Duration(seconds: 5));
           if (synced) {
             _lastSyncedPushToken = safeToken;
+            _pushTokenConfirmed = true;
           }
         } catch (retryError) {
           debugPrint('[FCM] Token refresh sync retry nije uspeo: $retryError');
@@ -699,20 +702,24 @@ Future<void> _syncRefreshedPushToken(String token) async {
   }
 }
 
-/// Sinhronizuje trenutni locale_code (i osvežava last_seen_at) kada se app
-/// vrati iz pozadine (resume), bez čekanja na hladan restart ili FCM token
-/// refresh. Throttle-ovano na jednom u 6h da ne spamuje edge funkciju kod
-/// korisnika koji često prebacuju app u pozadinu i nazad.
+/// Sinhronizuje trenutni locale_code, last_seen_at i (ako još nije
+/// potvrđen) push token kada se app vrati iz pozadine (resume).
 ///
-/// Kada `force` je true (npr. korisnik je upravo ručno promenio jezik u
-/// app-u), throttle se zaobilazi kako bi se promena odmah videla u bazi.
+/// Ranije je ova funkcija slala prazan push token pri svakom resume-u, pa
+/// nikad nije mogla da popravi slučaj kada login nije uspeo da dobavi FCM
+/// token (npr. svež iOS instal gde APNs registracija kasni). Sada:
+/// - locale/last_seen_at deo je throttle-ovan na 6h (nema potrebe za češćim slanjem),
+/// - ali dokle god push token NIJE potvrđen za ovu sesiju, svaki resume
+///   pokušava ponovo da ga dobavi i upiše — bez throttle ograničenja,
+///   jer korisnik bez push tokena ne prima notifikacije.
 Future<void> _syncLocaleOnResume({bool force = false}) async {
   final now = DateTime.now();
-  if (!force &&
+  final needsPushToken = !_pushTokenConfirmed;
+  final localeThrottled = !force &&
+      !needsPushToken &&
       _lastLocaleResumeSyncAt != null &&
-      now.difference(_lastLocaleResumeSyncAt!) < const Duration(hours: 6)) {
-    return;
-  }
+      now.difference(_lastLocaleResumeSyncAt!) < const Duration(hours: 6);
+  if (localeThrottled) return;
 
   final putnikId = (V3PutnikService.currentPutnik?['id']?.toString() ?? '').trim();
   final vozacId = (V3VozacService.currentVozac?.id ?? '').trim();
@@ -723,22 +730,32 @@ Future<void> _syncLocaleOnResume({bool force = false}) async {
     if (installationId.isEmpty) return;
     final hardwareId = await V3DeviceIdentityService.getHardwareId();
 
+    String pushToken = '';
+    if (needsPushToken) {
+      final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
+        const Duration(seconds: 18),
+        onTimeout: () => null,
+      );
+      pushToken = tokenResult?.token.trim() ?? '';
+    }
+
     if (putnikId.isNotEmpty) {
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: putnikId,
-        pushToken: '',
+        pushToken: pushToken,
         installationId: installationId,
         hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 5));
     } else if (vozacId.isNotEmpty) {
       await V3VozacService.writePushTokenOnLogin(
         vozacId: vozacId,
-        pushToken: '',
+        pushToken: pushToken,
         installationId: installationId,
         hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 5));
     }
 
+    if (pushToken.isNotEmpty) _pushTokenConfirmed = true;
     _lastLocaleResumeSyncAt = now;
   } catch (e) {
     debugPrint('[main] _syncLocaleOnResume error: $e');
