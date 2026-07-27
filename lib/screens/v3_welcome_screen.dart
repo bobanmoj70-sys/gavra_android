@@ -366,12 +366,28 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     _isDisposing = true;
     WidgetsBinding.instance.removeObserver(this);
     _slideStartTimer?.cancel();
-    V3AnimationUtils.disposeController(_fadeAnimationKey);
-    V3AnimationUtils.disposeController(_slideAnimationKey);
-    V3AnimationUtils.disposeController(_pulseAnimationKey);
+    // NAPOMENA: Ne koristimo V3AnimationUtils.disposeController(key) direktno jer bi to
+    // moglo da obriše kontroler NOVE instance ovog ekrana (npr. kada se posle logout-a
+    // odmah kreira novi V3WelcomeScreen preko pushAndRemoveUntil, pa se stari ekran
+    // uklanja i poziva dispose() NAKON što je novi ekran već registrovao kontrolere pod
+    // istim ključevima). To je gasilo fade animaciju novog ekrana usred animacije, pa je
+    // welcome ekran ostajao "bled" (zamrznut na maloj opacity vrednosti).
+    // Zato prvo proveravamo da li mapa i dalje pokazuje na NAŠ kontroler pre nego što
+    // ga uklonimo iz globalnog registra; u suprotnom samo dispose-ujemo lokalno.
+    _disposeOwnController(_fadeAnimationKey, _fadeController);
+    _disposeOwnController(_slideAnimationKey, _slideController);
+    _disposeOwnController(_pulseAnimationKey, _pulseController);
     _audioPlayer.stop();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  void _disposeOwnController(String key, AnimationController controller) {
+    if (identical(V3AnimationUtils.getExistingController(key), controller)) {
+      V3AnimationUtils.disposeController(key);
+    } else {
+      controller.dispose();
+    }
   }
 
   @override
