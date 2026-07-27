@@ -531,7 +531,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return false;
   }
 
-  // _startDriverLocationTracking() je uklonjena jer se tracking aktivira samo automatski preko push-a
+  // _startDriverLocationTracking() ne postoji — vozač nikad ne pokreće
+  // tracking ručno. Tracking se uvek aktivira automatski preko
+  // `vozac_auto_start_tracking` push notifikacije: ili direktno iz native
+  // `GavraFcmService.kt` (kad je app u pozadini/killed), ili iz
+  // `_autoStartTrackingFromPush()` iznad (kad je ekran otvoren tapom na tu
+  // notifikaciju dok je app u foreground-u).
 
   bool _isPutnikEntryCompleted(_PutnikEntry item) {
     final entry = item.entry;
@@ -1200,11 +1205,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  // Manual start funkcija uklonjena - tracking se pokreće SAMO automatski preko push notifikacije
-  // _handleStartNavigation() je uklonjeno jer je ručno pokretanje onemogućeno
-
+  // Ručno pokretanje trackinga je namerno onemogućeno — tracking se uvek
+  // pokreće automatski preko `vozac_auto_start_tracking` push notifikacije
+  // (vidi `_autoStartTrackingFromPush()` i `GavraFcmService.kt`).
   void _handleStartTap() {
-    // Ručno pokretanje je onemogućeno — tracking se pokreće samo automatski.
     V3AppSnackBar.warning(
       context,
       'Tracking se pokreće automatski za dodeljeni termin. Ručno pokretanje nije dostupno.',

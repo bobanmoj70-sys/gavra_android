@@ -13,6 +13,7 @@ class V3RolePermissionService {
 
   static const String _pushPromptedKey = 'v3_perm_push_prompted_v2';
   static const String _notifListenerPromptedKey = 'v3_perm_notif_listener_prompted_v1';
+  static const String _locationPromptedKey = 'v3_perm_location_prompted_v1';
 
   static const MethodChannel _wakelockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
 
@@ -22,6 +23,11 @@ class V3RolePermissionService {
 
   static Future<void> ensureDriverPermissionsOnLogin() async {
     await _requestCommonPermissions();
+    // GPS/lokacija + battery optimization SAMO za vozača — mora biti odobreno
+    // UNAPRED (pri loginu) da bi auto-start tracking preko push notifikacije
+    // (vozac_auto_start_tracking) radio potpuno automatski, bez ijedne
+    // dodatne interakcije korisnika kada push stigne (i kad je app killed).
+    await _requestDriverLocationPermissions();
   }
 
   static Future<void> ensurePassengerPermissionsOnLogin() async {
@@ -129,6 +135,41 @@ class V3RolePermissionService {
       return result == true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Traži dozvolu za lokaciju (fine/coarse) JEDNOM po instalaciji, za oba
+  /// OS-a (Android + iOS), a izuzeće od battery optimization samo na
+  /// Androidu (iOS nema ekvivalentan koncept). Ovo je preduslov da automatski
+  /// GPS tracking (pokrenut isključivo preko `vozac_auto_start_tracking`
+  /// push-a, bez tapa korisnika — vidi `GavraFcmService.kt` na Androidu i
+  /// `_firebaseMessagingBackgroundHandler` na iOS-u) uopšte može da čita
+  /// poziciju kad push stigne, uključujući i kada je app u tom trenutku
+  /// ubijena (killed) — u tom stanju OS ne dozvoljava prikaz sistemskog
+  /// dijaloga za dozvolu, pa ona MORA biti odobrena unapred (ovde, pri
+  /// loginu, dok app ima aktivni foreground UI).
+  static Future<void> _requestDriverLocationPermissions() async {
+    final alreadyPrompted = await _storage.read(key: _locationPromptedKey) == 'true';
+    if (alreadyPrompted) return;
+
+    try {
+      final locationStatus = await Permission.locationWhenInUse.status;
+      if (!locationStatus.isGranted) {
+        await Permission.locationWhenInUse.request();
+      }
+
+      if (Platform.isAndroid) {
+        final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+        if (!batteryStatus.isGranted) {
+          await Permission.ignoreBatteryOptimizations.request();
+        }
+      }
+
+      debugPrint('[Permissions] Vozač GPS/battery dozvole obrađene.');
+    } catch (e) {
+      debugPrint('[Permissions] Vozač GPS/battery dozvola greška: $e');
+    } finally {
+      await _storage.write(key: _locationPromptedKey, value: 'true');
     }
   }
 }
