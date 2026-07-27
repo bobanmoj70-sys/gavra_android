@@ -6,6 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -491,6 +492,26 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     if (permission == LocationPermission.denied) {
       return V3LocationPrereqStatus.denied;
+    }
+
+    // Android: bez izuzeća od battery optimization / Doze, proizvođači
+    // telefona (posebno Huawei/Xiaomi/Samsung sa agresivnim "app launch
+    // management") ubijaju flutter_background_service headless isolate čim
+    // app ode u pozadinu — GPS foreground servis se nikad ne pokrene, pa
+    // tick (Timer.periodic 20s) koji šalje poziciju i računa ETA nikad ne
+    // radi, iako su same lokacijske dozvole ispravno odobrene (potvrđeno
+    // preko `dumpsys appops`/`dumpsys deviceidle whitelist` na test uređaju).
+    // Ne blokiramo start() ako korisnik odbije ovaj dijalog (best-effort) —
+    // samo pokušavamo da povećamo šansu da OS ne ubije servis.
+    if (Platform.isAndroid) {
+      try {
+        final status = await ph.Permission.ignoreBatteryOptimizations.status;
+        if (!status.isGranted) {
+          await ph.Permission.ignoreBatteryOptimizations.request();
+        }
+      } catch (e) {
+        debugPrint('[V3VozacLocationTrackingService] ignoreBatteryOptimizations greška: $e');
+      }
     }
 
     return V3LocationPrereqStatus.ok;
