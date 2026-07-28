@@ -804,6 +804,19 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
       debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
+      // Na iOS-u background handler ima ograničeno vreme izvršavanja.
+      // Samo upisujemo željeno stanje — pravi tracking pokreće
+      // _restoreAndResumeIfNeeded() kada app dođe u foreground.
+      if (Platform.isIOS) {
+        await V3VozacLocationTrackingService.instance.writeDesiredStateFromPayload(
+          vozacId: vozacId,
+          datumIso: datumIso,
+          grad: grad,
+          vreme: vreme,
+        );
+        return;
+      }
+
       // NAPOMENA: activateSlot se sada radi INTERNO u
       // V3VozacLocationTrackingService.start() (jedan izvor istine, deljen sa
       // Android background isolate-om preko v3_slot_activation.dart) — nema

@@ -103,6 +103,8 @@ dependencies {
         because("Replaces deprecated play:core for in-app reviews")
     }
 
+    // ⏰ WorkManager — restart background tracking servisa ako ga OS ubije
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }
 
 flutter {

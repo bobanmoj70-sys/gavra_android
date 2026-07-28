@@ -8,7 +8,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../utils/v3_time_utils.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
@@ -142,62 +141,41 @@ Future<void> _bgEnsureSupabaseClientReady() async {
 /// šta treba da se promeni — poziva se odmah pri startu servisa i zatim na
 /// svakih 20s (isti tick koji šalje i GPS lokaciju).
 Future<void> _bgSyncDesiredStateFromPrefs() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final vozacId = (prefs.getString(v3KeyVozacId) ?? '').trim();
+  final prefs = await SharedPreferences.getInstance();
+  final vozacId = (prefs.getString(v3KeyVozacId) ?? '').trim();
+  final datumIso = (prefs.getString(v3KeyDatumIso) ?? '').trim();
+  final grad = (prefs.getString(v3KeyGrad) ?? '').trim();
+  final vreme = (prefs.getString(v3KeyVreme) ?? '').trim();
 
-    if (vozacId.isEmpty) {
-      if (_bgVozacId != null) {
-        await _bgStopTracking(reason: 'desired_state_cleared');
-      }
-      return;
-    }
+  if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+    await _bgStopTracking(reason: 'sync_from_prefs');
+    return;
+  }
 
-    final datumIso = (prefs.getString(v3KeyDatumIso) ?? '').trim();
-    final grad = (prefs.getString(v3KeyGrad) ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(prefs.getString(v3KeyVreme) ?? '');
-    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
-      debugPrint('[BG] Željeno stanje nepotpuno, ignorišem: vozac=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
-      return;
-    }
+  // Ako se vozač/termin nisu promenili, nema potrebe za resetom — samo
+  // nastavi da šalje lokaciju u _bgSendLocation.
+  if (_bgVozacId == vozacId && _bgDatumIso == datumIso && _bgGrad == grad && _bgVreme == vreme) {
+    return;
+  }
 
-    final isNewVozac = _bgVozacId == null || _bgVozacId != vozacId;
-    final isTerminChanged = !isNewVozac && (_bgDatumIso != datumIso || _bgGrad != grad || _bgVreme != vreme);
+  _bgVozacId = vozacId;
+  _bgDatumIso = datumIso;
+  _bgGrad = grad;
+  _bgVreme = vreme;
+  _bgTrackingStartedAt ??= DateTime.now();
 
-    if (!isNewVozac && !isTerminChanged) {
-      return; // ništa se nije promenilo
-    }
-
-    _bgVozacId = vozacId;
-    _bgDatumIso = datumIso;
-    _bgGrad = grad;
-    _bgVreme = vreme;
-
-    if (isNewVozac) {
-      final startedAtMs = prefs.getInt(v3KeyStartedAt) ?? 0;
-      _bgTrackingStartedAt = startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : DateTime.now();
-      debugPrint('[BG] Novi vozač za tracking: $vozacId (grad=$grad vreme=$vreme datum=$datumIso)');
-    } else {
-      debugPrint('[BG] Termin promenjen za istog vozača: grad=$grad vreme=$vreme datum=$datumIso');
-    }
-
-    await _bgEnsureSupabaseClientReady();
-    final client = _bgSupabaseClient;
-    if (client != null) {
-      unawaited(activateSlotWithRetry(
-        client: client,
-        vozacId: vozacId,
-        datumIso: datumIso,
-        grad: grad,
-        vreme: vreme,
-        logTag: '[BG]',
-        log: debugPrint,
-      ));
-    } else {
-      debugPrint('[BG] ⚠️ activateSlot preskočen: Supabase client nije dostupan.');
-    }
-  } catch (e) {
-    debugPrint('[BG] Greška pri sinhronizaciji željenog stanja: $e');
+  await _bgEnsureSupabaseClientReady();
+  final client = _bgSupabaseClient;
+  if (client != null) {
+    unawaited(activateSlotWithRetry(
+      client: client,
+      vozacId: vozacId,
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+      logTag: '[BG]',
+      log: debugPrint,
+    ));
   }
 }
 
@@ -374,6 +352,13 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   _bgService = service;
 
   service.on(_kActionStop).listen((event) async {
+    final prefs = await SharedPreferences.getInstance();
+    final vozacId = (prefs.getString(v3KeyVozacId) ?? '').trim();
+    if (vozacId.isNotEmpty) {
+      debugPrint('[BG] stop event ignored: novo željeno stanje prisutno');
+      await _bgSyncDesiredStateFromPrefs();
+      return;
+    }
     await _bgStopTracking(reason: 'external_stop_event');
   });
 

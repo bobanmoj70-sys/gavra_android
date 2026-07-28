@@ -184,7 +184,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> startFromPayload({
+  /// Upisuje samo "željeno stanje" bez pokretanja servisa.
+  /// Koristi se na iOS-u iz background push handler-a, gde background
+  /// execution traje kratko i ne može pouzdano da pokrene pun tracking.
+  /// Pravi tracking se nastavlja kada app dođe u foreground.
+  Future<void> writeDesiredStateFromPayload({
     required String vozacId,
     required String datumIso,
     required String grad,
@@ -196,8 +200,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     final normalizedDatumIso = _normalizeDateIso(datumIso);
 
     if (normalizedVozacId.isEmpty || normalizedDatumIso.isEmpty || normalizedGrad.isEmpty || normalizedVreme.isEmpty) {
-      debugPrint(
-          '[V3VozacLocationTrackingService] startFromPayload skipped: invalid payload vozac=$normalizedVozacId datum=$normalizedDatumIso grad=$normalizedGrad vreme=$normalizedVreme');
       return;
     }
 
@@ -207,7 +209,57 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       vreme: normalizedVreme,
     );
 
-    await start(vozacId: normalizedVozacId);
+    _activeVozacId = normalizedVozacId;
+    _trackingStartedAt = DateTime.now();
+
+    if (Platform.isIOS) {
+      unawaited(_secureStorage.write(key: _kIosSessionStartedAt, value: _trackingStartedAt!.toIso8601String()));
+      unawaited(_secureStorage.write(key: _kIosSessionVozacId, value: normalizedVozacId));
+      unawaited(_secureStorage.write(key: _kIosSessionDatumIso, value: _activeDatumIso));
+      unawaited(_secureStorage.write(key: _kIosSessionGrad, value: _activeGrad));
+      unawaited(_secureStorage.write(key: _kIosSessionVreme, value: _activeVreme));
+    }
+
+    await _writeDesiredState(vozacId: normalizedVozacId);
+  }
+
+  Future<void> startFromPayload({
+    required String vozacId,
+    required String datumIso,
+    required String grad,
+    required String vreme,
+  }) async {
+    if (_startInProgress) {
+      debugPrint('[V3VozacLocationTrackingService] startFromPayload u toku, preskačem');
+      return;
+    }
+    _startInProgress = true;
+
+    try {
+      final normalizedVozacId = vozacId.trim();
+      final normalizedGrad = grad.trim().toUpperCase();
+      final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
+      final normalizedDatumIso = _normalizeDateIso(datumIso);
+
+      if (normalizedVozacId.isEmpty ||
+          normalizedDatumIso.isEmpty ||
+          normalizedGrad.isEmpty ||
+          normalizedVreme.isEmpty) {
+        debugPrint(
+            '[V3VozacLocationTrackingService] startFromPayload skipped: invalid payload vozac=$normalizedVozacId datum=$normalizedDatumIso grad=$normalizedGrad vreme=$normalizedVreme');
+        return;
+      }
+
+      setActiveTermin(
+        datumIso: normalizedDatumIso,
+        grad: normalizedGrad,
+        vreme: normalizedVreme,
+      );
+
+      await start(vozacId: normalizedVozacId);
+    } finally {
+      _startInProgress = false;
+    }
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) {

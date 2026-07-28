@@ -49,7 +49,7 @@ class GavraFcmService : FirebaseMessagingService() {
 
         // Mora biti identično sa `LegacySharedPreferencesPlugin.SHARED_PREFERENCES_NAME`
         // (shared_preferences_android paket) — isti fajl koji Dart `SharedPreferences.getInstance()` čita.
-        private const val PREFS_FILE_NAME = "FlutterSharedPreferences"
+        const val PREFS_FILE_NAME = "FlutterSharedPreferences"
         // Mora biti identično sa `flutter.` prefiksom koji Dart `shared_preferences` paket
         // koristi za sve ključeve (vidi shared_preferences_legacy.dart `_prefix`).
         private const val FLUTTER_PREFS_PREFIX = "flutter."
@@ -57,11 +57,11 @@ class GavraFcmService : FirebaseMessagingService() {
         // JEDAN IZVOR ISTINE za "šta bi background tracking trebalo da radi" — moraju biti
         // identični sa `_kKey*` konstantama u `v3_background_location_handler.dart` i
         // `V3VozacLocationTrackingService` (Dart strana).
-        private const val KEY_ACTIVE_VOZAC_ID = "${FLUTTER_PREFS_PREFIX}bg_active_vozac_id"
-        private const val KEY_ACTIVE_DATUM_ISO = "${FLUTTER_PREFS_PREFIX}bg_active_datum_iso"
-        private const val KEY_ACTIVE_GRAD = "${FLUTTER_PREFS_PREFIX}bg_active_grad"
-        private const val KEY_ACTIVE_VREME = "${FLUTTER_PREFS_PREFIX}bg_active_vreme"
-        private const val KEY_ACTIVE_STARTED_AT = "${FLUTTER_PREFS_PREFIX}bg_active_started_at"
+        const val KEY_ACTIVE_VOZAC_ID = "${FLUTTER_PREFS_PREFIX}bg_active_vozac_id"
+        const val KEY_ACTIVE_DATUM_ISO = "${FLUTTER_PREFS_PREFIX}bg_active_datum_iso"
+        const val KEY_ACTIVE_GRAD = "${FLUTTER_PREFS_PREFIX}bg_active_grad"
+        const val KEY_ACTIVE_VREME = "${FLUTTER_PREFS_PREFIX}bg_active_vreme"
+        const val KEY_ACTIVE_STARTED_AT = "${FLUTTER_PREFS_PREFIX}bg_active_started_at"
 
         /**
          * Normalizuje vreme na HH:mm, identično kao Dart `V3TimeUtils.normalizeToHHmm`.
