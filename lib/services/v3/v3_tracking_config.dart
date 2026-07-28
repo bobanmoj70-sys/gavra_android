@@ -79,14 +79,21 @@ class V3SelfReschedulingTicker {
 
   Timer? _timer;
   bool _cancelled = true;
+  DateTime? _nextTickAt;
 
   bool get isActive => !_cancelled;
 
   /// Pokreće ticker: odmah izvršava prvi [onTick], zatim samo-zakazuje
-  /// sledeći tick `interval` nakon završetka svakog prethodnog.
+  /// sledeći tick tako da se održava fiksni razmak [interval] između
+  /// POČETAKA tick-ova (ne između završetka i početka). Ako jedan tick
+  /// potraje duže od [interval], sledeći kreće odmah — ne čeka dodatnih
+  /// [interval] sekundi. Ovo rešava problem "lokacija se ne šalje na 20s"
+  /// uzrokovan prethodnom implementacijom koja je dodavala trajanje tick-a
+  /// na 20s pauzu.
   void start() {
     cancel();
     _cancelled = false;
+    _nextTickAt = DateTime.now();
     unawaited(_scheduleNext());
   }
 
@@ -101,13 +108,21 @@ class V3SelfReschedulingTicker {
     }
     // Ako je u međuvremenu pozvan cancel(), ne zakazuj sledeći tick.
     if (_cancelled) return;
-    _timer = Timer(interval, () => unawaited(_scheduleNext()));
+
+    // Održavaj fiksne granice: sledeći tick treba da bude [interval] nakon
+    // prethodnog planiranog trenutka, bez obzira koliko je trenutni tick
+    // trajao. Ako smo već promašili granicu, kreći odmah.
+    _nextTickAt = _nextTickAt!.add(interval);
+    final now = DateTime.now();
+    final delay = _nextTickAt!.isAfter(now) ? _nextTickAt!.difference(now) : Duration.zero;
+    _timer = Timer(delay, () => unawaited(_scheduleNext()));
   }
 
   void cancel() {
     _cancelled = true;
     _timer?.cancel();
     _timer = null;
+    _nextTickAt = null;
   }
 }
 

@@ -62,6 +62,36 @@ class GavraFcmService : FirebaseMessagingService() {
         private const val KEY_ACTIVE_GRAD = "${FLUTTER_PREFS_PREFIX}bg_active_grad"
         private const val KEY_ACTIVE_VREME = "${FLUTTER_PREFS_PREFIX}bg_active_vreme"
         private const val KEY_ACTIVE_STARTED_AT = "${FLUTTER_PREFS_PREFIX}bg_active_started_at"
+
+        /**
+         * Normalizuje vreme na HH:mm, identično kao Dart `V3TimeUtils.normalizeToHHmm`.
+         * Podržava "08:00", "8:00", "08:00:00", "2026-07-28T08:00:00Z", itd.
+         */
+        fun normalizeTimeToHHmm(value: String?): String {
+            val raw = value?.trim() ?: return ""
+            if (raw.isEmpty()) return ""
+            val regex = Regex("""([01]?\\d|2[0-3]):([0-5]\\d)(?::[0-5]\\d)?""")
+            val match = regex.find(raw) ?: return raw
+            val hour = match.groupValues[1].toIntOrNull() ?: return raw
+            val minute = match.groupValues[2].toIntOrNull() ?: return raw
+            return "%02d:%02d".format(hour, minute)
+        }
+
+        /**
+         * Normalizuje datum na yyyy-MM-dd, identično kao Dart `V3DateUtils.parseIsoDatePart`
+         * za ulazne vrednosti bez eksplicitne TZ konverzije (server šalje Beograd vreme).
+         * Podržava "2026-07-28", "2026-07-28T08:00:00Z", itd.
+         */
+        fun normalizeDateToIso(value: String?): String {
+            val raw = value?.trim() ?: return ""
+            if (raw.isEmpty()) return ""
+            if (Regex("""^\\d{4}-\\d{2}-\\d{2}$""").matches(raw)) return raw
+            if (raw.contains("T")) {
+                val datePart = raw.substringBefore("T")
+                if (Regex("""^\\d{4}-\\d{2}-\\d{2}$""").matches(datePart)) return datePart
+            }
+            return Regex("""^(\\d{4}-\\d{2}-\\d{2})""").find(raw)?.groupValues?.get(1) ?: ""
+        }
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -138,8 +168,8 @@ class GavraFcmService : FirebaseMessagingService() {
     private fun writeDesiredTrackingState(data: Map<String, String>) {
         val vozacId = (data["v3_auth_id"] ?: data["vozac_id"] ?: "").trim()
         val grad = (data["grad"] ?: "").trim().uppercase()
-        val vreme = (data["vreme"] ?: "").trim()
-        val datumIso = (data["datum"] ?: "").trim()
+        val vreme = normalizeTimeToHHmm(data["vreme"])
+        val datumIso = normalizeDateToIso(data["datum"])
 
         if (vozacId.isEmpty() || grad.isEmpty() || vreme.isEmpty() || datumIso.isEmpty()) {
             android.util.Log.w(

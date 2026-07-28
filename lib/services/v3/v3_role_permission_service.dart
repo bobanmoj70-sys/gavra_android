@@ -158,6 +158,17 @@ class V3RolePermissionService {
         await Permission.locationWhenInUse.request();
       }
 
+      // iOS zahteva "Always" dozvolu da bi Geolocator position stream sa
+      // allowBackgroundLocationUpdates radio dok je app u pozadini/suspendovana.
+      // Redosled je bitan: locationWhenInUse MORA biti odobren pre nego što se
+      // može tražiti locationAlways.
+      if (Platform.isIOS) {
+        final alwaysStatus = await Permission.locationAlways.status;
+        if (!alwaysStatus.isGranted) {
+          await Permission.locationAlways.request();
+        }
+      }
+
       if (Platform.isAndroid) {
         final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
         if (!batteryStatus.isGranted) {

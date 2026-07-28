@@ -677,21 +677,25 @@ Deno.serve(async (req) => {
             if (vozacTokens.length > 0) {
               const eventId = `vozac_auto_start:${vozacId}:${datumIso}:${grad}:${vreme}`;
               const localeCode = String(vozacAuth.locale_code ?? "").trim().toLowerCase();
+              // 🔔 Persistent notification payload je NEOPHODAN na Android 12+
+              // da bi FCM dozvolio pokretanje foreground servisa iz push-a.
+              // Bez notification payload-a, data-only push se tiho ignorise
+              // i background GPS tracking se ne pokrece.
               await client.rpc("notify_push", {
                 tokens: vozacTokens,
                 recipient_id: vozacId,
-                title: "Termin za 10 minuta",
-                body: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
-                title_sr: "Termin za 10 minuta",
-                title_en: "Appointment in 10 minutes",
-                title_ru: "Термин через 10 минут",
-                title_de: "Termin in 10 Minuten",
-                title_zh: "10分钟后有预约",
-                body_sr: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
-                body_en: `Tap to start tracking for ${grad} ${vreme}.`,
-                body_ru: `Нажмите, чтобы начать отслеживание для ${grad} ${vreme}.`,
-                body_de: `Tippen Sie, um die Verfolgung für ${grad} ${vreme} zu starten.`,
-                body_zh: `点击开始跟踪 ${grad} ${vreme}。`,
+                title: "Praćenje pokrenuto",
+                body: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
+                title_sr: "Praćenje pokrenuto",
+                title_en: "Tracking started",
+                title_ru: "Отслеживание начато",
+                title_de: "Tracking gestartet",
+                title_zh: "跟踪已启动",
+                body_sr: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
+                body_en: `Automatic tracking for ${grad} ${vreme} is active.`,
+                body_ru: `Автоматическое отслеживание для ${grad} ${vreme} активно.`,
+                body_de: `Automatisches Tracking für ${grad} ${vreme} ist aktiv.`,
+                body_zh: `${grad} ${vreme} 的自动跟踪已激活。`,
                 data: {
                   type: "vozac_auto_start_tracking",
                   event_id: eventId,
@@ -701,19 +705,27 @@ Deno.serve(async (req) => {
                   vreme: vreme,
                   screen: "v3_vozac",
                   locale_code: localeCode || "sr",
-                  title_sr: "Termin za 10 minuta",
-                  title_en: "Appointment in 10 minutes",
-                  title_ru: "Термин через 10 минут",
-                  title_de: "Termin in 10 Minuten",
-                  title_zh: "10分钟后有预约",
-                  body_sr: `Kliknite da pokrenete praćenje za ${grad} ${vreme}.`,
-                  body_en: `Tap to start tracking for ${grad} ${vreme}.`,
-                  body_ru: `Нажмите, чтобы начать отслеживание для ${grad} ${vreme}.`,
-                  body_de: `Tippen Sie, um die Verfolgung für ${grad} ${vreme} zu starten.`,
-                  body_zh: `点击开始跟踪 ${grad} ${vreme}。`,
+                  title_sr: "Praćenje pokrenuto",
+                  title_en: "Tracking started",
+                  title_ru: "Отслеживание начато",
+                  title_de: "Tracking gestartet",
+                  title_zh: "跟踪已启动",
+                  body_sr: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
+                  body_en: `Automatic tracking for ${grad} ${vreme} is active.`,
+                  body_ru: `Автоматическое отслеживание для ${grad} ${vreme} активно.`,
+                  body_de: `Automatisches Tracking für ${grad} ${vreme} ist aktiv.`,
+                  body_zh: `${grad} ${vreme} 的自动跟踪已激活。`,
+                },
+                // 📱 Android 12+ zahteva notification payload da bi dozvolio
+                // startForegroundService() iz FCM push-a. Ovo prikazuje
+                // persistent notifikaciju koju vozač vidi dok se tracking ne pokrene.
+                notification: {
+                  title: "Praćenje pokrenuto",
+                  body: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
+                  channel_id: "gavra_push_v2",
                 },
               });
-              console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);
+              console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start (with notification payload)`);
             }
           }
 

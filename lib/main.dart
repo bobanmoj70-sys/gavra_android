@@ -1170,9 +1170,17 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
     }
   }
 
+  final activeVozacId = V3VozacLocationTrackingService.instance.activeVozacId;
+  final activeDatumIso = V3VozacLocationTrackingService.instance.activeDatumIso;
+  final activeGrad = V3VozacLocationTrackingService.instance.activeGrad;
+  final activeVreme = V3VozacLocationTrackingService.instance.activeVreme;
+
   if (V3VozacLocationTrackingService.instance.isRunning &&
-      V3VozacLocationTrackingService.instance.activeVozacId == vozacId) {
-    debugPrint('[AUTO-START] Tracking već aktivan za ovog vozača, preskačem.');
+      activeVozacId == vozacId &&
+      activeDatumIso == datumIso &&
+      activeGrad == grad &&
+      activeVreme == vreme) {
+    debugPrint('[AUTO-START] Tracking već aktivan za isti termin, preskačem.');
     return;
   }
 

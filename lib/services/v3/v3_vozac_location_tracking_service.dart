@@ -301,6 +301,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         return; // finally će resetovati _startInProgress
       }
 
+      // Upiši željeno stanje PRE pokretanja background servisa, tako da
+      // headless isolate odmah pri prvom tick-u zna ko se prati. Ako bude
+      // upisano posle startService(), prvi tick bi mogao da pročita prazno
+      // stanje i odloži prvo slanje lokacije za dodatnih ~20s.
+      await _writeDesiredState(vozacId: normalizedVozacId);
+
       final service = FlutterBackgroundService();
       var isServiceRunning = await service.isRunning();
       if (!isServiceRunning) {
@@ -318,8 +324,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
           return; // finally će resetovati _startInProgress
         }
       }
-
-      await _writeDesiredState(vozacId: normalizedVozacId);
 
       _isRunning = true;
     } finally {
@@ -655,21 +659,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) return;
 
     try {
-      var position = _lastSentPosition;
-      if (position == null) {
-        try {
-          position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-              timeLimit: Duration(seconds: 12),
-            ),
-          );
-          _lastSentPosition = position;
-        } catch (e) {
-          debugPrint('[V3VozacLocationTrackingService][iOS] tick position error: $e');
-          return;
-        }
-      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      _lastSentPosition = position;
 
       final etaResult = await computeEta(
         vozacId: _activeVozacId,
