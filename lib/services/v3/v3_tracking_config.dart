@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_status_policy.dart';
@@ -123,6 +124,38 @@ const String v3KeyGrad = 'bg_active_grad';
 const String v3KeyVreme = 'bg_active_vreme';
 const String v3KeyStartedAt = 'bg_active_started_at';
 
+/// JEDAN IZVOR ISTINE za brisanje "željenog stanja" tracking-a iz
+/// SharedPreferences — deljeno između main isolate-a (`_clearDesiredState` u
+/// `v3_vozac_location_tracking_service.dart`) i Android background isolate-a
+/// (`_bgClearDesiredState` u `v3_background_location_handler.dart`). Ranije
+/// je identičan niz `prefs.remove(...)` poziva bio dupliran na oba mesta.
+Future<void> v3ClearDesiredState(SharedPreferences prefs) async {
+  await prefs.remove(v3KeyVozacId);
+  await prefs.remove(v3KeyDatumIso);
+  await prefs.remove(v3KeyGrad);
+  await prefs.remove(v3KeyVreme);
+  await prefs.remove(v3KeyStartedAt);
+}
+
+/// JEDAN IZVOR ISTINE za brisanje zaostalih ETA redova za vozača —
+/// deljeno između main isolate-a (`clearEtaForVozac`) i Android background
+/// isolate-a (`_bgClearEtaForVozac`). Ranije identičan upit dupliran na oba
+/// mesta.
+Future<void> v3ClearEtaForVozac({
+  required SupabaseClient client,
+  required String vozacId,
+  String logTag = '[v3ClearEtaForVozac]',
+}) async {
+  final normalized = vozacId.trim();
+  if (normalized.isEmpty) return;
+
+  try {
+    await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
+  } catch (e) {
+    debugPrint('$logTag ETA cleanup error: $e');
+  }
+}
+
 /// JEDAN IZVOR ISTINE za realtime broadcast poslednje GPS pozicije vozača
 /// (bez čuvanja u bazi) — deljeno između main isolate-a (foreground GPS) i
 /// Android background isolate-a. Ranije su oba mesta imala identičnu, ali
@@ -237,4 +270,39 @@ Future<bool> v3AllPassengersCompleted({
     debugPrint('$logTag Greška pri proveri putnika: $e');
     return false;
   }
+}
+
+/// Tekst tracking notifikacije (naslov + telo).
+typedef V3TrackingNotificationText = ({String title, String body});
+
+/// JEDAN IZVOR ISTINE za izradu naslova/tela tracking notifikacije ("GPS
+/// Tracking — N putnika" / "Sledeći: Ime · ETA X min") — deljeno između
+/// Android background isolate-a (`_bgUpdateNextPassengerNotification` u
+/// `v3_background_location_handler.dart`) i iOS main isolate-a
+/// (`_iosUpdateTrackingNotification` u `v3_vozac_location_tracking_service.dart`).
+/// Ranije je identična string-building logika bila duplirana na oba mesta.
+///
+/// [nextPutnikIme] je ime sledećeg putnika ako je već poznato (npr. iz
+/// keša) — ako je `null`/prazno, koristi se generički fallback "sledeći
+/// putnik" (Android dodatno dohvata ime iz baze PRE poziva ove funkcije, jer
+/// background isolate nema pristup `V3MasterRealtimeManager` kešu).
+V3TrackingNotificationText v3BuildTrackingNotificationText({
+  required String? nextPutnikId,
+  required String? nextPutnikIme,
+  required int? etaSeconds,
+  required int remainingCount,
+}) {
+  if (nextPutnikId == null || remainingCount == 0) {
+    return (title: 'GPS Tracking', body: 'Nema više putnika za pokupljanje.');
+  }
+
+  final ime = (nextPutnikIme != null && nextPutnikIme.isNotEmpty) ? nextPutnikIme : 'sledeći putnik';
+  final etaMin = etaSeconds != null && etaSeconds >= 0 ? (etaSeconds / 60).round() : null;
+  final etaText = etaMin != null ? ' · ETA $etaMin min' : '';
+  final putnikLabel = remainingCount == 1 ? 'putnik' : 'putnika';
+
+  return (
+    title: 'GPS Tracking — $remainingCount $putnikLabel',
+    body: 'Sledeći: $ime$etaText',
+  );
 }

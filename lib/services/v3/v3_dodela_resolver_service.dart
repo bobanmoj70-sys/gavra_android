@@ -1,24 +1,9 @@
 import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_time_utils.dart';
-import 'v3_trenutna_dodela_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 
 class V3DodelaResolverService {
   V3DodelaResolverService._();
-
-  static Future<({Map<String, String> byTerminId, Map<String, String> bySlotKey})> loadActiveAssignments({
-    String? putnikId,
-    String? vozacId,
-  }) async {
-    final byTerminId = await V3TrenutnaDodelaService.loadActiveVozacByTerminId(
-      putnikId: putnikId,
-      vozacId: vozacId,
-    );
-    final bySlotKey = await V3TrenutnaDodelaSlotService.loadActiveVozacBySlotKey(
-      vozacId: vozacId,
-    );
-    return (byTerminId: byTerminId, bySlotKey: bySlotKey);
-  }
 
   static String resolveVozacIdForSlot({
     required String datumIso,

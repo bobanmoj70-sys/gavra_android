@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
+import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_time_utils.dart';
 
 class V3TrenutnaDodelaSlotService {
@@ -14,21 +15,10 @@ class V3TrenutnaDodelaSlotService {
   static const String colUpdatedBy = 'updated_by';
   static const String colWaypointsJson = 'waypoints_json';
 
-  static String _normalizeDatumIso(String? raw) {
-    final value = (raw ?? '').trim();
-    if (value.isEmpty) return '';
-
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) {
-      final y = parsed.year.toString().padLeft(4, '0');
-      final m = parsed.month.toString().padLeft(2, '0');
-      final d = parsed.day.toString().padLeft(2, '0');
-      return '$y-$m-$d';
-    }
-
-    final match = RegExp(r'^(\d{4}-\d{2}-\d{2})').firstMatch(value);
-    return match?.group(1) ?? '';
-  }
+  /// Delegira na deljeni `V3DateUtils.parseIsoDatePart` (JEDAN IZVOR ISTINE za
+  /// normalizaciju ISO datuma na `yyyy-MM-dd`, ranije duplirano ovde kao manje
+  /// robustna kopija bez podrške za timezone offset).
+  static String _normalizeDatumIso(String? raw) => V3DateUtils.parseIsoDatePart(raw);
 
   static String _normalizeGrad(String? raw) => (raw ?? '').trim().toUpperCase();
 
@@ -73,32 +63,6 @@ class V3TrenutnaDodelaSlotService {
       if (datum.isEmpty || grad.isEmpty || vreme.isEmpty || assignedVozacId.isEmpty) continue;
 
       result['$datum|$grad|$vreme'] = assignedVozacId;
-    }
-
-    return result;
-  }
-
-  static Future<List<Map<String, String>>> loadActiveSlotsForVozac({
-    required String vozacId,
-  }) async {
-    final vozac = vozacId.trim();
-    if (vozac.isEmpty) return <Map<String, String>>[];
-
-    final rows = await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme').eq(colVozacId, vozac);
-
-    final result = <Map<String, String>>[];
-    for (final row in (rows as List<dynamic>)) {
-      final mapped = row as Map<String, dynamic>;
-      final datum = _normalizeDatumIso(mapped[colDatum]?.toString());
-      final grad = _normalizeGrad(mapped[colGrad]?.toString());
-      final vreme = _normalizeVreme(mapped[colVreme]?.toString());
-      if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) continue;
-
-      result.add(<String, String>{
-        colDatum: datum,
-        colGrad: grad,
-        colVreme: vreme,
-      });
     }
 
     return result;

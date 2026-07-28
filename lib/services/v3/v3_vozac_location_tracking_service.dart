@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_time_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_slot_activation.dart';
@@ -74,6 +75,15 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   static const String _kStorageSupabaseUrl = 'bg_tracking_supabase_url';
   static const String _kStorageSupabaseAnonKey = 'bg_tracking_supabase_anon_key';
 
+  // JEDAN IZVOR ISTINE za iOS-only session SecureStorage kljuceve (koriste ih
+  // start()/stop()/_restoreAndResumeIfNeeded() - ranije bili ponovljeni kao
+  // string literali na 3 mesta, rizik od typo-a).
+  static const String _kIosSessionStartedAt = 'vozac_tracking_started_at';
+  static const String _kIosSessionVozacId = 'vozac_tracking_vozac_id';
+  static const String _kIosSessionDatumIso = 'vozac_tracking_datum_iso';
+  static const String _kIosSessionGrad = 'vozac_tracking_grad';
+  static const String _kIosSessionVreme = 'vozac_tracking_vreme';
+
   // JEDAN IZVOR ISTINE za "šta bi background tracking trebalo da radi" —
   // ključevi (`v3Key*`) su sada deljeni sa Android background isolate-om
   // preko v3_tracking_config.dart (ranije duplirano ovde i u
@@ -114,20 +124,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   List<String> get optimizedPutnikIds => List.unmodifiable(_optimizedPutnikIds);
   Map<String, int> get etaSecondsCache => Map.unmodifiable(_etaSecondsCache);
 
-  String _normalizeDateIso(String raw) {
-    final value = raw.trim();
-    if (value.isEmpty) return '';
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) {
-      final y = parsed.year.toString().padLeft(4, '0');
-      final m = parsed.month.toString().padLeft(2, '0');
-      final d = parsed.day.toString().padLeft(2, '0');
-      return '$y-$m-$d';
-    }
-    return value.split('T').first;
-  }
+  /// Delegira na deljeni `V3DateUtils.parseIsoDatePart` (JEDAN IZVOR ISTINE za
+  /// normalizaciju ISO datuma na `yyyy-MM-dd`, ranije duplirano ovde kao
+  /// privatna, manje robustna kopija bez podrske za timezone offset).
+  String _normalizeDateIso(String raw) => V3DateUtils.parseIsoDatePart(raw);
 
-  /// Upisuje "željeno stanje" u obični SharedPreferences fajl — JEDINO mesto
+  /// Upisuje "zeljeno stanje"
   /// gde main isolate govori background isolate-u šta treba da prati. Background
   /// isolate (Android) ovo čita svakih 20s (polling), pa nema potrebe za bilo
   /// kakvim `service.invoke()` event-ima za prenos termina/vozača/kredencijala.
@@ -162,11 +164,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   Future<void> _clearDesiredState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(v3KeyVozacId);
-      await prefs.remove(v3KeyDatumIso);
-      await prefs.remove(v3KeyGrad);
-      await prefs.remove(v3KeyVreme);
-      await prefs.remove(v3KeyStartedAt);
+      await v3ClearDesiredState(prefs);
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] Greška pri brisanju željenog stanja: $e');
     }
@@ -212,15 +210,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     await start(vozacId: normalizedVozacId);
   }
 
-  Future<void> clearEtaForVozac({required String vozacId}) async {
-    final normalized = vozacId.trim();
-    if (normalized.isEmpty) return;
-
-    try {
-      await Supabase.instance.client.from('v3_eta_results').delete().eq('vozac_id', normalized);
-    } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] eta cleanup error: $e');
-    }
+  Future<void> clearEtaForVozac({required String vozacId}) {
+    return v3ClearEtaForVozac(
+      client: Supabase.instance.client,
+      vozacId: vozacId,
+      logTag: '[V3VozacLocationTrackingService]',
+    );
   }
 
   /// Proverava da li su svi putnici u aktivnom slotu završeni (pokupljeni ili
@@ -275,11 +270,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       // isolate koji bi mogao da čita unified SharedPreferences stanje kad je
       // app killed — Android koristi isključivo _writeDesiredState ispod.
       if (Platform.isIOS) {
-        unawaited(_secureStorage.write(key: 'vozac_tracking_started_at', value: _trackingStartedAt!.toIso8601String()));
-        unawaited(_secureStorage.write(key: 'vozac_tracking_vozac_id', value: normalizedVozacId));
-        unawaited(_secureStorage.write(key: 'vozac_tracking_datum_iso', value: _activeDatumIso));
-        unawaited(_secureStorage.write(key: 'vozac_tracking_grad', value: _activeGrad));
-        unawaited(_secureStorage.write(key: 'vozac_tracking_vreme', value: _activeVreme));
+        unawaited(_secureStorage.write(key: _kIosSessionStartedAt, value: _trackingStartedAt!.toIso8601String()));
+        unawaited(_secureStorage.write(key: _kIosSessionVozacId, value: normalizedVozacId));
+        unawaited(_secureStorage.write(key: _kIosSessionDatumIso, value: _activeDatumIso));
+        unawaited(_secureStorage.write(key: _kIosSessionGrad, value: _activeGrad));
+        unawaited(_secureStorage.write(key: _kIosSessionVreme, value: _activeVreme));
       }
 
       final prereqStatus = await checkLocationPrerequisites();
@@ -349,11 +344,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     channelToRemove.dispose(Supabase.instance.client);
 
     unawaited(_clearDesiredState());
-    unawaited(_secureStorage.delete(key: 'vozac_tracking_started_at'));
-    unawaited(_secureStorage.delete(key: 'vozac_tracking_vozac_id'));
-    unawaited(_secureStorage.delete(key: 'vozac_tracking_datum_iso'));
-    unawaited(_secureStorage.delete(key: 'vozac_tracking_grad'));
-    unawaited(_secureStorage.delete(key: 'vozac_tracking_vreme'));
+    unawaited(_secureStorage.delete(key: _kIosSessionStartedAt));
+    unawaited(_secureStorage.delete(key: _kIosSessionVozacId));
+    unawaited(_secureStorage.delete(key: _kIosSessionDatumIso));
+    unawaited(_secureStorage.delete(key: _kIosSessionGrad));
+    unawaited(_secureStorage.delete(key: _kIosSessionVreme));
 
     await _iosPositionSub?.cancel();
     _iosPositionSub = null;
@@ -564,7 +559,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         return;
       }
 
-      final startedRaw = await _secureStorage.read(key: 'vozac_tracking_started_at');
+      final startedRaw = await _secureStorage.read(key: _kIosSessionStartedAt);
       if (startedRaw == null || startedRaw.isEmpty) return;
 
       final startedAt = DateTime.tryParse(startedRaw);
@@ -579,10 +574,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         return;
       }
 
-      final vozacId = (await _secureStorage.read(key: 'vozac_tracking_vozac_id') ?? '').trim();
-      final datumIso = (await _secureStorage.read(key: 'vozac_tracking_datum_iso') ?? '').trim();
-      final grad = (await _secureStorage.read(key: 'vozac_tracking_grad') ?? '').trim();
-      final vreme = (await _secureStorage.read(key: 'vozac_tracking_vreme') ?? '').trim();
+      final vozacId = (await _secureStorage.read(key: _kIosSessionVozacId) ?? '').trim();
+      final datumIso = (await _secureStorage.read(key: _kIosSessionDatumIso) ?? '').trim();
+      final grad = (await _secureStorage.read(key: _kIosSessionGrad) ?? '').trim();
+      final vreme = (await _secureStorage.read(key: _kIosSessionVreme) ?? '').trim();
 
       if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
 
@@ -730,23 +725,21 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     final plugin = _iosNotificationsPlugin;
     if (plugin == null) return;
 
-    String title;
-    String body;
-
-    if (order.isEmpty) {
-      title = 'GPS Tracking';
-      body = 'Nema više putnika za pokupljanje.';
-    } else {
-      final nextPutnikId = order.first;
-      final ime =
-          (V3MasterRealtimeManager.instance.putniciCache[nextPutnikId]?['ime_prezime'] as String?)?.trim() ?? '';
-      final etaSeconds = etaMap[nextPutnikId];
-      final etaMin = etaSeconds != null && etaSeconds >= 0 ? (etaSeconds / 60).round() : null;
-      final etaText = etaMin != null ? ' · ETA $etaMin min' : '';
-      final putnikLabel = order.length == 1 ? 'putnik' : 'putnika';
-      title = 'GPS Tracking — ${order.length} $putnikLabel';
-      body = 'Sledeći: ${ime.isNotEmpty ? ime : 'sledeći putnik'}$etaText';
-    }
+    // Deljena logika za tekst notifikacije (JEDAN IZVOR ISTINE, ranije
+    // duplirana identicno u `_bgUpdateNextPassengerNotification` na Android
+    // strani) - vidi `v3BuildTrackingNotificationText` u v3_tracking_config.dart.
+    final nextPutnikId = order.isNotEmpty ? order.first : null;
+    final ime = nextPutnikId != null
+        ? (V3MasterRealtimeManager.instance.putniciCache[nextPutnikId]?['ime_prezime'] as String?)?.trim()
+        : null;
+    final text = v3BuildTrackingNotificationText(
+      nextPutnikId: nextPutnikId,
+      nextPutnikIme: ime,
+      etaSeconds: nextPutnikId != null ? etaMap[nextPutnikId] : null,
+      remainingCount: order.length,
+    );
+    final title = text.title;
+    final body = text.body;
 
     const iosDetails = DarwinNotificationDetails(
       presentAlert: true,

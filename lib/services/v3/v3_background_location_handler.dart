@@ -204,28 +204,16 @@ Future<void> _bgSyncDesiredStateFromPrefs() async {
 Future<void> _bgClearDesiredState() async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(v3KeyVozacId);
-    await prefs.remove(v3KeyDatumIso);
-    await prefs.remove(v3KeyGrad);
-    await prefs.remove(v3KeyVreme);
-    await prefs.remove(v3KeyStartedAt);
+    await v3ClearDesiredState(prefs);
   } catch (e) {
     debugPrint('[BG] Greška pri brisanju željenog stanja: $e');
   }
 }
 
 Future<void> _bgClearEtaForVozac(String vozacId) async {
-  final normalized = vozacId.trim();
-  if (normalized.isEmpty) return;
-
   final client = _bgSupabaseClient;
   if (client == null) return;
-
-  try {
-    await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
-  } catch (e) {
-    debugPrint('[BG] ETA cleanup error: $e');
-  }
+  await v3ClearEtaForVozac(client: client, vozacId: vozacId, logTag: '[BG]');
 }
 
 /// Proverava da li su svi putnici u aktivnom slotu završeni (pokupljeni ili
@@ -305,14 +293,8 @@ Future<void> _bgUpdateNextPassengerNotification({
   final plugin = _bgLocalNotifications;
   if (plugin == null) return;
 
-  String title;
-  String body;
-
-  if (putnikId == null || remainingCount == 0) {
-    title = 'GPS Tracking';
-    body = 'Nema više putnika za pokupljanje.';
-  } else {
-    var ime = 'sledeći putnik';
+  String? ime;
+  if (putnikId != null && remainingCount > 0) {
     try {
       final client = _bgSupabaseClient;
       if (client != null) {
@@ -323,13 +305,19 @@ Future<void> _bgUpdateNextPassengerNotification({
     } catch (e) {
       debugPrint('[BG] Greška pri dohvatanju imena putnika za notifikaciju: $e');
     }
-
-    final etaMin = etaSeconds != null && etaSeconds >= 0 ? (etaSeconds / 60).round() : null;
-    final etaText = etaMin != null ? ' · ETA $etaMin min' : '';
-    final putnikLabel = remainingCount == 1 ? 'putnik' : 'putnika';
-    title = 'GPS Tracking — $remainingCount $putnikLabel';
-    body = 'Sledeći: $ime$etaText';
   }
+
+  // Deljena logika za tekst notifikacije (JEDAN IZVOR ISTINE, ranije
+  // duplirana identično u `_iosUpdateTrackingNotification` na iOS strani) —
+  // vidi `v3BuildTrackingNotificationText` u v3_tracking_config.dart.
+  final text = v3BuildTrackingNotificationText(
+    nextPutnikId: putnikId,
+    nextPutnikIme: ime,
+    etaSeconds: etaSeconds,
+    remainingCount: remainingCount,
+  );
+  final title = text.title;
+  final body = text.body;
 
   const androidDetails = AndroidNotificationDetails(
     _kForegroundChannelId,
