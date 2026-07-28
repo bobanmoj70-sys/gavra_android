@@ -129,8 +129,10 @@ if (-not (Test-Path $TailscaleExe)) {
 }
 
 try {
+    # Napomena: samo "/" ruta je potrebna — FastAPI app (osrm_proxy.py) sam
+    # interno rutira /osrm/{path} ka lokalnom OSRM kontejneru, pa je poseban
+    # /osrm Funnel unos redundantan i uklonjen je.
     & $TailscaleExe funnel --bg --set-path / http://127.0.0.1:8000 2>&1 | ForEach-Object { Log "  tailscale: $_" }
-    & $TailscaleExe funnel --bg --set-path /osrm http://127.0.0.1:8000/osrm 2>&1 | ForEach-Object { Log "  tailscale: $_" }
     Log "Tailscale funnel rute ponovo primenjene."
 } catch {
     Log "GREŠKA pri primeni Tailscale ruta: $($_.Exception.Message)"
