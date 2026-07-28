@@ -371,6 +371,18 @@ void main() async {
     debugPrint('⚠️ [main] Foreground service config greška: $e');
   }
 
+  // FIREBASE BACKGROUND HANDLER - MORA biti registrovan pre runApp() da bi
+  // iOS ispravno hvatao background/killed push notifikacije (posebno
+  // vozac_auto_start_tracking sa content-available: 1).
+  try {
+    debugPrint('🚀 [main] 4c. Firebase background handler start');
+    await _ensureFirebaseInitialized().timeout(const Duration(seconds: 5));
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    debugPrint('🚀 [main] 4c. Firebase background handler completed');
+  } catch (e) {
+    debugPrint('⚠️ [main] Firebase background handler greška: $e');
+  }
+
   // Jezik učitamo pre prvog crteža UI-ja da ne bi bilo kratkog SR flicker-a.
   try {
     await V3LocaleManager().loadLocaleFromStorage().timeout(const Duration(seconds: 3));
@@ -892,8 +904,8 @@ Future<void> _initIosFcmHandlers() async {
       sound: false,
     );
 
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
+    // onBackgroundMessage je registrovan u main() pre runApp() — ne sme se
+    // registrovati dva puta.
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final type = message.data['type']?.toString() ?? '';
       final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
@@ -1198,6 +1210,14 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
   }
 
   debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+
+  // Proveri GPS/dozvole pre pokretanja. Ako nedostaju, tracking će tiho
+  // pasti u start() — bolje je ranije detektovati i logovati.
+  final prereqStatus = await V3VozacLocationTrackingService.instance.checkLocationPrerequisites();
+  if (prereqStatus != V3LocationPrereqStatus.ok) {
+    debugPrint('[AUTO-START] Tracking nije pokrenut, prereq status=$prereqStatus');
+    return;
+  }
 
   // NAPOMENA: activateSlot (idempotentan upsert sa retry logikom) se sada radi
   // INTERNO u V3VozacLocationTrackingService.start() — JEDAN IZVOR ISTINE,

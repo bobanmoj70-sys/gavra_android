@@ -171,6 +171,8 @@ class GavraFcmService : FirebaseMessagingService() {
         val vreme = normalizeTimeToHHmm(data["vreme"])
         val datumIso = normalizeDateToIso(data["datum"])
 
+        android.util.Log.d(TAG, "writeDesiredTrackingState: raw vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso")
+
         if (vozacId.isEmpty() || grad.isEmpty() || vreme.isEmpty() || datumIso.isEmpty()) {
             android.util.Log.w(
                 TAG,
@@ -185,24 +187,26 @@ class GavraFcmService : FirebaseMessagingService() {
                 Context.MODE_PRIVATE,
             )
 
-            // started_at se resetuje SAMO kad je u pitanju novi/drugi vozač — ako je isti vozač
-            // samo dobija novi termin (drugi grad/vreme istog dana), watchdog timer (max trajanje)
-            // se ne restartuje, isto kao što je ranije radio main isolate `setActiveTermin`.
-            val previousVozacId = prefs.getString(KEY_ACTIVE_VOZAC_ID, "") ?: ""
+            // started_at se resetuje na svaki novi vozac_auto_start_tracking push — svaki push
+            // predstavlja novu sesiju trackinga. Ovo je usklađeno sa Dart stranom
+            // (writeDesiredStateFromPayload/startFromPayload uvek postavljaju _trackingStartedAt
+            // na DateTime.now()).
             val editor = prefs.edit()
                 .putString(KEY_ACTIVE_VOZAC_ID, vozacId)
                 .putString(KEY_ACTIVE_DATUM_ISO, datumIso)
                 .putString(KEY_ACTIVE_GRAD, grad)
                 .putString(KEY_ACTIVE_VREME, vreme)
-            if (previousVozacId != vozacId) {
-                editor.putLong(KEY_ACTIVE_STARTED_AT, System.currentTimeMillis())
-            }
+                .putLong(KEY_ACTIVE_STARTED_AT, System.currentTimeMillis())
             editor.apply()
 
             android.util.Log.d(
                 TAG,
-                "Željeno stanje upisano: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso (noviVozac=${previousVozacId != vozacId})",
+                "Željeno stanje upisano: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso",
             )
+
+            // Verifikacija upisa
+            val verifyVozacId = prefs.getString(KEY_ACTIVE_VOZAC_ID, "") ?: ""
+            android.util.Log.d(TAG, "Verifikacija Prefs: vozacId=$verifyVozacId")
 
             // Pokreni background service (foreground GPS servis) ako već ne radi — headless,
             // bez potrebe za MainActivity/main_engine. Ako već radi (prati prethodni termin),
@@ -213,6 +217,7 @@ class GavraFcmService : FirebaseMessagingService() {
                 applicationContext,
                 "id.flutter.flutter_background_service.BackgroundService",
             )
+            android.util.Log.d(TAG, "Pokrećem background service")
             ContextCompat.startForegroundService(applicationContext, serviceIntent)
         } catch (e: Exception) {
             android.util.Log.e(TAG, "writeDesiredTrackingState greška: ${e.message}", e)
