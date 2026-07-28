@@ -146,15 +146,35 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "no_active_slot" });
     }
 
+    // Odmah upiši trenutnu lokaciju vozača — pre bilo kakvih daljih provera.
+    // Ovo je kritično: čak i ako kasnije nešto padne (OSRM, putnici, itd.),
+    // lokacija se ažurira svakih 20s i realtime ETA može da se računa.
+    const isSlotOwner = String(activeSlot.vozac_v3_auth_id ?? "") === vozacId;
+    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
+    const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
+    const now = new Date().toISOString();
+    const immediateLocationPayload: Record<string, unknown> = {
+      ...currentWaypoints,
+      ...(isSlotOwner
+        ? { location: { lat: driverLat, lng: driverLng, timestamp: now, note: "compute_eta_immediate" } }
+        : {}),
+      location_by_vozac: {
+        ...currentLocationByVozac,
+        [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
+      },
+    };
+    const { error: immediateUpdateError } = await client
+      .from("v3_trenutna_dodela_slot")
+      .update({ waypoints_json: immediateLocationPayload })
+      .eq("id", activeSlot.id);
+    if (immediateUpdateError) {
+      console.warn(`[v3-compute-eta] immediate location update error: ${immediateUpdateError.message}`);
+    }
+
     // Ako je pozivajući vozač override na neki od putnika ovog slota (a nije
     // fizički vlasnik slota), i dalje mu vraćamo ETA za putnike koje on vozi —
     // provera "da li vozacId zapravo vozi nekog putnika iz ovog slota" se radi
     // dole kroz v3_trenutna_dodela (isti pattern kao auto-prepare fix).
-
-    const now = new Date().toISOString();
-
-    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
-    const isSlotOwner = String(activeSlot.vozac_v3_auth_id ?? "") === vozacId;
 
     const updateSlotWaypoints = async (newOptimizedOrder?: string[]) => {
       const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
@@ -238,17 +258,27 @@ Deno.serve(async (req) => {
         }))
         .filter((r) => r.termin_id.length > 0 && r.putnik_id.length > 0 && Number.isFinite(r.eta_seconds));
 
+      let finalOrder = existingOrder;
+
+      if (existingOrder.length === 0 && etaRows && etaRows.length > 0) {
+        finalOrder = etaRows.map((r) => r.putnik_id);
+      }
+      
+      if (finalOrder.length === 0) {
+         finalOrder = remaining.map((p) => p.putnik_id);
+      }
+
       const etaByPutnik = new Map<string, { termin_id: string; putnik_id: string; eta_seconds: number }>();
       for (const row of etaRows) {
         etaByPutnik.set(row.putnik_id, row);
       }
 
-      const orderedEtaRows = existingOrder.length > 0
+      const orderedEtaRows = finalOrder.length > 0
         ? [
-            ...existingOrder
+            ...finalOrder
               .map((pid) => etaByPutnik.get(pid))
               .filter((item): item is { termin_id: string; putnik_id: string; eta_seconds: number } => !!item),
-            ...etaRows.filter((row) => !existingOrder.includes(row.putnik_id)),
+            ...etaRows.filter((row) => !finalOrder.includes(row.putnik_id)),
           ]
         : etaRows;
 
@@ -258,7 +288,7 @@ Deno.serve(async (req) => {
         reason,
         updated: orderedEtaRows.length,
         eta_results: orderedEtaRows,
-        optimized_order: existingOrder,
+        optimized_order: finalOrder,
         ...extra,
       });
     };
@@ -438,7 +468,6 @@ Deno.serve(async (req) => {
       };
     }
 
-    const now = new Date().toISOString();
     const upsertRows: Array<{
       slot_id: string;
       termin_id: string;

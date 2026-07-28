@@ -62,11 +62,11 @@ function coordStr(lat: number, lng: number): string {
 }
 
 /// Pokušava da pronađe poslednju poznatu (dovoljno svežu) GPS poziciju
-/// vozača, tražeći kroz waypoints_json.location svih njegovih slotova za
-/// dati datum — bez obzira na grad/vreme — jer je to najbolja dostupna
-/// aproksimacija njegove trenutne lokacije u trenutku kad cron radi
-/// (edge funkcija nema direktan pristup live GPS-u van onog što je vozačev
-/// telefon već upisao preko v3-compute-eta).
+/// vozača, tražeći kroz waypoints_json.location_by_vozac[vozacId] svih
+/// njegovih slotova za dati datum — bez obzira na grad/vreme — jer je to
+/// najbolja dostupna aproksimacija njegove trenutne lokacije u trenutku kad
+/// cron radi (edge funkcija nema direktan pristup live GPS-u van onog što je
+/// vozačev telefon već upisao preko v3-compute-eta).
 async function findDriverLastLocation(
   client: ReturnType<typeof createClient>,
   vozacId: string,
@@ -83,7 +83,10 @@ async function findDriverLastLocation(
   let best: { lat: number; lng: number; timestamp: number } | null = null;
 
   for (const row of rows) {
-    const loc = (row.waypoints_json as Record<string, unknown> | null)?.["location"] as
+    const locationByVozac = (row.waypoints_json as Record<string, unknown> | null)?.["location_by_vozac"] as
+      | Record<string, unknown>
+      | undefined;
+    const loc = locationByVozac?.[vozacId] as
       | { lat?: unknown; lng?: unknown; timestamp?: unknown }
       | undefined;
     if (!loc) continue;
@@ -608,10 +611,13 @@ Deno.serve(async (req) => {
           }
 
           if (osrmErrorDetails) {
-            slotWaypoints["osrm_error_details"] = osrmErrorDetails;
-          } else {
-            delete slotWaypoints["osrm_error_details"];
-          }
+              slotWaypoints["osrm_error_details"] = osrmErrorDetails;
+              if (optimizedOrder.length === 0) {
+                optimizedOrder = passengers.map((p) => p.putnik_id);
+              }
+            } else {
+              delete slotWaypoints["osrm_error_details"];
+            }
         }
       } else {
         const existingOrder = slotWaypoints["optimized_order"];

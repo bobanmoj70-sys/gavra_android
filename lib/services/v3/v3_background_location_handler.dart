@@ -160,8 +160,9 @@ Future<void> _bgEnsureSupabaseClientReady() async {
 /// šta treba da se promeni — poziva se odmah pri startu servisa i zatim na
 /// svakih 20s (isti tick koji šalje i GPS lokaciju).
 Future<void> _bgSyncDesiredStateFromPrefs() async {
-  debugPrint('[BG] _bgSyncDesiredStateFromPrefs() početak');
+  debugPrint('[BG] _bgSyncDesiredStateFromPrefs() poÄetak');
   final prefs = await SharedPreferences.getInstance();
+  await prefs.reload();
   final vozacId = (prefs.getString(v3KeyVozacId) ?? '').trim();
   final datumIso = (prefs.getString(v3KeyDatumIso) ?? '').trim();
   final grad = (prefs.getString(v3KeyGrad) ?? '').trim();
@@ -433,6 +434,9 @@ Future<void> _bgSendLocation() async {
     );
     debugPrint('[BG] Pozicija dobijena: ${position.latitude}, ${position.longitude}');
 
+    // Prvo direktno upiši lokaciju u slot — ne čekaj v3-compute-eta.
+    await _bgUpdateSlotLocation(lat: position.latitude, lng: position.longitude);
+
     debugPrint('[BG] Pozivam v3-compute-eta...');
     final etaResponse = await client.functions.invoke(
       'v3-compute-eta',
@@ -494,6 +498,63 @@ Future<void> _bgSendLocation() async {
     }
   } catch (e) {
     debugPrint('[BG] Greška pri slanju lokacije: $e');
+  }
+}
+
+/// Direktno ažurira waypoints_json.location_by_vozac za aktivnog vozača u
+/// aktivnom slotu sa trenutnom GPS pozicijom. Koristi per-vozač ključ da bi
+/// se izbegao race condition kada više vozača deli isti slot.
+Future<void> _bgUpdateSlotLocation({
+  required double lat,
+  required double lng,
+}) async {
+  if (!_bgCanSendLocation) {
+    debugPrint('[BG] _bgUpdateSlotLocation preskačem: _bgCanSendLocation=false');
+    return;
+  }
+  final client = _bgSupabaseClient;
+  if (client == null) {
+    debugPrint('[BG] _bgUpdateSlotLocation preskačem: Supabase client nije spreman');
+    return;
+  }
+
+  try {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final rows = await client
+        .from('v3_trenutna_dodela_slot')
+        .select('id, waypoints_json')
+        .eq('datum', _bgDatumIso)
+        .eq('grad', _bgGrad)
+        .eq('vreme', _bgVreme)
+        .limit(1);
+
+    final row = (rows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
+    if (row == null) {
+      debugPrint('[BG] _bgUpdateSlotLocation: slot nije pronađen');
+      return;
+    }
+
+    final existing = row['waypoints_json'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final locationByVozac = (existing['location_by_vozac'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final updated = <String, dynamic>{
+      ...existing,
+      'location_by_vozac': <String, dynamic>{
+        ...locationByVozac,
+        _bgVozacId!: <String, dynamic>{
+          'lat': lat,
+          'lng': lng,
+          'timestamp': nowIso,
+          'note': 'background_gps_tick',
+        },
+      },
+    };
+
+    await client
+        .from('v3_trenutna_dodela_slot')
+        .update(<String, dynamic>{'waypoints_json': updated}).eq('id', row['id']);
+    debugPrint('[BG] _bgUpdateSlotLocation: lokacija ažurirana $lat, $lng za vozača $_bgVozacId');
+  } catch (e) {
+    debugPrint('[BG] _bgUpdateSlotLocation greška: $e');
   }
 }
 

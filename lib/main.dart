@@ -348,24 +348,7 @@ void main() async {
   // FOREGROUND SERVICE - konfiguracija za background GPS tracking
   try {
     debugPrint('🚀 [main] 4b. Foreground service config start');
-    final service = FlutterBackgroundService();
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        onStart: onBackgroundServiceStart,
-        autoStart: false,
-        isForegroundMode: true,
-        notificationChannelId: 'gavra_gps_tracking',
-        initialNotificationTitle: 'GPS Tracking',
-        initialNotificationContent: 'Praćenje lokacije aktivno',
-        foregroundServiceNotificationId: 888,
-        foregroundServiceTypes: [AndroidForegroundType.location],
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: false,
-        onForeground: null,
-        onBackground: (_) => true,
-      ),
-    );
+    await configureBackgroundService();
     debugPrint('🚀 [main] 4b. Foreground service config completed');
   } catch (e) {
     debugPrint('⚠️ [main] Foreground service config greška: $e');
@@ -833,6 +816,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       // V3VozacLocationTrackingService.start() (jedan izvor istine, deljen sa
       // Android background isolate-om preko v3_slot_activation.dart) — nema
       // potrebe da se ovde poziva odvojeno.
+
+      // Kada je app killed, configure() nije pozvan u main(). Servis MORA biti
+      // konfigurisan pre startService(), inače flutter_background_service ne zna
+      // koji onStart handler da izvrši.
+      try {
+        debugPrint('[FCM][BG] Konfigurišem background service...');
+        await configureBackgroundService();
+        debugPrint('[FCM][BG] Background service konfigurisan');
+      } catch (e) {
+        debugPrint('⚠️ [FCM][BG] Background service config greška: $e');
+      }
+
       await V3VozacLocationTrackingService.instance.startFromPayload(
         vozacId: vozacId,
         datumIso: datumIso,
@@ -1212,7 +1207,7 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
   debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
   // Proveri GPS/dozvole pre pokretanja. Ako nedostaju, tracking će tiho
-  // pasti u start() — bolje je ranije detektovati i logovati.
+  // pasti in start() — bolje je ranije detektovati i logovati.
   final prereqStatus = await V3VozacLocationTrackingService.instance.checkLocationPrerequisites();
   if (prereqStatus != V3LocationPrereqStatus.ok) {
     debugPrint('[AUTO-START] Tracking nije pokrenut, prereq status=$prereqStatus');
@@ -1660,4 +1655,31 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       },
     );
   }
+}
+
+// ============================================================================
+// Background service konfiguracija — izdvojena jer se mora pozvati i u main()
+// i u _firebaseMessagingBackgroundHandler (killed-app scenario). Bez ovoga,
+// flutter_background_service ne zna koji onStart handler da izvrši kada ga
+// GavraFcmService.kt pokrene iz pozadine.
+// ============================================================================
+Future<void> configureBackgroundService() async {
+  final service = FlutterBackgroundService();
+  await service.configure(
+    androidConfiguration: AndroidConfiguration(
+      onStart: onBackgroundServiceStart,
+      autoStart: false,
+      isForegroundMode: true,
+      notificationChannelId: 'gavra_gps_tracking',
+      initialNotificationTitle: 'GPS Tracking',
+      initialNotificationContent: 'Praćenje lokacije aktivno',
+      foregroundServiceNotificationId: 888,
+      foregroundServiceTypes: [AndroidForegroundType.location],
+    ),
+    iosConfiguration: IosConfiguration(
+      autoStart: false,
+      onForeground: null,
+      onBackground: (_) => true,
+    ),
+  );
 }

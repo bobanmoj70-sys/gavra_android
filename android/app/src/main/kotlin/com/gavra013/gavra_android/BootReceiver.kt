@@ -26,5 +26,8 @@ class BootReceiver : BroadcastReceiver() {
             "id.flutter.flutter_background_service.BackgroundService",
         )
         ContextCompat.startForegroundService(context, serviceIntent)
+
+        // Osiguraj da watchdog radi i posle reboot-a
+        TrackingWatchdogWorker.schedule(context)
     }
 }

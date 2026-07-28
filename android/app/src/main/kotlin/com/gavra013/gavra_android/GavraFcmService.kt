@@ -197,7 +197,7 @@ class GavraFcmService : FirebaseMessagingService() {
                 .putString(KEY_ACTIVE_GRAD, grad)
                 .putString(KEY_ACTIVE_VREME, vreme)
                 .putLong(KEY_ACTIVE_STARTED_AT, System.currentTimeMillis())
-            editor.apply()
+            editor.commit() // sinhron upis da bi background servis odmah video stanje
 
             android.util.Log.d(
                 TAG,
@@ -219,6 +219,9 @@ class GavraFcmService : FirebaseMessagingService() {
             )
             android.util.Log.d(TAG, "Pokrećem background service")
             ContextCompat.startForegroundService(applicationContext, serviceIntent)
+
+            // Osiguraj periodično ponovno pokretanje servisa ako ga OS ubije
+            TrackingWatchdogWorker.schedule(applicationContext)
         } catch (e: Exception) {
             android.util.Log.e(TAG, "writeDesiredTrackingState greška: ${e.message}", e)
         }

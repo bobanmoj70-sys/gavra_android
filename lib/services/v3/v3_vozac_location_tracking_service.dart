@@ -552,6 +552,58 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     return V3LocationPrereqStatus.ok;
   }
 
+  /// Direktno ažurira waypoints_json.location_by_vozac za aktivnog vozača u
+  /// aktivnom slotu sa trenutnom GPS pozicijom. Koristi per-vozač ključ da bi
+  /// se izbegao race condition kada više vozača deli isti slot (npr. override
+  /// vozač i fizički vlasnik slota).
+  Future<void> _updateSlotLocation({
+    required double lat,
+    required double lng,
+  }) async {
+    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) {
+      return;
+    }
+    try {
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final rows = await supabase
+          .from('v3_trenutna_dodela_slot')
+          .select('id, waypoints_json')
+          .eq('datum', _activeDatumIso)
+          .eq('grad', _activeGrad)
+          .eq('vreme', _activeVreme)
+          .limit(1);
+
+      final row = (rows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
+      if (row == null) {
+        debugPrint('[V3VozacLocationTrackingService] _updateSlotLocation: slot nije pronađen');
+        return;
+      }
+
+      final existing = row['waypoints_json'] as Map<String, dynamic>? ?? <String, dynamic>{};
+      final locationByVozac = (existing['location_by_vozac'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      final updated = <String, dynamic>{
+        ...existing,
+        'location_by_vozac': <String, dynamic>{
+          ...locationByVozac,
+          _activeVozacId: <String, dynamic>{
+            'lat': lat,
+            'lng': lng,
+            'timestamp': nowIso,
+            'note': 'foreground_gps_tick',
+          },
+        },
+      };
+
+      await supabase
+          .from('v3_trenutna_dodela_slot')
+          .update(<String, dynamic>{'waypoints_json': updated}).eq('id', row['id']);
+      debugPrint(
+          '[V3VozacLocationTrackingService] _updateSlotLocation: lokacija ažurirana $lat, $lng za vozača $_activeVozacId');
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] _updateSlotLocation greška: $e');
+    }
+  }
+
   Future<({Map<String, int> etaMap, List<String> order})> computeEta({
     required String vozacId,
     required double lat,
@@ -561,6 +613,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     String? datumIso,
   }) async {
     final supabase = Supabase.instance.client;
+
+    // Prvo direktno upiši lokaciju u slot — ne čekaj v3-compute-eta.
+    await _updateSlotLocation(lat: lat, lng: lng);
+
     unawaited(_pozicijaBroadcaster.broadcast(
       client: supabase,
       vozacId: vozacId,
