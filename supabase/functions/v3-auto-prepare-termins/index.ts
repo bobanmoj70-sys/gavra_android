@@ -569,6 +569,8 @@ Deno.serve(async (req) => {
             `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
             `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
 
+          let osrmErrorDetails: any = null;
+
           try {
             const osrmResponse = await fetchWithRetry(osrmUrl);
             const osrmData = await osrmResponse.json();
@@ -592,10 +594,23 @@ Deno.serve(async (req) => {
                   const entry = originalIndexToEntry[pw.inputIndex];
                   if (entry) optimizedOrder.push(entry.putnik_id);
                 }
+              } else {
+                osrmErrorDetails = { reason: "waypoints_count_mismatch", expected: expectedCount, got: rawWaypoints.length };
+                console.warn(`[v3-auto-prepare-termins] OSRM waypoints count mismatch: expected ${expectedCount}, got ${rawWaypoints.length}`);
               }
+            } else {
+                osrmErrorDetails = { reason: "osrm_not_ok", data: osrmData };
+                console.warn(`[v3-auto-prepare-termins] OSRM response not OK or format unexpected:`, osrmData);
             }
           } catch (e) {
+            osrmErrorDetails = { reason: "fetch_error", error: e instanceof Error ? e.message : String(e) };
             console.error(`[v3-auto-prepare-termins] OSRM error: ${e instanceof Error ? e.message : String(e)}`);
+          }
+
+          if (osrmErrorDetails) {
+            slotWaypoints["osrm_error_details"] = osrmErrorDetails;
+          } else {
+            delete slotWaypoints["osrm_error_details"];
           }
         }
       } else {
