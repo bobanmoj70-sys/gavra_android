@@ -196,7 +196,26 @@ Deno.serve(async (req) => {
       extra: Record<string, unknown> = {},
     ): Promise<Response> => {
       // U slucaju fallback-a takodje azuriramo plain lokaciju, ali se oslanjamo na postojeci order
-      await updateSlotWaypoints();
+      const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
+      const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
+      
+      const payload: any = {
+        ...currentWaypoints,
+        ...(isSlotOwner
+          ? { location: { lat: driverLat, lng: driverLng, timestamp: now }, note: `fallback: ${reason}` }
+          : {}),
+        location_by_vozac: {
+          ...currentLocationByVozac,
+          [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
+        },
+        compute_eta_error: reason,
+        compute_eta_extra: extra,
+      };
+
+      const { error: slotUpdateError } = await client
+        .from("v3_trenutna_dodela_slot")
+        .update({ waypoints_json: payload })
+        .eq("id", activeSlot.id);
       
       const waypointsJson = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
       const orderByVozacRaw = (waypointsJson["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
@@ -287,6 +306,7 @@ Deno.serve(async (req) => {
     );
 
     if (rawPassengers.length === 0) {
+      console.warn(`[v3-compute-eta] no_passengers_for_this_vozac. vozacId=${vozacId}. Map entries:`, Array.from(vozacByTermin.entries()));
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
       await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_passengers_for_this_vozac", updated: 0 });
