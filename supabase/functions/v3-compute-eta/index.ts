@@ -151,10 +151,53 @@ Deno.serve(async (req) => {
     // provera "da li vozacId zapravo vozi nekog putnika iz ovog slota" se radi
     // dole kroz v3_trenutna_dodela (isti pattern kao auto-prepare fix).
 
+    const now = new Date().toISOString();
+
+    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
+    const isSlotOwner = String(activeSlot.vozac_v3_auth_id ?? "") === vozacId;
+
+    const updateSlotWaypoints = async (newOptimizedOrder?: string[]) => {
+      const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
+      const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
+      
+      const payload: any = {
+        ...currentWaypoints,
+        ...(isSlotOwner
+          ? { location: { lat: driverLat, lng: driverLng, timestamp: now } }
+          : {}),
+        location_by_vozac: {
+          ...currentLocationByVozac,
+          [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
+        },
+      };
+
+      if (newOptimizedOrder !== undefined) {
+         if (isSlotOwner) {
+            payload.optimized_order = newOptimizedOrder;
+         }
+         payload.optimized_order_by_vozac = {
+            ...currentOrderByVozac,
+            [vozacId]: newOptimizedOrder,
+         };
+      }
+
+      const { error: slotUpdateError } = await client
+        .from("v3_trenutna_dodela_slot")
+        .update({ waypoints_json: payload })
+        .eq("id", activeSlot.id);
+        
+      if (slotUpdateError) {
+        console.warn(`[v3-compute-eta] slot waypoints update error: ${slotUpdateError.message}`);
+      }
+    };
+
     const buildOsrmFallbackResponse = async (
       reason: string,
       extra: Record<string, unknown> = {},
     ): Promise<Response> => {
+      // U slucaju fallback-a takodje azuriramo plain lokaciju, ali se oslanjamo na postojeci order
+      await updateSlotWaypoints();
+      
       const waypointsJson = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
       const orderByVozacRaw = (waypointsJson["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
       const existingOrderRaw = orderByVozacRaw[vozacId];
@@ -215,6 +258,7 @@ Deno.serve(async (req) => {
 
     if (rawSlotPassengers.length === 0) {
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
+      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_passengers_in_slot", updated: 0 });
     }
 
@@ -230,6 +274,7 @@ Deno.serve(async (req) => {
       .in("termin_id", slotTerminIds);
 
     if (dodelaError) {
+      await updateSlotWaypoints();
       return json(200, { ok: false, reason: "dodela_lookup_error", warning: dodelaError.message });
     }
 
@@ -243,6 +288,7 @@ Deno.serve(async (req) => {
 
     if (rawPassengers.length === 0) {
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
+      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_passengers_for_this_vozac", updated: 0 });
     }
 
@@ -268,6 +314,7 @@ Deno.serve(async (req) => {
 
     if (remaining.length === 0) {
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
+      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_remaining_passengers", updated: 0 });
     }
 
@@ -410,55 +457,26 @@ Deno.serve(async (req) => {
     }
 
     if (upsertRows.length === 0) {
+      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_eta_rows", updated: 0 });
     }
 
-    // 6. Upsert v3_eta_results — użyj slot_id zamiast termin_id za conflict resolution
+    // 6. Upsert v3_eta_results — užyj slot_id zamiast termin_id za conflict resolution
     // To sprečava problem kada isti putnik_id bude u više slotova — svaki slot ima svoju ETA
     const { error: upsertError } = await client
       .from("v3_eta_results")
       .upsert(upsertRows, { onConflict: "slot_id,putnik_id" });
 
     if (upsertError) {
+      await updateSlotWaypoints();
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
     }
 
     // 7. Update slot waypoints_json — čuvaj passengers[], dodaj po-vozacu location + optimized_order
-    // (isti fizički slot može imati više vozača sa različitim putnicima — override po putniku,
-    // zato NE prepisujemo global location/optimized_order za sve, već ih čuvamo po vozac_id).
-    // Flat "location"/"optimized_order" ključevi se ažuriraju SAMO kad je pozivajući vozač
-    // fizički vlasnik slota — zbog starog UI fallback-a (_getOsrmOrderFromSlot) koji čita
-    // te flat ključeve filtrirano po vozac_v3_auth_id na samom slotu.
     const optimizedOrder = upsertRows.map((r) => r.putnik_id);
-    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
-    const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
-    const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
-    const isSlotOwner = String(activeSlot.vozac_v3_auth_id ?? "") === vozacId;
-    const updatedWaypoints = {
-      ...currentWaypoints,
-      ...(isSlotOwner
-        ? { location: { lat: driverLat, lng: driverLng, timestamp: now }, optimized_order: optimizedOrder }
-        : {}),
-      optimized_order_by_vozac: {
-        ...currentOrderByVozac,
-        [vozacId]: optimizedOrder,
-      },
-      location_by_vozac: {
-        ...currentLocationByVozac,
-        [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
-      },
-    };
-    const { error: slotUpdateError } = await client
-      .from("v3_trenutna_dodela_slot")
-      .update({ waypoints_json: updatedWaypoints })
-      .eq("id", activeSlot.id);
-
-    if (slotUpdateError) {
-      console.warn(`[v3-compute-eta] slot waypoints update error: ${slotUpdateError.message}`);
-    }
+    await updateSlotWaypoints(optimizedOrder);
 
     console.log(`[v3-compute-eta] ✅ vozac=${vozacId.substring(0, 8)} updated=${upsertRows.length} putnika`);
-
     return json(200, {
       ok: true,
       updated: upsertRows.length,
