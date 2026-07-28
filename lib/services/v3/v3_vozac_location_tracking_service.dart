@@ -11,7 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_time_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_slot_activation.dart';
@@ -54,14 +53,16 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// koristimo Geolocator position stream sa allowsBackgroundLocationUpdates,
   /// koji iOS budi na promenu lokacije čak i kad je app suspendovana. Stream
   /// SAMO osvežava poslednju poznatu poziciju (jeftino, bez mreže) — jedini
-  /// izvor istine za "kada se šalje GPS/ETA" je `_iosMainTimer` ispod, isti
-  /// model kao Android-ov `Timer.periodic(20s)` u background isolate-u. Ovo
-  /// eliminiše zavisnost od toga da li GPS stream emituje evente dok vozač
-  /// stoji (nije garantovano) — tajmer garantuje tačan tick svakih 20s.
+  /// izvor istine za "kada se šalje GPS/ETA" je `_iosTicker` ispod
+  /// (`V3SelfReschedulingTicker`, isti model kao Android-ov background
+  /// isolate tajmer — v3_tracking_config.dart). Ovo eliminiše zavisnost od
+  /// toga da li GPS stream emituje evente dok vozač stoji (nije
+  /// garantovano) — tajmer garantuje tačan tick svakih
+  /// `v3TrackingTickInterval`.
   StreamSubscription<Position>? _iosPositionSub;
-  bool _iosInFlight = false;
-  Timer? _iosMainTimer;
-  static const Duration _iosTickInterval = Duration(seconds: 20);
+  // Interval je JEDAN IZVOR ISTINE deljen sa Android background isolate-om —
+  // vidi `v3TrackingTickInterval` u v3_tracking_config.dart.
+  V3SelfReschedulingTicker? _iosTicker;
   FlutterLocalNotificationsPlugin? _iosNotificationsPlugin;
   bool _iosNotificationsInitialized = false;
 
@@ -74,15 +75,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   static const String _kStorageSupabaseAnonKey = 'bg_tracking_supabase_anon_key';
 
   // JEDAN IZVOR ISTINE za "šta bi background tracking trebalo da radi" —
-  // obična SharedPreferences (ne secure storage), jer isti fajl piše i
-  // GavraFcmService.kt (native, cold-start bez main isolate-a). Ključevi
-  // MORAJU biti identični sa `_kKey*` konstantama u
-  // v3_background_location_handler.dart i `KEY_ACTIVE_*` u GavraFcmService.kt.
-  static const String _kKeyVozacId = 'bg_active_vozac_id';
-  static const String _kKeyDatumIso = 'bg_active_datum_iso';
-  static const String _kKeyGrad = 'bg_active_grad';
-  static const String _kKeyVreme = 'bg_active_vreme';
-  static const String _kKeyStartedAt = 'bg_active_started_at';
+  // ključevi (`v3Key*`) su sada deljeni sa Android background isolate-om
+  // preko v3_tracking_config.dart (ranije duplirano ovde i u
+  // v3_background_location_handler.dart). MORAJU ostati identični sa
+  // `KEY_ACTIVE_*` u GavraFcmService.kt (Kotlin ne može da uveze Dart fajl).
 
   /// Optimizovani redosled putnika (deljen između ekrana)
   final List<String> _optimizedPutnikIds = [];
@@ -96,44 +92,17 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   // 🗺️ Realtime broadcast kanal — samo poslednja pozicija vozača, bez čuvanja
   // u bazi. Koristi ga admin ekran da uživo prikaže marker na mapi (besplatno,
   // preko postojećeg Supabase Realtime broadcast-a, nema dodatnih troškova).
-  RealtimeChannel? _pozicijaChannel;
-  String? _pozicijaChannelVozacId;
+  // JEDAN IZVOR ISTINE za broadcast poslednje GPS pozicije (bez čuvanja u
+  // bazi) — deljeno sa Android background isolate-om preko
+  // `V3PozicijaBroadcaster` u v3_tracking_config.dart (ranije duplirana
+  // logika ovde i u `_bgBroadcastPozicija` u
+  // v3_background_location_handler.dart).
+  final V3PozicijaBroadcaster _pozicijaBroadcaster = V3PozicijaBroadcaster();
 
-  static String pozicijaChannelName(String vozacId) => 'v3-vozac-pozicija-$vozacId';
-
-  Future<void> _broadcastPozicija({
-    required String vozacId,
-    required double lat,
-    required double lng,
-  }) async {
-    try {
-      final supabase = Supabase.instance.client;
-      if (_pozicijaChannel == null || _pozicijaChannelVozacId != vozacId) {
-        final old = _pozicijaChannel;
-        if (old != null) {
-          unawaited(supabase.removeChannel(old));
-        }
-        final channel = supabase.channel(pozicijaChannelName(vozacId));
-        _pozicijaChannel = channel;
-        _pozicijaChannelVozacId = vozacId;
-        channel.subscribe();
-        // Kratka pauza da se kanal poveže pre prvog slanja poruke.
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-      await _pozicijaChannel?.sendBroadcastMessage(
-        event: 'pozicija',
-        payload: <String, dynamic>{
-          'lat': lat,
-          'lng': lng,
-          'ts': DateTime.now().toIso8601String(),
-        },
-      );
-    } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] broadcast pozicija greška: $e');
-      _pozicijaChannel = null;
-      _pozicijaChannelVozacId = null;
-    }
-  }
+  /// Zadržano radi kompatibilnosti sa postojećim pozivaocima
+  /// (`v3_admin_vozac_pozicija_screen.dart`) — delegira na deljenu
+  /// implementaciju kanala.
+  static String pozicijaChannelName(String vozacId) => V3PozicijaBroadcaster.channelName(vozacId);
 
   bool get isRunning => _isRunning;
 
@@ -177,13 +146,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kKeyVozacId, vozacId);
-      await prefs.setString(_kKeyDatumIso, _activeDatumIso);
-      await prefs.setString(_kKeyGrad, _activeGrad);
-      await prefs.setString(_kKeyVreme, _activeVreme);
+      await prefs.setString(v3KeyVozacId, vozacId);
+      await prefs.setString(v3KeyDatumIso, _activeDatumIso);
+      await prefs.setString(v3KeyGrad, _activeGrad);
+      await prefs.setString(v3KeyVreme, _activeVreme);
       final startedAt = _trackingStartedAt;
       if (startedAt != null) {
-        await prefs.setInt(_kKeyStartedAt, startedAt.millisecondsSinceEpoch);
+        await prefs.setInt(v3KeyStartedAt, startedAt.millisecondsSinceEpoch);
       }
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] Greška pri upisu željenog stanja: $e');
@@ -193,11 +162,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   Future<void> _clearDesiredState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_kKeyVozacId);
-      await prefs.remove(_kKeyDatumIso);
-      await prefs.remove(_kKeyGrad);
-      await prefs.remove(_kKeyVreme);
-      await prefs.remove(_kKeyStartedAt);
+      await prefs.remove(v3KeyVozacId);
+      await prefs.remove(v3KeyDatumIso);
+      await prefs.remove(v3KeyGrad);
+      await prefs.remove(v3KeyVreme);
+      await prefs.remove(v3KeyStartedAt);
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService] Greška pri brisanju željenog stanja: $e');
     }
@@ -254,53 +223,18 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
-  /// Proverava da li su svi putnici u aktivnom slotu završeni
-  /// (pokupljeni ili otkazani). Vraća false ako nema putnika.
-  Future<bool> _allPassengersCompleted() async {
-    if (_activeDatumIso.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty) {
-      return false;
-    }
-
-    try {
-      final slotRows = await Supabase.instance.client
-          .from('v3_trenutna_dodela_slot')
-          .select('id, waypoints_json')
-          .eq('datum', _activeDatumIso)
-          .eq('grad', _activeGrad)
-          .eq('vreme', _activeVreme);
-
-      final activeSlot = (slotRows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
-      if (activeSlot == null) return false;
-
-      final waypointsJson = activeSlot['waypoints_json'] as Map<String, dynamic>?;
-      final passengers = waypointsJson?['passengers'] as List<dynamic>?;
-      if (passengers == null || passengers.isEmpty) return false;
-
-      final slotTerminIds = passengers
-          .whereType<Map<String, dynamic>>()
-          .map((p) => p['termin_id']?.toString())
-          .where((id) => id != null && id.isNotEmpty)
-          .toSet();
-
-      if (slotTerminIds.isEmpty) return false;
-
-      final rows = await Supabase.instance.client
-          .from('v3_operativna_nedelja')
-          .select('id, pokupljen_at, otkazano_at')
-          .inFilter('id', slotTerminIds.toList());
-
-      if (rows.isEmpty) return false;
-
-      for (final row in rows) {
-        final pokupljen = V3StatusPolicy.isTimestampSet(row['pokupljen_at']);
-        final otkazan = V3StatusPolicy.isTimestampSet(row['otkazano_at']);
-        if (!pokupljen && !otkazan) return false;
-      }
-      return true;
-    } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] Greška pri proveri putnika: $e');
-      return false;
-    }
+  /// Proverava da li su svi putnici u aktivnom slotu završeni (pokupljeni ili
+  /// otkazani). Delegira na `v3AllPassengersCompleted` (JEDAN IZVOR ISTINE,
+  /// deljen sa Android background isolate-om) — ranije duplirana upitna
+  /// logika u v3_tracking_config.dart.
+  Future<bool> _allPassengersCompleted() {
+    return v3AllPassengersCompleted(
+      client: Supabase.instance.client,
+      datumIso: _activeDatumIso,
+      grad: _activeGrad,
+      vreme: _activeVreme,
+      logTag: '[V3VozacLocationTrackingService]',
+    );
   }
 
   Future<void> start({required String vozacId}) async {
@@ -400,9 +334,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   Future<void> stop() async {
     final vozacIdToClean = _activeVozacId;
-    final datumIsoToClean = _activeDatumIso;
-    final gradToClean = _activeGrad;
-    final vremeToClean = _activeVreme;
     _activeVozacId = '';
     _activeDatumIso = '';
     _activeGrad = '';
@@ -414,12 +345,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _optimizedPutnikIds.clear();
     _etaSecondsCache.clear();
 
-    final channelToRemove = _pozicijaChannel;
-    _pozicijaChannel = null;
-    _pozicijaChannelVozacId = null;
-    if (channelToRemove != null) {
-      unawaited(Supabase.instance.client.removeChannel(channelToRemove));
-    }
+    final channelToRemove = _pozicijaBroadcaster;
+    channelToRemove.dispose(Supabase.instance.client);
 
     unawaited(_clearDesiredState());
     unawaited(_secureStorage.delete(key: 'vozac_tracking_started_at'));
@@ -430,8 +357,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     await _iosPositionSub?.cancel();
     _iosPositionSub = null;
-    _iosMainTimer?.cancel();
-    _iosMainTimer = null;
+    _iosTicker?.cancel();
+    _iosTicker = null;
     if (Platform.isIOS) {
       unawaited(_iosCancelTrackingNotification());
     }
@@ -498,8 +425,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     // telefona (posebno Huawei/Xiaomi/Samsung sa agresivnim "app launch
     // management") ubijaju flutter_background_service headless isolate čim
     // app ode u pozadinu — GPS foreground servis se nikad ne pokrene, pa
-    // tick (Timer.periodic 20s) koji šalje poziciju i računa ETA nikad ne
-    // radi, iako su same lokacijske dozvole ispravno odobrene (potvrđeno
+    // tick (svakih `v3TrackingTickInterval`, preko `V3SelfReschedulingTicker`)
+    // koji šalje poziciju i računa ETA nikad ne radi, iako su same
+    // lokacijske dozvole ispravno odobrene (potvrđeno
     // preko `dumpsys appops`/`dumpsys deviceidle whitelist` na test uređaju).
     // Ne blokiramo start() ako korisnik odbije ovaj dijalog (best-effort) —
     // samo pokušavamo da povećamo šansu da OS ne ubije servis.
@@ -526,7 +454,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     String? datumIso,
   }) async {
     final supabase = Supabase.instance.client;
-    unawaited(_broadcastPozicija(vozacId: vozacId, lat: lat, lng: lng));
+    unawaited(_pozicijaBroadcaster.broadcast(
+      client: supabase,
+      vozacId: vozacId,
+      lat: lat,
+      lng: lng,
+      logTag: '[V3VozacLocationTrackingService]',
+    ));
     final response = await supabase.functions.invoke(
       'v3-compute-eta',
       body: <String, dynamic>{
@@ -537,7 +471,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         'vreme': vreme,
         if (datumIso != null && datumIso.isNotEmpty) 'datum_iso': datumIso,
       },
-    );
+    )
+        // Zaštita od beskonačnog čekanja — `functions_client` nema sopstveni
+        // timeout, pa na lošoj mreži poziv ume da "visi" bez kraja (vidi
+        // napomenu uz `v3ComputeEtaNetworkTimeout` u v3_tracking_config.dart).
+        .timeout(v3ComputeEtaNetworkTimeout);
     debugPrint('[V3VozacLocationTrackingService] computeEta response: ${response.data}');
 
     final etaMap = <String, int>{};
@@ -605,11 +543,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
         try {
           final prefs = await SharedPreferences.getInstance();
-          final vozacId = (prefs.getString(_kKeyVozacId) ?? '').trim();
-          final datumIso = (prefs.getString(_kKeyDatumIso) ?? '').trim();
-          final grad = (prefs.getString(_kKeyGrad) ?? '').trim();
-          final vreme = (prefs.getString(_kKeyVreme) ?? '').trim();
-          final startedAtMs = prefs.getInt(_kKeyStartedAt) ?? 0;
+          final vozacId = (prefs.getString(v3KeyVozacId) ?? '').trim();
+          final datumIso = (prefs.getString(v3KeyDatumIso) ?? '').trim();
+          final grad = (prefs.getString(v3KeyGrad) ?? '').trim();
+          final vreme = (prefs.getString(v3KeyVreme) ?? '').trim();
+          final startedAtMs = prefs.getInt(v3KeyStartedAt) ?? 0;
           if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return;
 
           _activeVozacId = vozacId;
@@ -634,7 +572,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _trackingStartedAt = startedAt;
 
       // Ako je vreme trajanja već isteklo, samo očisti sesiju umesto restarta.
-      if (DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
+      if (v3TrackingTimedOut(startedAt)) {
         debugPrint(
             '[V3VozacLocationTrackingService] stop reason=timeout source=restore_session duration_minutes=${v3TrackingMaxDuration.inMinutes}');
         await stop();
@@ -670,10 +608,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   ///
   /// distanceFilter: 0 znači da GPS hardware/OS ne filtrira update-e po
   /// pomaku — stream samo osvežava _lastSentPosition (jeftino). Stvarno
-  /// slanje GPS-a/ETA obračun ide isključivo preko `_iosMainTimer`
-  /// (Timer.periodic 20s) u `_iosTick()` — isti "jedan izvor istine" model
-  /// kao Android-ov background isolate tajmer, garantovano na svakih 20s
-  /// bez obzira da li stream u međuvremenu emituje evente.
+  /// slanje GPS-a/ETA obračun ide isključivo preko `_iosTicker`
+  /// (`V3SelfReschedulingTicker`) u `_iosTick()` — isti "jedan izvor istine"
+  /// model kao Android-ov background isolate tajmer, garantovano na svakih
+  /// `v3TrackingTickInterval` bez obzira da li stream u međuvremenu emituje
+  /// evente.
   Future<void> _startIosTracking() async {
     await _iosPositionSub?.cancel();
     _isRunning = true;
@@ -688,7 +627,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     );
 
     // Stream SAMO osvežava _lastSentPosition (jeftino) — ne pokreće mrežne
-    // pozive. Jedini okidač za computeEta()/GPS slanje je _iosMainTimer ispod.
+    // pozive. Jedini okidač za computeEta()/GPS slanje je _iosTicker ispod.
     _iosPositionSub = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (position) {
         _lastSentPosition = position;
@@ -698,22 +637,20 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       },
     );
 
-    // Jedan periodični tajmer (20s) — JEDINI izvor istine za slanje GPS
-    // pozicije/ETA na iOS-u, potpuno analogan Android-ovom
-    // `Timer.periodic(20s)` u background isolate-u. Ovo garantuje tačan tick
-    // svakih 20s bez obzira da li GPS stream emituje evente (npr. dok vozač
-    // stoji), za razliku od prethodnog pristupa gde je stream event bio
-    // (negarantovan) okidač.
-    _iosMainTimer?.cancel();
-    unawaited(_iosTick()); // odmah prvi tick, bez čekanja na prvi period
-    _iosMainTimer = Timer.periodic(_iosTickInterval, (_) => unawaited(_iosTick()));
+    // Sam-zakazujući tajmer (JEDAN IZVOR ISTINE, deljen sa Android background
+    // isolate-om preko `V3SelfReschedulingTicker` u v3_tracking_config.dart)
+    // — garantuje tačan tick svakih `v3TrackingTickInterval` bez obzira da li
+    // GPS stream emituje evente (npr. dok vozač stoji), i bez tihog
+    // preskakanja tick-a kad `_iosTick()` (GPS fix + `v3-compute-eta` sa OSRM
+    // retry-jima) potraje duže od intervala — sledeći tick se zakazuje TEK
+    // nakon što se prethodni završi.
+    _iosTicker?.cancel();
+    _iosTicker = V3SelfReschedulingTicker(interval: v3TrackingTickInterval, onTick: _iosTick)..start();
   }
 
   Future<void> _iosTick() async {
-    if (_iosInFlight) return;
-
     final startedAt = _trackingStartedAt;
-    if (startedAt != null && DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
+    if (v3TrackingTimedOut(startedAt)) {
       debugPrint(
           '[V3VozacLocationTrackingService][iOS] stop reason=timeout source=ios_main_timer duration_minutes=${v3TrackingMaxDuration.inMinutes}');
       await stop();
@@ -722,7 +659,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) return;
 
-    _iosInFlight = true;
     try {
       var position = _lastSentPosition;
       if (position == null) {
@@ -762,8 +698,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint('[V3VozacLocationTrackingService][iOS] computeEta error: $e');
-    } finally {
-      _iosInFlight = false;
     }
   }
 

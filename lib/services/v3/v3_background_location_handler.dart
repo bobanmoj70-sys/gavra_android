@@ -45,7 +45,8 @@ import 'v3_tracking_config.dart';
 
 const String _kActionStop = 'stop';
 const String _kReady = 'ready';
-const Duration _kInterval = Duration(seconds: 20);
+// NAPOMENA: interval je sada JEDAN IZVOR ISTINE deljen sa iOS stranom —
+// vidi `v3TrackingTickInterval` u v3_tracking_config.dart.
 
 /// Ime sledećeg putnika + ETA se upisuje DIREKTNO u istu notifikaciju koju
 /// koristi foreground GPS servis (isti `id` i isti notifikacioni kanal kao u
@@ -56,15 +57,11 @@ const int _kForegroundNotifId = 888;
 const String _kForegroundChannelId = 'gavra_gps_tracking';
 const String _kForegroundChannelName = 'GPS Tracking';
 
-/// Ključevi "željenog stanja" — MORAJU biti identični sa
-/// `GavraFcmService.KEY_ACTIVE_*` konstantama na native (Kotlin) strani
-/// (bez `flutter.` prefiksa ovde jer ga `package:shared_preferences` dodaje
-/// sam; Kotlin strana ga mora dodati ručno).
-const String _kKeyVozacId = 'bg_active_vozac_id';
-const String _kKeyDatumIso = 'bg_active_datum_iso';
-const String _kKeyGrad = 'bg_active_grad';
-const String _kKeyVreme = 'bg_active_vreme';
-const String _kKeyStartedAt = 'bg_active_started_at';
+/// Ključevi "željenog stanja" (`v3Key*`) su sada JEDAN IZVOR ISTINE deljen sa
+/// main isolate-om preko `v3_tracking_config.dart` (ranije duplirano ovde).
+/// MORAJU ostati identični sa `KEY_ACTIVE_*` konstantama na native (Kotlin)
+/// strani (bez `flutter.` prefiksa ovde jer ga `package:shared_preferences`
+/// dodaje sam; Kotlin strana ga mora dodati ručno).
 
 /// Supabase kredencijali i dalje idu preko `flutter_secure_storage` (osetljivi
 /// podaci) — jedini deo koji Kotlin ne piše, već ih main isolate perzistuje
@@ -83,50 +80,16 @@ String _bgDatumIso = '';
 String _bgGrad = '';
 String _bgVreme = '';
 DateTime? _bgTrackingStartedAt;
-Timer? _bgMainTimer;
-bool _bgInFlight = false;
+V3SelfReschedulingTicker? _bgTicker;
 SupabaseClient? _bgSupabaseClient;
 String _bgSupabaseUrl = '';
 String _bgSupabaseAnonKey = '';
 ServiceInstance? _bgService;
 
-// 🗺️ Realtime broadcast kanal (samo poslednja pozicija, bez čuvanja u bazi) —
-// isti kanal kao u foreground servisu, koristi ga admin ekran za live mapu.
-RealtimeChannel? _bgPozicijaChannel;
-String? _bgPozicijaChannelVozacId;
-
-Future<void> _bgBroadcastPozicija({
-  required SupabaseClient client,
-  required String vozacId,
-  required double lat,
-  required double lng,
-}) async {
-  try {
-    if (_bgPozicijaChannel == null || _bgPozicijaChannelVozacId != vozacId) {
-      final old = _bgPozicijaChannel;
-      if (old != null) {
-        unawaited(client.removeChannel(old));
-      }
-      final channel = client.channel('v3-vozac-pozicija-$vozacId');
-      _bgPozicijaChannel = channel;
-      _bgPozicijaChannelVozacId = vozacId;
-      channel.subscribe();
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
-    await _bgPozicijaChannel?.sendBroadcastMessage(
-      event: 'pozicija',
-      payload: <String, dynamic>{
-        'lat': lat,
-        'lng': lng,
-        'ts': DateTime.now().toIso8601String(),
-      },
-    );
-  } catch (e) {
-    debugPrint('[BG] broadcast pozicija greška: $e');
-    _bgPozicijaChannel = null;
-    _bgPozicijaChannelVozacId = null;
-  }
-}
+// 🗺️ Realtime broadcast pozicije (JEDAN IZVOR ISTINE, deljen sa main
+// isolate-om preko `V3PozicijaBroadcaster` u v3_tracking_config.dart —
+// ranije duplirana logika `_bgBroadcastPozicija`).
+final V3PozicijaBroadcaster _bgPozicijaBroadcaster = V3PozicijaBroadcaster();
 
 bool get _bgCanSendLocation =>
     _bgVozacId != null && _bgVozacId!.isNotEmpty && _bgDatumIso.isNotEmpty && _bgGrad.isNotEmpty && _bgVreme.isNotEmpty;
@@ -181,7 +144,7 @@ Future<void> _bgEnsureSupabaseClientReady() async {
 Future<void> _bgSyncDesiredStateFromPrefs() async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    final vozacId = (prefs.getString(_kKeyVozacId) ?? '').trim();
+    final vozacId = (prefs.getString(v3KeyVozacId) ?? '').trim();
 
     if (vozacId.isEmpty) {
       if (_bgVozacId != null) {
@@ -190,9 +153,9 @@ Future<void> _bgSyncDesiredStateFromPrefs() async {
       return;
     }
 
-    final datumIso = (prefs.getString(_kKeyDatumIso) ?? '').trim();
-    final grad = (prefs.getString(_kKeyGrad) ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(prefs.getString(_kKeyVreme) ?? '');
+    final datumIso = (prefs.getString(v3KeyDatumIso) ?? '').trim();
+    final grad = (prefs.getString(v3KeyGrad) ?? '').trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(prefs.getString(v3KeyVreme) ?? '');
     if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
       debugPrint('[BG] Željeno stanje nepotpuno, ignorišem: vozac=$vozacId datum=$datumIso grad=$grad vreme=$vreme');
       return;
@@ -211,7 +174,7 @@ Future<void> _bgSyncDesiredStateFromPrefs() async {
     _bgVreme = vreme;
 
     if (isNewVozac) {
-      final startedAtMs = prefs.getInt(_kKeyStartedAt) ?? 0;
+      final startedAtMs = prefs.getInt(v3KeyStartedAt) ?? 0;
       _bgTrackingStartedAt = startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : DateTime.now();
       debugPrint('[BG] Novi vozač za tracking: $vozacId (grad=$grad vreme=$vreme datum=$datumIso)');
     } else {
@@ -241,11 +204,11 @@ Future<void> _bgSyncDesiredStateFromPrefs() async {
 Future<void> _bgClearDesiredState() async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kKeyVozacId);
-    await prefs.remove(_kKeyDatumIso);
-    await prefs.remove(_kKeyGrad);
-    await prefs.remove(_kKeyVreme);
-    await prefs.remove(_kKeyStartedAt);
+    await prefs.remove(v3KeyVozacId);
+    await prefs.remove(v3KeyDatumIso);
+    await prefs.remove(v3KeyGrad);
+    await prefs.remove(v3KeyVreme);
+    await prefs.remove(v3KeyStartedAt);
   } catch (e) {
     debugPrint('[BG] Greška pri brisanju željenog stanja: $e');
   }
@@ -265,61 +228,24 @@ Future<void> _bgClearEtaForVozac(String vozacId) async {
   }
 }
 
-/// Proverava da li je vrednost timestamp setovana (string nije prazan ili nije null).
-bool _bgIsTimestampSet(Object? value) {
-  if (value == null) return false;
-  if (value is String) return value.trim().isNotEmpty;
-  return true;
-}
-
-/// Proverava da li su svi putnici u aktivnom slotu završeni
-/// (pokupljeni ili otkazani). Vraća false ako nema putnika.
+/// Proverava da li su svi putnici u aktivnom slotu završeni (pokupljeni ili
+/// otkazani). Delegira na `v3AllPassengersCompleted` (JEDAN IZVOR ISTINE,
+/// deljen sa main isolate-om) — ranije duplirana upitna logika, uključujući
+/// i lokalni `_bgIsTimestampSet` (duplikat `V3StatusPolicy.isTimestampSet`),
+/// sada u v3_tracking_config.dart.
 Future<bool> _bgAllPassengersCompleted() async {
   if (!_bgCanSendLocation) return false;
 
   final client = _bgSupabaseClient;
   if (client == null) return false;
 
-  try {
-    final slotRows = await client
-        .from('v3_trenutna_dodela_slot')
-        .select('id, waypoints_json')
-        .eq('datum', _bgDatumIso)
-        .eq('grad', _bgGrad)
-        .eq('vreme', _bgVreme);
-
-    final activeSlot = (slotRows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
-    if (activeSlot == null) return false;
-
-    final waypointsJson = activeSlot['waypoints_json'] as Map<String, dynamic>?;
-    final passengers = waypointsJson?['passengers'] as List<dynamic>?;
-    if (passengers == null || passengers.isEmpty) return false;
-
-    final slotTerminIds = passengers
-        .whereType<Map<String, dynamic>>()
-        .map((p) => p['termin_id']?.toString())
-        .where((id) => id != null && id.isNotEmpty)
-        .toSet();
-
-    if (slotTerminIds.isEmpty) return false;
-
-    final rows = await client
-        .from('v3_operativna_nedelja')
-        .select('id, pokupljen_at, otkazano_at')
-        .inFilter('id', slotTerminIds.toList());
-
-    if (rows.isEmpty) return false;
-
-    for (final row in rows) {
-      final pokupljen = _bgIsTimestampSet(row['pokupljen_at']);
-      final otkazan = _bgIsTimestampSet(row['otkazano_at']);
-      if (!pokupljen && !otkazan) return false;
-    }
-    return true;
-  } catch (e) {
-    debugPrint('[BG] Greška pri proveri putnika: $e');
-    return false;
-  }
+  return v3AllPassengersCompleted(
+    client: client,
+    datumIso: _bgDatumIso,
+    grad: _bgGrad,
+    vreme: _bgVreme,
+    logTag: '[BG]',
+  );
 }
 
 /// Zaustavlja background tracking i čisti stanje.
@@ -337,8 +263,8 @@ Future<void> _bgStopTracking({String reason = 'unspecified'}) async {
     await _bgClearEtaForVozac(vozacIdToClean);
   }
   await _bgResetForegroundNotification();
-  _bgMainTimer?.cancel();
-  _bgMainTimer = null;
+  _bgTicker?.cancel();
+  _bgTicker = null;
   _bgSupabaseUrl = '';
   _bgSupabaseAnonKey = '';
   _bgSupabaseClient = null;
@@ -471,8 +397,7 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
   Future<void> tick() async {
     await _bgSyncDesiredStateFromPrefs();
 
-    final startedAt = _bgTrackingStartedAt;
-    if (startedAt != null && DateTime.now().difference(startedAt) >= v3TrackingMaxDuration) {
+    if (v3TrackingTimedOut(_bgTrackingStartedAt)) {
       debugPrint('[BG] stop reason=timeout duration_minutes=${v3TrackingMaxDuration.inMinutes}');
       await _bgStopTracking(reason: 'timeout');
       return;
@@ -483,14 +408,24 @@ Future<void> onBackgroundServiceStart(ServiceInstance service) async {
     }
   }
 
-  _bgMainTimer?.cancel();
-  unawaited(tick()); // odmah prvi tick (isti model kao iOS _iosTick()), bez čekanja na prvi period
-  _bgMainTimer = Timer.periodic(_kInterval, (_) => unawaited(tick()));
+  // Sam-zakazujući tajmer (JEDAN IZVOR ISTINE, deljen sa iOS stranom preko
+  // `V3SelfReschedulingTicker` u v3_tracking_config.dart) — fix za bug "ne
+  // šalje lokaciju na 20s": `Timer.periodic` bi okinuo sledeći tick tačno na
+  // 20s OD POČETKA prethodnog, bez obzira da li je prethodni tick (GPS fix +
+  // `v3-compute-eta` poziv, koji iznutra radi i do 3 OSRM retry-a sa
+  // eksponencijalnim backoff-om) još u toku — `_bgInFlight` guard bi tada
+  // TIHO preskočio taj tick (efektivno 40s+ razmak, bez nadoknađivanja).
+  _bgTicker?.cancel();
+  _bgTicker = V3SelfReschedulingTicker(interval: v3TrackingTickInterval, onTick: tick)..start();
 }
 
+// NAPOMENA: nema potrebe za "in-flight" guard-om ovde — `V3SelfReschedulingTicker`
+// (v3_tracking_config.dart) već garantuje da se `tick()`/`_bgSendLocation()`
+// NIKAD ne izvršava preklapajuće (sledeći tick se zakazuje tek nakon što se
+// prethodni potpuno završi ili istekne timeout).
 Future<void> _bgSendLocation() async {
   final vozacId = _bgVozacId;
-  if (vozacId == null || vozacId.isEmpty || _bgInFlight) return;
+  if (vozacId == null || vozacId.isEmpty) return;
   if (!_bgCanSendLocation) return;
 
   await _bgEnsureSupabaseClientReady();
@@ -500,7 +435,6 @@ Future<void> _bgSendLocation() async {
     return;
   }
 
-  _bgInFlight = true;
   try {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -531,8 +465,18 @@ Future<void> _bgSendLocation() async {
         'vreme': _bgVreme,
         'datum_iso': _bgDatumIso,
       },
-    );
-    unawaited(_bgBroadcastPozicija(client: client, vozacId: vozacId, lat: position.latitude, lng: position.longitude));
+    )
+        // Zaštita od beskonačnog čekanja — `functions_client` nema sopstveni
+        // timeout, pa na lošoj mreži poziv ume da "visi" bez kraja (vidi
+        // napomenu uz `v3ComputeEtaNetworkTimeout` u v3_tracking_config.dart).
+        .timeout(v3ComputeEtaNetworkTimeout);
+    unawaited(_bgPozicijaBroadcaster.broadcast(
+      client: client,
+      vozacId: vozacId,
+      lat: position.latitude,
+      lng: position.longitude,
+      logTag: '[BG]',
+    ));
     final responseData = etaResponse.data;
     if (responseData is Map && responseData['ok'] != true) {
       debugPrint('[BG] ETA greška: reason=${responseData['reason']} warning=${responseData['warning']}');
@@ -569,7 +513,5 @@ Future<void> _bgSendLocation() async {
     }
   } catch (e) {
     debugPrint('[BG] Greška pri slanju lokacije: $e');
-  } finally {
-    _bgInFlight = false;
   }
 }
