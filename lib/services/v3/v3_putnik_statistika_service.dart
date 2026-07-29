@@ -497,7 +497,7 @@ class V3PutnikStatistikaService {
         if (item is! Map) continue;
         final datumStr = item['datum']?.toString();
         if (datumStr == null || datumStr.isEmpty) continue;
-        final datum = V3BelgradeTime.parseTs(datumStr) ?? DateTime.tryParse(datumStr);
+        final datum = V3BelgradeTime.parseTs(datumStr) ?? V3BelgradeTime.parseDatum(datumStr);
         if (datum == null) continue;
         if (datum.year == godina && datum.month == mesec) {
           count++;
@@ -764,7 +764,7 @@ class V3PutnikStatistikaService {
     for (final v in voznje) {
       final dt = v['_datum_parsed'] as DateTime? ??
           V3BelgradeTime.parseTs(v['datum']?.toString()) ??
-          DateTime.tryParse(v['datum']?.toString() ?? '');
+          V3BelgradeTime.parseDatum(v['datum']?.toString());
       if (dt == null) continue;
 
       final dan = DateTime(dt.year, dt.month, dt.day);

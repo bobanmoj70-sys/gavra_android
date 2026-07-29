@@ -86,7 +86,7 @@ class _V3IzvestajData {
 }
 
 _V3IzvestajData _buildIzvestaj() {
-  final now = DateTime.now();
+  final now = V3BelgradeTime.now();
   final rm = V3MasterRealtimeManager.instance;
   final finansijeCache = rm.getCache('v3_finansije').values;
 
@@ -279,7 +279,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '📅',
                       naslov: _FinTr.tr('danas'),
-                      podnaslov: V3BelgradeTime.mesecNaziv(DateTime.now().month, fallback: ''),
+                      podnaslov: V3BelgradeTime.mesecNaziv(V3BelgradeTime.now().month, fallback: ''),
                       prihod: iz.prihodDanas,
                       troskovi: iz.trosakDanas,
                       voznjiLabel: '${iz.voznjiDanas} ${_FinTr.tr('uplata')}',
@@ -299,7 +299,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '🗓️',
                       naslov: _FinTr.tr('ovajMesec'),
-                      podnaslov: V3BelgradeTime.mesecNaziv(DateTime.now().month, fallback: ''),
+                      podnaslov: V3BelgradeTime.mesecNaziv(V3BelgradeTime.now().month, fallback: ''),
                       prihod: iz.prihodMesec,
                       troskovi: iz.trosakMesec,
                       voznjiLabel: '${iz.voznjiMesec} ${_FinTr.tr('uplata')}',
@@ -659,7 +659,7 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
 
   Future<void> _sacuvaj() async {
     V3StateUtils.safeSetState(this, () => _saving = true);
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     try {
       final futures = <Future<void>>[];
       for (final s in _stavke) {

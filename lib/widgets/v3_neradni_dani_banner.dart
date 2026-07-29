@@ -28,12 +28,12 @@ class V3NeradniDaniBanner extends StatelessWidget {
         final weekRange = V3DanHelper.schedulingWeekRange();
         final start = weekRange.start;
         final end = weekRange.end;
-        final today = V3DanHelper.dateOnly(DateTime.now());
+        final today = V3DanHelper.dateOnly(V3BelgradeTime.now());
 
         final lines = <String>[];
         for (final rule in rules) {
           final dateIso = V3BelgradeTime.parseIsoDatePart(rule['date'] ?? '');
-          final date = DateTime.tryParse(dateIso);
+          final date = V3BelgradeTime.parseDatum(dateIso);
           if (date == null) continue;
 
           final onlyDate = V3DanHelper.dateOnly(date);

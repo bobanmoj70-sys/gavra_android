@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/v3_zahtev.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_status_policy.dart';
-import '../utils/v3_string_utils.dart';
 
 /// Zajednički widget za prikaz timelapse info reda na zahtev karticama.
 /// Koristi se u: posiljke, radnici, ucenici, zahtevi_dnevni screenima.
@@ -38,8 +38,8 @@ class V3ZahtevTimelapseWidget extends StatelessWidget {
       String odgovorLabel;
       if (V3StatusPolicy.isOfferLike(zahtev.status) && (zahtev.altVremePre != null || zahtev.altVremePosle != null)) {
         final alts = [
-          if (zahtev.altVremePre != null) V3StringUtils.formatAlternativeTime(zahtev.altVremePre),
-          if (zahtev.altVremePosle != null) V3StringUtils.formatAlternativeTime(zahtev.altVremePosle),
+          if (zahtev.altVremePre != null) V3BelgradeTime.normalizeToHHmm(zahtev.altVremePre?.toString()),
+          if (zahtev.altVremePosle != null) V3BelgradeTime.normalizeToHHmm(zahtev.altVremePosle?.toString()),
         ].join(' / ');
         odgovorLabel = '⚠️ alt: $alts';
       } else {

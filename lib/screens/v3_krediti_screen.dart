@@ -1,11 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../models/v3_kredit.dart';
 import '../services/v3/v3_kredit_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -13,7 +15,6 @@ import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _KredTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('kreditiScreen');
@@ -670,7 +671,7 @@ class _KreditDialogState extends State<_KreditDialog> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _krajKredita ?? DateTime.now(),
+      initialDate: _krajKredita ?? V3BelgradeTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       helpText: _KredTr.tr('krajKreditaZadnjaRata'),

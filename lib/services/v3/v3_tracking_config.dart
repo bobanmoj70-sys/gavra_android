@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
@@ -15,7 +16,7 @@ const Duration v3TrackingMaxDuration = Duration(minutes: 55);
 /// >= v3TrackingMaxDuration`) bila duplirana na 3 mesta.
 bool v3TrackingTimedOut(DateTime? startedAt) {
   if (startedAt == null) return false;
-  return DateTime.now().difference(startedAt) >= v3TrackingMaxDuration;
+  return V3BelgradeTime.now().difference(startedAt) >= v3TrackingMaxDuration;
 }
 
 /// JEDAN IZVOR ISTINE za razmak između GPS/ETA tick-ova, deljen između
@@ -282,7 +283,7 @@ Future<void> v3UpdateVozacLocation({
       'vozac_id': vozacId,
       'lat': lat,
       'lng': lng,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
+      'updated_at': V3BelgradeTime.nowIsoUtc(),
     });
     log?.call('$logTag lokacija ažurirana $lat, $lng za vozača $vozacId');
   } catch (e) {

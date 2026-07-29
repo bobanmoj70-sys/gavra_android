@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3_locale_manager.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_string_utils.dart';
-import '../l10n/app_translations.dart';
 
 class V3VremeDolaskaWidget extends StatefulWidget {
   const V3VremeDolaskaWidget({
@@ -83,7 +83,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   DateTime? _parseComputedAt(dynamic value) {
     if (value is DateTime) return value;
-    if (value is String) return DateTime.tryParse(value);
+    if (value is String) return V3BelgradeTime.parseTs(value);
     return null;
   }
 
@@ -94,7 +94,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     final eta = (row[_colEtaSeconds] as num?)?.toInt();
     final computedAt = _parseComputedAt(row[_colComputedAt]);
-    final stale = computedAt == null || DateTime.now().difference(computedAt) > etaStaleThreshold;
+    final stale = computedAt == null || V3BelgradeTime.now().difference(computedAt) > etaStaleThreshold;
     final vozacId = row[_colVozacId]?.toString();
     final terminId = row['termin_id']?.toString();
 
@@ -112,11 +112,11 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     DateTime? datum;
     if (datumRaw is DateTime) {
-      datum = DateTime(datumRaw.year, datumRaw.month, datumRaw.day);
+      datum = V3BelgradeTime.dateOnly(datumRaw);
     } else if (datumRaw is String && datumRaw.trim().isNotEmpty) {
-      final parsed = DateTime.tryParse(datumRaw.trim());
+      final parsed = V3BelgradeTime.parseDatum(datumRaw.trim());
       if (parsed != null) {
-        datum = DateTime(parsed.year, parsed.month, parsed.day);
+        datum = V3BelgradeTime.dateOnly(parsed);
       }
     }
 
@@ -126,7 +126,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
     if (polazakRaw is String && polazakRaw.trim().isNotEmpty) {
       final timeRaw = polazakRaw.trim();
-      final parsedDateTime = DateTime.tryParse(timeRaw);
+      final parsedDateTime = V3BelgradeTime.parseTs(timeRaw);
       if (parsedDateTime != null) {
         return parsedDateTime;
       }
@@ -138,7 +138,8 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           final hour = int.tryParse(parts[0]) ?? 0;
           final minute = int.tryParse(parts[1]) ?? 0;
           final second = parts.length >= 3 ? int.tryParse(parts[2]) ?? 0 : 0;
-          return DateTime(datum.year, datum.month, datum.day, hour, minute, second);
+          return V3BelgradeTime.dateTime(datum.year, datum.month, datum.day, hour, minute)
+              .add(Duration(seconds: second));
         }
       }
     }
@@ -147,7 +148,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   }
 
   ({DateTime departure, String? grad, Map<String, dynamic> row, String? vozacId})? _findNextPutnikRide() {
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     DateTime? best;
     String? bestGrad;
     Map<String, dynamic>? bestRow;
@@ -185,13 +186,13 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
         final grad = row['grad']?.toString();
         final polazakAt = row['polazak_at']?.toString();
         if (datumIso != null && grad != null && polazakAt != null) {
-          final normVreme = V3StringUtils.trimTimeToHhMm(polazakAt);
+          final normVreme = V3BelgradeTime.normalizeToHHmm(polazakAt);
           for (final slot in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
             final slotVreme = slot['vreme']?.toString();
             if (slotVreme != null &&
                 slot['datum']?.toString() == datumIso &&
                 slot['grad']?.toString() == grad &&
-                V3StringUtils.trimTimeToHhMm(slotVreme) == normVreme) {
+                V3BelgradeTime.normalizeToHHmm(slotVreme) == normVreme) {
               vozacId = slot['vozac_v3_auth_id']?.toString();
               break;
             }

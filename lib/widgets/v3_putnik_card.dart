@@ -116,7 +116,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   V3NaplataInfo? _resolveNaplataInfo() {
-    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? V3BelgradeTime.now();
     return V3FinansijeService.resolveNaplataInfo(
       putnikId: widget.putnik.id,
       datumRef: datumRef,
@@ -132,7 +132,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     required String tipPutnika,
     required bool isPoDanuModel,
   }) {
-    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? V3BelgradeTime.now();
     final summary = V3FinansijeService.getNaplataSummaryForPutnik(
       putnikId: widget.putnik.id,
       mesec: datumRef.month,
@@ -169,7 +169,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
         await V3FinansijeService.evidentirajRealizacijuPriPokupljanju(
           putnikId: widget.putnik.id,
           tipPutnika: widget.putnik.tipPutnika,
-          datum: widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now(),
+          datum: widget.entry?.datum ?? widget.zahtev?.datum ?? V3BelgradeTime.now(),
           operativnaId: widget.entry?.id,
           evidentiraoBy: currentVozac.id,
           pokupljenAt: V3BelgradeTime.nowIsoUtc(),
@@ -298,7 +298,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final defaultCena = ocekivaniIznos;
 
     try {
-      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now();
+      final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? V3BelgradeTime.now();
       final rezultat = await V3PlacanjeDialogHelper.naplati(
         context: context,
         putnikId: widget.putnik.id,

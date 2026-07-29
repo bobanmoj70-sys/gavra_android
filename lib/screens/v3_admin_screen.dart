@@ -10,6 +10,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -164,9 +165,9 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         controller: dateCtrl,
                         readOnly: true,
                         onTap: () async {
-                          final now = DateTime.now();
-                          final parsed = DateTime.tryParse(dateCtrl.text.trim());
-                          final initial = parsed ?? DateTime(now.year, now.month, now.day);
+                          final now = V3BelgradeTime.now();
+                          final parsed = V3BelgradeTime.parseDatum(dateCtrl.text.trim());
+                          final initial = parsed ?? V3BelgradeTime.dateOnly(now);
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: initial,
@@ -227,14 +228,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                         return;
                                       }
 
-                                      final normalized = DateTime.tryParse(date);
+                                      final normalized = V3BelgradeTime.parseDatum(date);
                                       if (normalized == null) {
                                         V3AppSnackBar.warning(context, _tr('datumNijeValidan'));
                                         return;
                                       }
 
-                                      final normalizedDate =
-                                          '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
+                                      final normalizedDate = V3BelgradeTime.toIsoDate(normalized);
 
                                       setModalState(() {
                                         items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
@@ -316,15 +316,14 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                                 return;
                               }
 
-                              final normalized = DateTime.tryParse(draftDate);
+                              final normalized = V3BelgradeTime.parseDatum(draftDate);
                               if (normalized == null) {
                                 setModalState(() => isSaving = false);
                                 V3AppSnackBar.warning(context, _tr('datumNijeValidan'));
                                 return;
                               }
 
-                              final normalizedDate =
-                                  '${normalized.year.toString().padLeft(4, '0')}-${normalized.month.toString().padLeft(2, '0')}-${normalized.day.toString().padLeft(2, '0')}';
+                              final normalizedDate = V3BelgradeTime.toIsoDate(normalized);
 
                               items.removeWhere((e) => e['date'] == normalizedDate && e['scope'] == scope);
                               items.add({
@@ -857,7 +856,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   }
 
   Map<String, double> _getPazarPoVozacu() {
-    return V3FinansijeService.getPazarPoVozacuZaDan(DateTime.now());
+    return V3FinansijeService.getPazarPoVozacuZaDan(V3BelgradeTime.now());
   }
 
   Color _bojaVozaca(String vozacId) {
@@ -888,7 +887,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   // Vraca Map sa listama putnikId-eva (ne imena!) za BC i VS.
   Map<String, List<String>> _getUceniciSaDodeljenimVremenomDanasPoGradu() {
     final rm = V3MasterRealtimeManager.instance;
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
 
     final uceniciIds = rm.putniciCache.values
         .where((p) => (p['tip_putnika'] as String? ?? '').toLowerCase() == 'ucenik')
@@ -904,7 +903,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
 
       final datumRaw = r['datum']?.toString();
       if (datumRaw == null || datumRaw.isEmpty) continue;
-      final datum = DateTime.tryParse(datumRaw);
+      final datum = V3BelgradeTime.parseDatum(datumRaw);
       if (datum == null) continue;
       if (datum.year != now.year || datum.month != now.month || datum.day != now.day) continue;
 
@@ -1508,7 +1507,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final pazarPoVozacu = _getPazarPoVozacu();
     // Dužnici = dnevni + pošiljke (naplata po pokupljenju), prikazano SAMO za tekući dan
     // (isto kao pazar vozača, koji se takođe prikazuje samo za danas).
-    final dugoviIznos = V3FinansijeService.getDugZaDan(DateTime.now());
+    final dugoviIznos = V3FinansijeService.getDugZaDan(V3BelgradeTime.now());
     final ukupnoPazar = pazarPoVozacu.values.fold(0.0, (s, v) => s + v);
 
     return Column(

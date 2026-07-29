@@ -12,7 +12,7 @@ import '../services/v3_locale_manager.dart';
 ///   - serijalizaciju u ISO formate
 ///   - parsiranje timestamp-ova i date-ova iz baze
 ///   - normalizaciju vremena u HH:mm
-///   - lokalizovane nazive meseci
+///   - formatiranje datuma/vremena za prikaz
 const String kBelgradeTimeZone = 'Europe/Belgrade';
 
 class V3BelgradeTime {
@@ -21,7 +21,7 @@ class V3BelgradeTime {
   static tz.Location? _location;
   static bool _initialized = false;
 
-  static tz.Location get _loc {
+  static tz.Location get location {
     _location ??= tz.getLocation(kBelgradeTimeZone);
     return _location!;
   }
@@ -35,8 +35,11 @@ class V3BelgradeTime {
   /// Trenutni trenutak u `Europe/Belgrade` zoni (poštuje DST).
   static DateTime now() {
     _ensureInitialized();
-    return tz.TZDateTime.now(_loc);
+    return tz.TZDateTime.now(location);
   }
+
+  /// Trenutni trenutak kao UTC instant.
+  static DateTime nowUtc() => now().toUtc();
 
   /// Današnji datum (bez vremena) u `Europe/Belgrade` zoni.
   static DateTime today() => dateOnly(now());
@@ -47,7 +50,7 @@ class V3BelgradeTime {
   /// Konvertuje bilo koji DateTime (tretiran kao UTC instant) u `Europe/Belgrade`.
   static DateTime fromUtc(DateTime dt) {
     _ensureInitialized();
-    return tz.TZDateTime.from(dt.toUtc(), _loc);
+    return tz.TZDateTime.from(dt.toUtc(), location);
   }
 
   /// DateTime samo sa datumom (year/month/day) u 00:00:00.
@@ -56,17 +59,30 @@ class V3BelgradeTime {
   /// DateTime sa datumom (god, mes, dan) i vremenom na 00:00:00.
   static DateTime dateOnlyFrom(int godina, int mesec, int dan) => DateTime(godina, mesec, dan);
 
+  /// Kreira DateTime u `Europe/Belgrade` zoni za zadatu godinu/mesec/dan i opciono sat/minut.
+  static DateTime dateTime(int godina, int mesec, int dan, [int sat = 0, int minut = 0]) {
+    _ensureInitialized();
+    return tz.TZDateTime(location, godina, mesec, dan, sat, minut);
+  }
+
   /// DateTime → `yyyy-MM-dd` za upis u date kolone.
   static String toIsoDate(DateTime datum) {
     final d = dateOnly(datum);
     return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
+  /// Vadi `yyyy-MM-dd` deo iz ISO stringa (npr. iz DateTime.toIso8601String()).
+  static String parseIsoDatePart(Object? raw) {
+    final value = (raw ?? '').toString().trim();
+    if (value.length >= 10) return value.substring(0, 10);
+    return '';
+  }
+
   /// DateTime kao ISO-8601 u UTC (`...Z`) za upis u timestamptz.
   static String toIsoUtc(DateTime value) => value.toUtc().toIso8601String();
 
   /// Trenutni trenutak kao ISO-8601 u UTC (`...Z`) za upis u timestamptz.
-  static String nowIsoUtc() => DateTime.now().toUtc().toIso8601String();
+  static String nowIsoUtc() => nowUtc().toIso8601String();
 
   // ─── Parsiranje iz baze ─────────────────────────────────────────
 
@@ -77,18 +93,18 @@ class V3BelgradeTime {
     return parsed == null ? null : fromUtc(parsed);
   }
 
+  /// Parsira timestamptz string iz baze → `Europe/Belgrade` DateTime,
+  /// ili trenutno vreme ako parsiranje ne uspe.
+  static DateTime parseTsOrNow(String? s) => parseTs(s) ?? now();
+
   /// Parsira date string iz baze → DateTime (bez timezone konverzije).
   static DateTime? parseDatum(String? s) {
     if (s == null || s.trim().isEmpty) return null;
     return DateTime.tryParse(s.trim());
   }
 
-  /// Vadi `yyyy-MM-dd` deo iz ISO stringa (npr. iz DateTime.toIso8601String()).
-  static String parseIsoDatePart(Object? raw) {
-    final value = (raw ?? '').toString().trim();
-    if (value.length >= 10) return value.substring(0, 10);
-    return '';
-  }
+  /// Parsira date string iz baze → DateTime, ili danas ako parsiranje ne uspe.
+  static DateTime parseDatumOrToday(String? s) => parseDatum(s) ?? today();
 
   // ─── Normalizacija vremena ──────────────────────────────────────
 
@@ -113,21 +129,37 @@ class V3BelgradeTime {
     return '$hour:$minute';
   }
 
-  /// Vadi prvi HH:mm (ili HH:mm:ss) token iz stringa i vraća ga kao HH:mm.
-  /// Ako ne nađe validno vreme, vraća `null`.
-  static String? extractHHmmToken(String? value) {
-    if (value == null || value.trim().isEmpty) return null;
+  /// Formatira vreme iz sati/minuta u "HH:mm".
+  static String formatVreme(int sati, int minuti) {
+    return '${sati.toString().padLeft(2, '0')}:${minuti.toString().padLeft(2, '0')}';
+  }
 
-    final match = _timeRegex.firstMatch(value);
-    if (match == null) return null;
+  // ─── Formatiranje datuma za prikaz ──────────────────────────────
 
-    final raw = match.group(1)!;
-    final parts = raw.split(':');
-    if (parts.length < 2) return null;
+  /// Formatira datum u DD.MM.YY format.
+  static String formatDanMesec(DateTime datum) {
+    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year.toString().substring(2)}';
+  }
 
-    final hour = (int.tryParse(parts[0]) ?? 0).toString().padLeft(2, '0');
-    final minute = (int.tryParse(parts[1]) ?? 0).toString().padLeft(2, '0');
-    return '$hour:$minute';
+  /// Formatira datetime u DD.MM. HH:MM format (kratko).
+  static String formatDatumVremeKratko(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}. '
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Formatira datum u DD.MM.YYYY format (puni).
+  static String formatDatumPuni(DateTime datum) {
+    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year}';
+  }
+
+  /// Formatira datum u `ddMMyyyy` (za nazive fajlova).
+  static String formatFileDate(DateTime datum) {
+    return '${datum.day.toString().padLeft(2, '0')}${datum.month.toString().padLeft(2, '0')}${datum.year}';
+  }
+
+  /// Formatira datum u `dd_MM_yyyy` (za nazive fajlova/dokumenata).
+  static String formatFileDateUnderscore(DateTime datum) {
+    return '${datum.day.toString().padLeft(2, '0')}_${datum.month.toString().padLeft(2, '0')}_${datum.year}';
   }
 
   // ─── Lokalizovani nazivi meseci ─────────────────────────────────

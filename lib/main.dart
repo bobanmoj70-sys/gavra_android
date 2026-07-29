@@ -97,7 +97,7 @@ bool _isDuplicateCanceledZahtevStatusPush({
     return false;
   }
 
-  final now = DateTime.now();
+  final now = V3BelgradeTime.now();
   final staleCutoff = now.subtract(const Duration(minutes: 2));
   _canceledStatusPushSeenAt.removeWhere((_, ts) => ts.isBefore(staleCutoff));
 
@@ -709,7 +709,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
 ///   pokušava ponovo da ga dobavi i upiše — bez throttle ograničenja,
 ///   jer korisnik bez push tokena ne prima notifikacije.
 Future<void> _syncLocaleOnResume({bool force = false}) async {
-  final now = DateTime.now();
+  final now = V3BelgradeTime.now();
   final needsPushToken = !_pushTokenConfirmed;
   final localeThrottled = !force &&
       !needsPushToken &&

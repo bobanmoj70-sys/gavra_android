@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../v3/v3_address_coordinate_service.dart';
 import '../v3/v3_app_settings_state.dart';
 import '../v3/v3_app_update_service.dart';
@@ -278,7 +279,7 @@ class V3MasterRealtimeManager {
 
       _registerCacheStoreIfNeeded();
       await _loadInitialCachesWithRetry();
-      _lastFullResyncAt = DateTime.now();
+      _lastFullResyncAt = V3BelgradeTime.now();
 
       await _setupRealtime();
       _isInitialized = true;
@@ -342,7 +343,7 @@ class V3MasterRealtimeManager {
       _isSubscribing = false;
       switch (status) {
         case RealtimeSubscribeStatus.subscribed:
-          _lastSubscribedAt = DateTime.now();
+          _lastSubscribedAt = V3BelgradeTime.now();
           final isFirstSubscribe = !_hasConnectedBefore;
           _reconnectAttempts = 0;
           debugPrint('[RT] subscribed (hasConnectedBefore=$_hasConnectedBefore)');
@@ -390,7 +391,7 @@ class V3MasterRealtimeManager {
       return;
     }
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final lastRun = _lastFullResyncAt;
     final canRunFullResync = lastRun == null || now.difference(lastRun) >= _fullResyncCooldown;
     if (!canRunFullResync) {
@@ -402,7 +403,7 @@ class V3MasterRealtimeManager {
     _fullResyncInFlight = operation;
     try {
       await operation;
-      _lastFullResyncAt = DateTime.now();
+      _lastFullResyncAt = V3BelgradeTime.now();
       _deltaResyncFailures = 0;
     } finally {
       if (identical(_fullResyncInFlight, operation)) {
@@ -420,7 +421,7 @@ class V3MasterRealtimeManager {
       return;
     }
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final lastRun = _lastResumeReconnectAt;
     if (lastRun != null && now.difference(lastRun) < _resumeReconnectCooldown) {
       debugPrint('[RT] app resumed → reconnect cooldown aktivan, preskačem.');
@@ -495,7 +496,7 @@ class V3MasterRealtimeManager {
   Future<void> _scheduleReconnect() async {
     if (_isSubscribing || _isScheduleReconnectRunning) return;
     _isScheduleReconnectRunning = true;
-    final scheduledAt = DateTime.now();
+    final scheduledAt = V3BelgradeTime.now();
     try {
       _reconnectAttempts += 1;
       final cappedAttempt = _reconnectAttempts > 6 ? 6 : _reconnectAttempts;

@@ -32,7 +32,9 @@ class V3DnevnaPredaja {
       id: json['id'] as String,
       vozacId: json['naplaceno_by'] as String?,
       vozacImePrezime: (json['vozac_ime'] as String?) ?? (json['vozac_ime_prezime'] as String?),
-      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
+      datum: json['datum'] != null
+          ? V3BelgradeTime.parseDatum(json['datum'] as String) ?? V3BelgradeTime.now()
+          : V3BelgradeTime.now(),
       predaoIznos: (json['predao_iznos'] as num?)?.toDouble() ?? 0,
       ukupnoNaplaceno: (json['ukupno_naplaceno'] as num?)?.toDouble() ?? 0,
       razlika: (json['razlika'] as num?)?.toDouble() ?? 0,

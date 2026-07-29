@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
@@ -20,6 +21,7 @@ import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_messages.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -29,7 +31,6 @@ import '../utils/v3_phone_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
-import '../utils/v3_string_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_info_banner.dart';
@@ -38,7 +39,6 @@ import '../widgets/v3_vreme_dolaska_widget.dart';
 import 'v3_help_screen.dart';
 import 'v3_putnik_statistika_screen.dart';
 import 'v3_welcome_screen.dart';
-import '../l10n/app_translations.dart';
 
 // Prevodi za dijaloge izmene profila / promene PIN-a (SR/EN/RU/DE).
 final Map<String, Map<String, String>> _profileDialogT = AppTranslations.ns('putnikProfilScreenProfileDialogT');
@@ -106,7 +106,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   String? _normalizeValidTime(String? value) {
     if (value == null) return null;
-    final normalized = V3StringUtils.trimTimeToHhMm(value).trim();
+    final normalized = V3BelgradeTime.normalizeToHHmm(value).trim();
     if (normalized.isEmpty) return null;
     if (!_timeFormat.hasMatch(normalized)) return null;
     return normalized;
@@ -466,7 +466,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       return;
     }
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final dayFullName = V3DanHelper.fullName(datumPolaska);
     final vremena = getRasporedVremena(grad.toLowerCase(), navBarTypeNotifier.value, day: dayFullName)
         .where((v) => _normalizeValidTime(v) != null)
@@ -624,7 +624,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                               physics: const NeverScrollableScrollPhysics(),
                               children: vremena.map((vreme) {
                                 final isSelected =
-                                    currentVreme != null && V3StringUtils.trimTimeToHhMm(currentVreme) == vreme;
+                                    currentVreme != null && V3BelgradeTime.normalizeToHHmm(currentVreme) == vreme;
                                 // Scenario 5: zaključaj dugme 15 min pre polaska
                                 final parts = vreme.split(':');
                                 final polazak = DateTime(
@@ -711,7 +711,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   bool _isDnevniDatumAllowed(DateTime datumPolaska, {DateTime? now}) {
-    final current = now ?? DateTime.now();
+    final current = now ?? V3BelgradeTime.now();
     final today = DateTime(current.year, current.month, current.day);
     final tomorrow = today.add(const Duration(days: 1));
     final target = DateTime(datumPolaska.year, datumPolaska.month, datumPolaska.day);
@@ -742,7 +742,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   String _allowedDnevniDateLabel({DateTime? now, required String grad}) {
-    final current = now ?? DateTime.now();
+    final current = now ?? V3BelgradeTime.now();
     final today = DateTime(current.year, current.month, current.day);
     final baseDate = current.hour < 16 ? today : today.add(const Duration(days: 1));
     final allowedDate = _nextWorkingDateForGrad(baseDate, grad);
@@ -1740,7 +1740,7 @@ class _ZahtevCell extends StatelessWidget {
     );
     final statusColor = badgeStyle.color;
     final statusIcon = badgeStyle.icon;
-    final vreme = V3StringUtils.trimTimeToHhMm(info!.vreme);
+    final vreme = V3BelgradeTime.normalizeToHHmm(info!.vreme);
     final statusPrefix = '$statusIcon ';
     return GestureDetector(
       onTap: onTap,
@@ -1842,122 +1842,79 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final gradient = theme.backgroundGradient;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          decoration: BoxDecoration(gradient: gradient),
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1A2035),
+      title: Text(_trProfileDialog('izmeniProfil'),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      content: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        child: Form(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _trProfileDialog('izmeniProfilTitle'),
-                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            _trProfileDialog('azurirajImeTel'),
-                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              V3InputUtils.textField(
+                controller: _ime,
+                label: _trProfileDialog('imePrezime'),
+                icon: Icons.person_outline,
+                keyboardType: TextInputType.name,
               ),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      V3InputUtils.textField(
-                        controller: _ime,
-                        label: _trProfileDialog('imePrezime'),
-                        icon: Icons.person_outline,
-                        keyboardType: TextInputType.name,
-                      ),
-                      const SizedBox(height: 12),
-                      V3InputUtils.textField(
-                        controller: _tel1,
-                        label: _trProfileDialog('telefon1'),
-                        icon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 12),
-                      V3InputUtils.textField(
-                        controller: _tel2,
-                        label: _trProfileDialog('telefon2'),
-                        icon: Icons.phone_iphone_outlined,
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _saving
-                              ? null
-                              : () async {
-                                  final authId = widget.putnikData['id']?.toString().trim() ?? '';
-                                  if (authId.isEmpty) return;
-                                  await V3DialogHelper.showDialogBuilder<void>(
-                                    context: context,
-                                    builder: (ctx) => _ChangePinDialog(v3AuthId: authId),
-                                  );
-                                },
-                          icon: const Icon(Icons.lock_reset_outlined, color: Colors.white),
-                          label: Text(_trProfileDialog('promeniPin'), style: const TextStyle(color: Colors.white)),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.white54),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: V3ButtonUtils.outlinedButton(
-                              onPressed: _saving ? null : () => Navigator.pop(context),
-                              text: _trProfileDialog('otkazi'),
-                              borderColor: Colors.white54,
-                              foregroundColor: Colors.white70,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: V3ButtonUtils.primaryButton(
-                              onPressed: _saving ? null : _sacuvaj,
-                              text: _trProfileDialog('sacuvaj'),
-                              icon: Icons.check,
-                              isLoading: _saving,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+              const SizedBox(height: 12),
+              V3InputUtils.textField(
+                controller: _tel1,
+                label: _trProfileDialog('telefon1'),
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              V3InputUtils.textField(
+                controller: _tel2,
+                label: _trProfileDialog('telefon2'),
+                icon: Icons.phone_iphone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          final authId = widget.putnikData['id']?.toString().trim() ?? '';
+                          if (authId.isEmpty) return;
+                          await V3DialogHelper.showDialogBuilder<void>(
+                            context: context,
+                            builder: (ctx) => _ChangePinDialog(v3AuthId: authId),
+                          );
+                        },
+                  icon: const Icon(Icons.lock_reset_outlined, color: Colors.white),
+                  label: Text(_trProfileDialog('promeniPin'), style: const TextStyle(color: Colors.white)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white54),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: V3ButtonUtils.outlinedButton(
+                      onPressed: _saving ? null : () => Navigator.pop(context),
+                      text: _trProfileDialog('otkazi'),
+                      borderColor: Colors.white54,
+                      foregroundColor: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: V3ButtonUtils.primaryButton(
+                      onPressed: _saving ? null : _sacuvaj,
+                      text: _trProfileDialog('sacuvaj'),
+                      icon: Icons.check,
+                      isLoading: _saving,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

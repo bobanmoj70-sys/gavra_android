@@ -7,11 +7,11 @@ import '../services/v3/v3_kapacitet_slots_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
-import '../utils/v3_string_utils.dart';
 
 class _KapTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('kapacitetScreen');
@@ -54,11 +54,11 @@ class _V3KapacitetScreenState extends State<V3KapacitetScreen> with SingleTicker
   /// Traži red u kešu normalizovanim poređenjem grad/vreme/datum.
   Map<String, dynamic>? _findCacheRow(String grad, String vreme, String datumIso) {
     final gradNorm = grad.trim().toUpperCase();
-    final vremeNorm = V3StringUtils.trimTimeToHhMm(vreme);
+    final vremeNorm = V3BelgradeTime.normalizeToHHmm(vreme);
     final datumNorm = datumIso.trim();
     for (final r in V3MasterRealtimeManager.instance.kapacitetSlotsCache.values) {
       final rGrad = (r['grad']?.toString() ?? '').trim().toUpperCase();
-      final rVreme = V3StringUtils.trimTimeToHhMm(r['vreme']?.toString() ?? '');
+      final rVreme = V3BelgradeTime.normalizeToHHmm(r['vreme']?.toString() ?? '');
       final rDatum = (r['datum']?.toString() ?? '').trim();
       if (rGrad == gradNorm && rVreme == vremeNorm && rDatum.startsWith(datumNorm)) {
         return r;

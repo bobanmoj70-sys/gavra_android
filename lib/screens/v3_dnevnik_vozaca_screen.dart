@@ -48,7 +48,7 @@ class V3DnevnikVozacaScreen extends StatefulWidget {
 class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
   String? _selectedVozacId;
   String? _selectedVozacIme;
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = V3BelgradeTime.now();
 
   List<Map<String, dynamic>> _naplate = [];
   List<Map<String, dynamic>> _pokupio = [];
@@ -136,7 +136,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2024),
-      lastDate: DateTime.now(),
+      lastDate: V3BelgradeTime.now(),
       builder: (ctx, child) => Theme(data: ThemeData.dark(), child: child!),
     );
     if (picked != null) {
@@ -167,7 +167,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       buf.writeln('${_DnevTr.tr('pokupljeniPutnici')} (${_pokupio.length}):');
       for (int i = 0; i < _pokupio.length; i++) {
         final p = _pokupio[i];
-        final datum = V3BelgradeTime.parseTs(p['pokupljen_at']?.toString()) ?? DateTime.now();
+        final datum = V3BelgradeTime.parseTs(p['pokupljen_at']?.toString()) ?? V3BelgradeTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['putnik_v3_auth_id']?.toString() ?? p['created_by']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
@@ -182,7 +182,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       buf.writeln('${_DnevTr.tr('otkazaneVoznje')} (${_otkazao.length}):');
       for (int i = 0; i < _otkazao.length; i++) {
         final p = _otkazao[i];
-        final datum = V3BelgradeTime.parseTs(p['otkazano_at']?.toString()) ?? DateTime.now();
+        final datum = V3BelgradeTime.parseTs(p['otkazano_at']?.toString()) ?? V3BelgradeTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
@@ -201,7 +201,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       final datum = V3BelgradeTime.parseTs(n['naplatio_at']?.toString()) ??
           V3BelgradeTime.parseTs(n['uplata_datum']?.toString()) ??
           V3BelgradeTime.parseTs(n['updated_at']?.toString()) ??
-          DateTime.now();
+          V3BelgradeTime.now();
       final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
       final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
       final putnik = rm.putniciCache[putnikId];
@@ -294,8 +294,9 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                           style: baseStyle),
                       _pdfCell(
                           V3DanHelper.formatVreme(
-                              (V3BelgradeTime.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now()).hour,
-                              (V3BelgradeTime.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now())
+                              (V3BelgradeTime.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? V3BelgradeTime.now())
+                                  .hour,
+                              (V3BelgradeTime.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? V3BelgradeTime.now())
                                   .minute),
                           style: baseStyle),
                     ],
@@ -392,12 +393,12 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                             (V3BelgradeTime.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
                                     V3BelgradeTime.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
                                     V3BelgradeTime.parseTs(_naplate[i]['updated_at']?.toString()) ??
-                                    DateTime.now())
+                                    V3BelgradeTime.now())
                                 .hour,
                             (V3BelgradeTime.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
                                     V3BelgradeTime.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
                                     V3BelgradeTime.parseTs(_naplate[i]['updated_at']?.toString()) ??
-                                    DateTime.now())
+                                    V3BelgradeTime.now())
                                 .minute),
                         style: baseStyle),
                   ],
@@ -735,7 +736,7 @@ class _PokupioCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pokupljenAt = V3BelgradeTime.parseTs(p['pokupljen_at']?.toString());
-    final datum = pokupljenAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? DateTime.now();
+    final datum = pokupljenAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? V3BelgradeTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
@@ -777,7 +778,7 @@ class _OtkazaoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final otkazanoAt = V3BelgradeTime.parseTs(p['otkazano_at']?.toString());
-    final datum = otkazanoAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? DateTime.now();
+    final datum = otkazanoAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? V3BelgradeTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
     final polazakAt = p['vreme']?.toString() ?? '';
@@ -829,7 +830,7 @@ class _NaplataCard extends StatelessWidget {
     final datum = V3BelgradeTime.parseTs(n['naplatio_at']?.toString()) ??
         V3BelgradeTime.parseTs(n['uplata_datum']?.toString()) ??
         V3BelgradeTime.parseTs(n['updated_at']?.toString()) ??
-        DateTime.now();
+        V3BelgradeTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;

@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../utils/v3_belgrade_time.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
@@ -183,8 +184,9 @@ Future<void> _bgSyncDesiredStateFromPrefs() async {
   _bgDatumIso = datumIso;
   _bgGrad = grad;
   _bgVreme = vreme;
-  _bgTrackingStartedAt =
-      startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : (_bgTrackingStartedAt ?? DateTime.now());
+  _bgTrackingStartedAt = startedAtMs > 0
+      ? DateTime.fromMillisecondsSinceEpoch(startedAtMs)
+      : (_bgTrackingStartedAt ?? V3BelgradeTime.now());
 
   await _bgEnsureSupabaseClientReady();
   final client = _bgSupabaseClient;

@@ -52,7 +52,7 @@ import 'v3_welcome_screen.dart';
 
 /// Generiše listu meseci za račun (januar–decembar tekuće godine).
 List<DateTime> _racunMesecOptions() {
-  final now = DateTime.now();
+  final now = V3BelgradeTime.now();
   return List.generate(12, (i) => DateTime(now.year, i + 1, 1));
 }
 
@@ -319,7 +319,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
       final rowDatum = V3BelgradeTime.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
       final rowGrad = (operativnaRow['grad']?.toString() ?? '').trim().toUpperCase();
-      final rowVreme = V3StringUtils.trimTimeToHhMm(operativnaRow['polazak_at']?.toString() ?? '');
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(operativnaRow['polazak_at']?.toString() ?? '');
 
       if (rowDatum == _selectedDatumIso && rowGrad == grad && rowVreme == vreme) {
         final vozacId = dodela['vozac_v3_auth_id']?.toString();
@@ -756,9 +756,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final iznosCtrl = TextEditingController();
     final kolicinaCtrl = TextEditingController(text: '1');
     String jedMera = 'usluga';
-    DateTime selectedMesec = DateTime(DateTime.now().year, DateTime.now().month, 1);
+    DateTime selectedMesec = DateTime(V3BelgradeTime.now().year, V3BelgradeTime.now().month, 1);
     DateTime datumPrometa = _lastDayOfMonth(selectedMesec);
-    DateTime datumIzdavanja = DateTime.now();
+    DateTime datumIzdavanja = V3BelgradeTime.now();
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
@@ -813,8 +813,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                       onPressed: () async {
                         final meseci = _racunMesecOptions();
                         final initialDate = selectedMesec;
-                        final currentYear = DateTime.now().year;
-                        final currentMonth = DateTime.now().month;
+                        final currentYear = V3BelgradeTime.now().year;
+                        final currentMonth = V3BelgradeTime.now().month;
 
                         // Prikazivanje dijaloga za izbor meseca
                         final izabraniMesec = await showDialog<DateTime>(
@@ -1061,7 +1061,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
               // Kapacitet
               int? getKapacitet(String grad, String vreme) {
-                final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+                final datum = V3BelgradeTime.parseDatumOrToday(_selectedDatumIso);
                 return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
               }
 
@@ -1555,9 +1555,9 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
   late final TextEditingController pretragaCtrl;
   late final TextEditingController cenaCtrl;
   late final TextEditingController danaCtrl;
-  DateTime selectedMesec = DateTime(DateTime.now().year, DateTime.now().month, 1);
-  DateTime datumPrometa = _lastDayOfMonth(DateTime(DateTime.now().year, DateTime.now().month, 1));
-  DateTime datumIzdavanja = DateTime.now();
+  DateTime selectedMesec = DateTime(V3BelgradeTime.now().year, V3BelgradeTime.now().month, 1);
+  DateTime datumPrometa = _lastDayOfMonth(DateTime(V3BelgradeTime.now().year, V3BelgradeTime.now().month, 1));
+  DateTime datumIzdavanja = V3BelgradeTime.now();
   bool _autoPredlogEnabled = true;
 
   @override
@@ -1826,6 +1826,7 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                       );
                     },
                   );
+
                   if (izabraniMesec != null) {
                     setState(() {
                       selectedMesec = izabraniMesec;

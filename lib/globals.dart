@@ -107,7 +107,7 @@ List<Map<String, String>> _parseNeradniDani(dynamic raw) {
   final out = <Map<String, String>>[];
   for (final item in raw) {
     if (item is! Map) continue;
-    final parsed = DateTime.tryParse((item['date'] ?? '').toString().trim());
+    final parsed = V3BelgradeTime.parseDatum((item['date'] ?? '').toString().trim());
     if (parsed == null) continue;
     final dateIso = V3BelgradeTime.toIsoDate(parsed);
 

@@ -4,6 +4,7 @@ import 'v3_belgrade_time.dart';
 import 'v3_string_utils.dart';
 
 /// Helper za konverziju DateTime u naziv/kraticu dana i naziva u datume.
+/// Sve operacije sa datumom/vremenom delegiraju na [V3BelgradeTime].
 class V3DanHelper {
   V3DanHelper._();
 
@@ -40,8 +41,6 @@ class V3DanHelper {
     final len = translated.length < 3 ? translated.length : 3;
     return translated.substring(0, len);
   }
-
-  static const int _isoDateLength = 10;
 
   static const _names = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak', 'Subota', 'Nedelja'];
   static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
@@ -160,14 +159,15 @@ class V3DanHelper {
   }
 
   /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 03:00).
+  /// Računa se u `Europe/Belgrade` zoni.
   static DateTime nextSchedulingUnlock({DateTime? now}) {
     final current = now ?? V3BelgradeTime.now();
     final base = dateOnly(current);
     final saturday = base.add(Duration(days: DateTime.saturday - base.weekday));
-    final unlockThisWeek = DateTime(saturday.year, saturday.month, saturday.day, 3, 0);
+    final unlockThisWeek = V3BelgradeTime.dateTime(saturday.year, saturday.month, saturday.day, 3, 0);
     if (current.isBefore(unlockThisWeek)) return unlockThisWeek;
     final nextSaturday = saturday.add(const Duration(days: 7));
-    return DateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
+    return V3BelgradeTime.dateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
   }
 
   /// Da li je datum unutar operativne sedmice zakazivanja.
@@ -212,40 +212,29 @@ class V3DanHelper {
     return toIsoDate(datumZaDanAbbrUTekucojSedmici(danAbbr, anchor: anchor));
   }
 
+  /// Formatira vreme iz sati/minuta u "HH:mm" — delegira na jedini izvor istine.
+  static String formatVreme(int sati, int minuti) => V3BelgradeTime.formatVreme(sati, minuti);
+
   // ─── parsanje/formatiranje ───────────────────────────────────
 
-  /// ISO datum string iz DateTime.
-  static String toIsoDate(DateTime datum) {
-    return dateOnly(datum).toIso8601String().substring(0, _isoDateLength);
-  }
+  /// ISO datum string iz DateTime — delegira na jedini izvor istine.
+  static String toIsoDate(DateTime datum) => V3BelgradeTime.toIsoDate(datum);
 
-  /// Današnji ISO datum (yyyy-MM-dd) u Belgrade zoni.
-  static String todayIso() => toIsoDate(V3BelgradeTime.now());
+  /// Današnji ISO datum (yyyy-MM-dd) u Belgrade zoni — delegira na jedini izvor istine.
+  static String todayIso() => V3BelgradeTime.todayIso();
 
-  /// Formatuje vreme iz sati/minuta u "HH:mm".
-  static String formatVreme(int sati, int minuti) {
-    return '${sati.toString().padLeft(2, '0')}:${minuti.toString().padLeft(2, '0')}';
-  }
+  /// Formatira datum u DD.MM.YY format — delegira na jedini izvor istine.
+  static String formatDanMesec(DateTime datum) => V3BelgradeTime.formatDanMesec(datum);
 
-  /// Formatira datum u DD.MM.YY format.
-  static String formatDanMesec(DateTime datum) {
-    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year.toString().substring(2)}';
-  }
+  /// Formatira datetime u DD.MM. HH:MM format (kratko) — delegira na jedini izvor istine.
+  static String formatDatumVremeKratko(DateTime dt) => V3BelgradeTime.formatDatumVremeKratko(dt);
 
-  /// Formatira datetime u DD.MM. HH:MM format (kratko)
-  static String formatDatumVremeKratko(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}. '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
+  /// Formatira datum u DD.MM.YYYY format (puni) — delegira na jedini izvor istine.
+  static String formatDatumPuni(DateTime datum) => V3BelgradeTime.formatDatumPuni(datum);
 
-  /// Formatira datum u DD.MM.YYYY format (puni)
-  static String formatDatumPuni(DateTime datum) {
-    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.${datum.year}';
-  }
-
-  /// Kreira DateTime samo sa datumom (bez vremena) - delegira na jedini izvor istine.
+  /// Kreira DateTime samo sa datumom (bez vremena) — delegira na jedini izvor istine.
   static DateTime dateOnly(DateTime datum) => V3BelgradeTime.dateOnly(datum);
 
-  /// Generira DateTime sa datumom (god, mes, dan) i vremenom na 00:00:00 - delegira na jedini izvor istine.
+  /// Generira DateTime sa datumom (god, mes, dan) i vremenom na 00:00:00 — delegira na jedini izvor istine.
   static DateTime dateOnlyFrom(int godina, int mesec, int dan) => V3BelgradeTime.dateOnlyFrom(godina, mesec, dan);
 }

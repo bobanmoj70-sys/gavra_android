@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_style_helper.dart';
 import 'v3_putnik_voznje_mesec_screen.dart';
-import '../l10n/app_translations.dart';
 
 class _StatTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('putnikStatistikaScreen');
@@ -43,7 +44,7 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
       stream: V3MasterRealtimeManager.instance
           .tablesRevisionStream(const ['v3_operativna_nedelja', 'v3_finansije', 'v3_auth']),
       builder: (context, _) {
-        final godina = DateTime.now().year;
+        final godina = V3BelgradeTime.now().year;
         final meseci = V3PutnikStatistikaService.getZaGodinu(widget.putnikId, godina: godina);
 
         return Scaffold(

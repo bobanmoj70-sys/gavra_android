@@ -13,6 +13,7 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
@@ -526,7 +527,7 @@ class _PutnikCard extends StatelessWidget {
 
     String pad(int n) => n.toString().padLeft(2, '0');
     String fmt(DateTime dt) {
-      final d = dt.toLocal();
+      final d = V3BelgradeTime.fromUtc(dt);
       return '${pad(d.day)}.${pad(d.month)}.${d.year}  ${pad(d.hour)}:${pad(d.minute)}';
     }
 

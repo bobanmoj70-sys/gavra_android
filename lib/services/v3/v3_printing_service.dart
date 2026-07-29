@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -9,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../services/v3/v3_putnik_service.dart';
 import '../../utils/v3_app_snack_bar.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_dan_helper.dart';
 
 /// V3 servis za generisanje PDF spiska putnika za dati polazak.
@@ -58,9 +58,10 @@ class V3PrintingService {
       );
 
       final tempDir = await getTemporaryDirectory();
-      final fileName = 'Spisak_${dan}_${vreme}_${grad}_${DateFormat('dd_MM_yyyy').format(DateTime.now())}.pdf'
-          .replaceAll(' ', '_')
-          .replaceAll(':', '_');
+      final fileName =
+          'Spisak_${dan}_${vreme}_${grad}_${V3BelgradeTime.formatFileDateUnderscore(V3BelgradeTime.now())}.pdf'
+              .replaceAll(' ', '_')
+              .replaceAll(':', '_');
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsBytes(pdfBytes, flush: true);
       await OpenFilex.open(file.path);
@@ -84,7 +85,7 @@ class V3PrintingService {
       ..sort();
 
     final relacija = _relacija(grad, vreme);
-    final danas = V3DanHelper.formatDatumPuni(DateTime.now());
+    final danas = V3DanHelper.formatDatumPuni(V3BelgradeTime.now());
 
     final theme = pw.ThemeData.withFont(
       base: _regular,

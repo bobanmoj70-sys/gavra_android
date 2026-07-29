@@ -428,7 +428,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
   Future<void> _editDate(String field, String label, DateTime? current) async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: current ?? DateTime.now(),
+      initialDate: current ?? V3BelgradeTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
       helpText: label,
@@ -743,7 +743,7 @@ class _ServisSheetState extends State<_ServisSheet> {
   @override
   void initState() {
     super.initState();
-    _datum = widget.datum ?? DateTime.now();
+    _datum = widget.datum ?? V3BelgradeTime.now();
     _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
   }
 
@@ -778,9 +778,9 @@ class _ServisSheetState extends State<_ServisSheet> {
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _datum ?? DateTime.now(),
+                      initialDate: _datum ?? V3BelgradeTime.now(),
                       firstDate: DateTime(2000),
-                      lastDate: DateTime.now(),
+                      lastDate: V3BelgradeTime.now(),
                     );
                     if (picked != null) setState(() => _datum = picked);
                   },
@@ -870,7 +870,7 @@ class _GumeSheetState extends State<_GumeSheet> {
   @override
   void initState() {
     super.initState();
-    _datum = widget.datum ?? DateTime.now();
+    _datum = widget.datum ?? V3BelgradeTime.now();
     _opisCtrl = TextEditingController(text: widget.opis ?? '');
     _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
     final o = widget.opis;
@@ -960,9 +960,9 @@ class _GumeSheetState extends State<_GumeSheet> {
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: _datum ?? DateTime.now(),
+                      initialDate: _datum ?? V3BelgradeTime.now(),
                       firstDate: DateTime(2000),
-                      lastDate: DateTime.now(),
+                      lastDate: V3BelgradeTime.now(),
                     );
                     if (picked != null) setState(() => _datum = picked);
                   },

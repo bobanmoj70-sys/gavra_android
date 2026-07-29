@@ -1,5 +1,3 @@
-import 'v3_belgrade_time.dart';
-
 /// Centralni string utilities — normalizacija za pretragu i sortiranje.
 /// Podržava srpska latinična slova: č→c, š→s, ž→z, ć→c, đ→d
 class V3StringUtils {
@@ -87,21 +85,5 @@ class V3StringUtils {
   static bool containsSearch(String haystack, String needle) {
     if (needle.isEmpty) return true;
     return forSearch(haystack).contains(forSearch(needle));
-  }
-
-  // ─── VREME TRIMMING UTILITIES ──────────────────────────────────────────
-
-  /// Trimuje vreme string sa HH:mm:ss na HH:mm format
-  /// Primer: "15:30:00" → "15:30", "09:15" → "09:15"
-  static String trimTimeToHhMm(String time) {
-    return V3BelgradeTime.normalizeToHHmm(time);
-  }
-
-  /// Normalizuje alternativno vreme za prikaz (null-safe)
-  /// Koristi se za z.altVremePre?.toString().substring(0,5) patterne
-  static String formatAlternativeTime(Object? altTime) {
-    if (altTime == null) return '';
-    final timeStr = altTime.toString();
-    return trimTimeToHhMm(timeStr);
   }
 }

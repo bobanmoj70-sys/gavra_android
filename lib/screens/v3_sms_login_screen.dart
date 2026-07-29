@@ -19,6 +19,7 @@ import '../services/v3_biometric_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
@@ -85,9 +86,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   int? _minutesUntil(String? isoTimestamp) {
     if (isoTimestamp == null || isoTimestamp.isEmpty) return null;
-    final target = DateTime.tryParse(isoTimestamp);
+    final target = V3BelgradeTime.parseTs(isoTimestamp);
     if (target == null) return null;
-    final diff = target.difference(DateTime.now());
+    final diff = target.difference(V3BelgradeTime.now());
     if (diff.isNegative) return null;
     final minutes = diff.inSeconds / 60;
     return minutes.ceil();

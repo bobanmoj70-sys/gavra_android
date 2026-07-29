@@ -2,17 +2,18 @@
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
-import '../l10n/app_translations.dart';
 
 class _RadZahTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('radniciZahteviScreen');
@@ -60,7 +61,7 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
       if (!isRadnik) return false;
 
       final datumRaw = r['datum']?.toString();
-      final datum = datumRaw != null ? DateTime.tryParse(datumRaw) : null;
+      final datum = datumRaw != null ? V3BelgradeTime.parseDatum(datumRaw) : null;
       if (datum == null) return false;
       if (!V3DanHelper.isInSchedulingWeek(datum)) return false;
 
@@ -76,12 +77,12 @@ class _V3RadniciZahteviScreenState extends State<V3RadniciZahteviScreen> {
       return true;
     }).toList()
       ..sort((a, b) {
-        final aCreated = DateTime.tryParse((a['created_at']?.toString() ?? '')) ?? DateTime(2000);
-        final bCreated = DateTime.tryParse((b['created_at']?.toString() ?? '')) ?? DateTime(2000);
+        final aCreated = V3BelgradeTime.parseTs(a['created_at']?.toString()) ?? DateTime(2000);
+        final bCreated = V3BelgradeTime.parseTs(b['created_at']?.toString()) ?? DateTime(2000);
         final createdCmp = bCreated.compareTo(aCreated);
         if (createdCmp != 0) return createdCmp;
-        final aDatum = DateTime.tryParse((a['datum']?.toString() ?? '')) ?? DateTime(2000);
-        final bDatum = DateTime.tryParse((b['datum']?.toString() ?? '')) ?? DateTime(2000);
+        final aDatum = V3BelgradeTime.parseDatum(a['datum']?.toString() ?? '') ?? DateTime(2000);
+        final bDatum = V3BelgradeTime.parseDatum(b['datum']?.toString() ?? '') ?? DateTime(2000);
         return bDatum.compareTo(aDatum);
       });
   }
@@ -217,7 +218,7 @@ class _MonitoringCardRadnik extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${zahtev.grad} · ${V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt)} · ${V3DanHelper.label(zahtev.datum)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
+                    '${zahtev.grad} · ${V3BelgradeTime.normalizeToHHmm(zahtev.trazeniPolazakAt)} · ${V3DanHelper.label(zahtev.datum)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                   V3ZahtevTimelapseWidget(zahtev: zahtev),

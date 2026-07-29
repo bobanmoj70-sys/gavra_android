@@ -103,7 +103,7 @@ class V3KreditService {
 
     final novaUplata = V3KreditUplata(
       uplataId: 'kupl:${_uuid.v4()}',
-      datum: DateTime.now(),
+      datum: V3BelgradeTime.now(),
       iznos: iznos,
       napomena: napomena?.trim().isEmpty ?? true ? null : napomena!.trim(),
     );

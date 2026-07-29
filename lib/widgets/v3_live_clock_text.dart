@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../utils/v3_belgrade_time.dart';
+
 class V3LiveClockText extends StatefulWidget {
   final TextStyle? style;
   final TextAlign textAlign;
@@ -25,7 +27,7 @@ class _V3LiveClockTextState extends State<V3LiveClockText> {
   @override
   void initState() {
     super.initState();
-    _now = DateTime.now();
+    _now = V3BelgradeTime.now();
     _startTimer();
   }
 
@@ -48,7 +50,7 @@ class _V3LiveClockTextState extends State<V3LiveClockText> {
     _timer = Timer.periodic(Duration(seconds: widget.precisionSeconds), (_) {
       if (!mounted) return;
       setState(() {
-        _now = DateTime.now();
+        _now = V3BelgradeTime.now();
       });
     });
   }

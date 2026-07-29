@@ -73,7 +73,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
   }
 
-  DateTime _selectedDate = V3DanHelper.dateOnly(DateTime.now());
+  DateTime _selectedDate = V3DanHelper.dateOnly(V3BelgradeTime.now());
   String _selectedGrad = 'BC';
   String _selectedVreme = '';
   bool _isLoading = true;
@@ -450,7 +450,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       _selectedGrad = payload.grad;
       _selectedVreme = payload.vreme;
       try {
-        _selectedDate = DateTime.parse(payload.datumIso);
+        _selectedDate = V3BelgradeTime.parseDatum(payload.datumIso) ?? V3BelgradeTime.today();
       } catch (_) {}
     });
 
@@ -722,7 +722,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       dayAbbr,
       anchor: V3DanHelper.schedulingWeekAnchor(),
     );
-    final parsedDayDate = DateTime.tryParse(dayIso);
+    final parsedDayDate = V3BelgradeTime.parseDatum(dayIso);
     if (parsedDayDate == null) return;
     final selectedDayDate = V3DanHelper.dateOnly(parsedDayDate);
     final dayTerms = [
@@ -744,7 +744,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     Map<String, dynamic>? bestTerm;
     if (dayTerms.isNotEmpty && !hasCurrentSelection) {
-      final now = DateTime.now();
+      final now = V3BelgradeTime.now();
       final nowMinutes = now.hour * 60 + now.minute;
       dayTerms.sort((a, b) {
         final aTime = V3BelgradeTime.normalizeToHHmm(a['vreme']?.toString());
@@ -1401,7 +1401,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                   }
 
                   int? getKapacitet(String grad, String vreme) {
-                    final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+                    final datum = V3BelgradeTime.parseDatumOrToday(_selectedDatumIso);
                     return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
                   }
 
@@ -1442,10 +1442,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
             valueListenable: neradniDaniNotifier,
             builder: (context, rules, _) {
               final weekRange = V3DanHelper.schedulingWeekRange();
-              final today = V3DanHelper.dateOnly(DateTime.now());
+              final today = V3DanHelper.dateOnly(V3BelgradeTime.now());
               final hasNeradan = rules.any((rule) {
                 final dateIso = V3BelgradeTime.parseIsoDatePart(rule['date'] ?? '');
-                final date = DateTime.tryParse(dateIso);
+                final date = V3BelgradeTime.parseDatum(dateIso);
                 if (date == null) return false;
                 final onlyDate = V3DanHelper.dateOnly(date);
                 if (onlyDate.isBefore(today)) return false;

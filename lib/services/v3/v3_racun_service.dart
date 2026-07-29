@@ -63,14 +63,14 @@ class V3RacunService {
   /// Vraća sledeći broj računa u formatu `X/YYYY`.
   /// Koristi max(redni_broj) iz v3_racuni za tekuću godinu.
   static Future<String> getNextBrojRacuna() async {
-    final godina = DateTime.now().year;
+    final godina = V3BelgradeTime.now().year;
     try {
       final rows = await _repository.listRedniBrojByGodinaDescLimit1(godina);
 
       final maxBroj = (rows).isNotEmpty ? ((rows.first['redni_broj'] as int?) ?? 0) : 0;
       return '${maxBroj + 1}/$godina';
     } catch (e) {
-      final ts = DateTime.now().millisecondsSinceEpoch;
+      final ts = V3BelgradeTime.now().millisecondsSinceEpoch;
       return 'T$ts/$godina';
     }
   }
@@ -486,7 +486,7 @@ class V3RacunService {
 
   static Future<void> _openPDF(List<int> bytes, String name) async {
     final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/${name}_${DateFormat('ddMMyyyy').format(DateTime.now())}.pdf');
+    final file = File('${tempDir.path}/${name}_${V3BelgradeTime.formatFileDate(V3BelgradeTime.now())}.pdf');
     await file.writeAsBytes(bytes, flush: true);
     await OpenFilex.open(file.path);
   }
@@ -504,5 +504,9 @@ class V3RacunService {
       if (parsed != null) return parsed;
     }
     return DateTime.now().year;
+  }
+
+  static Future<int> getCurrentGodinaRacuna() async {
+    return V3BelgradeTime.now().year;
   }
 }

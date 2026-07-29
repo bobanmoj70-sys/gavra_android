@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../globals.dart';
 import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
-import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_operativna_nedelja_repository.dart';
@@ -220,7 +219,7 @@ class V3OperativnaNedeljaService {
       final slotId = (mapped['id']?.toString() ?? '').trim();
       final slotDatum = V3BelgradeTime.parseIsoDatePart(mapped['datum']?.toString());
       final slotGrad = (mapped['grad']?.toString() ?? '').trim().toUpperCase();
-      final slotVreme = V3StringUtils.trimTimeToHhMm(mapped['vreme']?.toString() ?? '');
+      final slotVreme = V3BelgradeTime.normalizeToHHmm(mapped['vreme']?.toString() ?? '');
       final slotVozacId = (mapped['vozac_v3_auth_id']?.toString() ?? '').trim();
       if (slotDatum.isNotEmpty && slotGrad.isNotEmpty && slotVreme.isNotEmpty && slotVozacId.isNotEmpty) {
         final key = '$slotDatum|$slotGrad|$slotVreme';
@@ -283,7 +282,7 @@ class V3OperativnaNedeljaService {
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
     final datumIso = V3BelgradeTime.parseIsoDatePart(datum.toIso8601String());
     final trazeniGrad = grad.trim().toUpperCase();
-    final trazenoVreme = V3StringUtils.trimTimeToHhMm(vreme);
+    final trazenoVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     if (isNeradanDan(datumIso: datumIso, grad: trazeniGrad.toLowerCase())) {
       return 0;
@@ -294,7 +293,7 @@ class V3OperativnaNedeljaService {
       final rGrad = (r['grad']?.toString() ?? '').trim().toUpperCase();
       if (rGrad != trazeniGrad) continue;
 
-      final rVreme = V3StringUtils.trimTimeToHhMm(r['vreme']?.toString() ?? '');
+      final rVreme = V3BelgradeTime.normalizeToHHmm(r['vreme']?.toString() ?? '');
       if (rVreme != trazenoVreme) continue;
 
       final rDatum = r['datum']?.toString() ?? '';

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../models/v3_vozac.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_uplata_pazara_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _UplTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('uplataPazaraScreen');
@@ -31,7 +32,7 @@ class V3UplataPazaraScreen extends StatefulWidget {
 
 class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
   V3Vozac? _selectedVozac;
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = V3BelgradeTime.now();
   final _iznosController = TextEditingController();
 
   double _ukupnoNaplaceno = 0;
@@ -90,7 +91,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2024),
-      lastDate: DateTime.now(),
+      lastDate: V3BelgradeTime.now(),
       builder: (ctx, child) => Theme(data: ThemeData.dark(), child: child!),
     );
     if (picked != null) {

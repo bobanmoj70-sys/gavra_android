@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../utils/v3_belgrade_time.dart';
+
 class V3WeatherSnapshot {
   final String grad;
   final String icon;
@@ -61,7 +63,7 @@ class V3WeatherService {
     final config = _gradConfig[normalized];
     if (config == null) return null;
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final cached = _cache[normalized];
     if (!forceRefresh && cached != null && now.difference(cached.fetchedAt) < _cacheTtl) {
       return cached;
@@ -114,7 +116,7 @@ class V3WeatherService {
         final isDayValue = current['is_day'];
         final isDay = isDayValue is num ? isDayValue.toInt() != 0 : true;
 
-        final sourceTime = DateTime.tryParse(currentTimeRaw) ?? now;
+        final sourceTime = V3BelgradeTime.parseTs(currentTimeRaw) ?? now;
         final precipProbability = _extractPrecipitation(data, currentTimeRaw);
         final weather = _mapWeatherCode(weatherCode, isDay);
 

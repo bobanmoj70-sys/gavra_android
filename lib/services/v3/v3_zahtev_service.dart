@@ -26,7 +26,7 @@ class V3ZahtevService {
 
   static DateTime _parseTs(String? value) {
     if (value == null || value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
-    return DateTime.tryParse(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return V3BelgradeTime.parseTs(value) ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   static List<Map<String, dynamic>> _vidljiviRedoviPoKontekstu({

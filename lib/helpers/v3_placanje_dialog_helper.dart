@@ -85,7 +85,7 @@ class V3PlacanjeDialogHelper {
       _autoIznosEnabled = false;
     });
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     int _selectedMonth = mesec ?? now.month;
     int _selectedYear = godina ?? now.year;
     final currentYear = now.year;

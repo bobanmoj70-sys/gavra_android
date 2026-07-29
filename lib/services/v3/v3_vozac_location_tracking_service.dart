@@ -306,7 +306,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       }
 
       _activeVozacId = normalizedVozacId;
-      _trackingStartedAt = DateTime.now();
+      _trackingStartedAt = V3BelgradeTime.now();
       debugPrint('[V3VozacLocationTrackingService] Novi tracking startedAt=$_trackingStartedAt');
 
       if (!await _checkLocationPrerequisites()) {
@@ -579,7 +579,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         _activeDatumIso = datumIso;
         _activeGrad = grad;
         _activeVreme = vreme;
-        _trackingStartedAt = startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : DateTime.now();
+        _trackingStartedAt = startedAtMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startedAtMs) : V3BelgradeTime.now();
         _isRunning = true;
         debugPrint(
             '[V3VozacLocationTrackingService][Android] Zatečen aktivan BG servis: vozac=$vozacId grad=$grad vreme=$vreme');
@@ -589,7 +589,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       final startedRaw = await _secureStorage.read(key: _kIosSessionStartedAt);
       if (startedRaw == null || startedRaw.isEmpty) return;
 
-      final startedAt = DateTime.tryParse(startedRaw);
+      final startedAt = V3BelgradeTime.parseTs(startedRaw);
       if (startedAt == null) return;
       _trackingStartedAt = startedAt;
 

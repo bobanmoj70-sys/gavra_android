@@ -1,3 +1,5 @@
+import '../../../utils/v3_belgrade_time.dart';
+
 class V3CacheStore {
   final Map<String, Map<String, Map<String, dynamic>>> _tables = <String, Map<String, Map<String, dynamic>>>{};
   final Map<String, int> _revisions = <String, int>{};
@@ -187,7 +189,7 @@ class V3CacheStore {
     if (value == null) return null;
     if (value is DateTime) return value;
     if (value is String && value.trim().isNotEmpty) {
-      return DateTime.tryParse(value.trim());
+      return V3BelgradeTime.parseTs(value.trim());
     }
     return null;
   }

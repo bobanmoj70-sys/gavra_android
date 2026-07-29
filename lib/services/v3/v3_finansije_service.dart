@@ -435,7 +435,7 @@ class V3FinansijeService {
   /// izveden iz istorijskih cena po vožnji sačuvanih u nenaplacene_voznje_json.
   ///
   /// Ovo je precizniji izvor za dug od "brojVoznji * trenutnaCena", јер свакa
-  /// ставка чува цену која је била важећа у тренутку пokupljanja те воžње.
+  /// ставка чува цену која је била важећа у тренутку пokuplјања те воžње.
   /// Ако се цена путника промени током месеца, овај обрачун остаје исправан.
   static double getNenaplacenIznosForPutnik({
     required String putnikId,
@@ -946,12 +946,12 @@ class V3FinansijeService {
     return result;
   }
 
-  /// Vraća ukupan iznos duga koji je nastao TAČNO na zadati dan (podrazumevano danas),
-  /// za sve putničke tipove koji imaju vožnje po danu (dnevni, pošiljka, radnik, učenik).
+  /// Vraća ukupan iznos duga koji je настao TAЧNO na задати дан (подразумевано данас),
+  /// за све путничке типове који имају воžње по дану (дневни, поšiljка, радник, ученик).
   ///
-  /// Ovo je analogno metodi [getPazarPoVozacuZaDan] koja prikazuje samo uplate
-  /// izvršene tog dana - ovde se prikazuje samo dug (nenaplaćena vožnja)
-  /// nastao tog dana, a ne kumulativni dug kroz ceo mesec.
+  /// Ово је аналогно методу [getPazarPoVozacuZaDan] која приказује само уплате
+  /// извршене тог дана - овде се приказује само дуг (ненаплаћена воžња)
+  /// настао тог дана, а не кумулативни дуг кроз цео месец.
   static double getDugZaDan(DateTime dan) {
     final rm = V3MasterRealtimeManager.instance;
     final targetDay = DateTime(dan.year, dan.month, dan.day);
@@ -1406,7 +1406,7 @@ class V3FinansijeService {
       final uplate = _readUplate(row);
       for (final uplataMap in uplate) {
         final datum = V3BelgradeTime.parseTs(uplataMap['datum']?.toString()) ??
-            DateTime.tryParse(uplataMap['datum']?.toString() ?? '');
+            V3BelgradeTime.parseDatum(uplataMap['datum']?.toString());
         if (datum == null) continue;
         result.add(V3Uplata(
           uplataId: uplataMap['uplata_id']?.toString() ?? '',
@@ -1442,7 +1442,8 @@ class V3FinansijeService {
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {
-        final datum = V3BelgradeTime.parseTs(v['datum']?.toString()) ?? DateTime.tryParse(v['datum']?.toString() ?? '');
+        final datum =
+            V3BelgradeTime.parseTs(v['datum']?.toString()) ?? V3BelgradeTime.parseDatum(v['datum']?.toString());
         if (datum == null) continue;
         result.add({
           ...v,
@@ -1504,7 +1505,7 @@ class V3FinansijeService {
     final result = <V3Uplata>[];
     for (final uplataMap in uplate) {
       final datum = V3BelgradeTime.parseTs(uplataMap['datum']?.toString()) ??
-          DateTime.tryParse(uplataMap['datum']?.toString() ?? '');
+          V3BelgradeTime.parseDatum(uplataMap['datum']?.toString());
       if (datum == null) continue;
       result.add(V3Uplata(
         uplataId: uplataMap['uplata_id']?.toString() ?? '',
@@ -1523,7 +1524,7 @@ class V3FinansijeService {
     final voznje = _readRealizovaneVoznje(row);
     final result = <({DateTime datum, String? pokupljenBy, String? grad, String? vreme})>[];
     for (final v in voznje) {
-      final datum = V3BelgradeTime.parseTs(v['datum']?.toString()) ?? DateTime.tryParse(v['datum']?.toString() ?? '');
+      final datum = V3BelgradeTime.parseTs(v['datum']?.toString()) ?? V3BelgradeTime.parseDatum(v['datum']?.toString());
       if (datum == null) continue;
       result.add((
         datum: datum,

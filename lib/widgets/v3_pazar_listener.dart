@@ -8,6 +8,7 @@ import '../screens/v3_vozac_pazar_popup.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_uplata_pazara_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../utils/v3_belgrade_time.dart';
 
 class V3PazarListener extends StatefulWidget {
   final Widget child;
@@ -55,7 +56,7 @@ class _V3PazarListenerState extends State<V3PazarListener> {
       return;
     }
 
-    final today = DateTime.now();
+    final today = V3BelgradeTime.now();
     debugPrint('[V3PazarListener] proveravam vozacId=$vozacId za ${today.day}.${today.month}.${today.year}');
 
     final cacheMap = V3MasterRealtimeManager.instance.uplataPazaraCache;

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../globals.dart';
+import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -11,15 +12,14 @@ import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
-import '../utils/v3_string_utils.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../widgets/v3_zahtev_timelapse_widget.dart';
-import '../l10n/app_translations.dart';
 
 class _ZahDnevTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('zahteviDnevniScreen');
@@ -89,7 +89,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
 
   List<V3Zahtev> _getZahtevi(String status) {
     final rm = V3MasterRealtimeManager.instance;
-    final today = DateTime.now();
+    final today = V3BelgradeTime.now();
     final todayOnly = V3DanHelper.dateOnlyFrom(today.year, today.month, today.day);
     final windowEnd = todayOnly.add(const Duration(days: 14));
 
@@ -314,7 +314,7 @@ class _MonitoringCardDaily extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    '${zahtev.grad} · ${V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt)} · ${V3DanHelper.label(zahtev.datum)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
+                    '${zahtev.grad} · ${V3BelgradeTime.normalizeToHHmm(zahtev.trazeniPolazakAt)} · ${V3DanHelper.label(zahtev.datum)} · ${zahtev.datum.day}.${zahtev.datum.month}.${zahtev.datum.year}.',
                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                   V3ZahtevTimelapseWidget(zahtev: zahtev),
@@ -372,7 +372,7 @@ class _ZahtevCard extends StatelessWidget {
     final tipColor = V3TipPutnikaUtils.color(tip);
     final statusColor = V3StatusPolicy.statusColor(zahtev.status);
     final danLabel = V3DanHelper.label(zahtev.datum);
-    final vreme = V3StringUtils.trimTimeToHhMm(zahtev.trazeniPolazakAt);
+    final vreme = V3BelgradeTime.normalizeToHHmm(zahtev.trazeniPolazakAt);
 
     return V3ContainerUtils.iconContainer(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
