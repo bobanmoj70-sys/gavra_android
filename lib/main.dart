@@ -21,6 +21,7 @@ import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
+import 'services/v3/v3_auto_start_payload.dart';
 import 'services/v3/v3_background_location_handler.dart';
 import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
@@ -783,12 +784,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // background handler upisuje zeljeno stanje, a pravi tracking pokrece
   // _restoreAndResumeIfNeeded() kada app dodje u foreground.
   if (type == 'vozac_auto_start_tracking') {
-    final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
-    final grad = (data['grad'] ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
-    final datumIso = (data['datum'] ?? '').trim();
+    final payload = V3AutoStartPayload.fromMap(data);
 
-    if (vozacId.isEmpty || grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
+    if (!payload.isValid) {
       return;
     }
 
@@ -811,13 +809,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       }
     }
 
-    debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+    debugPrint(
+        '[FCM][BG] Auto-start tracking: vozac=${payload.vozacId} grad=${payload.grad} vreme=${payload.vreme} datum=${payload.datumIso}');
 
-    await V3VozacLocationTrackingService.instance.writeDesiredStateFromPayload(
-      vozacId: vozacId,
-      datumIso: datumIso,
-      grad: grad,
-      vreme: vreme,
+    await V3VozacLocationTrackingService.instance.autoStartFromPayload(
+      payload,
+      startService: false,
     );
     return;
   }
@@ -904,11 +901,15 @@ Future<void> _initIosFcmHandlers() async {
       }
 
       if (type == 'vozac_auto_start_tracking') {
-        // Vozač je već u aplikaciji (foreground/background sa aktivnim engine-om) —
-        // NEMA potrebe za tap-om na notifikaciju. Tracking se pokreće sam.
+        final payload = V3AutoStartPayload.fromMap(data);
+        if (!payload.isValid) {
+          debugPrint('[FCM][iOS] vozac_auto_start_tracking ignorisan: neispravan payload');
+          return;
+        }
+        // Sva autostart logika je u V3VozacScreen; samo rutiramo tamo.
         unawaited(
-          _autoStartVozacTrackingFromPush(data)
-              .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] auto-start tracking greška: $e')),
+          _navigateToVozacScreenWithPayload(payload)
+              .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] navigacija na vozački ekran greška: $e')),
         );
         return;
       }
@@ -1010,13 +1011,15 @@ Future<void> _initFcmChannel() async {
           }
 
           if (type == 'vozac_auto_start_tracking') {
-            // Vozač je već u aplikaciji (ili je engine aktivan u pozadini) —
-            // NEMA potrebe za tap-om na notifikaciju. Tracking se pokreće sam,
-            // a Android sam prikazuje trajnu "GPS Tracking" notifikaciju
-            // (foreground service, već konfigurisano u main()).
+            final payload = V3AutoStartPayload.fromMap(data);
+            if (!payload.isValid) {
+              debugPrint('[FCM] vozac_auto_start_tracking ignorisan: neispravan payload');
+              return;
+            }
+            // Sva autostart logika je u V3VozacScreen; samo rutiramo tamo.
             unawaited(
-              _autoStartVozacTrackingFromPush(data)
-                  .catchError((Object e) => debugPrint('⚠️ [FCM] auto-start tracking greška: $e')),
+              _navigateToVozacScreenWithPayload(payload)
+                  .catchError((Object e) => debugPrint('⚠️ [FCM] navigacija na vozački ekran greška: $e')),
             );
             return;
           }
@@ -1074,6 +1077,34 @@ Future<void> _initFcmChannel() async {
   }
 }
 
+/// Navigira na V3VozacScreen sa autostart payload-om.
+/// Koriste foreground push handleri i launch handler; sama logika pokretanja
+/// trackinga živi u V3VozacScreen.
+Future<void> _navigateToVozacScreenWithPayload(V3AutoStartPayload payload) async {
+  final nav = navigatorKey.currentState;
+  if (nav == null) return;
+
+  // Sačekaj da navigator bude dostupan (max 5s)
+  for (var i = 0; i < 50 && navigatorKey.currentState == null; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  }
+
+  final currentNav = navigatorKey.currentState;
+  if (currentNav == null) {
+    debugPrint('⚠️ [FCM] Navigator nije dostupan za autostart navigaciju');
+    return;
+  }
+
+  currentNav.push(
+    MaterialPageRoute<void>(
+      builder: (_) => V3VozacScreen(
+        vozacId: payload.vozacId,
+        autoStartPayload: payload,
+      ),
+    ),
+  );
+}
+
 /// Rutira na pravi ekran kada korisnik tapne FCM notifikaciju dok je app bila killed/background.
 ///
 /// Tipovi koji otvaraju V3PutnikProfilScreen:
@@ -1118,77 +1149,18 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
       return;
 
     case 'vozac_auto_start_tracking':
-      final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
-      final grad = (data['grad'] ?? '').trim().toUpperCase();
-      final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
-      final datumIso = (data['datum'] ?? '').trim();
-      if (vozacId.isNotEmpty) {
-        // Navigiraj na V3VozacScreen i pokreni auto tracking
-        final nav = navigatorKey.currentState;
-        if (nav != null) {
-          nav.push(
-            MaterialPageRoute<void>(
-              builder: (_) => V3VozacScreen(
-                vozacId: vozacId,
-                autoStartTracking: true,
-                autoStartDatumIso: datumIso.isNotEmpty ? datumIso : null,
-                autoStartGrad: grad.isNotEmpty ? grad : null,
-                autoStartVreme: vreme.isNotEmpty ? vreme : null,
-              ),
-            ),
-          );
-        }
+      final payload = V3AutoStartPayload.fromMap(data);
+      if (!payload.isValid) {
+        debugPrint('[FCM launch] vozac_auto_start_tracking ignorisan: neispravan payload');
+        return;
       }
+      await _navigateToVozacScreenWithPayload(payload);
       return;
 
     default:
       debugPrint('[FCM launch] Nepoznat type=$type, ignoriši');
       return;
   }
-}
-
-/// Pokreće GPS tracking direktno iz push podataka — BEZ tap-a, bez otvaranja
-/// bilo kakvog ekrana. Poziva se čim stigne `vozac_auto_start_tracking` push
-/// dok je Flutter engine aktivan (foreground ili background sa keširanim
-/// engine-om — što je slučaj sve dok vozač drži aplikaciju otvorenu/pokrenutu).
-///
-/// Android sam prikazuje trajnu "GPS Tracking" notifikaciju preko foreground
-/// service-a (već konfigurisano u main()) — to je jedina notifikacija koju
-/// vozač vidi, bez potrebe da bilo šta klikne.
-Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
-  final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
-  final grad = (data['grad'] ?? '').trim().toUpperCase();
-  final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
-  final datumIso = (data['datum'] ?? '').trim();
-
-  if (vozacId.isEmpty || grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
-    debugPrint('[AUTO-START] Nedostaju podaci u push-u: vozacId=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
-    return;
-  }
-
-  if (!isSupabaseReady) {
-    try {
-      await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
-    } catch (e) {
-      debugPrint('⚠️ [AUTO-START] Supabase init nije uspeo: $e');
-      return;
-    }
-  }
-
-  debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
-
-  // NAPOMENA: checkLocationPrerequisites se radi INTERNOD u start() — nema
-  // potrebe za duplom proverom ovde. Ako nedostaju dozvole, start() ce
-  // logovati i prekinuti.
-  // NAPOMENA: activateSlot (idempotentan upsert sa retry logikom) se sada radi
-  // INTERNO u V3VozacLocationTrackingService.start() — JEDAN IZVOR ISTINE,
-  // deljen i sa Android background isolate-om preko v3_slot_activation.dart.
-  await V3VozacLocationTrackingService.instance.startFromPayload(
-    vozacId: vozacId,
-    datumIso: datumIso,
-    grad: grad,
-    vreme: vreme,
-  );
 }
 
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)

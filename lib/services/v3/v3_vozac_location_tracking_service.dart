@@ -14,6 +14,7 @@ import '../../globals.dart';
 import '../../utils/v3_date_utils.dart';
 import '../../utils/v3_time_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
+import 'v3_auto_start_payload.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
@@ -211,24 +212,18 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
-  /// Upisuje samo "željeno stanje" bez pokretanja servisa.
-  /// Koristi se na iOS-u iz background push handler-a, gde background
-  /// execution traje kratko i ne može pouzdano da pokrene pun tracking.
-  /// Pravi tracking se nastavlja kada app dođe u foreground.
-  Future<void> writeDesiredStateFromPayload({
-    required String vozacId,
-    required String datumIso,
-    required String grad,
-    required String vreme,
-  }) async {
-    final normalizedVozacId = vozacId.trim();
-    final normalizedGrad = grad.trim().toUpperCase();
-    final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
-    final normalizedDatumIso = _normalizeDateIso(datumIso);
-
-    if (normalizedVozacId.isEmpty || normalizedDatumIso.isEmpty || normalizedGrad.isEmpty || normalizedVreme.isEmpty) {
-      return;
-    }
+  /// Applies a normalized payload to the active session state.
+  /// Returns the normalized values so callers can avoid re-parsing.
+  ({
+    String vozacId,
+    String datumIso,
+    String grad,
+    String vreme,
+  }) _applyPayload(V3AutoStartPayload payload) {
+    final normalizedVozacId = payload.vozacId.trim();
+    final normalizedGrad = payload.grad.trim().toUpperCase();
+    final normalizedVreme = V3TimeUtils.normalizeToHHmm(payload.vreme);
+    final normalizedDatumIso = _normalizeDateIso(payload.datumIso);
 
     setActiveTermin(
       datumIso: normalizedDatumIso,
@@ -237,48 +232,63 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     );
 
     _activeVozacId = normalizedVozacId;
-    // Resetuj timer samo ako nema aktivne sesije — isto kao u start().
-    // Ako isti vozač već ima aktivan tracking, zadrži postojeći startedAt
-    // da se ne produži max trajanje sesije.
     if (!_isRunning) {
       _trackingStartedAt = DateTime.now();
     }
 
-    if (Platform.isIOS) {
-      unawaited(_secureStorage.write(key: _kIosSessionStartedAt, value: _trackingStartedAt!.toIso8601String()));
-      unawaited(_secureStorage.write(key: _kIosSessionVozacId, value: normalizedVozacId));
-      unawaited(_secureStorage.write(key: _kIosSessionDatumIso, value: _activeDatumIso));
-      unawaited(_secureStorage.write(key: _kIosSessionGrad, value: _activeGrad));
-      unawaited(_secureStorage.write(key: _kIosSessionVreme, value: _activeVreme));
-    }
-
-    await _writeDesiredState(vozacId: normalizedVozacId);
-  }
-
-  Future<void> startFromPayload({
-    required String vozacId,
-    required String datumIso,
-    required String grad,
-    required String vreme,
-  }) async {
-    final normalizedVozacId = vozacId.trim();
-    final normalizedGrad = grad.trim().toUpperCase();
-    final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
-    final normalizedDatumIso = _normalizeDateIso(datumIso);
-
-    if (normalizedVozacId.isEmpty || normalizedDatumIso.isEmpty || normalizedGrad.isEmpty || normalizedVreme.isEmpty) {
-      debugPrint(
-          '[V3VozacLocationTrackingService] startFromPayload skipped: invalid payload vozac=$normalizedVozacId datum=$normalizedDatumIso grad=$normalizedGrad vreme=$normalizedVreme');
-      return;
-    }
-
-    setActiveTermin(
+    return (
+      vozacId: normalizedVozacId,
       datumIso: normalizedDatumIso,
       grad: normalizedGrad,
       vreme: normalizedVreme,
     );
+  }
 
-    await start(vozacId: normalizedVozacId);
+  /// Single entry point for auto-starting tracking from a push payload.
+  ///
+  /// On Android the native [GavraFcmService] already writes the desired state
+  /// and starts the foreground service for background pushes, so this is used
+  /// when the Flutter engine is alive (foreground push or killed-app tap).
+  ///
+  /// On iOS background pushes only write the desired state
+  /// ([startService] == false); the actual tracking is resumed when the app
+  /// comes to the foreground.
+  ///
+  /// Guards against duplicate starts when the same session is already active.
+  Future<void> autoStartFromPayload(
+    V3AutoStartPayload payload, {
+    required bool startService,
+  }) async {
+    if (!payload.isValid) {
+      debugPrint('[V3VozacLocationTrackingService] autoStartFromPayload skipped: invalid payload');
+      return;
+    }
+
+    if (_isRunning &&
+        payload.matchesCurrentSession(
+          activeVozacId: _activeVozacId,
+          activeDatumIso: _activeDatumIso,
+          activeGrad: _activeGrad,
+          activeVreme: _activeVreme,
+        )) {
+      debugPrint('[V3VozacLocationTrackingService] autoStartFromPayload skipped: already running same session');
+      return;
+    }
+
+    final normalized = _applyPayload(payload);
+
+    if (startService) {
+      await start(vozacId: normalized.vozacId);
+    } else {
+      if (Platform.isIOS) {
+        unawaited(_secureStorage.write(key: _kIosSessionStartedAt, value: _trackingStartedAt!.toIso8601String()));
+        unawaited(_secureStorage.write(key: _kIosSessionVozacId, value: normalized.vozacId));
+        unawaited(_secureStorage.write(key: _kIosSessionDatumIso, value: normalized.datumIso));
+        unawaited(_secureStorage.write(key: _kIosSessionGrad, value: normalized.grad));
+        unawaited(_secureStorage.write(key: _kIosSessionVreme, value: normalized.vreme));
+      }
+      await _writeDesiredState(vozacId: normalized.vozacId);
+    }
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) {

@@ -10,6 +10,7 @@ import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
+import '../services/v3/v3_auto_start_payload.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
@@ -49,18 +50,12 @@ import 'v3_welcome_screen.dart';
 /// iz cache-a građenog iz v3_operativna_nedelja.
 class V3VozacScreen extends StatefulWidget {
   final String? vozacId;
-  final bool autoStartTracking;
-  final String? autoStartDatumIso;
-  final String? autoStartGrad;
-  final String? autoStartVreme;
+  final V3AutoStartPayload? autoStartPayload;
 
   const V3VozacScreen({
     super.key,
     this.vozacId,
-    this.autoStartTracking = false,
-    this.autoStartDatumIso,
-    this.autoStartGrad,
-    this.autoStartVreme,
+    this.autoStartPayload,
   });
 
   @override
@@ -445,7 +440,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           unawaited(_recomputeEtaFromCurrentPosition());
         }
         // Auto-start tracking ako je ekran otvoren preko push notifikacije
-        if (widget.autoStartTracking && !_isNavigating) {
+        if (widget.autoStartPayload != null && !_isNavigating) {
           unawaited(_autoStartTrackingFromPush());
         }
       });
@@ -453,31 +448,23 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   Future<void> _autoStartTrackingFromPush() async {
-    final vozacId = (widget.vozacId ?? V3VozacService.currentVozac?.id ?? '').toString().trim();
-    if (vozacId.isEmpty) return;
-
-    final grad = (widget.autoStartGrad ?? _selectedGrad).trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(widget.autoStartVreme ?? _selectedVreme);
-    final datumIso = (widget.autoStartDatumIso ?? _selectedDatumIso).trim();
-
-    if (grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
-      debugPrint('[V3VozacScreen] Auto-start: nema validnog termina');
+    final payload = widget.autoStartPayload;
+    if (payload == null || !payload.isValid) {
+      debugPrint('[V3VozacScreen] Auto-start: nema validnog payload-a');
       return;
     }
 
     V3StateUtils.safeSetState(this, () {
-      _selectedGrad = grad;
-      _selectedVreme = vreme;
+      _selectedGrad = payload.grad;
+      _selectedVreme = payload.vreme;
       try {
-        _selectedDate = DateTime.parse(datumIso);
+        _selectedDate = DateTime.parse(payload.datumIso);
       } catch (_) {}
     });
 
-    await V3VozacLocationTrackingService.instance.startFromPayload(
-      vozacId: vozacId,
-      datumIso: datumIso,
-      grad: grad,
-      vreme: vreme,
+    await V3VozacLocationTrackingService.instance.autoStartFromPayload(
+      payload,
+      startService: true,
     );
 
     if (mounted) {
