@@ -1726,7 +1726,6 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
     if (!result.ok) {
       final message = switch (result.reason) {
         'old_pin_mismatch' => _tr('trenutniPinNijeIspravan'),
-       
         'pin_not_set' => _tr('nalogNemaPin'),
         _ => _tr('greskaPromenaPin'),
       };
@@ -1848,6 +1847,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
             ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
