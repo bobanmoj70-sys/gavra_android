@@ -15,8 +15,12 @@ limit 10;
 -- 4. Da li vault secreti postoje?
 select name, created_at, updated_at from vault.decrypted_secrets where name in ('supabase_url','supabase_anon_key');
 
--- 5. Da li ijedan slot ima popunjen waypoints_json.passengers?
-select id, grad, vreme, datum, jsonb_array_length(coalesce(waypoints_json->'passengers','[]'::jsonb)) as passenger_count
-from v3_trenutna_dodela_slot
-order by created_at desc
+-- 5. Da li ijedan slot ima dodeljene putnike i/ili optimized_order?
+select s.id, s.grad, s.vreme, s.datum,
+       count(d.putnik_id) as passenger_count,
+       array_length(s.optimized_order, 1) as optimized_order_length
+from v3_trenutna_dodela_slot s
+left join v3_trenutna_dodela d on d.slot_id = s.id
+group by s.id, s.grad, s.vreme, s.datum, s.optimized_order
+order by s.created_at desc
 limit 20;

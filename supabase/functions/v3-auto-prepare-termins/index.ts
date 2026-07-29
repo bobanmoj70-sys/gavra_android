@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
       // po fizičkom ključu slota.
       const { data: existingSlots, error: slotError } = await client
         .from("v3_trenutna_dodela_slot")
-        .select("id, vozac_v3_auth_id, waypoints_json, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
+        .select("id, vozac_v3_auth_id, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
         .eq("datum", datumIso)
         .eq("grad", grad)
         .eq("vreme", vreme);
@@ -230,7 +230,6 @@ Deno.serve(async (req) => {
       }
 
       let slotId: string;
-      let slotWaypoints: Record<string, unknown> = {};
       let autoPreparedAt: string | null = null;
       let autoNotifiedAt: string | null = null;
       let autoDriverNotifiedAt: string | null = null;
@@ -238,18 +237,11 @@ Deno.serve(async (req) => {
       if (existingSlots && existingSlots.length > 0) {
         const existing = existingSlots[0];
         slotId = existing.id;
-        slotWaypoints = (existing.waypoints_json as Record<string, unknown>) ?? {};
         autoPreparedAt = existing.auto_prepared_at;
         autoNotifiedAt = existing.auto_notified_at;
         autoDriverNotifiedAt = existing.auto_driver_notified_at;
 
         if (existing.vozac_v3_auth_id && existing.vozac_v3_auth_id !== vozacId) {
-          // Slot fizicki vec postoji sa drugim "vlasnikom" (najcesce zbog
-          // individualnog override-a putnika na drugog vozaca). Ne
-          // prepisujemo vozac_v3_auth_id slota (da ne bismo pokvarili
-          // notifikacije/tracking za onog vozaca koji je vec obradjen u
-          // ovom ili prethodnom cron prolazu) — samo logujemo upozorenje i
-          // nastavljamo da spajamo putnike u isti fizicki slot.
           console.warn(
             `[v3-auto-prepare-termins] Slot ${key} already owned by vozac=${existing.vozac_v3_auth_id}, ` +
               `but termin group has vozac=${vozacId} (putnik override?). Merging passengers into shared slot ` +
@@ -257,12 +249,6 @@ Deno.serve(async (req) => {
           );
         }
       } else {
-        // upsert (umesto plain insert) kao dodatna zastita od race-a: ako
-        // dva razlicita "slot" kljuca (razliciti vozac_id iz grupisanja
-        // po slotTermins) ciljaju isti fizicki (datum,grad,vreme) red koji
-        // je upravo kreiran u paralelnom pozivu/prethodnoj iteraciji ove
-        // petlje, upsert ce vratiti postojeci red umesto da baci
-        // UNIQUE constraint gresku.
         const { data: newSlot, error: insertError } = await client
           .from("v3_trenutna_dodela_slot")
           .upsert(
@@ -272,11 +258,10 @@ Deno.serve(async (req) => {
               vreme: vreme,
               vozac_v3_auth_id: vozacId,
               updated_by: vozacId,
-              waypoints_json: {},
             },
             { onConflict: "datum,grad,vreme", ignoreDuplicates: false },
           )
-          .select("id, waypoints_json, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
+          .select("id, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
           .single();
 
         if (insertError || !newSlot) {
@@ -284,9 +269,6 @@ Deno.serve(async (req) => {
           continue;
         }
         slotId = newSlot.id;
-        // Ako je upsert zapravo pogodio postojeci red (race), preuzmi
-        // njegovo trenutno stanje umesto podrazumevanih praznih vrednosti.
-        slotWaypoints = (newSlot.waypoints_json as Record<string, unknown>) ?? {};
         autoPreparedAt = newSlot.auto_prepared_at ?? null;
         autoNotifiedAt = newSlot.auto_notified_at ?? null;
         autoDriverNotifiedAt = newSlot.auto_driver_notified_at ?? null;
@@ -316,158 +298,78 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Build passengers list if waypoints not already populated
-      const existingPassengers = slotWaypoints["passengers"];
-      const hasPassengers = Array.isArray(existingPassengers) && existingPassengers.length > 0;
-
+      // Build passengers list from slotTermins every run (coordinates go to v3_trenutna_dodela)
       let passengers: PassengerEntry[] = [];
 
-      if (!hasPassengers) {
-        const putnikIds = [...new Set(slotTermins.map((t) => t.created_by))];
-        const { data: authRows, error: authError } = await client
-          .from("v3_auth")
-          .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
-          .in("id", putnikIds);
+      const putnikIds = [...new Set(slotTermins.map((t) => t.created_by))];
+      const { data: authRows, error: authError } = await client
+        .from("v3_auth")
+        .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
+        .in("id", putnikIds);
 
-        if (authError) {
-          console.error(`[v3-auto-prepare-termins] Auth lookup error: ${authError.message}`);
+      if (authError) {
+        console.error(`[v3-auto-prepare-termins] Auth lookup error: ${authError.message}`);
+        continue;
+      }
+
+      const authById = new Map((authRows ?? []).map((a) => [a.id, a]));
+      const adresaIds: string[] = [];
+      const adresaMap = new Map<string, { terminId: string; putnikId: string }>();
+
+      for (const t of slotTermins) {
+        const auth = authById.get(t.created_by);
+        if (!auth) continue;
+
+        let adresaId: string | null = null;
+        if (t.adresa_override_id) {
+          adresaId = t.adresa_override_id;
+        } else if (grad === "BC") {
+          adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id;
+        } else if (grad === "VS") {
+          adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id;
+        }
+
+        if (adresaId) {
+          adresaIds.push(adresaId);
+          adresaMap.set(adresaId, { terminId: t.id, putnikId: t.created_by });
+        }
+      }
+
+      if (adresaIds.length > 0) {
+        const { data: adresaRows, error: adresaError } = await client
+          .from("v3_adrese")
+          .select("id, gps_lat, gps_lng")
+          .in("id", [...new Set(adresaIds)]);
+
+        if (adresaError) {
+          console.error(`[v3-auto-prepare-termins] Adresa lookup error: ${adresaError.message}`);
           continue;
         }
 
-        const authById = new Map((authRows ?? []).map((a) => [a.id, a]));
-        const adresaIds: string[] = [];
-        const adresaMap = new Map<string, { terminId: string; putnikId: string }>();
-
-        for (const t of slotTermins) {
-          const auth = authById.get(t.created_by);
-          if (!auth) continue;
-
-          let adresaId: string | null = null;
-          if (t.adresa_override_id) {
-            adresaId = t.adresa_override_id;
-          } else if (grad === "BC") {
-            adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id;
-          } else if (grad === "VS") {
-            adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id;
-          }
-
-          if (adresaId) {
-            adresaIds.push(adresaId);
-            adresaMap.set(adresaId, { terminId: t.id, putnikId: t.created_by });
-          }
+        for (const a of adresaRows ?? []) {
+          const mapping = adresaMap.get(a.id);
+          if (!mapping) continue;
+          const lat = Number(a.gps_lat);
+          const lng = Number(a.gps_lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+          passengers.push({
+            putnik_id: mapping.putnikId,
+            termin_id: mapping.terminId,
+            lat,
+            lng,
+          });
         }
-
-        if (adresaIds.length > 0) {
-          const { data: adresaRows, error: adresaError } = await client
-            .from("v3_adrese")
-            .select("id, gps_lat, gps_lng")
-            .in("id", [...new Set(adresaIds)]);
-
-          if (adresaError) {
-            console.error(`[v3-auto-prepare-termins] Adresa lookup error: ${adresaError.message}`);
-            continue;
-          }
-
-          for (const a of adresaRows ?? []) {
-            const mapping = adresaMap.get(a.id);
-            if (!mapping) continue;
-            const lat = Number(a.gps_lat);
-            const lng = Number(a.gps_lng);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-            passengers.push({
-              putnik_id: mapping.putnikId,
-              termin_id: mapping.terminId,
-              lat,
-              lng,
-            });
-          }
-        }
-      } else {
-        passengers = (existingPassengers as any[])
-          .filter((p) => p?.putnik_id && p?.termin_id && Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lng)))
-          .map((p) => ({
-            putnik_id: String(p.putnik_id),
-            termin_id: String(p.termin_id),
-            lat: Number(p.lat),
-            lng: Number(p.lng),
-          }));
       }
 
-      // Ako je fizicki slot deljen izmedju vise vozac-grupa (putnik
-      // override na drugog vozaca dok je ostatak termina kod default
-      // vozaca), passengers[] moze vec postojati ali BEZ termina iz OVE
-      // grupe (jer ih je popunila prethodna iteracija/prolaz za drugog
-      // vozaca). Dopuni nedostajuce termine iz slotTermins pre nego sto
-      // nastavimo — inace bi override-ovan putnik trajno ostao van rute.
-      const passengerTerminIdSet = new Set(passengers.map((p) => p.termin_id));
-      const missingSlotTermins = slotTermins.filter((t) => !passengerTerminIdSet.has(t.id));
-      let mergedMissingPassengers = false;
-
-      if (missingSlotTermins.length > 0) {
-        const missingPutnikIds = [...new Set(missingSlotTermins.map((t) => t.created_by))];
-        const { data: missingAuthRows, error: missingAuthError } = await client
-          .from("v3_auth")
-          .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
-          .in("id", missingPutnikIds);
-
-        if (missingAuthError) {
-          console.error(`[v3-auto-prepare-termins] Auth lookup error (merge missing): ${missingAuthError.message}`);
-        } else {
-          const missingAuthById = new Map((missingAuthRows ?? []).map((a) => [a.id, a]));
-          const missingAdresaIds: string[] = [];
-          const missingAdresaMap = new Map<string, { terminId: string; putnikId: string }>();
-
-          for (const t of missingSlotTermins) {
-            const auth = missingAuthById.get(t.created_by);
-            if (!auth) continue;
-
-            let adresaId: string | null = null;
-            if (t.adresa_override_id) {
-              adresaId = t.adresa_override_id;
-            } else if (grad === "BC") {
-              adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id;
-            } else if (grad === "VS") {
-              adresaId = t.koristi_sekundarnu ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id;
-            }
-
-            if (adresaId) {
-              missingAdresaIds.push(adresaId);
-              missingAdresaMap.set(adresaId, { terminId: t.id, putnikId: t.created_by });
-            }
-          }
-
-          if (missingAdresaIds.length > 0) {
-            const { data: missingAdresaRows, error: missingAdresaError } = await client
-              .from("v3_adrese")
-              .select("id, gps_lat, gps_lng")
-              .in("id", [...new Set(missingAdresaIds)]);
-
-            if (missingAdresaError) {
-              console.error(`[v3-auto-prepare-termins] Adresa lookup error (merge missing): ${missingAdresaError.message}`);
-            } else {
-              for (const a of missingAdresaRows ?? []) {
-                const mapping = missingAdresaMap.get(a.id);
-                if (!mapping) continue;
-                const lat = Number(a.gps_lat);
-                const lng = Number(a.gps_lng);
-                if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-                passengers.push({
-                  putnik_id: mapping.putnikId,
-                  termin_id: mapping.terminId,
-                  lat,
-                  lng,
-                });
-                mergedMissingPassengers = true;
-              }
-            }
-          }
-        }
-
-        if (mergedMissingPassengers) {
-          console.log(
-            `[v3-auto-prepare-termins] Slot ${key}: merged ${missingSlotTermins.length} missing termin(s) ` +
-              `(likely putnik override) into shared slot passengers[]`,
-          );
+      // Write resolved passenger coordinates back to v3_trenutna_dodela
+      if (passengers.length > 0) {
+        const coordsByTermin = new Map(passengers.map((p) => [p.termin_id, { lat: p.lat, lng: p.lng }]));
+        for (const [terminId, coords] of coordsByTermin) {
+          await client
+            .from("v3_trenutna_dodela")
+            .update({ adresa_gps_lat: coords.lat, adresa_gps_lng: coords.lng })
+            .eq("termin_id", terminId)
+            .eq("slot_id", slotId);
         }
       }
 
@@ -476,14 +378,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Izbaci otkazane/pokupljene putnike iz passengers[] — bitno i za
-      // sveže izgrađenu listu i za listu ponovo korišćenu iz postojećeg
-      // slota (hasPassengers=true), jer je otkazivanje moglo da se desi
-      // NAKON prve pripreme slota, kad ovaj termin vise ne dolazi kroz
-      // v3_find_termins_for_auto_prepare (jer taj RPC filtrira otkazano/
-      // pokupljeno) pa se passengers[] bez ove provere nikad ne bi ocistio.
+      // Izbaci otkazane/pokupljene putnike iz passengers[]
       const passengerTerminIds = passengers.map((p) => p.termin_id);
-      let removedAny = false;
       if (passengerTerminIds.length > 0) {
         const { data: statusRows, error: statusError } = await client
           .from("v3_operativna_nedelja")
@@ -499,9 +395,7 @@ Deno.serve(async (req) => {
               .map((r: any) => String(r.id))
           );
           if (completedTerminIds.size > 0) {
-            const before = passengers.length;
             passengers = passengers.filter((p) => !completedTerminIds.has(p.termin_id));
-            removedAny = passengers.length !== before;
           }
         }
       }
@@ -511,144 +405,103 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Compute optimized order via OSRM if not already populated, ili ako
-      // je gore izbacen bilo koji otkazan/pokupljen putnik (redosled se mora
-      // preracunati da odrazi preostale putnike).
+      // Compute optimized order via OSRM every run
       let optimizedOrder: string[] = [];
-      const needsOsrmRecompute = !hasPassengers || removedAny || mergedMissingPassengers;
 
       // Startna tačka za OSRM: koristi poslednju poznatu (svežu) GPS
       // poziciju vozača ako postoji, u suprotnom fiksnu DEFAULT_START
       // koordinatu po gradu (fallback za slučaj da vozač jos nije nikad
       // slao lokaciju danas).
-      const driverLastLocation = needsOsrmRecompute
-        ? await findDriverLastLocation(client, vozacId)
-        : null;
+      const driverLastLocation = await findDriverLastLocation(client, vozacId);
       const effectiveStart = driverLastLocation ?? DEFAULT_START[grad];
 
-      if (needsOsrmRecompute) {
-        const start = effectiveStart;
-        const dest = DEFAULT_DEST[grad];
-        if (!start || !dest) {
-          console.warn(`[v3-auto-prepare-termins] Unknown grad ${grad}`);
-          continue;
-        }
+      const start = effectiveStart;
+      const dest = DEFAULT_DEST[grad];
+      if (!start || !dest) {
+        console.warn(`[v3-auto-prepare-termins] Unknown grad ${grad}`);
+        continue;
+      }
 
-        const waypointCount = passengers.length + 2;
-        if (waypointCount > OSRM_MAX_WAYPOINTS) {
-          console.warn(
-            `[v3-auto-prepare-termins] OSRM skipped: too many waypoints (${waypointCount} > ${OSRM_MAX_WAYPOINTS}) for slot ${key}`,
-          );
-          optimizedOrder = passengers.map((p) => p.putnik_id);
-        } else {
-
-          const tripCoords = [
-            coordStr(start.lat, start.lng),
-            ...passengers.map((p) => coordStr(p.lat, p.lng)),
-            coordStr(dest.lat, dest.lng),
-          ].join(";");
-
-          const osrmUrl =
-            `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
-            `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
-
-          let osrmErrorDetails: any = null;
-
-          try {
-            const osrmResponse = await fetchWithRetry(osrmUrl);
-            const osrmData = await osrmResponse.json();
-
-            if (osrmData.code === "Ok" && Array.isArray(osrmData.waypoints) && Array.isArray(osrmData.trips?.[0]?.legs)) {
-              const rawWaypoints = osrmData.waypoints;
-              const expectedCount = passengers.length + 2;
-
-              if (rawWaypoints.length === expectedCount) {
-                const passengerWaypoints = rawWaypoints
-                  .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
-                  .slice(1, -1)
-                  .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
-
-                const originalIndexToEntry: Record<number, PassengerEntry> = {};
-                for (let i = 0; i < passengers.length; i++) {
-                  originalIndexToEntry[i + 1] = passengers[i];
-                }
-
-                for (const pw of passengerWaypoints) {
-                  const entry = originalIndexToEntry[pw.inputIndex];
-                  if (entry) optimizedOrder.push(entry.putnik_id);
-                }
-              } else {
-                osrmErrorDetails = { reason: "waypoints_count_mismatch", expected: expectedCount, got: rawWaypoints.length };
-                console.warn(`[v3-auto-prepare-termins] OSRM waypoints count mismatch: expected ${expectedCount}, got ${rawWaypoints.length}`);
-              }
-            } else {
-                osrmErrorDetails = { reason: "osrm_not_ok", data: osrmData };
-                console.warn(`[v3-auto-prepare-termins] OSRM response not OK or format unexpected:`, osrmData);
-            }
-          } catch (e) {
-            osrmErrorDetails = { reason: "fetch_error", error: e instanceof Error ? e.message : String(e) };
-            console.error(`[v3-auto-prepare-termins] OSRM error: ${e instanceof Error ? e.message : String(e)}`);
-          }
-
-          if (osrmErrorDetails) {
-              slotWaypoints["osrm_error_details"] = osrmErrorDetails;
-              if (optimizedOrder.length === 0) {
-                optimizedOrder = passengers.map((p) => p.putnik_id);
-              }
-            } else {
-              delete slotWaypoints["osrm_error_details"];
-            }
-        }
+      const waypointCount = passengers.length + 2;
+      if (waypointCount > OSRM_MAX_WAYPOINTS) {
+        console.warn(
+          `[v3-auto-prepare-termins] OSRM skipped: too many waypoints (${waypointCount} > ${OSRM_MAX_WAYPOINTS}) for slot ${key}`,
+        );
+        optimizedOrder = passengers.map((p) => p.putnik_id);
       } else {
-        const existingOrder = slotWaypoints["optimized_order"];
-        if (Array.isArray(existingOrder)) {
-          optimizedOrder = existingOrder.filter((id) => typeof id === "string");
+
+        const tripCoords = [
+          coordStr(start.lat, start.lng),
+          ...passengers.map((p) => coordStr(p.lat, p.lng)),
+          coordStr(dest.lat, dest.lng),
+        ].join(";");
+
+        const osrmUrl =
+          `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
+          `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
+
+        let osrmErrorDetails: any = null;
+
+        try {
+          const osrmResponse = await fetchWithRetry(osrmUrl);
+          const osrmData = await osrmResponse.json();
+
+          if (osrmData.code === "Ok" && Array.isArray(osrmData.waypoints) && Array.isArray(osrmData.trips?.[0]?.legs)) {
+            const rawWaypoints = osrmData.waypoints;
+            const expectedCount = passengers.length + 2;
+
+            if (rawWaypoints.length === expectedCount) {
+              const passengerWaypoints = rawWaypoints
+                .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
+                .slice(1, -1)
+                .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
+
+              const originalIndexToEntry: Record<number, PassengerEntry> = {};
+              for (let i = 0; i < passengers.length; i++) {
+                originalIndexToEntry[i + 1] = passengers[i];
+              }
+
+              for (const pw of passengerWaypoints) {
+                const entry = originalIndexToEntry[pw.inputIndex];
+                if (entry) optimizedOrder.push(entry.putnik_id);
+              }
+            } else {
+              osrmErrorDetails = { reason: "waypoints_count_mismatch", expected: expectedCount, got: rawWaypoints.length };
+              console.warn(`[v3-auto-prepare-termins] OSRM waypoints count mismatch: expected ${expectedCount}, got ${rawWaypoints.length}`);
+            }
+          } else {
+              osrmErrorDetails = { reason: "osrm_not_ok", data: osrmData };
+              console.warn(`[v3-auto-prepare-termins] OSRM response not OK or format unexpected:`, osrmData);
+          }
+        } catch (e) {
+          osrmErrorDetails = { reason: "fetch_error", error: e instanceof Error ? e.message : String(e) };
+          console.error(`[v3-auto-prepare-termins] OSRM error: ${e instanceof Error ? e.message : String(e)}`);
+        }
+
+        if (osrmErrorDetails) {
+          if (optimizedOrder.length === 0) {
+            optimizedOrder = passengers.map((p) => p.putnik_id);
+          }
         }
       }
 
-      // Update slot waypoints_json ako smo prvi put popunili putnike, ili
-      // ako smo izbacili otkazane/pokupljene putnike iz postojece liste,
-      // ili ako smo dospojili nedostajuce termine (putnik override na
-      // drugog vozaca u deljenom fizickom slotu).
-      if (!hasPassengers || removedAny || mergedMissingPassengers) {
-        const nowIso = new Date().toISOString();
-        const updatedWaypoints = {
-          ...slotWaypoints,
-          passengers,
+      // Update slot optimized_order and mark prepared
+      const nowIso = new Date().toISOString();
+      const { error: updateError } = await client
+        .from("v3_trenutna_dodela_slot")
+        .update({
           optimized_order: optimizedOrder,
-        };
+          auto_prepared_at: autoPreparedAt ?? nowIso,
+        })
+        .eq("id", slotId);
 
-        const { error: updateError } = await client
-          .from("v3_trenutna_dodela_slot")
-          .update(
-            !hasPassengers
-              ? { waypoints_json: updatedWaypoints, auto_prepared_at: nowIso }
-              : { waypoints_json: updatedWaypoints },
-          )
-          .eq("id", slotId);
-
-        if (updateError) {
-          console.error(`[v3-auto-prepare-termins] Waypoints update error: ${updateError.message}`);
-          continue;
-        }
-
-        if (!hasPassengers) {
-          preparedCount++;
-          console.log(`[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers`);
-        } else {
-          console.log(`[v3-auto-prepare-termins] Slot ${key} waypoints refreshed after removing cancelled/picked-up passengers (${passengers.length} remaining)`);
-        }
-      } else if (!autoPreparedAt) {
-        // Slot already existed (e.g. manual start) but auto_prepared_at not set
-        const { error: markError } = await client
-          .from("v3_trenutna_dodela_slot")
-          .update({ auto_prepared_at: new Date().toISOString() })
-          .eq("id", slotId);
-
-        if (markError) {
-          console.error(`[v3-auto-prepare-termins] mark auto_prepared error: ${markError.message}`);
-        }
+      if (updateError) {
+        console.error(`[v3-auto-prepare-termins] optimized_order update error: ${updateError.message}`);
+        continue;
       }
+
+      preparedCount++;
+      console.log(`[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers`);
 
       // Send push notification to driver to auto-start tracking
       // NAPOMENA: koristi SVOJ flag (auto_driver_notified_at), odvojen od

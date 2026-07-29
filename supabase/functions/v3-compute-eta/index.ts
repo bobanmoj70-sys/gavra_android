@@ -107,6 +107,44 @@ async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES
   throw lastError || new Error("Max retries exceeded");
 }
 
+/// Vraća fallback response sa postojećim ETA redovima i poslednjim poznatim
+/// optimized_order za ovog vozača.
+async function buildOsrmFallbackResponse(
+  client: ReturnType<typeof createClient>,
+  activeSlotId: string,
+  vozacId: string,
+  reason: string,
+  extra: Record<string, unknown> = {},
+): Promise<Response> {
+  const { data: existingEtaRows } = await client
+    .from("v3_eta_results")
+    .select("termin_id, putnik_id, eta_seconds, optimized_order")
+    .eq("slot_id", activeSlotId)
+    .eq("vozac_id", vozacId);
+
+  const etaRows = (existingEtaRows ?? [])
+    .map((r: any) => ({
+      termin_id: String(r?.termin_id ?? ""),
+      putnik_id: String(r?.putnik_id ?? ""),
+      eta_seconds: Number(r?.eta_seconds),
+    }))
+    .filter((r) => r.termin_id.length > 0 && r.putnik_id.length > 0 && Number.isFinite(r.eta_seconds));
+
+  const existingOrder = Array.isArray((existingEtaRows ?? [])[0]?.optimized_order)
+    ? ((existingEtaRows ?? [])[0].optimized_order as unknown[]).filter((id): id is string => typeof id === "string" && id.length > 0)
+    : [];
+
+  return json(200, {
+    ok: true,
+    fallback: true,
+    reason,
+    updated: etaRows.length,
+    eta_results: etaRows,
+    optimized_order: existingOrder,
+    ...extra,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, reason: "method_not_allowed" });
@@ -153,7 +191,7 @@ Deno.serve(async (req) => {
     //    fizički vlasnički vezan za drugog (default) vozača.
     const { data: slotRows, error: slotError } = await client
       .from("v3_trenutna_dodela_slot")
-      .select("id, vreme, vozac_v3_auth_id, waypoints_json")
+      .select("id, vreme, vozac_v3_auth_id")
       .eq("grad", activeGrad)
       .eq("datum", activeDatumIso);
 
@@ -174,130 +212,34 @@ Deno.serve(async (req) => {
     const driverLat = driverLocation.lat;
     const driverLng = driverLocation.lng;
 
-    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
     const now = new Date().toISOString();
 
-    // Ako je pozivajući vozač override na neki od putnika ovog slota (a nije
-    // fizički vlasnik slota), i dalje mu vraćamo ETA za putnike koje on vozi —
-    // provera "da li vozacId zapravo vozi nekog putnika iz ovog slota" se radi
-    // dole kroz v3_trenutna_dodela (isti pattern kao auto-prepare fix).
-
-    const updateSlotWaypoints = async (newOptimizedOrder?: string[]) => {
-      const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
-
-      const payload: any = {
-        ...currentWaypoints,
-      };
-
-      if (newOptimizedOrder !== undefined) {
-        payload.optimized_order_by_vozac = {
-          ...currentOrderByVozac,
-          [vozacId]: newOptimizedOrder,
-        };
-      }
-
-      const { error: slotUpdateError } = await client
-        .from("v3_trenutna_dodela_slot")
-        .update({ waypoints_json: payload })
-        .eq("id", activeSlot.id);
-
-      if (slotUpdateError) {
-        console.warn(`[v3-compute-eta] slot waypoints update error: ${slotUpdateError.message}`);
-      }
-    };
-
-    const buildOsrmFallbackResponse = async (
-      reason: string,
-      extra: Record<string, unknown> = {},
-    ): Promise<Response> => {
-      const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
-      const existingOrder = Array.isArray(currentOrderByVozac[vozacId])
-        ? (currentOrderByVozac[vozacId] as unknown[]).filter((id): id is string => typeof id === "string" && id.length > 0)
-        : [];
-
-      const { data: existingEtaRows } = await client
-        .from("v3_eta_results")
-        .select("termin_id, putnik_id, eta_seconds")
-        .eq("slot_id", activeSlot.id)
-        .eq("vozac_id", vozacId);
-
-      const etaRows = (existingEtaRows ?? [])
-        .map((r: any) => ({
-          termin_id: String(r?.termin_id ?? ""),
-          putnik_id: String(r?.putnik_id ?? ""),
-          eta_seconds: Number(r?.eta_seconds),
-        }))
-        .filter((r) => r.termin_id.length > 0 && r.putnik_id.length > 0 && Number.isFinite(r.eta_seconds));
-
-      // Sačuvaj indikator greške u slotu radi lakšeg debug-a.
-      await client
-        .from("v3_trenutna_dodela_slot")
-        .update({
-          waypoints_json: {
-            ...currentWaypoints,
-            compute_eta_error: reason,
-            compute_eta_extra: extra,
-          },
-        })
-        .eq("id", activeSlot.id);
-
-      return json(200, {
-        ok: true,
-        fallback: true,
-        reason,
-        updated: etaRows.length,
-        eta_results: etaRows,
-        optimized_order: existingOrder,
-        ...extra,
-      });
-    };
-
-    const rawSlotPassengers: PassengerEntry[] = ((activeSlot.waypoints_json as any)?.passengers ?? [])
-      .filter((p: any) =>
-        p?.putnik_id && p?.termin_id &&
-        Number.isFinite(Number(p?.lat)) && Number.isFinite(Number(p?.lng))
-      )
-      .map((p: any) => ({
-        putnik_id: String(p.putnik_id),
-        termin_id: String(p.termin_id),
-        lat: Number(p.lat),
-        lng: Number(p.lng),
-      }));
-
-    if (rawSlotPassengers.length === 0) {
-      await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
-      await updateSlotWaypoints();
-      return json(200, { ok: true, reason: "no_passengers_in_slot", updated: 0 });
-    }
-
-    // 2.5. Slot je fizički zajednički (grad+datum+vreme), ali putnici unutar njega
-    // mogu biti pojedinačno override-ovani na DRUGE vozače (assignPutnikOverride).
-    // Zato MORAMO filtrirati samo putnike čiji je stvarni vozač (v3_trenutna_dodela
-    // .vozac_v3_auth_id za taj termin) == pozivajući vozacId — inače bi vozač A
-    // dobio rutu/ETA i za putnike vozača B.
-    const slotTerminIds = rawSlotPassengers.map((p) => p.termin_id);
+    // 2.5. Uzmi putnike iz v3_trenutna_dodela za ovaj slot i vozaca.
+    // Slot je fizicki zajednicki, ali putnici mogu biti override-ovani na druge vozace.
     const { data: dodelaRows, error: dodelaError } = await client
       .from("v3_trenutna_dodela")
-      .select("termin_id, vozac_v3_auth_id")
-      .in("termin_id", slotTerminIds);
+      .select("termin_id, putnik_v3_auth_id, adresa_gps_lat, adresa_gps_lng")
+      .eq("slot_id", activeSlot.id)
+      .eq("vozac_v3_auth_id", vozacId);
 
     if (dodelaError) {
-      await updateSlotWaypoints();
       return json(200, { ok: false, reason: "dodela_lookup_error", warning: dodelaError.message });
     }
 
-    const vozacByTermin = new Map<string, string>(
-      (dodelaRows ?? []).map((r: any) => [String(r.termin_id), String(r.vozac_v3_auth_id ?? "")]),
-    );
-
-    const rawPassengers: PassengerEntry[] = rawSlotPassengers.filter(
-      (p) => vozacByTermin.get(p.termin_id) === vozacId,
-    );
+    const rawPassengers: PassengerEntry[] = (dodelaRows ?? [])
+      .filter((r: any) =>
+        r?.termin_id && r?.putnik_v3_auth_id &&
+        Number.isFinite(Number(r?.adresa_gps_lat)) && Number.isFinite(Number(r?.adresa_gps_lng))
+      )
+      .map((r: any) => ({
+        putnik_id: String(r.putnik_v3_auth_id),
+        termin_id: String(r.termin_id),
+        lat: Number(r.adresa_gps_lat),
+        lng: Number(r.adresa_gps_lng),
+      }));
 
     if (rawPassengers.length === 0) {
-      console.warn(`[v3-compute-eta] no_passengers_for_this_vozac. vozacId=${vozacId}. Map entries:`, Array.from(vozacByTermin.entries()));
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
-      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_passengers_for_this_vozac", updated: 0 });
     }
 
@@ -323,7 +265,6 @@ Deno.serve(async (req) => {
 
     if (remaining.length === 0) {
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
-      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_remaining_passengers", updated: 0 });
     }
 
@@ -361,7 +302,7 @@ Deno.serve(async (req) => {
 
     const waypointCount = remaining.length + 2;
     if (waypointCount > OSRM_MAX_WAYPOINTS) {
-      return await buildOsrmFallbackResponse("osrm_too_many_waypoints", {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_too_many_waypoints", {
         count: waypointCount,
         max: OSRM_MAX_WAYPOINTS,
       });
@@ -373,13 +314,13 @@ Deno.serve(async (req) => {
     try {
       osrmResponse = await fetchWithRetry(osrmUrl);
     } catch (e) {
-      return await buildOsrmFallbackResponse("osrm_fetch_error", {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_fetch_error", {
         warning: e instanceof Error ? e.message : "Unknown error",
       });
     }
 
     if (!osrmResponse.ok) {
-      return await buildOsrmFallbackResponse("osrm_http_error", {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_http_error", {
         status: osrmResponse.status,
       });
     }
@@ -387,7 +328,7 @@ Deno.serve(async (req) => {
     const osrmData = await osrmResponse.json();
 
     if (osrmData.code !== "Ok") {
-      return await buildOsrmFallbackResponse("osrm_code_error", {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_code_error", {
         code: osrmData.code,
       });
     }
@@ -399,18 +340,18 @@ Deno.serve(async (req) => {
     const expectedWaypointCount = remaining.length + 2; // vozač + putnici + destinacija
     if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
       console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
-      return await buildOsrmFallbackResponse("osrm_waypoints_mismatch", {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_waypoints_mismatch", {
         expected: expectedWaypointCount,
         got: rawWaypoints?.length,
       });
     }
     if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
-      return await buildOsrmFallbackResponse("osrm_no_trips");
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_trips");
     }
 
     const legs = rawTrips[0].legs;
     if (!Array.isArray(legs)) {
-      return await buildOsrmFallbackResponse("osrm_no_legs");
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
     }
 
     const passengerWaypoints = rawWaypoints
@@ -465,25 +406,20 @@ Deno.serve(async (req) => {
     }
 
     if (upsertRows.length === 0) {
-      await updateSlotWaypoints();
       return json(200, { ok: true, reason: "no_eta_rows", updated: 0 });
     }
 
-    // 6. Upsert v3_eta_results — užyj slot_id zamiast termin_id za conflict resolution
-    // To sprečava problem kada isti putnik_id bude u više slotova — svaki slot ima svoju ETA
+    // 6. Upsert v3_eta_results — koristi slot_id za conflict resolution
+    const optimizedOrder = upsertRows.map((r) => r.putnik_id);
+    const upsertRowsWithOrder = upsertRows.map((r) => ({ ...r, optimized_order: optimizedOrder }));
+
     const { error: upsertError } = await client
       .from("v3_eta_results")
-      .upsert(upsertRows, { onConflict: "slot_id,putnik_id" });
+      .upsert(upsertRowsWithOrder, { onConflict: "slot_id,putnik_id" });
 
     if (upsertError) {
-      await updateSlotWaypoints();
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
     }
-
-    // 7. Update slot waypoints_json — čuvaj passengers[], dodaj po-vozacu optimized_order.
-    // Lokacija se ne čuva ovde; čita se iz v3_vozac_location po potrebi.
-    const optimizedOrder = upsertRows.map((r) => r.putnik_id);
-    await updateSlotWaypoints(optimizedOrder);
 
     console.log(`[v3-compute-eta] ✅ vozac=${vozacId.substring(0, 8)} updated=${upsertRows.length} putnika`);
     return json(200, {

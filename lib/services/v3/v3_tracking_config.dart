@@ -192,7 +192,7 @@ Future<bool> v3AllPassengersCompleted({
   try {
     final slotRows = await client
         .from('v3_trenutna_dodela_slot')
-        .select('id, waypoints_json')
+        .select('id')
         .eq('datum', datumIso)
         .eq('grad', grad)
         .eq('vreme', vreme);
@@ -200,17 +200,14 @@ Future<bool> v3AllPassengersCompleted({
     final activeSlot = (slotRows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
     if (activeSlot == null) return false;
 
-    final waypointsJson = activeSlot['waypoints_json'] as Map<String, dynamic>?;
-    final passengers = waypointsJson?['passengers'] as List<dynamic>?;
-    if (passengers == null || passengers.isEmpty) return false;
+    final dodelaRows = await client.from('v3_trenutna_dodela').select('termin_id').eq('slot_id', activeSlot['id']);
 
-    final slotTerminIds = passengers
-        .whereType<Map<String, dynamic>>()
-        .map((p) => p['termin_id']?.toString())
+    final slotTerminIds = (dodelaRows as List<dynamic>?)
+        ?.map((r) => (r as Map<String, dynamic>)['termin_id']?.toString())
         .where((id) => id != null && id.isNotEmpty)
         .toSet();
 
-    if (slotTerminIds.isEmpty) return false;
+    if (slotTerminIds == null || slotTerminIds.isEmpty) return false;
 
     final rows = await client
         .from('v3_operativna_nedelja')

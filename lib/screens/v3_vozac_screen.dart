@@ -327,17 +327,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']?.toString() ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
-      final wj = row['waypoints_json'];
-      final hasOrder = wj is Map && wj['optimized_order'] is List && (wj['optimized_order'] as List).isNotEmpty;
-      debugPrint(
-          '[OSRM_SLOT]   row vozac=$rowVozac datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasWj=${wj != null} hasOrder=$hasOrder');
+      final order = row['optimized_order'];
+      final hasOrder = order is List && order.isNotEmpty;
+      debugPrint('[OSRM_SLOT]   row vozac=$rowVozac datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasOrder=$hasOrder');
       if (rowVozac != vozacId) continue;
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
-      if (wj is Map) {
-        final order = wj['optimized_order'];
-        if (order is List && order.isNotEmpty) {
-          return order.whereType<String>().toList();
-        }
+      if (order is List && order.isNotEmpty) {
+        return order.whereType<String>().toList();
       }
     }
     return const [];
@@ -955,14 +951,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozacId.isEmpty || _selectedGrad.isEmpty || _selectedVreme.isEmpty) return;
 
     // NAPOMENA: šaljemo SVE putnike (uključujući pokupljene/otkazane), ne samo
-    // preostale. `waypoints_json.passengers` mora ostati statički snimak cele
-    // dodele za ovaj slot — jedini izvor istine za "da li je putnik završen"
-    // je `v3_operativna_nedelja.pokupljen_at/otkazano_at`, koji autostop
-    // provere (iOS/Android BG) i OSRM "remaining" filter (v3-compute-eta)
-    // već ispravno koriste preko posebnog upita. Ako bismo ovde filtrirali
-    // završene putnike, poslednji pokupljen/otkazan putnik bi ispraznio celu
-    // listu, a autostop provere tumače praznu listu kao "nema podataka" (ne
-    // "svi gotovi"), pa tracking nikad ne bi automatski stao.
+    // preostale. Koordinate se upisuju u v3_trenutna_dodela po termin_id —
+    // jedini izvor istine za "da li je putnik završen" je
+    // v3_operativna_nedelja.pokupljen_at/otkazano_at.
     final passengerData = <Map<String, dynamic>>[];
     for (final item in _mojiPutnici) {
       final terminId = (item.entry?.id ?? '').trim();
@@ -992,16 +983,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     try {
-      await V3TrenutnaDodelaSlotService.mergePassengersIntoWaypointsJson(
-        datumIso: _selectedDatumIso,
-        grad: _selectedGrad,
-        vreme: _selectedVreme,
-        vozacId: vozacId,
-        passengers: passengerData,
-      );
+      await V3TrenutnaDodelaSlotService.syncPassengerCoordinates(passengerData);
       debugPrint('[SYNC] passengers synced to slot: ${passengerData.length}');
     } catch (e) {
-      debugPrint('[SYNC] mergePassengersIntoWaypointsJson error: $e');
+      debugPrint('[SYNC] syncPassengerCoordinates error: $e');
       return;
     }
 
@@ -1741,6 +1726,7 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
     if (!result.ok) {
       final message = switch (result.reason) {
         'old_pin_mismatch' => _tr('trenutniPinNijeIspravan'),
+       
         'pin_not_set' => _tr('nalogNemaPin'),
         _ => _tr('greskaPromenaPin'),
       };
@@ -1862,7 +1848,6 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }

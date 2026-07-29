@@ -13,7 +13,6 @@ class V3TrenutnaDodelaSlotService {
   static const String colVreme = 'vreme';
   static const String colVozacId = 'vozac_v3_auth_id';
   static const String colUpdatedBy = 'updated_by';
-  static const String colWaypointsJson = 'waypoints_json';
 
   /// Delegira na deljeni `V3DateUtils.parseIsoDatePart` (JEDAN IZVOR ISTINE za
   /// normalizaciju ISO datuma na `yyyy-MM-dd`, ranije duplirano ovde kao manje
@@ -98,68 +97,26 @@ class V3TrenutnaDodelaSlotService {
     return result['id']?.toString();
   }
 
-  static Future<void> updateWaypointsJson({
-    required String datumIso,
-    required String grad,
-    required String vreme,
-    required String vozacId,
-    required List<Map<String, dynamic>> waypoints,
-  }) async {
-    final datum = _normalizeDatumIso(datumIso);
-    final gradNorm = _normalizeGrad(grad);
-    final vremeNorm = _normalizeVreme(vreme);
-    final vozacIdNorm = vozacId.trim();
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozacIdNorm.isEmpty || waypoints.isEmpty) return;
+  static Future<void> syncPassengerCoordinates(
+    List<Map<String, dynamic>> passengers,
+  ) async {
+    if (passengers.isEmpty) return;
 
-    final updatedRows = await supabase
-        .from(tableName)
-        .update({colWaypointsJson: waypoints})
-        .eq(colDatum, datum)
-        .eq(colGrad, gradNorm)
-        .eq(colVreme, vremeNorm)
-        .eq(colVozacId, vozacIdNorm)
-        .select('datum');
+    for (final p in passengers) {
+      final terminId = (p['termin_id'] ?? '').toString().trim();
+      final lat = p['lat'];
+      final lng = p['lng'];
+      if (terminId.isEmpty || lat == null || lng == null) continue;
 
-    if (updatedRows.isEmpty) {
-      debugPrint(
-          '[V3TrenutnaDodelaSlotService] updateWaypointsJson: 0 rows updated for slot=$datum|$gradNorm|$vremeNorm vozac=$vozacIdNorm');
+      final latNum = double.tryParse(lat.toString());
+      final lngNum = double.tryParse(lng.toString());
+      if (latNum == null || lngNum == null) continue;
+
+      await supabase.from('v3_trenutna_dodela').update({
+        'adresa_gps_lat': latNum,
+        'adresa_gps_lng': lngNum,
+      }).eq('termin_id', terminId);
     }
-  }
-
-  static Future<void> mergePassengersIntoWaypointsJson({
-    required String datumIso,
-    required String grad,
-    required String vreme,
-    required String vozacId,
-    required List<Map<String, dynamic>> passengers,
-  }) async {
-    final datum = _normalizeDatumIso(datumIso);
-    final gradNorm = _normalizeGrad(grad);
-    final vremeNorm = _normalizeVreme(vreme);
-    final vozacIdNorm = vozacId.trim();
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozacIdNorm.isEmpty) return;
-
-    final rows = await supabase
-        .from(tableName)
-        .select('id, $colWaypointsJson')
-        .eq(colDatum, datum)
-        .eq(colGrad, gradNorm)
-        .eq(colVreme, vremeNorm)
-        .eq(colVozacId, vozacIdNorm);
-
-    if ((rows as List<dynamic>).isEmpty) return;
-
-    final row = rows.first;
-    final rowId = row['id']?.toString().trim() ?? '';
-    if (rowId.isEmpty) return;
-
-    final existing = row[colWaypointsJson];
-    final merged = <String, dynamic>{
-      if (existing is Map) ...Map<String, dynamic>.from(existing as Map<String, dynamic>),
-      'passengers': passengers,
-    };
-
-    await supabase.from(tableName).update({colWaypointsJson: merged}).eq('id', rowId);
   }
 
   static Future<void> deleteBySlot({

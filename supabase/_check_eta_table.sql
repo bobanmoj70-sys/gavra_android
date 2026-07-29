@@ -14,9 +14,11 @@ where conrelid = 'public.v3_eta_results'::regclass;
 -- 3. Da li ima ijedan red ikada upisan u tabelu?
 select count(*) as total_rows from public.v3_eta_results;
 
--- 4. Da li waypoints_json.passengers ima podataka (preduslov za upis)?
-select id, grad, vreme, datum,
-       jsonb_array_length(coalesce(waypoints_json->'passengers','[]'::jsonb)) as passenger_count
-from v3_trenutna_dodela_slot
-order by created_at desc
+-- 4. Da li slotovi imaju dodeljene putnike (preduslov za upis)?
+select s.id, s.grad, s.vreme, s.datum,
+       count(d.putnik_id) as passenger_count
+from v3_trenutna_dodela_slot s
+left join v3_trenutna_dodela d on d.slot_id = s.id
+group by s.id, s.grad, s.vreme, s.datum
+order by s.created_at desc
 limit 10;
