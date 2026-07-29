@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -320,4 +321,99 @@ V3TrackingNotificationText v3BuildTrackingNotificationText({
     title: 'GPS Tracking — $remainingCount $putnikLabel',
     body: 'Sledeći: $ime$etaText',
   );
+}
+
+/// JEDAN IZVOR ISTINE za proveru da li su lokacijski preduslovi zadovoljeni
+/// (GPS uključen + dozvola za lokaciju). Deljeno između main isolate-a
+/// (`V3VozacLocationTrackingService`) i Android background isolate-a
+/// (`v3_background_location_handler.dart`). Ranije je ista logika bila
+/// duplirana na oba mesta, a u main isolate-u je bila umotana u nepotrebnu
+/// `V3LocationPrereqStatus` enum klasu.
+///
+/// [requestIfDenied] treba biti `true` samo u foreground-u (main isolate), jer
+/// background isolate ne može da prikaže permission dijalog.
+Future<bool> v3CheckLocationPrerequisites({
+  bool requestIfDenied = false,
+  void Function(String message)? log,
+  String logTag = '[v3CheckLocationPrerequisites]',
+}) async {
+  final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) {
+    log?.call('$logTag GPS servis isključen');
+    return false;
+  }
+
+  var permission = await Geolocator.checkPermission();
+  if (requestIfDenied && permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+  }
+
+  if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+    log?.call('$logTag Dozvola za lokaciju nije odobrena: $permission');
+    return false;
+  }
+
+  return true;
+}
+
+/// JEDAN IZVOR ISTINE za direktno ažuriranje `waypoints_json.location_by_vozac`
+/// za aktivnog vozača u aktivnom slotu sa trenutnom GPS pozicijom. Deljeno
+/// između main isolate-a (`V3VozacLocationTrackingService`) i Android
+/// background isolate-a. Ranije su postojale dve identične kopije
+/// (`_updateSlotLocation` i `_bgUpdateSlotLocation`).
+Future<void> v3UpdateSlotLocation({
+  required SupabaseClient client,
+  required String? vozacId,
+  required String datumIso,
+  required String grad,
+  required String vreme,
+  required double lat,
+  required double lng,
+  String note = 'gps_tick',
+  String logTag = '[v3UpdateSlotLocation]',
+  void Function(String message)? log,
+}) async {
+  if (vozacId == null || vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+    log?.call('$logTag preskačem: nedostaju podaci');
+    return;
+  }
+
+  try {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final rows = await client
+        .from('v3_trenutna_dodela_slot')
+        .select('id, waypoints_json')
+        .eq('datum', datumIso)
+        .eq('grad', grad)
+        .eq('vreme', vreme)
+        .limit(1);
+
+    final row = (rows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
+    if (row == null) {
+      log?.call('$logTag slot nije pronađen');
+      return;
+    }
+
+    final existing = row['waypoints_json'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    final locationByVozac = (existing['location_by_vozac'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final updated = <String, dynamic>{
+      ...existing,
+      'location_by_vozac': <String, dynamic>{
+        ...locationByVozac,
+        vozacId: <String, dynamic>{
+          'lat': lat,
+          'lng': lng,
+          'timestamp': nowIso,
+          'note': note,
+        },
+      },
+    };
+
+    await client
+        .from('v3_trenutna_dodela_slot')
+        .update(<String, dynamic>{'waypoints_json': updated}).eq('id', row['id']);
+    log?.call('$logTag lokacija ažurirana $lat, $lng za vozača $vozacId');
+  } catch (e) {
+    log?.call('$logTag greška: $e');
+  }
 }

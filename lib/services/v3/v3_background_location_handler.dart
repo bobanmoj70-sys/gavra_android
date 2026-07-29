@@ -411,19 +411,11 @@ Future<void> _bgSendLocation() async {
   }
 
   try {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    debugPrint('[BG] GPS service enabled=$serviceEnabled');
-    if (!serviceEnabled) {
-      debugPrint('[BG] GPS isključen');
-      return;
-    }
-
-    final permission = await Geolocator.checkPermission();
-    debugPrint('[BG] Location permission=$permission');
-    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-      debugPrint('[BG] Dozvola za lokaciju nije odobrena (background ne traži permission)');
-      return;
-    }
+    final ready = await v3CheckLocationPrerequisites(
+      log: debugPrint,
+      logTag: '[BG]',
+    );
+    if (!ready) return;
 
     debugPrint('[BG] Dohvatam trenutnu poziciju...');
     final position = await Geolocator.getCurrentPosition(
@@ -508,54 +500,24 @@ Future<void> _bgUpdateSlotLocation({
   required double lat,
   required double lng,
 }) async {
-  if (!_bgCanSendLocation) {
-    debugPrint('[BG] _bgUpdateSlotLocation preskačem: _bgCanSendLocation=false');
-    return;
-  }
   final client = _bgSupabaseClient;
   if (client == null) {
     debugPrint('[BG] _bgUpdateSlotLocation preskačem: Supabase client nije spreman');
     return;
   }
 
-  try {
-    final nowIso = DateTime.now().toUtc().toIso8601String();
-    final rows = await client
-        .from('v3_trenutna_dodela_slot')
-        .select('id, waypoints_json')
-        .eq('datum', _bgDatumIso)
-        .eq('grad', _bgGrad)
-        .eq('vreme', _bgVreme)
-        .limit(1);
-
-    final row = (rows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
-    if (row == null) {
-      debugPrint('[BG] _bgUpdateSlotLocation: slot nije pronađen');
-      return;
-    }
-
-    final existing = row['waypoints_json'] as Map<String, dynamic>? ?? <String, dynamic>{};
-    final locationByVozac = (existing['location_by_vozac'] as Map<String, dynamic>?) ?? <String, dynamic>{};
-    final updated = <String, dynamic>{
-      ...existing,
-      'location_by_vozac': <String, dynamic>{
-        ...locationByVozac,
-        _bgVozacId!: <String, dynamic>{
-          'lat': lat,
-          'lng': lng,
-          'timestamp': nowIso,
-          'note': 'background_gps_tick',
-        },
-      },
-    };
-
-    await client
-        .from('v3_trenutna_dodela_slot')
-        .update(<String, dynamic>{'waypoints_json': updated}).eq('id', row['id']);
-    debugPrint('[BG] _bgUpdateSlotLocation: lokacija ažurirana $lat, $lng za vozača $_bgVozacId');
-  } catch (e) {
-    debugPrint('[BG] _bgUpdateSlotLocation greška: $e');
-  }
+  return v3UpdateSlotLocation(
+    client: client,
+    vozacId: _bgVozacId,
+    datumIso: _bgDatumIso,
+    grad: _bgGrad,
+    vreme: _bgVreme,
+    lat: lat,
+    lng: lng,
+    note: 'background_gps_tick',
+    logTag: '[BG]',
+    log: debugPrint,
+  );
 }
 
 /// Top-level callback za flutter_background_service.

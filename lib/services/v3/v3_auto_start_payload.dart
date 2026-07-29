@@ -39,15 +39,4 @@ class V3AutoStartPayload {
   final String vreme;
 
   bool get isValid => vozacId.isNotEmpty && datumIso.isNotEmpty && grad.isNotEmpty && vreme.isNotEmpty;
-
-  /// Returns true when this payload describes the same driver/session that is
-  /// currently being tracked by [V3VozacLocationTrackingService].
-  bool matchesCurrentSession({
-    required String? activeVozacId,
-    required String activeDatumIso,
-    required String activeGrad,
-    required String activeVreme,
-  }) {
-    return vozacId == (activeVozacId ?? '') && datumIso == activeDatumIso && grad == activeGrad && vreme == activeVreme;
-  }
 }

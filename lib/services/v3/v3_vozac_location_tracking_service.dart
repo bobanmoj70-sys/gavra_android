@@ -18,12 +18,6 @@ import 'v3_auto_start_payload.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
-enum V3LocationPrereqStatus {
-  ok,
-  serviceDisabled,
-  denied,
-}
-
 /// iOS ekvivalent Android-ove foreground notifikacije koja se ažurira sa
 /// imenom sledećeg putnika + ETA. iOS nema pravi "ongoing" foreground-service
 /// koncept, pa se koristi obična lokalna notifikacija sa FIKSNIM id-jem —
@@ -231,10 +225,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       vreme: normalizedVreme,
     );
 
-    _activeVozacId = normalizedVozacId;
-    if (!_isRunning) {
-      _trackingStartedAt = DateTime.now();
-    }
+    // NE postavljamo _activeVozacId ovde — to radi start() kao jedinstvena
+    // kontrolna tačka, da bi ispravno zaustavio prethodni tracking pre nego
+    // što pokrene novi (npr. kada se promeni vozač).
+    _trackingStartedAt = DateTime.now();
 
     return (
       vozacId: normalizedVozacId,
@@ -254,41 +248,28 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   /// ([startService] == false); the actual tracking is resumed when the app
   /// comes to the foreground.
   ///
-  /// Guards against duplicate starts when the same session is already active.
+  /// Callers are expected to validate the payload via [V3AutoStartPayload.isValid]
+  /// before calling this method. Runtime duplicate-start protection is handled
+  /// by [start()].
   Future<void> autoStartFromPayload(
     V3AutoStartPayload payload, {
     required bool startService,
   }) async {
-    if (!payload.isValid) {
-      debugPrint('[V3VozacLocationTrackingService] autoStartFromPayload skipped: invalid payload');
-      return;
-    }
-
-    if (_isRunning &&
-        payload.matchesCurrentSession(
-          activeVozacId: _activeVozacId,
-          activeDatumIso: _activeDatumIso,
-          activeGrad: _activeGrad,
-          activeVreme: _activeVreme,
-        )) {
-      debugPrint('[V3VozacLocationTrackingService] autoStartFromPayload skipped: already running same session');
-      return;
-    }
-
     final normalized = _applyPayload(payload);
 
     if (startService) {
       await start(vozacId: normalized.vozacId);
-    } else {
-      if (Platform.isIOS) {
-        unawaited(_secureStorage.write(key: _kIosSessionStartedAt, value: _trackingStartedAt!.toIso8601String()));
-        unawaited(_secureStorage.write(key: _kIosSessionVozacId, value: normalized.vozacId));
-        unawaited(_secureStorage.write(key: _kIosSessionDatumIso, value: normalized.datumIso));
-        unawaited(_secureStorage.write(key: _kIosSessionGrad, value: normalized.grad));
-        unawaited(_secureStorage.write(key: _kIosSessionVreme, value: normalized.vreme));
-      }
-      await _writeDesiredState(vozacId: normalized.vozacId);
+      return;
     }
+
+    if (Platform.isIOS) {
+      unawaited(_secureStorage.write(key: _kIosSessionStartedAt, value: _trackingStartedAt!.toIso8601String()));
+      unawaited(_secureStorage.write(key: _kIosSessionVozacId, value: normalized.vozacId));
+      unawaited(_secureStorage.write(key: _kIosSessionDatumIso, value: normalized.datumIso));
+      unawaited(_secureStorage.write(key: _kIosSessionGrad, value: normalized.grad));
+      unawaited(_secureStorage.write(key: _kIosSessionVreme, value: normalized.vreme));
+    }
+    await _writeDesiredState(vozacId: normalized.vozacId);
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) {
@@ -370,9 +351,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         unawaited(_secureStorage.write(key: _kIosSessionVreme, value: _activeVreme));
       }
 
-      final prereqStatus = await checkLocationPrerequisites();
+      final prereqStatus = await _checkLocationPrerequisites();
       debugPrint('[V3VozacLocationTrackingService] checkLocationPrerequisites status=$prereqStatus');
-      if (prereqStatus != V3LocationPrereqStatus.ok) {
+      if (prereqStatus != true) {
         debugPrint('[V3VozacLocationTrackingService] start() prekinut, prereq status=$prereqStatus');
         await stop();
         return; // finally će resetovati _startInProgress
@@ -512,22 +493,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
-  Future<V3LocationPrereqStatus> checkLocationPrerequisites() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return V3LocationPrereqStatus.serviceDisabled;
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return V3LocationPrereqStatus.denied;
-    }
-
-    if (permission == LocationPermission.denied) {
-      return V3LocationPrereqStatus.denied;
-    }
+  Future<bool> _checkLocationPrerequisites() async {
+    final ready = await v3CheckLocationPrerequisites(
+      requestIfDenied: true,
+      log: debugPrint,
+      logTag: '[V3VozacLocationTrackingService]',
+    );
+    if (!ready) return false;
 
     // Android: bez izuzeća od battery optimization / Doze, proizvođači
     // telefona (posebno Huawei/Xiaomi/Samsung sa agresivnim "app launch
@@ -550,7 +522,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       }
     }
 
-    return V3LocationPrereqStatus.ok;
+    return true;
   }
 
   /// Direktno ažurira waypoints_json.location_by_vozac za aktivnog vozača u
@@ -561,48 +533,18 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     required double lat,
     required double lng,
   }) async {
-    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) {
-      return;
-    }
-    try {
-      final nowIso = DateTime.now().toUtc().toIso8601String();
-      final rows = await supabase
-          .from('v3_trenutna_dodela_slot')
-          .select('id, waypoints_json')
-          .eq('datum', _activeDatumIso)
-          .eq('grad', _activeGrad)
-          .eq('vreme', _activeVreme)
-          .limit(1);
-
-      final row = (rows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
-      if (row == null) {
-        debugPrint('[V3VozacLocationTrackingService] _updateSlotLocation: slot nije pronađen');
-        return;
-      }
-
-      final existing = row['waypoints_json'] as Map<String, dynamic>? ?? <String, dynamic>{};
-      final locationByVozac = (existing['location_by_vozac'] as Map<String, dynamic>?) ?? <String, dynamic>{};
-      final updated = <String, dynamic>{
-        ...existing,
-        'location_by_vozac': <String, dynamic>{
-          ...locationByVozac,
-          _activeVozacId: <String, dynamic>{
-            'lat': lat,
-            'lng': lng,
-            'timestamp': nowIso,
-            'note': 'foreground_gps_tick',
-          },
-        },
-      };
-
-      await supabase
-          .from('v3_trenutna_dodela_slot')
-          .update(<String, dynamic>{'waypoints_json': updated}).eq('id', row['id']);
-      debugPrint(
-          '[V3VozacLocationTrackingService] _updateSlotLocation: lokacija ažurirana $lat, $lng za vozača $_activeVozacId');
-    } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] _updateSlotLocation greška: $e');
-    }
+    return v3UpdateSlotLocation(
+      client: supabase,
+      vozacId: _activeVozacId,
+      datumIso: _activeDatumIso,
+      grad: _activeGrad,
+      vreme: _activeVreme,
+      lat: lat,
+      lng: lng,
+      note: 'foreground_gps_tick',
+      logTag: '[V3VozacLocationTrackingService]',
+      log: debugPrint,
+    );
   }
 
   Future<({Map<String, int> etaMap, List<String> order})> computeEta({
