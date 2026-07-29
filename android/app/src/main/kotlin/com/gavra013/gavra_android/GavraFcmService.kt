@@ -116,11 +116,15 @@ class GavraFcmService : FirebaseMessagingService() {
         }
 
         if (type == "vozac_auto_start_tracking") {
-            // Upiši željeno stanje + pokreni servis ako ne radi. NE vraćamo se (return) ovde —
-            // padamo dalje u generički forward-ka-Flutteru kod ispod (isti mehanizam kao za sve
-            // ostale tipove poruka), jer je to jedini način da main isolate (ako je živ) sazna
-            // za ovu poruku. Background isolate ionako sam pokupi promenu preko pollinga.
-            writeDesiredTrackingState(data)
+            val engine = FlutterEngineCache.getInstance().get("main_engine")
+            if (engine == null) {
+                // App je u background-u bez aktivnog Flutter engine-a (ili killed).
+                // Native mora sam da upise zeljeno stanje i pokrene foreground servis.
+                writeDesiredTrackingState(data)
+                return
+            }
+            // Flutter engine je aktivan — sve radi Dart handler (jedan izvor istine).
+            // Samo prosledi poruku dalje MethodChannel-u ispod.
         }
 
         // Prosledi Flutteru via MethodChannel (radi samo ako je engine aktivan)

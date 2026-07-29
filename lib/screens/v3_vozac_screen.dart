@@ -456,35 +456,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vozacId = (widget.vozacId ?? V3VozacService.currentVozac?.id ?? '').toString().trim();
     if (vozacId.isEmpty) return;
 
-    String grad = (widget.autoStartGrad ?? _selectedGrad).trim().toUpperCase();
-    String vreme = V3TimeUtils.normalizeToHHmm(widget.autoStartVreme ?? _selectedVreme);
-    String datumIso = (widget.autoStartDatumIso ?? _selectedDatumIso).trim();
+    final grad = (widget.autoStartGrad ?? _selectedGrad).trim().toUpperCase();
+    final vreme = V3TimeUtils.normalizeToHHmm(widget.autoStartVreme ?? _selectedVreme);
+    final datumIso = (widget.autoStartDatumIso ?? _selectedDatumIso).trim();
 
     if (grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
       debugPrint('[V3VozacScreen] Auto-start: nema validnog termina');
       return;
     }
 
-    // Ako je tracking već aktivan za istog vozača, samo ažuriraj termin.
-    if (V3VozacLocationTrackingService.instance.isRunning &&
-        V3VozacLocationTrackingService.instance.activeVozacId == vozacId) {
-      await V3VozacLocationTrackingService.instance.startFromPayload(
-        vozacId: vozacId,
-        datumIso: datumIso,
-        grad: grad,
-        vreme: vreme,
-      );
-      V3StateUtils.safeSetState(this, () {
-        _selectedGrad = grad;
-        _selectedVreme = vreme;
-        try {
-          _selectedDate = DateTime.parse(datumIso);
-        } catch (_) {}
-      });
-      return;
-    }
-
-    // Postavi selektovani termin
     V3StateUtils.safeSetState(this, () {
       _selectedGrad = grad;
       _selectedVreme = vreme;
@@ -492,12 +472,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         _selectedDate = DateTime.parse(datumIso);
       } catch (_) {}
     });
-
-    final gpsOk = await _ensureGpsPermissionForStart();
-    if (!gpsOk) {
-      debugPrint('[V3VozacScreen] Auto-start: GPS dozvola nije odobrena');
-      return;
-    }
 
     await V3VozacLocationTrackingService.instance.startFromPayload(
       vozacId: vozacId,
@@ -509,26 +483,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (mounted) {
       V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
     }
-  }
-
-  Future<bool> _ensureGpsPermissionForStart() async {
-    final status = await V3VozacLocationTrackingService.instance.checkLocationPrerequisites();
-    if (status == V3LocationPrereqStatus.ok) return true;
-
-    if (!mounted) return false;
-
-    switch (status) {
-      case V3LocationPrereqStatus.serviceDisabled:
-        V3AppSnackBar.warning(context, _tr('gpsIskljucen'));
-        break;
-      case V3LocationPrereqStatus.denied:
-        V3AppSnackBar.warning(context, _tr('dozvolaOdbijena'));
-        break;
-      case V3LocationPrereqStatus.ok:
-        break;
-    }
-
-    return false;
   }
 
   // _startDriverLocationTracking() ne postoji — vozač nikad ne pokreće

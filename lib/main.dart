@@ -778,68 +778,52 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
-  // Na iOS-u auto-start tracking pokrećemo direktno iz background push-a.
-  // content-available: 1 u APNS payloadu omogućava da se ovaj handler izvrši
-  // bez potrebe da vozač tapne notifikaciju.
+  // Auto-start tracking: na Androidu native GavraFcmService vec radi sve
+  // sto je potrebno, pa headless Dart isolate samo return-uje. Na iOS-u
+  // background handler upisuje zeljeno stanje, a pravi tracking pokrece
+  // _restoreAndResumeIfNeeded() kada app dodje u foreground.
   if (type == 'vozac_auto_start_tracking') {
     final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
     final grad = (data['grad'] ?? '').trim().toUpperCase();
     final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
     final datumIso = (data['datum'] ?? '').trim();
 
-    if (vozacId.isNotEmpty && grad.isNotEmpty && vreme.isNotEmpty && datumIso.isNotEmpty) {
-      if (!isSupabaseReady) {
-        try {
-          await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
-        } catch (e) {
-          debugPrint('⚠️ [FCM][BG] Auto-start: Supabase init nije uspeo: $e');
-          return;
-        }
-      }
+    if (vozacId.isEmpty || grad.isEmpty || vreme.isEmpty || datumIso.isEmpty) {
+      return;
+    }
 
-      debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+    // Na Androidu native GavraFcmService uvek upisuje zeljeno stanje i
+    // pokrece foreground servis — nema potrebe da headless Dart isolate
+    // ponavlja taj posao (idempotentno je, ali suvisno komplikuje tok).
+    if (Platform.isAndroid) {
+      return;
+    }
 
-      // Na iOS-u background handler ima ograničeno vreme izvršavanja.
-      // Samo upisujemo željeno stanje — pravi tracking pokreće
-      // _restoreAndResumeIfNeeded() kada app dođe u foreground.
-      if (Platform.isIOS) {
-        await V3VozacLocationTrackingService.instance.writeDesiredStateFromPayload(
-          vozacId: vozacId,
-          datumIso: datumIso,
-          grad: grad,
-          vreme: vreme,
-        );
+    // Na iOS-u background handler ima ograniceno vreme izvrsavanja.
+    // Samo upisujemo zeljeno stanje — pravi tracking pokrece
+    // _restoreAndResumeIfNeeded() kada app dodje u foreground.
+    if (!isSupabaseReady) {
+      try {
+        await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
+      } catch (e) {
+        debugPrint('⚠️ [FCM][BG] Auto-start: Supabase init nije uspeo: $e');
         return;
       }
-
-      // NAPOMENA: activateSlot se sada radi INTERNO u
-      // V3VozacLocationTrackingService.start() (jedan izvor istine, deljen sa
-      // Android background isolate-om preko v3_slot_activation.dart) — nema
-      // potrebe da se ovde poziva odvojeno.
-
-      // Kada je app killed, configure() nije pozvan u main(). Servis MORA biti
-      // konfigurisan pre startService(), inače flutter_background_service ne zna
-      // koji onStart handler da izvrši.
-      try {
-        debugPrint('[FCM][BG] Konfigurišem background service...');
-        await configureBackgroundService();
-        debugPrint('[FCM][BG] Background service konfigurisan');
-      } catch (e) {
-        debugPrint('⚠️ [FCM][BG] Background service config greška: $e');
-      }
-
-      await V3VozacLocationTrackingService.instance.startFromPayload(
-        vozacId: vozacId,
-        datumIso: datumIso,
-        grad: grad,
-        vreme: vreme,
-      );
     }
+
+    debugPrint('[FCM][BG] Auto-start tracking: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
+
+    await V3VozacLocationTrackingService.instance.writeDesiredStateFromPayload(
+      vozacId: vozacId,
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+    );
     return;
   }
 
-  // Kada je app killed, GavraFcmService se ne poziva — background handler
-  // mora sam da prikaže notifikaciju za sve ostale tipove.
+  // Za sve ostale tipove: ako nema notification payload-a (data-only push),
+  // background handler mora sam da prikaze lokalnu notifikaciju.
   if (title.isNotEmpty || body.isNotEmpty) {
     await _ensureLocalNotificationsInitialized();
     final androidDetails = AndroidNotificationDetails(
@@ -986,6 +970,7 @@ Future<void> _initIosFcmHandlers() async {
 ///  - onMessage     → prikazuje lokalnu notifikaciju + budi ekran
 ///  - onTokenRefresh → sync-uje novi FCM token sa Supabase
 Future<void> _initFcmChannel() async {
+  if (!Platform.isAndroid) return;
   if (_fcmChannelInitialized) return;
 
   final inFlight = _fcmChannelInitInFlight;
@@ -1190,30 +1175,11 @@ Future<void> _autoStartVozacTrackingFromPush(Map<String, String> data) async {
     }
   }
 
-  final activeVozacId = V3VozacLocationTrackingService.instance.activeVozacId;
-  final activeDatumIso = V3VozacLocationTrackingService.instance.activeDatumIso;
-  final activeGrad = V3VozacLocationTrackingService.instance.activeGrad;
-  final activeVreme = V3VozacLocationTrackingService.instance.activeVreme;
-
-  if (V3VozacLocationTrackingService.instance.isRunning &&
-      activeVozacId == vozacId &&
-      activeDatumIso == datumIso &&
-      activeGrad == grad &&
-      activeVreme == vreme) {
-    debugPrint('[AUTO-START] Tracking već aktivan za isti termin, preskačem.');
-    return;
-  }
-
   debugPrint('[AUTO-START] Pokrećem tracking automatski: vozac=$vozacId grad=$grad vreme=$vreme datum=$datumIso');
 
-  // Proveri GPS/dozvole pre pokretanja. Ako nedostaju, tracking će tiho
-  // pasti in start() — bolje je ranije detektovati i logovati.
-  final prereqStatus = await V3VozacLocationTrackingService.instance.checkLocationPrerequisites();
-  if (prereqStatus != V3LocationPrereqStatus.ok) {
-    debugPrint('[AUTO-START] Tracking nije pokrenut, prereq status=$prereqStatus');
-    return;
-  }
-
+  // NAPOMENA: checkLocationPrerequisites se radi INTERNOD u start() — nema
+  // potrebe za duplom proverom ovde. Ako nedostaju dozvole, start() ce
+  // logovati i prekinuti.
   // NAPOMENA: activateSlot (idempotentan upsert sa retry logikom) se sada radi
   // INTERNO u V3VozacLocationTrackingService.start() — JEDAN IZVOR ISTINE,
   // deljen i sa Android background isolate-om preko v3_slot_activation.dart.

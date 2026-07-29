@@ -237,10 +237,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     );
 
     _activeVozacId = normalizedVozacId;
-    // Resetuj timer samo ako je u pitanju novi vozač ili nema aktive sesije —
-    // isto kao u start(). Ako isti vozač već ima aktivan tracking, zadrži
-    // postojeći startedAt da se ne produži max trajanje sesije.
-    if (_activeVozacId != normalizedVozacId || !_isRunning) {
+    // Resetuj timer samo ako nema aktivne sesije — isto kao u start().
+    // Ako isti vozač već ima aktivan tracking, zadrži postojeći startedAt
+    // da se ne produži max trajanje sesije.
+    if (!_isRunning) {
       _trackingStartedAt = DateTime.now();
     }
 
@@ -261,37 +261,24 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     required String grad,
     required String vreme,
   }) async {
-    if (_startInProgress) {
-      debugPrint('[V3VozacLocationTrackingService] startFromPayload u toku, preskačem');
+    final normalizedVozacId = vozacId.trim();
+    final normalizedGrad = grad.trim().toUpperCase();
+    final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normalizedDatumIso = _normalizeDateIso(datumIso);
+
+    if (normalizedVozacId.isEmpty || normalizedDatumIso.isEmpty || normalizedGrad.isEmpty || normalizedVreme.isEmpty) {
+      debugPrint(
+          '[V3VozacLocationTrackingService] startFromPayload skipped: invalid payload vozac=$normalizedVozacId datum=$normalizedDatumIso grad=$normalizedGrad vreme=$normalizedVreme');
       return;
     }
-    _startInProgress = true;
 
-    try {
-      final normalizedVozacId = vozacId.trim();
-      final normalizedGrad = grad.trim().toUpperCase();
-      final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
-      final normalizedDatumIso = _normalizeDateIso(datumIso);
+    setActiveTermin(
+      datumIso: normalizedDatumIso,
+      grad: normalizedGrad,
+      vreme: normalizedVreme,
+    );
 
-      if (normalizedVozacId.isEmpty ||
-          normalizedDatumIso.isEmpty ||
-          normalizedGrad.isEmpty ||
-          normalizedVreme.isEmpty) {
-        debugPrint(
-            '[V3VozacLocationTrackingService] startFromPayload skipped: invalid payload vozac=$normalizedVozacId datum=$normalizedDatumIso grad=$normalizedGrad vreme=$normalizedVreme');
-        return;
-      }
-
-      setActiveTermin(
-        datumIso: normalizedDatumIso,
-        grad: normalizedGrad,
-        vreme: normalizedVreme,
-      );
-
-      await start(vozacId: normalizedVozacId);
-    } finally {
-      _startInProgress = false;
-    }
+    await start(vozacId: normalizedVozacId);
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) {
@@ -343,8 +330,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
           debugPrint(
               '[V3VozacLocationTrackingService] Već aktivno za istog vozača — ažuriram termin: datum=$_activeDatumIso grad=$_activeGrad vreme=$_activeVreme');
           await _writeDesiredState(vozacId: normalizedVozacId);
+          return; // finally će resetovati _startInProgress
         }
-        return; // finally će resetovati _startInProgress
+        // Servis nije running iako _isRunning kaze da jeste — nastavi dalje
+        // i ponovo ga pokreni.
+        debugPrint('[V3VozacLocationTrackingService] _isRunning=true ali servis ne radi — restartujem');
       }
 
       // Ako je aktivan bilo koji tracking (isti ili drugi vozač), prvo ga zaustavi.
@@ -437,6 +427,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   Future<void> stop() async {
     debugPrint('[V3VozacLocationTrackingService] stop() pozvan');
+    _startInProgress = false;
     final vozacIdToClean = _activeVozacId;
     _activeVozacId = '';
     _activeDatumIso = '';
