@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../l10n/app_translations.dart';
 import '../models/v3_vozac.dart';
-import '../services/v3/v3_vozac_location_tracking_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_card_color_policy.dart';
@@ -24,18 +23,16 @@ class _VozacPozTr {
   }
 }
 
-/// Admin ekran — uživo prikazuje poslednju poznatu GPS poziciju vozača, na
+/// Admin ekran — prikazuje poslednju poznatu GPS poziciju vozača, na
 /// besplatnoj OpenStreetMap mapi (bez API ključa, bez naplate).
 ///
 /// Podrazumevano (opcija "Svi vozači") prikazuje markere SVIH vozača koji
-/// trenutno imaju aktivan auto-tracking istovremeno. Preko dropdown-a admin
+/// trenutno imaju lokaciju u tabeli v3_vozac_location. Preko dropdown-a admin
 /// može da izabere jednog konkretnog vozača — tada se mapa fokusira i prikazuje
 /// samo njegov marker.
 ///
-/// Pozicija se ne čuva u bazi — vozačeva app je broadcast-uje preko Supabase
-/// Realtime kanala (`v3-vozac-pozicija-<id>`) svaki put kad pošalje GPS radi
-/// ETA računa (isti okidač kao i za sada postojeći auto-tracking). Ovaj ekran
-/// se pretplaćuje na kanale svih vozača dok je otvoren.
+/// Lokacija se čita iz tabele v3_vozac_location (jedan red po vozaču,
+/// ažurira se svakih 20s). Ekran periodično osvežava podatke.
 class V3AdminVozacPozicijaScreen extends StatefulWidget {
   const V3AdminVozacPozicijaScreen({super.key});
 
@@ -48,9 +45,11 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   List<V3Vozac> _vozaci = [];
   String? _selectedVozacId;
 
-  final Map<String, RealtimeChannel> _channels = {};
   final Map<String, ll.LatLng> _pozicije = {};
   final Map<String, DateTime> _lastUpdates = {};
+
+  Timer? _refreshTimer;
+  bool _isLoading = false;
 
   final MapController _mapController = MapController();
   bool _mapReady = false;
@@ -59,48 +58,54 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   void initState() {
     super.initState();
     _vozaci = V3VozacService.getAllVozaci();
-    _subscribeToAll();
+    _refresh();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _refresh());
   }
 
   @override
   void dispose() {
-    for (final ch in _channels.values) {
-      unawaited(Supabase.instance.client.removeChannel(ch));
-    }
-    _channels.clear();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
-  void _subscribeToAll() {
-    for (final vozac in _vozaci) {
-      if (_channels.containsKey(vozac.id)) continue;
-      final channel = Supabase.instance.client.channel(
-        V3VozacLocationTrackingService.pozicijaChannelName(vozac.id),
-      );
-      channel.onBroadcast(
-        event: 'pozicija',
-        callback: (payload) => _onPozicija(vozac.id, payload),
-      );
-      channel.subscribe();
-      _channels[vozac.id] = channel;
-    }
-  }
+  Future<void> _refresh() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      final rows = await Supabase.instance.client.from('v3_vozac_location').select('vozac_id, lat, lng, updated_at');
 
-  void _onPozicija(String vozacId, Map<String, dynamic> payload) {
-    final lat = (payload['lat'] as num?)?.toDouble();
-    final lng = (payload['lng'] as num?)?.toDouble();
-    if (lat == null || lng == null || !mounted) return;
-    final novaPozicija = ll.LatLng(lat, lng);
-    setState(() {
-      _pozicije[vozacId] = novaPozicija;
-      _lastUpdates[vozacId] = DateTime.now();
-    });
+      final newPozicije = <String, ll.LatLng>{};
+      final newUpdates = <String, DateTime>{};
+      for (final row in rows as List<dynamic>) {
+        final vozacId = row['vozac_id']?.toString();
+        final lat = (row['lat'] as num?)?.toDouble();
+        final lng = (row['lng'] as num?)?.toDouble();
+        final updatedAt = row['updated_at']?.toString();
+        if (vozacId == null || lat == null || lng == null) continue;
+        newPozicije[vozacId] = ll.LatLng(lat, lng);
+        final parsed = updatedAt != null ? DateTime.tryParse(updatedAt) : null;
+        newUpdates[vozacId] = parsed ?? DateTime.now();
+      }
 
-    // Fokusiraj kameru samo ako je ovaj vozač trenutno izabran (ili je "Svi"
-    // režim i ovo je jedina aktivna pozicija do sada).
-    final shouldFollow = _selectedVozacId == vozacId || (_selectedVozacId == null && _pozicije.length == 1);
-    if (shouldFollow && _mapReady) {
-      _mapController.move(novaPozicija, _mapController.camera.zoom < 3 ? 15 : _mapController.camera.zoom);
+      if (!mounted) return;
+      setState(() {
+        _pozicije
+          ..clear()
+          ..addAll(newPozicije);
+        _lastUpdates
+          ..clear()
+          ..addAll(newUpdates);
+      });
+
+      if (_selectedVozacId != null && _pozicije.containsKey(_selectedVozacId) && _mapReady) {
+        _mapController.move(_pozicije[_selectedVozacId]!, 15);
+      } else if (_selectedVozacId == null && _pozicije.length == 1 && _mapReady) {
+        _mapController.move(_pozicije.values.first, 15);
+      }
+    } catch (e) {
+      debugPrint('[AdminVozacPozicija] greška pri učitavanju lokacija: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -113,8 +118,8 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
     }
   }
 
-  /// Vozači koji se trenutno prikazuju kao marker na mapi (imaju bar jednu
-  /// primljenu poziciju), filtrirani po izboru u dropdown-u.
+  /// Vozači koji se trenutno prikazuju kao marker na mapi (imaju lokaciju),
+  /// filtrirani po izboru u dropdown-u.
   List<V3Vozac> get _prikazaniVozaci {
     final aktivni = _vozaci.where((v) => _pozicije.containsKey(v.id));
     if (_selectedVozacId == null) return aktivni.toList();
@@ -137,7 +142,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
           Padding(
             padding: const EdgeInsets.all(12),
             child: DropdownButtonFormField<String>(
-              initialValue: _selectedVozacId,
+              value: _selectedVozacId,
               decoration: InputDecoration(
                 labelText: _VozacPozTr.tr('izaberiVozaca'),
                 border: const OutlineInputBorder(),
@@ -179,6 +184,12 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (_isLoading)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
               ],
             ),
           ),

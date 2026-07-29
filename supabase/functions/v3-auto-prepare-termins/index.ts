@@ -62,51 +62,31 @@ function coordStr(lat: number, lng: number): string {
 }
 
 /// Pokušava da pronađe poslednju poznatu (dovoljno svežu) GPS poziciju
-/// vozača, tražeći kroz waypoints_json.location_by_vozac[vozacId] svih
-/// njegovih slotova za dati datum — bez obzira na grad/vreme — jer je to
-/// najbolja dostupna aproksimacija njegove trenutne lokacije u trenutku kad
-/// cron radi (edge funkcija nema direktan pristup live GPS-u van onog što je
-/// vozačev telefon već upisao preko v3-compute-eta).
+/// vozača iz tabele v3_vozac_location — jedini izvor istine za trenutnu
+/// lokaciju vozača. Edge funkcija nema direktan pristup live GPS-u van onog
+/// što vozačev telefon upisuje direktno u bazu svakih 20s.
 async function findDriverLastLocation(
   client: ReturnType<typeof createClient>,
   vozacId: string,
-  datumIso: string,
 ): Promise<{ lat: number; lng: number } | null> {
-  const { data: rows, error } = await client
-    .from("v3_trenutna_dodela_slot")
-    .select("waypoints_json, updated_at")
-    .eq("vozac_v3_auth_id", vozacId)
-    .eq("datum", datumIso);
+  const { data: row, error } = await client
+    .from("v3_vozac_location")
+    .select("lat, lng, updated_at")
+    .eq("vozac_id", vozacId)
+    .maybeSingle();
 
-  if (error || !rows || rows.length === 0) return null;
+  if (error || !row) return null;
 
-  let best: { lat: number; lng: number; timestamp: number } | null = null;
+  const lat = Number(row.lat);
+  const lng = Number(row.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-  for (const row of rows) {
-    const locationByVozac = (row.waypoints_json as Record<string, unknown> | null)?.["location_by_vozac"] as
-      | Record<string, unknown>
-      | undefined;
-    const loc = locationByVozac?.[vozacId] as
-      | { lat?: unknown; lng?: unknown; timestamp?: unknown }
-      | undefined;
-    if (!loc) continue;
+  const tsRaw = row.updated_at;
+  const ts = typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
+  if (!Number.isFinite(ts)) return null;
+  if (Date.now() - ts > DRIVER_LOCATION_MAX_AGE_MS) return null;
 
-    const lat = Number(loc.lat);
-    const lng = Number(loc.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-
-    const tsRaw = loc.timestamp;
-    const ts = typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
-    if (!Number.isFinite(ts)) continue;
-
-    if (Date.now() - ts > DRIVER_LOCATION_MAX_AGE_MS) continue;
-
-    if (!best || ts > best.timestamp) {
-      best = { lat, lng, timestamp: ts };
-    }
-  }
-
-  return best ? { lat: best.lat, lng: best.lng } : null;
+  return { lat, lng };
 }
 
 /// Vraća YYYY-MM-DD za dati instant u Europe/Belgrade zoni (poštuje DST).
@@ -542,7 +522,7 @@ Deno.serve(async (req) => {
       // koordinatu po gradu (fallback za slučaj da vozač jos nije nikad
       // slao lokaciju danas).
       const driverLastLocation = needsOsrmRecompute
-        ? await findDriverLastLocation(client, vozacId, datumIso)
+        ? await findDriverLastLocation(client, vozacId)
         : null;
       const effectiveStart = driverLastLocation ?? DEFAULT_START[grad];
 
@@ -634,12 +614,6 @@ Deno.serve(async (req) => {
         const nowIso = new Date().toISOString();
         const updatedWaypoints = {
           ...slotWaypoints,
-          location: (slotWaypoints["location"] as Record<string, unknown> | undefined) ?? {
-            lat: effectiveStart.lat,
-            lng: effectiveStart.lng,
-            timestamp: nowIso,
-            note: driverLastLocation ? "auto_prepare_last_known_driver_location" : "auto_prepare_default_start",
-          },
           passengers,
           optimized_order: optimizedOrder,
         };

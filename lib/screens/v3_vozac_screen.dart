@@ -271,11 +271,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
 
       if (osrmOrder.isNotEmpty) {
-        int indexA = osrmOrder.indexOf(a.putnik.id);
-        int indexB = osrmOrder.indexOf(b.putnik.id);
-        if (indexA == -1) indexA = 999;
-        if (indexB == -1) indexB = 999;
-        return indexA.compareTo(indexB);
+        final indexA = osrmOrder.indexOf(a.putnik.id);
+        final indexB = osrmOrder.indexOf(b.putnik.id);
+        return (indexA == -1 ? 999 : indexA).compareTo(indexB == -1 ? 999 : indexB);
       }
 
       return 0;
@@ -283,9 +281,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     // Log sortirani redosled
     final buf = StringBuffer('[SORT] order:');
-    final osrmOrderLog = sharedOptimizedIds.isNotEmpty ? sharedOptimizedIds : _getOsrmOrderFromSlot();
     for (final p in sorted) {
-      final osrmIdx = osrmOrderLog.indexOf(p.putnik.id);
+      final osrmIdx = osrmOrder.indexOf(p.putnik.id);
       buf.write(' ${p.putnik.imePrezime}(OsrmIdx=$osrmIdx)');
     }
     debugPrint(buf.toString());
@@ -493,12 +490,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   void _maybeAutoStopTrackingForCompletedTermin(List<_PutnikEntry> putnici) {
-    if (!V3VozacLocationTrackingService.instance.isRunning) {
-      _uiAutoStopFallbackTimer?.cancel();
-      _uiAutoStopFallbackTimer = null;
-      return;
-    }
-    if (_autoStopInProgress) return;
+    if (!V3VozacLocationTrackingService.instance.isRunning || _autoStopInProgress) return;
     if (!_shouldAutoStopTracking(putnici)) {
       _uiAutoStopFallbackTimer?.cancel();
       _uiAutoStopFallbackTimer = null;
@@ -517,34 +509,31 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     _uiAutoStopFallbackTimer?.cancel();
-    _uiAutoStopFallbackTimer = Timer(_uiAutoStopFallbackDelay, () {
-      unawaited(() async {
-        if (!V3VozacLocationTrackingService.instance.isRunning) return;
-        if (_autoStopInProgress) return;
-        if (!_shouldAutoStopTracking(_mojiPutnici)) return;
+    _uiAutoStopFallbackTimer = Timer(_uiAutoStopFallbackDelay, () async {
+      if (!V3VozacLocationTrackingService.instance.isRunning || _autoStopInProgress) return;
+      if (!_shouldAutoStopTracking(_mojiPutnici)) return;
 
-        final latestActiveDatumIso = V3VozacLocationTrackingService.instance.activeDatumIso;
-        final latestActiveGrad = V3VozacLocationTrackingService.instance.activeGrad;
-        final latestActiveVreme = V3VozacLocationTrackingService.instance.activeVreme;
-        if (latestActiveDatumIso != _selectedDatumIso ||
-            latestActiveGrad != _selectedGrad ||
-            latestActiveVreme != _selectedVreme) {
-          return;
-        }
+      final latestActiveDatumIso = V3VozacLocationTrackingService.instance.activeDatumIso;
+      final latestActiveGrad = V3VozacLocationTrackingService.instance.activeGrad;
+      final latestActiveVreme = V3VozacLocationTrackingService.instance.activeVreme;
+      if (latestActiveDatumIso != _selectedDatumIso ||
+          latestActiveGrad != _selectedGrad ||
+          latestActiveVreme != _selectedVreme) {
+        return;
+      }
 
-        _autoStopInProgress = true;
-        try {
-          debugPrint('[V3VozacScreen] stop reason=all_passengers_completed source=ui_fallback');
-          await V3VozacLocationTrackingService.instance.stop();
-          if (mounted) {
-            setState(() {
-              _isNavigating = false;
-            });
-          }
-        } finally {
-          _autoStopInProgress = false;
+      _autoStopInProgress = true;
+      try {
+        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed source=ui_fallback');
+        await V3VozacLocationTrackingService.instance.stop();
+        if (mounted) {
+          setState(() {
+            _isNavigating = false;
+          });
         }
-      }());
+      } finally {
+        _autoStopInProgress = false;
+      }
     });
   }
 

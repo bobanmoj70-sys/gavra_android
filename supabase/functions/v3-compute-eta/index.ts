@@ -59,6 +59,28 @@ function normalizeDateIso(value: unknown): string {
   return match?.[1] ?? "";
 }
 
+/// Čita poslednju poznatu lokaciju vozača iz `v3_vozac_location` — jedini
+/// izvor istine za trenutnu GPS poziciju. Flutter app upisuje ovu tabelu
+/// svakih 20s; edge funkcija više ne prima lat/lng u payload-u.
+async function readDriverLocation(
+  client: ReturnType<typeof createClient>,
+  vozacId: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const { data: row, error } = await client
+    .from("v3_vozac_location")
+    .select("lat, lng")
+    .eq("vozac_id", vozacId)
+    .maybeSingle();
+
+  if (error || !row) return null;
+
+  const lat = Number(row.lat);
+  const lng = Number(row.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return { lat, lng };
+}
+
 /// Fetch sa eksponencijalnim backoff retry-om
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
@@ -104,13 +126,11 @@ Deno.serve(async (req) => {
 
     const payload = (await req.json()) as ComputeEtaPayload;
     const vozacId = String(payload.vozac_id ?? "").trim();
-    const driverLat = Number(payload.lat);
-    const driverLng = Number(payload.lng);
     const activeGrad = String(payload.grad ?? "").trim().toUpperCase();
     const activeVreme = normalizeTime(payload.vreme);
     const activeDatumIso = normalizeDateIso(payload.datum_iso);
 
-    if (!vozacId || !Number.isFinite(driverLat) || !Number.isFinite(driverLng)) {
+    if (!vozacId) {
       return json(200, { ok: false, reason: "invalid_payload" });
     }
     if (!activeGrad || !activeVreme) {
@@ -146,30 +166,16 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "no_active_slot" });
     }
 
-    // Odmah upiši trenutnu lokaciju vozača — pre bilo kakvih daljih provera.
-    // Ovo je kritično: čak i ako kasnije nešto padne (OSRM, putnici, itd.),
-    // lokacija se ažurira svakih 20s i realtime ETA može da se računa.
-    const isSlotOwner = String(activeSlot.vozac_v3_auth_id ?? "") === vozacId;
-    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
-    const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
-    const now = new Date().toISOString();
-    const immediateLocationPayload: Record<string, unknown> = {
-      ...currentWaypoints,
-      ...(isSlotOwner
-        ? { location: { lat: driverLat, lng: driverLng, timestamp: now, note: "compute_eta_immediate" } }
-        : {}),
-      location_by_vozac: {
-        ...currentLocationByVozac,
-        [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
-      },
-    };
-    const { error: immediateUpdateError } = await client
-      .from("v3_trenutna_dodela_slot")
-      .update({ waypoints_json: immediateLocationPayload })
-      .eq("id", activeSlot.id);
-    if (immediateUpdateError) {
-      console.warn(`[v3-compute-eta] immediate location update error: ${immediateUpdateError.message}`);
+    // 2a. Lokaciju čita isključivo iz v3_vozac_location (jedini izvor istine).
+    const driverLocation = await readDriverLocation(client, vozacId);
+    if (!driverLocation) {
+      return json(200, { ok: false, reason: "no_driver_location" });
     }
+    const driverLat = driverLocation.lat;
+    const driverLng = driverLocation.lng;
+
+    const currentWaypoints = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
+    const now = new Date().toISOString();
 
     // Ako je pozivajući vozač override na neki od putnika ovog slota (a nije
     // fizički vlasnik slota), i dalje mu vraćamo ETA za putnike koje on vozi —
@@ -178,34 +184,23 @@ Deno.serve(async (req) => {
 
     const updateSlotWaypoints = async (newOptimizedOrder?: string[]) => {
       const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
-      const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
-      
+
       const payload: any = {
         ...currentWaypoints,
-        ...(isSlotOwner
-          ? { location: { lat: driverLat, lng: driverLng, timestamp: now } }
-          : {}),
-        location_by_vozac: {
-          ...currentLocationByVozac,
-          [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
-        },
       };
 
       if (newOptimizedOrder !== undefined) {
-         if (isSlotOwner) {
-            payload.optimized_order = newOptimizedOrder;
-         }
-         payload.optimized_order_by_vozac = {
-            ...currentOrderByVozac,
-            [vozacId]: newOptimizedOrder,
-         };
+        payload.optimized_order_by_vozac = {
+          ...currentOrderByVozac,
+          [vozacId]: newOptimizedOrder,
+        };
       }
 
       const { error: slotUpdateError } = await client
         .from("v3_trenutna_dodela_slot")
         .update({ waypoints_json: payload })
         .eq("id", activeSlot.id);
-        
+
       if (slotUpdateError) {
         console.warn(`[v3-compute-eta] slot waypoints update error: ${slotUpdateError.message}`);
       }
@@ -215,33 +210,9 @@ Deno.serve(async (req) => {
       reason: string,
       extra: Record<string, unknown> = {},
     ): Promise<Response> => {
-      // U slucaju fallback-a takodje azuriramo plain lokaciju, ali se oslanjamo na postojeci order
       const currentOrderByVozac = (currentWaypoints["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
-      const currentLocationByVozac = (currentWaypoints["location_by_vozac"] as Record<string, unknown>) ?? {};
-      
-      const payload: any = {
-        ...currentWaypoints,
-        ...(isSlotOwner
-          ? { location: { lat: driverLat, lng: driverLng, timestamp: now }, note: `fallback: ${reason}` }
-          : {}),
-        location_by_vozac: {
-          ...currentLocationByVozac,
-          [vozacId]: { lat: driverLat, lng: driverLng, timestamp: now },
-        },
-        compute_eta_error: reason,
-        compute_eta_extra: extra,
-      };
-
-      const { error: slotUpdateError } = await client
-        .from("v3_trenutna_dodela_slot")
-        .update({ waypoints_json: payload })
-        .eq("id", activeSlot.id);
-      
-      const waypointsJson = (activeSlot.waypoints_json as Record<string, unknown>) ?? {};
-      const orderByVozacRaw = (waypointsJson["optimized_order_by_vozac"] as Record<string, unknown>) ?? {};
-      const existingOrderRaw = orderByVozacRaw[vozacId];
-      const existingOrder = Array.isArray(existingOrderRaw)
-        ? existingOrderRaw.filter((id): id is string => typeof id === "string" && id.length > 0)
+      const existingOrder = Array.isArray(currentOrderByVozac[vozacId])
+        ? (currentOrderByVozac[vozacId] as unknown[]).filter((id): id is string => typeof id === "string" && id.length > 0)
         : [];
 
       const { data: existingEtaRows } = await client
@@ -258,37 +229,25 @@ Deno.serve(async (req) => {
         }))
         .filter((r) => r.termin_id.length > 0 && r.putnik_id.length > 0 && Number.isFinite(r.eta_seconds));
 
-      let finalOrder = existingOrder;
-
-      if (existingOrder.length === 0 && etaRows && etaRows.length > 0) {
-        finalOrder = etaRows.map((r) => r.putnik_id);
-      }
-      
-      if (finalOrder.length === 0) {
-         finalOrder = remaining.map((p) => p.putnik_id);
-      }
-
-      const etaByPutnik = new Map<string, { termin_id: string; putnik_id: string; eta_seconds: number }>();
-      for (const row of etaRows) {
-        etaByPutnik.set(row.putnik_id, row);
-      }
-
-      const orderedEtaRows = finalOrder.length > 0
-        ? [
-            ...finalOrder
-              .map((pid) => etaByPutnik.get(pid))
-              .filter((item): item is { termin_id: string; putnik_id: string; eta_seconds: number } => !!item),
-            ...etaRows.filter((row) => !finalOrder.includes(row.putnik_id)),
-          ]
-        : etaRows;
+      // Sačuvaj indikator greške u slotu radi lakšeg debug-a.
+      await client
+        .from("v3_trenutna_dodela_slot")
+        .update({
+          waypoints_json: {
+            ...currentWaypoints,
+            compute_eta_error: reason,
+            compute_eta_extra: extra,
+          },
+        })
+        .eq("id", activeSlot.id);
 
       return json(200, {
         ok: true,
         fallback: true,
         reason,
-        updated: orderedEtaRows.length,
-        eta_results: orderedEtaRows,
-        optimized_order: finalOrder,
+        updated: etaRows.length,
+        eta_results: etaRows,
+        optimized_order: existingOrder,
         ...extra,
       });
     };
@@ -521,7 +480,8 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
     }
 
-    // 7. Update slot waypoints_json — čuvaj passengers[], dodaj po-vozacu location + optimized_order
+    // 7. Update slot waypoints_json — čuvaj passengers[], dodaj po-vozacu optimized_order.
+    // Lokacija se ne čuva ovde; čita se iz v3_vozac_location po potrebi.
     const optimizedOrder = upsertRows.map((r) => r.putnik_id);
     await updateSlotWaypoints(optimizedOrder);
 

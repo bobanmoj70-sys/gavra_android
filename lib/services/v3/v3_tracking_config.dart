@@ -172,63 +172,6 @@ Future<void> v3ClearEtaForVozac({
   }
 }
 
-/// JEDAN IZVOR ISTINE za realtime broadcast poslednje GPS pozicije vozača
-/// (bez čuvanja u bazi) — deljeno između main isolate-a (foreground GPS) i
-/// Android background isolate-a. Ranije su oba mesta imala identičnu, ali
-/// odvojeno duplirana logiku (`_broadcastPozicija` / `_bgBroadcastPozicija`).
-/// Admin ekran (`v3_admin_vozac_pozicija_screen.dart`) se pretplaćuje na
-/// kanal imena [channelName] i prikazuje marker na mapi.
-class V3PozicijaBroadcaster {
-  RealtimeChannel? _channel;
-  String? _channelVozacId;
-
-  static String channelName(String vozacId) => 'v3-vozac-pozicija-$vozacId';
-
-  Future<void> broadcast({
-    required SupabaseClient client,
-    required String vozacId,
-    required double lat,
-    required double lng,
-    String logTag = '[V3PozicijaBroadcaster]',
-  }) async {
-    try {
-      if (_channel == null || _channelVozacId != vozacId) {
-        final old = _channel;
-        if (old != null) {
-          unawaited(client.removeChannel(old));
-        }
-        final channel = client.channel(channelName(vozacId));
-        _channel = channel;
-        _channelVozacId = vozacId;
-        channel.subscribe();
-        // Kratka pauza da se kanal poveže pre prvog slanja poruke.
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-      await _channel?.sendBroadcastMessage(
-        event: 'pozicija',
-        payload: <String, dynamic>{
-          'lat': lat,
-          'lng': lng,
-          'ts': DateTime.now().toIso8601String(),
-        },
-      );
-    } catch (e) {
-      debugPrint('$logTag broadcast pozicija greška: $e');
-      _channel = null;
-      _channelVozacId = null;
-    }
-  }
-
-  void dispose(SupabaseClient client) {
-    final old = _channel;
-    _channel = null;
-    _channelVozacId = null;
-    if (old != null) {
-      unawaited(client.removeChannel(old));
-    }
-  }
-}
-
 /// JEDAN IZVOR ISTINE za proveru "da li su svi putnici u aktivnom slotu
 /// završeni (pokupljeni ili otkazani)" — deljeno između main isolate-a
 /// (iOS tracking petlja) i Android background isolate-a. Ranije je ista
@@ -288,41 +231,6 @@ Future<bool> v3AllPassengersCompleted({
   }
 }
 
-/// Tekst tracking notifikacije (naslov + telo).
-typedef V3TrackingNotificationText = ({String title, String body});
-
-/// JEDAN IZVOR ISTINE za izradu naslova/tela tracking notifikacije ("GPS
-/// Tracking — N putnika" / "Sledeći: Ime · ETA X min") — deljeno između
-/// Android background isolate-a (`_bgUpdateNextPassengerNotification` u
-/// `v3_background_location_handler.dart`) i iOS main isolate-a
-/// (`_iosUpdateTrackingNotification` u `v3_vozac_location_tracking_service.dart`).
-/// Ranije je identična string-building logika bila duplirana na oba mesta.
-///
-/// [nextPutnikIme] je ime sledećeg putnika ako je već poznato (npr. iz
-/// keša) — ako je `null`/prazno, koristi se generički fallback "sledeći
-/// putnik" (Android dodatno dohvata ime iz baze PRE poziva ove funkcije, jer
-/// background isolate nema pristup `V3MasterRealtimeManager` kešu).
-V3TrackingNotificationText v3BuildTrackingNotificationText({
-  required String? nextPutnikId,
-  required String? nextPutnikIme,
-  required int? etaSeconds,
-  required int remainingCount,
-}) {
-  if (nextPutnikId == null || remainingCount == 0) {
-    return (title: 'GPS Tracking', body: 'Nema više putnika za pokupljanje.');
-  }
-
-  final ime = (nextPutnikIme != null && nextPutnikIme.isNotEmpty) ? nextPutnikIme : 'sledeći putnik';
-  final etaMin = etaSeconds != null && etaSeconds >= 0 ? (etaSeconds / 60).round() : null;
-  final etaText = etaMin != null ? ' · ETA $etaMin min' : '';
-  final putnikLabel = remainingCount == 1 ? 'putnik' : 'putnika';
-
-  return (
-    title: 'GPS Tracking — $remainingCount $putnikLabel',
-    body: 'Sledeći: $ime$etaText',
-  );
-}
-
 /// JEDAN IZVOR ISTINE za proveru da li su lokacijski preduslovi zadovoljeni
 /// (GPS uključen + dozvola za lokaciju). Deljeno između main isolate-a
 /// (`V3VozacLocationTrackingService`) i Android background isolate-a
@@ -356,62 +264,29 @@ Future<bool> v3CheckLocationPrerequisites({
   return true;
 }
 
-/// JEDAN IZVOR ISTINE za direktno ažuriranje `waypoints_json.location_by_vozac`
-/// za aktivnog vozača u aktivnom slotu sa trenutnom GPS pozicijom. Deljeno
-/// između main isolate-a (`V3VozacLocationTrackingService`) i Android
-/// background isolate-a. Ranije su postojale dve identične kopije
-/// (`_updateSlotLocation` i `_bgUpdateSlotLocation`).
-Future<void> v3UpdateSlotLocation({
+/// JEDAN IZVOR ISTINE za upsert trenutne GPS pozicije vozača u
+/// `v3_vozac_location`. Deljeno između main isolate-a
+/// (`V3VozacLocationTrackingService`) i Android background isolate-a.
+Future<void> v3UpdateVozacLocation({
   required SupabaseClient client,
   required String? vozacId,
-  required String datumIso,
-  required String grad,
-  required String vreme,
   required double lat,
   required double lng,
-  String note = 'gps_tick',
-  String logTag = '[v3UpdateSlotLocation]',
+  String logTag = '[v3UpdateVozacLocation]',
   void Function(String message)? log,
 }) async {
-  if (vozacId == null || vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
-    log?.call('$logTag preskačem: nedostaju podaci');
+  if (vozacId == null || vozacId.isEmpty) {
+    log?.call('$logTag preskačem: nedostaje vozacId');
     return;
   }
 
   try {
-    final nowIso = DateTime.now().toUtc().toIso8601String();
-    final rows = await client
-        .from('v3_trenutna_dodela_slot')
-        .select('id, waypoints_json')
-        .eq('datum', datumIso)
-        .eq('grad', grad)
-        .eq('vreme', vreme)
-        .limit(1);
-
-    final row = (rows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
-    if (row == null) {
-      log?.call('$logTag slot nije pronađen');
-      return;
-    }
-
-    final existing = row['waypoints_json'] as Map<String, dynamic>? ?? <String, dynamic>{};
-    final locationByVozac = (existing['location_by_vozac'] as Map<String, dynamic>?) ?? <String, dynamic>{};
-    final updated = <String, dynamic>{
-      ...existing,
-      'location_by_vozac': <String, dynamic>{
-        ...locationByVozac,
-        vozacId: <String, dynamic>{
-          'lat': lat,
-          'lng': lng,
-          'timestamp': nowIso,
-          'note': note,
-        },
-      },
-    };
-
-    await client
-        .from('v3_trenutna_dodela_slot')
-        .update(<String, dynamic>{'waypoints_json': updated}).eq('id', row['id']);
+    await client.from('v3_vozac_location').upsert(<String, dynamic>{
+      'vozac_id': vozacId,
+      'lat': lat,
+      'lng': lng,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
     log?.call('$logTag lokacija ažurirana $lat, $lng za vozača $vozacId');
   } catch (e) {
     log?.call('$logTag greška: $e');
