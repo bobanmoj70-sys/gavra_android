@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 class V3Vozac {
   final String id;
@@ -38,8 +38,8 @@ class V3Vozac {
       pushToken2: json['push_token_2'] as String?,
       pinHash: json['pin_hash'] as String?,
       uloga: (json['uloga'] as String?)?.trim().isNotEmpty == true ? json['uloga'] as String : 'vozac',
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
     );
   }
 

@@ -31,7 +31,7 @@ import 'services/v3/v3_vozac_location_tracking_service.dart';
 import 'services/v3/v3_vozac_service.dart';
 import 'services/v3_locale_manager.dart';
 import 'services/v3_theme_manager.dart';
-import 'utils/v3_time_utils.dart';
+import 'utils/v3_belgrade_time.dart';
 import 'widgets/v3_pazar_listener.dart';
 
 // Globalna instanca za lokalne notifikacije
@@ -622,8 +622,8 @@ Future<void> _showAlternativaFromData(
   String? body,
 }) async {
   final zahtevId = (data['zahtev_id'] ?? '').trim();
-  final altPre = V3TimeUtils.normalizeToHHmm((data['alt_pre'] ?? '').trim());
-  final altPosle = V3TimeUtils.normalizeToHHmm((data['alt_posle'] ?? '').trim());
+  final altPre = V3BelgradeTime.normalizeToHHmm((data['alt_pre'] ?? '').trim());
+  final altPosle = V3BelgradeTime.normalizeToHHmm((data['alt_posle'] ?? '').trim());
 
   if (zahtevId.isEmpty) {
     debugPrint('⚠️ [alternativa] Nedostaje zahtevId u FCM data payload-u: $data');

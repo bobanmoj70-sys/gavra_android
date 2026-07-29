@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 class V3Zahtev {
   final String id;
@@ -39,7 +39,7 @@ class V3Zahtev {
     return V3Zahtev(
       id: json['id'] as String? ?? '',
       putnikId: putnikId,
-      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
+      datum: V3BelgradeTime.parseDatum(json['datum']?.toString()) ?? V3BelgradeTime.now(),
       grad: json['grad'] as String? ?? '',
       trazeniPolazakAt: json['trazeni_polazak_at'] as String? ?? '',
       status: json['status'] as String? ?? 'obrada',
@@ -48,8 +48,8 @@ class V3Zahtev {
       adresaIdOverride: json['adresa_override_id'] as String?,
       altVremePre: json['alternativa_pre_at'] as String?,
       altVremePosle: json['alternativa_posle_at'] as String?,
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
       createdBy: json['created_by'] as String?,
     );
   }
@@ -60,7 +60,7 @@ class V3Zahtev {
 
     return {
       if (id.isNotEmpty) 'id': id,
-      'datum': V3DateUtils.parseIsoDatePart(datum.toIso8601String()),
+      'datum': V3BelgradeTime.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
       'trazeni_polazak_at': trazeniPolazakAt.isEmpty ? null : trazeniPolazakAt,
       'status': status,

@@ -7,13 +7,12 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 
-Map<String, Map<String, String>> get _placanjeT =>
-    AppTranslations.ns('placanjeDialogHelper');
+Map<String, Map<String, String>> get _placanjeT => AppTranslations.ns('placanjeDialogHelper');
 
 String _placanjeTr(String key) {
   final code = V3LocaleManager().currentLocale.languageCode;
@@ -58,8 +57,7 @@ class V3PlacanjeDialogHelper {
     int? mesec,
     int? godina,
   }) async {
-    final TextEditingController _iznosController =
-        TextEditingController(text: defaultCena.toStringAsFixed(0));
+    final TextEditingController _iznosController = TextEditingController(text: defaultCena.toStringAsFixed(0));
     var _autoIznosEnabled = true;
     var _suppressAutoIznosListener = false;
 
@@ -92,14 +90,12 @@ class V3PlacanjeDialogHelper {
     int _selectedYear = godina ?? now.year;
     final currentYear = now.year;
     final years = List.generate(6, (i) => currentYear - 1 + i);
-    final zadnjaNaplata =
-        V3FinansijeService.getLatestNaplataForPutnik(putnikId);
+    final zadnjaNaplata = V3FinansijeService.getLatestNaplataForPutnik(putnikId);
     final vremePlacen = zadnjaNaplata?.paidAt;
     final zadnjiIznos = zadnjaNaplata?.poslednjaDopuna ?? 0.0;
     final naplatioIme = (zadnjaNaplata?.paidBy == null)
         ? _placanjeTr('nepoznato')
-        : (V3VozacService.getVozacById(zadnjaNaplata!.paidBy!)?.imePrezime ??
-            _placanjeTr('nepoznato'));
+        : (V3VozacService.getVozacById(zadnjaNaplata!.paidBy!)?.imePrezime ?? _placanjeTr('nepoznato'));
 
     return V3DialogHelper.showDialogBuilder<V3PlacanjeRezultat>(
       context: context,
@@ -113,8 +109,7 @@ class V3PlacanjeDialogHelper {
               mesec: mesec,
               godina: _selectedYear,
             );
-            final nenaplacenIznos =
-                V3FinansijeService.getNenaplacenIznosForPutnik(
+            final nenaplacenIznos = V3FinansijeService.getNenaplacenIznosForPutnik(
               putnikId: putnikId,
               mesec: mesec,
               godina: _selectedYear,
@@ -134,8 +129,7 @@ class V3PlacanjeDialogHelper {
           return Dialog(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            insetPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             child: Container(
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.9,
@@ -143,8 +137,7 @@ class V3PlacanjeDialogHelper {
               decoration: BoxDecoration(
                 gradient: Theme.of(context).backgroundGradient,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: Theme.of(context).glassBorder, width: 0.8),
+                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),
@@ -165,9 +158,7 @@ class V3PlacanjeDialogHelper {
                       topLeft: Radius.circular(20),
                       topRight: Radius.circular(20),
                     ),
-                    border: Border(
-                        bottom:
-                            BorderSide(color: Theme.of(context).glassBorder)),
+                    border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
                     child: Row(
                       children: [
                         Expanded(
@@ -186,10 +177,8 @@ class V3PlacanjeDialogHelper {
                             padding: const EdgeInsets.all(8),
                             backgroundColor: Colors.red.withValues(alpha: 0.2),
                             borderRadiusGeometry: BorderRadius.circular(15),
-                            border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.4)),
-                            child: const Icon(Icons.close,
-                                color: Colors.white, size: 20),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+                            child: const Icon(Icons.close, color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -211,8 +200,7 @@ class V3PlacanjeDialogHelper {
                               decoration: BoxDecoration(
                                 color: cs.surface.withValues(alpha: 0.6),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Theme.of(context).glassBorder),
+                                border: Border.all(color: Theme.of(context).glassBorder),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,26 +215,17 @@ class V3PlacanjeDialogHelper {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    _placanjeTrf('datumLabel', {
-                                      'VALUE': vremePlacen == null
-                                          ? '-'
-                                          : _formatDatumVreme(vremePlacen)
-                                    }),
-                                    style:
-                                        const TextStyle(color: Colors.white70),
+                                    _placanjeTrf('datumLabel',
+                                        {'VALUE': vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen)}),
+                                    style: const TextStyle(color: Colors.white70),
                                   ),
                                   Text(
-                                    _placanjeTrf('iznosLabel', {
-                                      'VALUE': zadnjiIznos.toStringAsFixed(0)
-                                    }),
-                                    style:
-                                        const TextStyle(color: Colors.white70),
+                                    _placanjeTrf('iznosLabel', {'VALUE': zadnjiIznos.toStringAsFixed(0)}),
+                                    style: const TextStyle(color: Colors.white70),
                                   ),
                                   Text(
-                                    _placanjeTrf(
-                                        'naplatioLabel', {'NAME': naplatioIme}),
-                                    style:
-                                        const TextStyle(color: Colors.white70),
+                                    _placanjeTrf('naplatioLabel', {'NAME': naplatioIme}),
+                                    style: const TextStyle(color: Colors.white70),
                                   ),
                                 ],
                               ),
@@ -255,8 +234,7 @@ class V3PlacanjeDialogHelper {
                             controller: _iznosController,
                             decoration: InputDecoration(
                               labelText: _placanjeTr('iznosRsd'),
-                              labelStyle:
-                                  const TextStyle(color: Colors.white70),
+                              labelStyle: const TextStyle(color: Colors.white70),
                               suffixText: 'RSD',
                               suffixStyle: TextStyle(color: Colors.white70),
                               enabledBorder: UnderlineInputBorder(
@@ -277,41 +255,33 @@ class V3PlacanjeDialogHelper {
                                   isExpanded: true,
                                   dropdownStyleData: DropdownStyleData(
                                     decoration: BoxDecoration(
-                                      gradient:
-                                          Theme.of(context).backgroundGradient,
+                                      gradient: Theme.of(context).backgroundGradient,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: Theme.of(context).glassBorder,
-                                          width: 0.8),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                     ),
                                   ),
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 16),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
                                   iconStyleData: const IconStyleData(
                                     iconEnabledColor: Colors.white,
                                   ),
                                   decoration: InputDecoration(
                                     contentPadding: EdgeInsets.zero,
                                     labelText: _placanjeTr('mesec'),
-                                    labelStyle:
-                                        const TextStyle(color: Colors.white70),
+                                    labelStyle: const TextStyle(color: Colors.white70),
                                     enabledBorder: const UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white38),
+                                      borderSide: BorderSide(color: Colors.white38),
                                     ),
                                     focusedBorder: const UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white),
+                                      borderSide: BorderSide(color: Colors.white),
                                     ),
                                   ),
                                   value: _selectedMonth,
-                                  items:
-                                      List.generate(12, (i) => i + 1).map((m) {
+                                  items: List.generate(12, (i) => i + 1).map((m) {
                                     final mesecStyle = _mesecStyle(m);
                                     return DropdownMenuItem(
                                       value: m,
                                       child: Text(
-                                        V3DateUtils.mesecNaziv(m),
+                                        V3BelgradeTime.mesecNaziv(m),
                                         style: TextStyle(
                                           color: mesecStyle.color,
                                           fontWeight: mesecStyle.weight,
@@ -322,9 +292,7 @@ class V3PlacanjeDialogHelper {
                                   onChanged: (v) => setState(() {
                                     _selectedMonth = v!;
                                     if (_autoIznosEnabled) {
-                                      _setIznosController(
-                                          _predlozeniIznosZaMesecGodinu(
-                                              _selectedMonth, _selectedYear));
+                                      _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
                                     }
                                   }),
                                 ),
@@ -335,31 +303,24 @@ class V3PlacanjeDialogHelper {
                                   isExpanded: true,
                                   dropdownStyleData: DropdownStyleData(
                                     decoration: BoxDecoration(
-                                      gradient:
-                                          Theme.of(context).backgroundGradient,
+                                      gradient: Theme.of(context).backgroundGradient,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                          color: Theme.of(context).glassBorder,
-                                          width: 0.8),
+                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
                                     ),
                                   ),
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 16),
+                                  style: const TextStyle(color: Colors.white, fontSize: 16),
                                   iconStyleData: const IconStyleData(
                                     iconEnabledColor: Colors.white,
                                   ),
                                   decoration: InputDecoration(
                                     contentPadding: EdgeInsets.zero,
                                     labelText: _placanjeTr('godina'),
-                                    labelStyle:
-                                        const TextStyle(color: Colors.white70),
+                                    labelStyle: const TextStyle(color: Colors.white70),
                                     enabledBorder: const UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white38),
+                                      borderSide: BorderSide(color: Colors.white38),
                                     ),
                                     focusedBorder: const UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white),
+                                      borderSide: BorderSide(color: Colors.white),
                                     ),
                                   ),
                                   value: _selectedYear,
@@ -368,17 +329,14 @@ class V3PlacanjeDialogHelper {
                                       value: y,
                                       child: Text(
                                         '$y.',
-                                        style: const TextStyle(
-                                            color: Colors.white),
+                                        style: const TextStyle(color: Colors.white),
                                       ),
                                     );
                                   }).toList(),
                                   onChanged: (v) => setState(() {
                                     _selectedYear = v!;
                                     if (_autoIznosEnabled) {
-                                      _setIznosController(
-                                          _predlozeniIznosZaMesecGodinu(
-                                              _selectedMonth, _selectedYear));
+                                      _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
                                     }
                                   }),
                                 ),
@@ -397,8 +355,7 @@ class V3PlacanjeDialogHelper {
                       bottomLeft: Radius.circular(20),
                       bottomRight: Radius.circular(20),
                     ),
-                    border: Border(
-                        top: BorderSide(color: Theme.of(context).glassBorder)),
+                    border: Border(top: BorderSide(color: Theme.of(context).glassBorder)),
                     child: Row(
                       children: [
                         Expanded(
@@ -414,13 +371,10 @@ class V3PlacanjeDialogHelper {
                           flex: 2,
                           child: V3ButtonUtils.elevatedButton(
                             onPressed: () {
-                              final rawIznos = _iznosController.text
-                                  .trim()
-                                  .replaceAll(',', '.');
+                              final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
                               final iznos = double.tryParse(rawIznos) ?? 0;
                               if (iznos <= 0) {
-                                V3AppSnackBar.warning(context,
-                                    _placanjeTr('unesiteIspravanIznos'));
+                                V3AppSnackBar.warning(context, _placanjeTr('unesiteIspravanIznos'));
                                 return;
                               }
                               Navigator.pop(
@@ -434,8 +388,7 @@ class V3PlacanjeDialogHelper {
                             },
                             text: _placanjeTr('potvrdi'),
                             icon: Icons.check,
-                            backgroundColor:
-                                Colors.green.withValues(alpha: 0.7),
+                            backgroundColor: Colors.green.withValues(alpha: 0.7),
                             foregroundColor: Colors.white,
                           ),
                         ),

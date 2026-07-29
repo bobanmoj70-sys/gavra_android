@@ -1,5 +1,5 @@
 import '../../globals.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 
 class V3DriverPushNotificationService {
   V3DriverPushNotificationService._();
@@ -19,7 +19,7 @@ class V3DriverPushNotificationService {
     final safeVozacId = vozacId.trim();
     final safeDatumIso = datumIso.trim();
     final safeGrad = grad.trim().toUpperCase();
-    final safeVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final safeVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     try {
       final response = await supabase.rpc(

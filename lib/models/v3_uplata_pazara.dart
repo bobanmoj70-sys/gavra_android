@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 /// Jedna dnevna uplata pazara unutar meseca.
 class V3DnevnaUplataPazara {
@@ -72,8 +72,8 @@ class V3UplataPazara {
       mesec: (json['mesec'] as num?)?.toInt() ?? 0,
       godina: (json['godina'] as num?)?.toInt() ?? 0,
       dnevneUplate: list.map((e) => V3DnevnaUplataPazara.fromJson(e as Map<String, dynamic>)).toList(),
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
     );
   }
 

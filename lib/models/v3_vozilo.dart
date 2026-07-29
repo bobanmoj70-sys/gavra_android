@@ -1,5 +1,5 @@
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_date_utils.dart';
 
 class V3Vozilo {
   final String id;
@@ -84,18 +84,18 @@ class V3Vozilo {
     return V3DanHelper.formatDatumPuni(d);
   }
 
-  bool get registracijaIstekla => registracijaVaziDo != null && registracijaVaziDo!.isBefore(DateTime.now());
+  bool get registracijaIstekla => registracijaVaziDo != null && registracijaVaziDo!.isBefore(V3BelgradeTime.now());
 
   bool get registracijaIstice {
     if (registracijaVaziDo == null) return false;
-    final days = registracijaVaziDo!.difference(DateTime.now()).inDays;
+    final days = registracijaVaziDo!.difference(V3BelgradeTime.now()).inDays;
     return days >= 0 && days <= 30;
   }
 
-  int get danaDoIstekaRegistracije => registracijaVaziDo?.difference(DateTime.now()).inDays ?? 0;
+  int get danaDoIstekaRegistracije => registracijaVaziDo?.difference(V3BelgradeTime.now()).inDays ?? 0;
 
   factory V3Vozilo.fromJson(Map<String, dynamic> json) {
-    DateTime? parseDate(dynamic val) => val != null ? DateTime.tryParse(val as String) : null;
+    DateTime? parseDate(dynamic val) => V3BelgradeTime.parseDatum(val?.toString());
 
     return V3Vozilo(
       id: json['id'] as String? ?? '',
@@ -142,32 +142,23 @@ class V3Vozilo {
       if (brojSasije != null) 'broj_sasije': brojSasije,
       if (godinaProizvodnje != null) 'godina_proizvodnje': godinaProizvodnje,
       if (napomena != null) 'napomena': napomena,
-      if (registracijaVaziDo != null)
-        'registracija_vazi_do': V3DateUtils.parseIsoDatePart(registracijaVaziDo!.toIso8601String()),
-      if (maliServisDatum != null)
-        'mali_servis_datum': V3DateUtils.parseIsoDatePart(maliServisDatum!.toIso8601String()),
+      if (registracijaVaziDo != null) 'registracija_vazi_do': V3BelgradeTime.toIsoDate(registracijaVaziDo!),
+      if (maliServisDatum != null) 'mali_servis_datum': V3BelgradeTime.toIsoDate(maliServisDatum!),
       if (maliServisKm != null) 'mali_servis_km': maliServisKm,
-      if (velikiServisDatum != null)
-        'veliki_servis_datum': V3DateUtils.parseIsoDatePart(velikiServisDatum!.toIso8601String()),
+      if (velikiServisDatum != null) 'veliki_servis_datum': V3BelgradeTime.toIsoDate(velikiServisDatum!),
       if (velikiServisKm != null) 'veliki_servis_km': velikiServisKm,
-      if (alternatorDatum != null) 'alternator_datum': V3DateUtils.parseIsoDatePart(alternatorDatum!.toIso8601String()),
-      if (alternatorKm != null) 'alternator_km': alternatorKm,
-      if (akumulatorDatum != null) 'akumulator_datum': V3DateUtils.parseIsoDatePart(akumulatorDatum!.toIso8601String()),
-      if (akumulatorKm != null) 'akumulator_km': akumulatorKm,
-      if (plocicePrednjeDatum != null)
-        'plocice_prednje_datum': V3DateUtils.parseIsoDatePart(plocicePrednjeDatum!.toIso8601String()),
+      if (alternatorDatum != null) 'alternator_datum': V3BelgradeTime.toIsoDate(alternatorDatum!),
+      if (akumulatorDatum != null) 'akumulator_datum': V3BelgradeTime.toIsoDate(akumulatorDatum!),
+      if (plocicePrednjeDatum != null) 'plocice_prednje_datum': V3BelgradeTime.toIsoDate(plocicePrednjeDatum!),
       if (plocicePrednjeKm != null) 'plocice_prednje_km': plocicePrednjeKm,
-      if (plociceZadnjeDatum != null)
-        'plocice_zadnje_datum': V3DateUtils.parseIsoDatePart(plociceZadnjeDatum!.toIso8601String()),
+      if (plociceZadnjeDatum != null) 'plocice_zadnje_datum': V3BelgradeTime.toIsoDate(plociceZadnjeDatum!),
       if (plociceZadnjeKm != null) 'plocice_zadnje_km': plociceZadnjeKm,
-      if (trapDatum != null) 'trap_datum': V3DateUtils.parseIsoDatePart(trapDatum!.toIso8601String()),
+      if (trapDatum != null) 'trap_datum': V3BelgradeTime.toIsoDate(trapDatum!),
       if (trapKm != null) 'trap_km': trapKm,
-      if (gumePrednjeDatum != null)
-        'gume_prednje_datum': V3DateUtils.parseIsoDatePart(gumePrednjeDatum!.toIso8601String()),
+      if (gumePrednjeDatum != null) 'gume_prednje_datum': V3BelgradeTime.toIsoDate(gumePrednjeDatum!),
       if (gumePrednjeOpis != null) 'gume_prednje_opis': gumePrednjeOpis,
       if (gumePrednjeKm != null) 'gume_prednje_km': gumePrednjeKm,
-      if (gumeZadnjeDatum != null)
-        'gume_zadnje_datum': V3DateUtils.parseIsoDatePart(gumeZadnjeDatum!.toIso8601String()),
+      if (gumeZadnjeDatum != null) 'gume_zadnje_datum': V3BelgradeTime.toIsoDate(gumeZadnjeDatum!),
       if (gumeZadnjeOpis != null) 'gume_zadnje_opis': gumeZadnjeOpis,
       if (gumeZadnjeKm != null) 'gume_zadnje_km': gumeZadnjeKm,
       if (radio != null) 'radio': radio,

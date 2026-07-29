@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../globals.dart';
 import '../../models/v3_zahtev.dart';
-import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
@@ -22,7 +22,7 @@ class V3ZahtevService {
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
   static final V3ZahtevDomainService _domain = V3ZahtevDomainService(_repository);
 
-  static String _datumKey(DateTime datum) => V3DateUtils.parseIsoDatePart(datum.toIso8601String());
+  static String _datumKey(DateTime datum) => V3BelgradeTime.parseIsoDatePart(datum.toIso8601String());
 
   static DateTime _parseTs(String? value) {
     if (value == null || value.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
@@ -37,7 +37,7 @@ class V3ZahtevService {
     final datumIso = _datumKey(datum);
     final targetGrad = grad.trim().toUpperCase();
     final rows = V3MasterRealtimeManager.instance.zahteviCache.values.where((row) {
-      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '');
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum'] as String? ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       return (row['created_by']?.toString() ?? '') == putnikId &&
           rowDatum == datumIso &&
@@ -103,7 +103,7 @@ class V3ZahtevService {
       final createdByUuid = V3UuidUtils.normalizeUuid(createdBy);
       if (createdByUuid != null) data['created_by'] = createdByUuid;
       if (!data.containsKey('created_at')) {
-        data['created_at'] = V3DateUtils.nowIsoUtc();
+        data['created_at'] = V3BelgradeTime.nowIsoUtc();
       }
       final row = await _repository.create(data);
 
@@ -204,7 +204,7 @@ class V3ZahtevService {
 
     final datumIso = _datumKey(datum);
     final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
-    final otkazanoAt = V3DateUtils.nowIsoUtc();
+    final otkazanoAt = V3BelgradeTime.nowIsoUtc();
 
     // Pre nego što ažuriramo, proverimo da li uopšte ima aktivnih redova.
     // Ako ih nema, verovatno je već otkazano u međuvremenu — ne radimo ništa.
@@ -277,7 +277,7 @@ class V3ZahtevService {
         throw Exception('Obavezno je navesti tačno jednog aktera otkazivanja');
       }
 
-      final otkazanoAt = V3DateUtils.nowIsoUtc();
+      final otkazanoAt = V3BelgradeTime.nowIsoUtc();
 
       if (hasVozacActor) {
         // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
@@ -355,7 +355,7 @@ class V3ZahtevService {
     try {
       final payload = {
         if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
-        'pokupljen_at': V3DateUtils.nowIsoUtc(),
+        'pokupljen_at': V3BelgradeTime.nowIsoUtc(),
       };
       if (operativnaId != null && operativnaId.isNotEmpty) {
         final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
@@ -376,7 +376,7 @@ class V3ZahtevService {
     String? updatedBy,
   }) async {
     try {
-      final nowIso = V3DateUtils.nowIsoUtc();
+      final nowIso = V3BelgradeTime.nowIsoUtc();
       await _domain.resetToObrada(
         id: id,
         novoVreme: novoVreme,

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_string_utils.dart';
 import '../../utils/v3_uuid_utils.dart';
@@ -55,20 +55,20 @@ class V3OperativnaNedeljaEntry {
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
       putnikId: effectivePutnikId,
-      datum: json['datum'] != null ? DateTime.parse(json['datum'] as String) : DateTime.now(),
+      datum: V3BelgradeTime.parseDatum(json['datum']?.toString()) ?? V3BelgradeTime.now(),
       grad: json['grad'] as String?,
       polazakAt: json['polazak_at'] as String?,
       statusFinal: V3StatusPolicy.deriveOperativnaStatus(
         otkazanoAt: json['otkazano_at'],
         polazakAt: json['polazak_at'],
       ),
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
       updatedBy: json['updated_by'] as String?,
-      pokupljenAt: V3DateUtils.parseTs(json['pokupljen_at'] as String?),
+      pokupljenAt: V3BelgradeTime.parseTs(json['pokupljen_at'] as String?),
       pokupljenBy: json['pokupljen_by'] as String?,
       otkazanoBy: json['otkazano_by'] as String?,
-      otkazanoAt: V3DateUtils.parseTs(json['otkazano_at'] as String?),
+      otkazanoAt: V3BelgradeTime.parseTs(json['otkazano_at'] as String?),
       maxMesta: (json['max_mesta'] as num?)?.toInt(),
       koristiSekundarnu: json['koristi_sekundarnu'] as bool? ?? false,
       adresaIdOverride: json['adresa_override_id'] as String?,
@@ -81,15 +81,15 @@ class V3OperativnaNedeljaEntry {
     return {
       'id': id,
       if (effectiveCreatedBy != null) 'created_by': effectiveCreatedBy,
-      'datum': V3DateUtils.parseIsoDatePart(datum.toIso8601String()),
+      'datum': V3BelgradeTime.parseIsoDatePart(datum.toIso8601String()),
       'grad': grad,
-      if (updatedAt != null) 'updated_at': V3DateUtils.toIsoUtc(updatedAt!),
+      if (updatedAt != null) 'updated_at': V3BelgradeTime.toIsoUtc(updatedAt!),
       if (updatedBy != null) 'updated_by': updatedBy,
       if (polazakAt != null) 'polazak_at': polazakAt,
-      if (pokupljenAt != null) 'pokupljen_at': V3DateUtils.toIsoUtc(pokupljenAt!),
+      if (pokupljenAt != null) 'pokupljen_at': V3BelgradeTime.toIsoUtc(pokupljenAt!),
       if (pokupljenBy != null) 'pokupljen_by': pokupljenBy,
       if (otkazanoBy != null) 'otkazano_by': otkazanoBy,
-      if (otkazanoAt != null) 'otkazano_at': V3DateUtils.toIsoUtc(otkazanoAt!),
+      if (otkazanoAt != null) 'otkazano_at': V3BelgradeTime.toIsoUtc(otkazanoAt!),
       'koristi_sekundarnu': koristiSekundarnu,
       if (adresaIdOverride != null) 'adresa_override_id': adresaIdOverride,
     };
@@ -101,9 +101,9 @@ class V3OperativnaNedeljaService {
   static final V3OperativnaNedeljaRepository _repo = V3OperativnaNedeljaRepository();
 
   static DateTime _zahtevOrderingTs(Map<String, dynamic> row) {
-    final updated = V3DateUtils.parseTs(row['updated_at']?.toString());
+    final updated = V3BelgradeTime.parseTs(row['updated_at']?.toString());
     if (updated != null) return updated;
-    final created = V3DateUtils.parseTs(row['created_at']?.toString());
+    final created = V3BelgradeTime.parseTs(row['created_at']?.toString());
     if (created != null) return created;
     return DateTime.fromMillisecondsSinceEpoch(0);
   }
@@ -128,7 +128,7 @@ class V3OperativnaNedeljaService {
     final zahtevCache = V3MasterRealtimeManager.instance.zahteviCache.values;
     final contextRows = zahtevCache.where((row) {
       final rowPutnikId = (row['created_by']?.toString() ?? '').trim();
-      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '');
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum'] as String? ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       return rowPutnikId == putnikId && rowDatum == datum && rowGrad == gradNorm;
     }).toList();
@@ -191,7 +191,7 @@ class V3OperativnaNedeljaService {
   }) async {
     final terminId = (operativnaRow['id']?.toString() ?? '').trim();
     final putnikId = (operativnaRow['created_by']?.toString() ?? '').trim();
-    final datumIso = V3DateUtils.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
+    final datumIso = V3BelgradeTime.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
     final grad = (operativnaRow['grad']?.toString() ?? '').trim();
     final vreme = (operativnaRow['polazak_at']?.toString() ?? operativnaRow['vreme']?.toString() ?? '').trim();
 
@@ -218,7 +218,7 @@ class V3OperativnaNedeljaService {
     for (final row in (allSlotsForDatum as List<dynamic>)) {
       final mapped = row as Map<String, dynamic>;
       final slotId = (mapped['id']?.toString() ?? '').trim();
-      final slotDatum = V3DateUtils.parseIsoDatePart(mapped['datum']?.toString());
+      final slotDatum = V3BelgradeTime.parseIsoDatePart(mapped['datum']?.toString());
       final slotGrad = (mapped['grad']?.toString() ?? '').trim().toUpperCase();
       final slotVreme = V3StringUtils.trimTimeToHhMm(mapped['vreme']?.toString() ?? '');
       final slotVozacId = (mapped['vozac_v3_auth_id']?.toString() ?? '').trim();
@@ -271,7 +271,7 @@ class V3OperativnaNedeljaService {
     final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
     return cache
         .where((r) {
-          final rDatum = V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '');
+          final rDatum = V3BelgradeTime.parseIsoDatePart(r['datum'] as String? ?? '');
           return rDatum == datumIso;
         })
         .map((r) => V3OperativnaNedeljaEntry.fromJson(r))
@@ -281,7 +281,7 @@ class V3OperativnaNedeljaService {
   /// Čita max_mesta za dati grad/vreme/datum iz v3_kapacitet_slots cache-a.
   /// Vraća null ako slot nije pronađen.
   static int? getKapacitetVozila(String grad, String vreme, DateTime datum) {
-    final datumIso = V3DateUtils.parseIsoDatePart(datum.toIso8601String());
+    final datumIso = V3BelgradeTime.parseIsoDatePart(datum.toIso8601String());
     final trazeniGrad = grad.trim().toUpperCase();
     final trazenoVreme = V3StringUtils.trimTimeToHhMm(vreme);
 
@@ -322,7 +322,7 @@ class V3OperativnaNedeljaService {
       // Provjeri postoji li već zapis
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
-        final rDatum = V3DateUtils.parseIsoDatePart(r['datum'] as String? ?? '');
+        final rDatum = V3BelgradeTime.parseIsoDatePart(r['datum'] as String? ?? '');
         final rowPutnikId = r['created_by']?.toString();
         return rowPutnikId == putnikId && rDatum == datum && r['grad'] == grad && _isOperativnaAktivna(r);
       }).toList();

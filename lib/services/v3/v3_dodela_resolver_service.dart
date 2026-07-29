@@ -1,5 +1,4 @@
-import '../../utils/v3_date_utils.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 
 class V3DodelaResolverService {
@@ -31,10 +30,10 @@ class V3DodelaResolverService {
       if (direct.isNotEmpty) return direct;
     }
 
-    final datumIso = V3DateUtils.parseIsoDatePart(row['datum']);
+    final datumIso = V3BelgradeTime.parseIsoDatePart(row['datum']);
     final grad = row['grad']?.toString() ?? '';
     final rawVreme = row[vremeKolona]?.toString() ?? row['vreme']?.toString() ?? '';
-    final normVreme = V3TimeUtils.normalizeToHHmm(rawVreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(rawVreme);
     if (datumIso.isEmpty || grad.trim().isEmpty || normVreme.isEmpty) return '';
 
     return resolveVozacIdForSlot(

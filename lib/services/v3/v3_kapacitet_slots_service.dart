@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_string_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_kapacitet_slots_repository.dart';
@@ -19,7 +19,7 @@ class V3KapacitetSlotsService {
   }) async {
     final gradNorm = grad.trim().toUpperCase();
     final vremeNorm = V3StringUtils.trimTimeToHhMm(vreme);
-    final datumNorm = V3DateUtils.parseIsoDatePart(datumIso);
+    final datumNorm = V3BelgradeTime.parseIsoDatePart(datumIso);
 
     try {
       final row = await _repo.upsertSlot(

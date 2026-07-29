@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 class V3Adresa {
   final String id;
@@ -20,8 +20,8 @@ class V3Adresa {
       id: json['id'] as String? ?? '',
       naziv: json['naziv'] as String? ?? '',
       grad: json['grad'] as String?,
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
     );
   }
 

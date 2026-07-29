@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../globals.dart';
 import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 import 'v3_shimmer_banner.dart';
 
 String _neradniDaniTr(String key) {
@@ -32,7 +32,7 @@ class V3NeradniDaniBanner extends StatelessWidget {
 
         final lines = <String>[];
         for (final rule in rules) {
-          final dateIso = V3DateUtils.parseIsoDatePart(rule['date'] ?? '');
+          final dateIso = V3BelgradeTime.parseIsoDatePart(rule['date'] ?? '');
           final date = DateTime.tryParse(dateIso);
           if (date == null) continue;
 
@@ -48,8 +48,7 @@ class V3NeradniDaniBanner extends StatelessWidget {
                   ? 'VS'
                   : '';
           final reason = (rule['reason'] ?? '').trim();
-          final reasonText =
-              reason.isEmpty ? _neradniDaniTr('neradanDan') : reason;
+          final reasonText = reason.isEmpty ? _neradniDaniTr('neradanDan') : reason;
           final scopeText = scopeLabel.isEmpty ? '' : ' [$scopeLabel]';
           lines.add('• $dayName ($dateIso)$scopeText — $reasonText');
         }
@@ -68,8 +67,7 @@ class V3NeradniDaniBanner extends StatelessWidget {
               children: [
                 Text(
                   _neradniDaniTr('naslov'),
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 4),
                 Text(

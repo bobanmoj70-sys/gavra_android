@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'v3_finansije_service.dart';
 
@@ -350,7 +350,7 @@ class V3PutnikStatistikaService {
         V3PutnikMesecnoPoravnanje(
           godina: godina,
           mesec: mesec,
-          mesecNaziv: V3DateUtils.mesecNaziv(mesec),
+          mesecNaziv: V3BelgradeTime.mesecNaziv(mesec),
           brojVoznji: brojVoznji,
           cena: cena,
           obaveza: obaveza,
@@ -457,7 +457,7 @@ class V3PutnikStatistikaService {
       case V3ObracunPeriod.izabraniMesec:
         final safeMesec = mesec ?? DateTime.now().month;
         final safeGodina = godina ?? DateTime.now().year;
-        return '${V3DateUtils.mesecNaziv(safeMesec)} $safeGodina';
+        return '${V3BelgradeTime.mesecNaziv(safeMesec)} $safeGodina';
       case V3ObracunPeriod.ukupno:
         return 'Ukupno';
     }
@@ -497,7 +497,7 @@ class V3PutnikStatistikaService {
         if (item is! Map) continue;
         final datumStr = item['datum']?.toString();
         if (datumStr == null || datumStr.isEmpty) continue;
-        final datum = V3DateUtils.parseTs(datumStr) ?? DateTime.tryParse(datumStr);
+        final datum = V3BelgradeTime.parseTs(datumStr) ?? DateTime.tryParse(datumStr);
         if (datum == null) continue;
         if (datum.year == godina && datum.month == mesec) {
           count++;
@@ -670,7 +670,7 @@ class V3PutnikStatistikaService {
     required int godina,
     required int mesec,
   }) {
-    final mesecNaziv = V3DateUtils.mesecNaziv(mesec);
+    final mesecNaziv = V3BelgradeTime.mesecNaziv(mesec);
     if (putnikId.isEmpty) {
       return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
     }
@@ -763,7 +763,7 @@ class V3PutnikStatistikaService {
 
     for (final v in voznje) {
       final dt = v['_datum_parsed'] as DateTime? ??
-          V3DateUtils.parseTs(v['datum']?.toString()) ??
+          V3BelgradeTime.parseTs(v['datum']?.toString()) ??
           DateTime.tryParse(v['datum']?.toString() ?? '');
       if (dt == null) continue;
 
@@ -812,7 +812,7 @@ class V3PutnikStatistikaService {
       final otkazaoVozac = tipOtkazivanja == 'vozac';
       final otkazaoById = (o['otkazao_by']?.toString() ?? '').trim();
       final otkazaoIme = otkazaoVozac ? _imeVozaca(otkazaoById) : null;
-      final otkazanoAt = V3DateUtils.parseTs(o['otkazano_at']?.toString());
+      final otkazanoAt = V3BelgradeTime.parseTs(o['otkazano_at']?.toString());
 
       agregat.otkazivanja.add(
         V3PutnikOtkazivanjeStavka(
@@ -848,7 +848,7 @@ class V3PutnikStatistikaService {
   }
 
   static String? _formatVremePokupljenja(String? raw) {
-    final dt = V3DateUtils.parseTs(raw);
+    final dt = V3BelgradeTime.parseTs(raw);
     if (dt == null) return null;
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');

@@ -3,8 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'services/v2_config_service.dart'; // Centralizovani kredencijali
 import 'services/v3/v3_app_settings_state.dart';
+import 'utils/v3_belgrade_time.dart';
 import 'utils/v3_dan_helper.dart';
-import 'utils/v3_date_utils.dart';
 
 export 'utils/v3_dan_helper.dart';
 
@@ -107,8 +107,9 @@ List<Map<String, String>> _parseNeradniDani(dynamic raw) {
   final out = <Map<String, String>>[];
   for (final item in raw) {
     if (item is! Map) continue;
-    final dateIso = V3DateUtils.parseIsoDatePart((item['date'] ?? '').toString());
-    if (dateIso.length != 10) continue;
+    final parsed = DateTime.tryParse((item['date'] ?? '').toString().trim());
+    if (parsed == null) continue;
+    final dateIso = V3BelgradeTime.toIsoDate(parsed);
 
     out.add({
       'date': dateIso,
@@ -128,7 +129,7 @@ String? getNeradanDanRazlog({
   required String datumIso,
   String? grad,
 }) {
-  final normalizedDate = V3DateUtils.parseIsoDatePart(datumIso);
+  final normalizedDate = datumIso.trim();
   if (normalizedDate.length != 10) return null;
 
   final normalizedGrad = (grad ?? '').trim().toLowerCase();

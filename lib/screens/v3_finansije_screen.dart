@@ -12,10 +12,10 @@ import '../services/v3/v3_kredit_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_format_utils.dart';
@@ -173,7 +173,7 @@ _V3IzvestajData _buildIzvestaj() {
     if (row['tip'] != 'rashod') continue;
     final createdStr = row['created_at'] as String?;
     if (createdStr == null) continue;
-    final dt = V3DateUtils.parseTs(createdStr);
+    final dt = V3BelgradeTime.parseTs(createdStr);
     if (dt == null) continue;
     final iznos = (row['iznos'] as num?)?.toDouble() ?? 0.0;
 
@@ -279,7 +279,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '📅',
                       naslov: _FinTr.tr('danas'),
-                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month, fallback: ''),
+                      podnaslov: V3BelgradeTime.mesecNaziv(DateTime.now().month, fallback: ''),
                       prihod: iz.prihodDanas,
                       troskovi: iz.trosakDanas,
                       voznjiLabel: '${iz.voznjiDanas} ${_FinTr.tr('uplata')}',
@@ -299,7 +299,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPeriodCard(
                       icon: '🗓️',
                       naslov: _FinTr.tr('ovajMesec'),
-                      podnaslov: V3DateUtils.mesecNaziv(DateTime.now().month, fallback: ''),
+                      podnaslov: V3BelgradeTime.mesecNaziv(DateTime.now().month, fallback: ''),
                       prihod: iz.prihodMesec,
                       troskovi: iz.trosakMesec,
                       voznjiLabel: '${iz.voznjiMesec} ${_FinTr.tr('uplata')}',

@@ -1,5 +1,4 @@
-import '../../utils/v3_date_utils.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import 'v3_trenutna_dodela_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 
@@ -15,7 +14,7 @@ class V3DodelaOrchestratorService {
     String? updatedBy,
     required bool Function(Map<String, dynamic> row) includeRow,
   }) async {
-    final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     final matchedRows = _rowsForSlot(
       operativnaRows: operativnaRows,
@@ -60,7 +59,7 @@ class V3DodelaOrchestratorService {
     required String vreme,
     required bool Function(Map<String, dynamic> row) includeRow,
   }) async {
-    final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     await V3TrenutnaDodelaSlotService.deleteBySlot(
       datumIso: datumIso,
@@ -147,12 +146,12 @@ class V3DodelaOrchestratorService {
     required String vreme,
     required bool Function(Map<String, dynamic> row) includeRow,
   }) {
-    final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     return operativnaRows.where((row) {
-      final datum = V3DateUtils.parseIsoDatePart(row['datum']);
+      final datum = V3BelgradeTime.parseIsoDatePart(row['datum']);
       final rowGrad = row['grad']?.toString() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(row['polazak_at']?.toString());
       if (datum != datumIso || rowGrad != grad || rowVreme != normVreme) return false;
       return includeRow(row);
     }).toList(growable: false);
@@ -166,13 +165,13 @@ class V3DodelaOrchestratorService {
     required String vreme,
     required bool Function(Map<String, dynamic> row) includeRow,
   }) {
-    final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     for (final row in operativnaRows) {
-      final datum = V3DateUtils.parseIsoDatePart(row['datum']);
+      final datum = V3BelgradeTime.parseIsoDatePart(row['datum']);
       final rowPutnikId = row['created_by']?.toString() ?? '';
       final rowGrad = row['grad']?.toString() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(row['polazak_at']?.toString());
 
       if (datum == datumIso && rowPutnikId == putnikId && rowGrad == grad && rowVreme == normVreme && includeRow(row)) {
         return row;

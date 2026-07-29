@@ -5,8 +5,8 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_style_helper.dart';
 
 class _VoznjeMesecTr {
@@ -111,7 +111,7 @@ class _V3PutnikVoznjeMesecScreenState extends State<V3PutnikVoznjeMesecScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${V3DateUtils.mesecNaziv(widget.mesec)} ${widget.godina}',
+                            '${V3BelgradeTime.mesecNaziv(widget.mesec)} ${widget.godina}',
                             style: TextStyle(
                               color: V3StyleHelper.whiteAlpha65,
                               fontSize: 13,

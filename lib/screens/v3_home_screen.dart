@@ -26,10 +26,10 @@ import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
@@ -37,7 +37,6 @@ import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
-import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_info_banner.dart';
@@ -218,14 +217,14 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     for (final entry in entries) {
       final grad = (entry.grad ?? '').trim().toUpperCase();
-      final vreme = V3TimeUtils.normalizeToHHmm(entry.polazakAt);
+      final vreme = V3BelgradeTime.normalizeToHHmm(entry.polazakAt);
       if (grad.isEmpty || vreme.isEmpty) continue;
       uniqueSlots.putIfAbsent('$grad|$vreme', () => {'grad': grad, 'vreme': vreme});
     }
 
     if (uniqueSlots.isEmpty) return;
 
-    final currentVremeNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+    final currentVremeNorm = V3BelgradeTime.normalizeToHHmm(_selectedVreme);
     final hasCurrentSelection = uniqueSlots.values.any(
       (slot) => (slot['grad'] ?? '') == _selectedGrad && (slot['vreme'] ?? '') == currentVremeNorm,
     );
@@ -318,7 +317,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       final operativnaRow = rm.operativnaNedeljaCache[terminId];
       if (operativnaRow == null) continue;
 
-      final rowDatum = V3DateUtils.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
       final rowGrad = (operativnaRow['grad']?.toString() ?? '').trim().toUpperCase();
       final rowVreme = V3StringUtils.trimTimeToHhMm(operativnaRow['polazak_at']?.toString() ?? '');
 
@@ -1394,7 +1393,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                               ],
                             ),
                           ),
-                          // Lista putnika/termina + floating neradan-banер
+                          // Lista putnika/termina + floating neradan-baner
                           Expanded(
                             child: ValueListenableBuilder<List<Map<String, String>>>(
                               valueListenable: neradniDaniNotifier,

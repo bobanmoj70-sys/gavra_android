@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 /// Pojedinačna uplata na kredit.
 class V3KreditUplata {
@@ -17,9 +17,7 @@ class V3KreditUplata {
   factory V3KreditUplata.fromJson(Map<String, dynamic> json) {
     return V3KreditUplata(
       uplataId: json['uplata_id']?.toString() ?? '',
-      datum: V3DateUtils.parseTs(json['datum']?.toString()) ??
-          DateTime.tryParse(json['datum']?.toString() ?? '') ??
-          DateTime.now(),
+      datum: V3BelgradeTime.parseTs(json['datum']?.toString()) ?? V3BelgradeTime.now(),
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
       napomena: json['napomena']?.toString(),
     );
@@ -27,7 +25,7 @@ class V3KreditUplata {
 
   Map<String, dynamic> toJson() => {
         'uplata_id': uplataId,
-        'datum': V3DateUtils.toIsoUtc(datum),
+        'datum': V3BelgradeTime.toIsoUtc(datum),
         'iznos': iznos,
         if (napomena != null && napomena!.isNotEmpty) 'napomena': napomena,
       };

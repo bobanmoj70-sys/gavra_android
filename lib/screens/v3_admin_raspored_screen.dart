@@ -17,14 +17,13 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_status_policy.dart';
-import '../utils/v3_time_utils.dart';
 import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_putnik_card.dart';
@@ -164,7 +163,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     for (final polazak in svi) {
       final parts = polazak.split(' ');
       if (parts.length < 2) continue;
-      final vreme = V3TimeUtils.normalizeToHHmm(parts[0]);
+      final vreme = V3BelgradeTime.normalizeToHHmm(parts[0]);
       final grad = parts.sublist(1).join(' ').toUpperCase();
       final mins = _timeToMinutes(vreme);
       if (mins < 0) continue;
@@ -185,15 +184,16 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   void _syncSelectedSlotForDay() {
     final rm = V3MasterRealtimeManager.instance;
     final datum = _selectedDatumIso;
-    final currentNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+    final currentNorm = V3BelgradeTime.normalizeToHHmm(_selectedVreme);
 
     final uniqueSlots = <String, Map<String, String>>{};
     for (final row in rm.operativnaNedeljaCache.values) {
       final putnikId = row['created_by']?.toString() ?? '';
-      if (!_putnikPostoji(putnikId) || V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '') != datum) continue;
+      if (!_putnikPostoji(putnikId) || V3BelgradeTime.parseIsoDatePart(row['datum'] as String? ?? '') != datum)
+        continue;
 
       final grad = (row['grad']?.toString() ?? '').toUpperCase();
-      final vreme = V3TimeUtils.normalizeToHHmm(_effectiveTime(row));
+      final vreme = V3BelgradeTime.normalizeToHHmm(_effectiveTime(row));
       if (grad.isEmpty || vreme.isEmpty) continue;
 
       final key = '$grad|$vreme';
@@ -213,8 +213,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     final nowMin = now.hour * 60 + now.minute;
     final slots = uniqueSlots.values.toList();
     slots.sort((a, b) {
-      final aVreme = V3TimeUtils.normalizeToHHmm(a['vreme']);
-      final bVreme = V3TimeUtils.normalizeToHHmm(b['vreme']);
+      final aVreme = V3BelgradeTime.normalizeToHHmm(a['vreme']);
+      final bVreme = V3BelgradeTime.normalizeToHHmm(b['vreme']);
       final aDiff = _timeToMinutes(aVreme) < 0 ? 99999 : (_timeToMinutes(aVreme) - nowMin).abs();
       final bDiff = _timeToMinutes(bVreme) < 0 ? 99999 : (_timeToMinutes(bVreme) - nowMin).abs();
       if (aDiff != bDiff) return aDiff.compareTo(bDiff);
@@ -225,7 +225,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
 
     final selected = slots.first;
     _selectedGrad = selected['grad'] ?? _selectedGrad;
-    _selectedVreme = V3TimeUtils.normalizeToHHmm(selected['vreme']);
+    _selectedVreme = V3BelgradeTime.normalizeToHHmm(selected['vreme']);
   }
 
   // ─── Cache helpers ────────────────────────────────────────────────────────

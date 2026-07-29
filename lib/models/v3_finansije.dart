@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 /// Model za tabelu v3_finansije
 class V3Trosak {
@@ -29,7 +29,7 @@ class V3Trosak {
   });
 
   factory V3Trosak.fromJson(Map<String, dynamic> json) {
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     return V3Trosak(
       id: json['id']?.toString() ?? '',
       tip: json['tip'] as String? ?? 'rashod',
@@ -40,8 +40,8 @@ class V3Trosak {
       mesec: json['mesec'] as int? ?? now.month,
       godina: json['godina'] as int? ?? now.year,
       vozacId: json['naplaceno_by']?.toString(),
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
     );
   }
 
@@ -76,20 +76,18 @@ class V3Uplata {
   factory V3Uplata.fromJson(Map<String, dynamic> json) {
     return V3Uplata(
       uplataId: json['uplata_id']?.toString() ?? '',
-      datum: V3DateUtils.parseTs(json['datum']?.toString()) ??
-          DateTime.tryParse(json['datum']?.toString() ?? '') ??
-          DateTime.now(),
+      datum: V3BelgradeTime.parseTs(json['datum']?.toString()) ?? V3BelgradeTime.now(),
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0,
       naplatioBy: json['naplatio_by']?.toString(),
-      naplatioAt: V3DateUtils.parseTs(json['naplatio_at']?.toString()),
+      naplatioAt: V3BelgradeTime.parseTs(json['naplatio_at']?.toString()),
     );
   }
 
   Map<String, dynamic> toJson() => {
         'uplata_id': uplataId,
-        'datum': V3DateUtils.toIsoUtc(datum),
+        'datum': V3BelgradeTime.toIsoUtc(datum),
         'iznos': iznos,
         if (naplatioBy != null && naplatioBy!.isNotEmpty) 'naplatio_by': naplatioBy,
-        if (naplatioAt != null) 'naplatio_at': V3DateUtils.toIsoUtc(naplatioAt!),
+        if (naplatioAt != null) 'naplatio_at': V3BelgradeTime.toIsoUtc(naplatioAt!),
       };
 }

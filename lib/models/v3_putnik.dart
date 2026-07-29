@@ -1,4 +1,4 @@
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 
 /// Universal model for all passenger types from logical `v3_putnici` cache (`v3_auth` source)
 class V3Putnik {
@@ -63,10 +63,10 @@ class V3Putnik {
       pushToken2: json['push_token_2'] as String?,
       pushDeviceId: json['push_device_id'] as String?,
       pushDeviceId2: json['push_device_id_2'] as String?,
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
-      lastSeenAt: V3DateUtils.parseTs(json['last_seen_at'] as String?),
-      lastSeenAt2: V3DateUtils.parseTs(json['last_seen_at_2'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
+      lastSeenAt: V3BelgradeTime.parseTs(json['last_seen_at'] as String?),
+      lastSeenAt2: V3BelgradeTime.parseTs(json['last_seen_at_2'] as String?),
     );
   }
 

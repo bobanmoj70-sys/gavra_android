@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../l10n/app_translations.dart';
 import '../models/v3_dnevna_predaja.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_dnevna_predaja_service.dart';
@@ -16,15 +17,14 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
 import '../utils/v3_text_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _DnevTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('dnevnikVozacaScreen');
@@ -100,7 +100,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
     if (_selectedVozacId == null) return;
 
     final vozacId = _selectedVozacId!;
-    final datumIso = V3DateUtils.parseIsoDatePart(_selectedDate.toIso8601String());
+    final datumIso = V3BelgradeTime.parseIsoDatePart(_selectedDate.toIso8601String());
 
     final naplateRows = V3FinansijeService.getNaplataRowsZaVozacaDan(
       vozacId: vozacId,
@@ -167,7 +167,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       buf.writeln('${_DnevTr.tr('pokupljeniPutnici')} (${_pokupio.length}):');
       for (int i = 0; i < _pokupio.length; i++) {
         final p = _pokupio[i];
-        final datum = V3DateUtils.parseTs(p['pokupljen_at']?.toString()) ?? DateTime.now();
+        final datum = V3BelgradeTime.parseTs(p['pokupljen_at']?.toString()) ?? DateTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['putnik_v3_auth_id']?.toString() ?? p['created_by']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
@@ -182,7 +182,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
       buf.writeln('${_DnevTr.tr('otkazaneVoznje')} (${_otkazao.length}):');
       for (int i = 0; i < _otkazao.length; i++) {
         final p = _otkazao[i];
-        final datum = V3DateUtils.parseTs(p['otkazano_at']?.toString()) ?? DateTime.now();
+        final datum = V3BelgradeTime.parseTs(p['otkazano_at']?.toString()) ?? DateTime.now();
         final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
         final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
         final putnik = rm.putniciCache[putnikId];
@@ -198,9 +198,9 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
     buf.writeln('${_DnevTr.tr('naplate')} (${_naplate.length}):');
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
-      final datum = V3DateUtils.parseTs(n['naplatio_at']?.toString()) ??
-          V3DateUtils.parseTs(n['uplata_datum']?.toString()) ??
-          V3DateUtils.parseTs(n['updated_at']?.toString()) ??
+      final datum = V3BelgradeTime.parseTs(n['naplatio_at']?.toString()) ??
+          V3BelgradeTime.parseTs(n['uplata_datum']?.toString()) ??
+          V3BelgradeTime.parseTs(n['updated_at']?.toString()) ??
           DateTime.now();
       final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
       final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';
@@ -294,8 +294,9 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                           style: baseStyle),
                       _pdfCell(
                           V3DanHelper.formatVreme(
-                              (V3DateUtils.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now()).hour,
-                              (V3DateUtils.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now()).minute),
+                              (V3BelgradeTime.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now()).hour,
+                              (V3BelgradeTime.parseTs(_pokupio[i]['pokupljen_at']?.toString()) ?? DateTime.now())
+                                  .minute),
                           style: baseStyle),
                     ],
                   ),
@@ -388,14 +389,14 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                         style: baseStyle),
                     _pdfCell(
                         V3DanHelper.formatVreme(
-                            (V3DateUtils.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
-                                    V3DateUtils.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
-                                    V3DateUtils.parseTs(_naplate[i]['updated_at']?.toString()) ??
+                            (V3BelgradeTime.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
+                                    V3BelgradeTime.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
+                                    V3BelgradeTime.parseTs(_naplate[i]['updated_at']?.toString()) ??
                                     DateTime.now())
                                 .hour,
-                            (V3DateUtils.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
-                                    V3DateUtils.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
-                                    V3DateUtils.parseTs(_naplate[i]['updated_at']?.toString()) ??
+                            (V3BelgradeTime.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
+                                    V3BelgradeTime.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
+                                    V3BelgradeTime.parseTs(_naplate[i]['updated_at']?.toString()) ??
                                     DateTime.now())
                                 .minute),
                         style: baseStyle),
@@ -733,8 +734,8 @@ class _PokupioCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pokupljenAt = V3DateUtils.parseTs(p['pokupljen_at']?.toString());
-    final datum = pokupljenAt ?? V3DateUtils.parseTs(p['datum']?.toString()) ?? DateTime.now();
+    final pokupljenAt = V3BelgradeTime.parseTs(p['pokupljen_at']?.toString());
+    final datum = pokupljenAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? DateTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
@@ -775,8 +776,8 @@ class _OtkazaoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final otkazanoAt = V3DateUtils.parseTs(p['otkazano_at']?.toString());
-    final datum = otkazanoAt ?? V3DateUtils.parseTs(p['datum']?.toString()) ?? DateTime.now();
+    final otkazanoAt = V3BelgradeTime.parseTs(p['otkazano_at']?.toString());
+    final datum = otkazanoAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? DateTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
     final polazakAt = p['vreme']?.toString() ?? '';
@@ -825,9 +826,9 @@ class _NaplataCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final datum = V3DateUtils.parseTs(n['naplatio_at']?.toString()) ??
-        V3DateUtils.parseTs(n['uplata_datum']?.toString()) ??
-        V3DateUtils.parseTs(n['updated_at']?.toString()) ??
+    final datum = V3BelgradeTime.parseTs(n['naplatio_at']?.toString()) ??
+        V3BelgradeTime.parseTs(n['uplata_datum']?.toString()) ??
+        V3BelgradeTime.parseTs(n['updated_at']?.toString()) ??
         DateTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = n['putnik_v3_auth_id']?.toString() ?? '';

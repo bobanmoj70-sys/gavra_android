@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'v3_date_utils.dart';
-import 'v3_time_utils.dart';
+import 'v3_belgrade_time.dart';
 
 class V3StatusPolicy {
   V3StatusPolicy._();
@@ -16,8 +15,8 @@ class V3StatusPolicy {
     final selectedGradNorm = grad.trim().toUpperCase();
     if (gradNorm != selectedGradNorm) return false;
 
-    final normEntryVreme = V3TimeUtils.normalizeToHHmm(entryVreme);
-    final selectedVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normEntryVreme = V3BelgradeTime.normalizeToHHmm(entryVreme);
+    final selectedVreme = V3BelgradeTime.normalizeToHHmm(vreme);
     return normEntryVreme == selectedVreme;
   }
 
@@ -267,12 +266,12 @@ class V3StatusPolicy {
     required bool Function(Map<String, dynamic> row) isVisibleRow,
     String vremeKolona = 'polazak_at',
   }) {
-    final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     for (final row in operativnaRows) {
       final rowGrad = row['grad']?.toString() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row[vremeKolona]?.toString());
-      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']);
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(row[vremeKolona]?.toString());
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']);
       final rowPutnikId = row['created_by']?.toString() ?? '';
 
       if (rowPutnikId != putnikId) continue;
@@ -297,15 +296,15 @@ class V3StatusPolicy {
     required bool Function(Map<String, dynamic> row) isVisibleRow,
     String vremeKolona = 'polazak_at',
   }) {
-    final normVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     String? zajednickiVozacId;
     var hasRows = false;
 
     for (final row in operativnaRows) {
       final rowGrad = row['grad']?.toString() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row[vremeKolona]?.toString());
-      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']);
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(row[vremeKolona]?.toString());
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']);
 
       if (rowGrad != grad) continue;
       if (rowVreme != normVreme) continue;
@@ -338,7 +337,7 @@ class V3StatusPolicy {
     bool Function(T item)? includeItem,
   }) {
     final gradNorm = grad.trim().toUpperCase();
-    final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
+    final vremeNorm = V3BelgradeTime.normalizeToHHmm(vreme);
 
     return items.where((item) {
       if (includeItem != null && !includeItem(item)) return false;
@@ -346,7 +345,7 @@ class V3StatusPolicy {
       final itemGrad = (gradOf(item) ?? '').trim().toUpperCase();
       if (itemGrad != gradNorm) return false;
 
-      final itemVreme = V3TimeUtils.normalizeToHHmm(vremeOf(item));
+      final itemVreme = V3BelgradeTime.normalizeToHHmm(vremeOf(item));
       if (itemVreme != vremeNorm) return false;
 
       return countsAsOccupied(status: statusOf(item), otkazanoAt: otkazanoAtOf(item));

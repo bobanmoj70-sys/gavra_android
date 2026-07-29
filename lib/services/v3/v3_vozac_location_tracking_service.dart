@@ -11,8 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_date_utils.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import 'v3_auto_start_payload.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
@@ -96,10 +95,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   List<String> get optimizedPutnikIds => List.unmodifiable(_optimizedPutnikIds);
   Map<String, int> get etaSecondsCache => Map.unmodifiable(_etaSecondsCache);
 
-  /// Delegira na deljeni `V3DateUtils.parseIsoDatePart` (JEDAN IZVOR ISTINE za
+  /// Delegira na deljeni `V3BelgradeTime.parseIsoDatePart` (JEDAN IZVOR ISTINE za
   /// normalizaciju ISO datuma na `yyyy-MM-dd`, ranije duplirano ovde kao
   /// privatna, manje robustna kopija bez podrske za timezone offset).
-  String _normalizeDateIso(String raw) => V3DateUtils.parseIsoDatePart(raw);
+  String _normalizeDateIso(String raw) => V3BelgradeTime.parseIsoDatePart(raw);
 
   /// Upisuje "zeljeno stanje"
   /// gde main isolate govori background isolate-u šta treba da prati. Background
@@ -198,7 +197,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   void setActiveTermin({required String datumIso, required String grad, required String vreme}) {
     _activeDatumIso = _normalizeDateIso(datumIso);
     _activeGrad = grad.trim().toUpperCase();
-    _activeVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    _activeVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     // Očisti deljene ETA/redosled keševe jer je termin promenjen
     _optimizedPutnikIds.clear();

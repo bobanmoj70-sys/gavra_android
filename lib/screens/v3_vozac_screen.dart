@@ -27,17 +27,16 @@ import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_geo_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
-import '../utils/v3_time_utils.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_info_banner.dart';
 import '../widgets/v3_live_clock_text.dart';
@@ -191,7 +190,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final rm = V3MasterRealtimeManager.instance;
     final trazeniDatum = datumIso?.trim() ?? '';
     final trazeniGrad = grad?.trim().toUpperCase() ?? '';
-    final trazenoVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final trazenoVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     final rows = <Map<String, dynamic>>[];
     for (final operativnaId in _assignedOperativnaIds) {
@@ -202,7 +201,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       row['vreme'] = row['vreme'] ?? row['polazak_at'];
 
       if (trazeniDatum.isNotEmpty) {
-        final rowDatum = V3DateUtils.parseIsoDatePart(row['datum'] as String? ?? '');
+        final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum'] as String? ?? '');
         if (rowDatum != trazeniDatum) continue;
       }
 
@@ -212,7 +211,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
 
       if (trazenoVreme.isNotEmpty) {
-        final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
+        final rowVreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString());
         if (rowVreme != trazenoVreme) continue;
       }
 
@@ -230,13 +229,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }) {
     final trazeniDatum = (datumIso ?? '').trim();
     final trazeniGrad = (grad ?? '').trim().toUpperCase();
-    final trazenoVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final trazenoVreme = V3BelgradeTime.normalizeToHHmm(vreme);
 
     final rows = <Map<String, dynamic>>[];
     for (final slot in _assignedSlotRows) {
       final slotDatum = (slot[V3TrenutnaDodelaSlotService.colDatum] ?? '').trim();
       final slotGrad = (slot[V3TrenutnaDodelaSlotService.colGrad] ?? '').trim().toUpperCase();
-      final slotVreme = V3TimeUtils.normalizeToHHmm(slot[V3TrenutnaDodelaSlotService.colVreme]);
+      final slotVreme = V3BelgradeTime.normalizeToHHmm(slot[V3TrenutnaDodelaSlotService.colVreme]);
 
       if (slotDatum.isEmpty || slotGrad.isEmpty || slotVreme.isEmpty) continue;
       if (trazeniDatum.isNotEmpty && slotDatum != trazeniDatum) continue;
@@ -324,9 +323,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozacId.isEmpty) return const [];
     for (final row in cache.values) {
       final rowVozac = row['vozac_v3_auth_id']?.toString() ?? '';
-      final rowDatum = V3DateUtils.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
-      final rowVreme = V3TimeUtils.normalizeToHHmm(row['vreme']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString());
       final order = row['optimized_order'];
       final hasOrder = order is List && order.isNotEmpty;
       debugPrint('[OSRM_SLOT]   row vozac=$rowVozac datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasOrder=$hasOrder');
@@ -538,7 +537,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozac == null) return;
     final rm = V3MasterRealtimeManager.instance;
 
-    final selectedVNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+    final selectedVNorm = V3BelgradeTime.normalizeToHHmm(_selectedVreme);
 
     // 1. Moji termini za ovaj datum (izvor dodele: v3_trenutna_dodela)
     final assignedRows = _assignedOperativnaRows(
@@ -567,7 +566,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Ako selektovani grad/vreme ne odgovara nijednom terminu, izaberi prvi dostupni i ponovi rebuild
     final terminPostoji = _mojiTermini.any((t) =>
         t['grad']?.toString().toUpperCase() == _selectedGrad &&
-        V3TimeUtils.normalizeToHHmm(t['vreme']?.toString()) == selectedVNorm);
+        V3BelgradeTime.normalizeToHHmm(t['vreme']?.toString()) == selectedVNorm);
 
     if (!terminPostoji) {
       final stariGrad = _selectedGrad;
@@ -608,9 +607,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     // Uključi i ostale putnike iz tog termina koji nemaju individualnu dodelu drugom vozaču
     for (final raw in rm.operativnaNedeljaCache.values) {
-      final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
       if (raw['created_by'] == null) continue;
 
@@ -685,7 +684,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vreme = first['vreme']?.toString() ?? '';
     if (grad.isEmpty || vreme.isEmpty) return;
 
-    final normalized = V3TimeUtils.normalizeToHHmm(vreme);
+    final normalized = V3BelgradeTime.normalizeToHHmm(vreme);
     if (normalized.isEmpty) return;
 
     _selectedGrad = grad;
@@ -702,7 +701,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   void _onPolazakChanged(String grad, String vreme) {
     final normalizedGrad = grad.toUpperCase();
-    final normalizedVreme = V3TimeUtils.normalizeToHHmm(vreme);
+    final normalizedVreme = V3BelgradeTime.normalizeToHHmm(vreme);
     setState(() {
       _selectedGrad = normalizedGrad;
       _selectedVreme = normalizedVreme;
@@ -716,7 +715,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozac == null) return;
     final previousDate = V3DanHelper.dateOnly(_selectedDate);
     final previousGrad = _selectedGrad;
-    final previousVreme = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+    final previousVreme = V3BelgradeTime.normalizeToHHmm(_selectedVreme);
 
     final dayAbbr = V3DanHelper.workdayAbbrFromFullName(day);
     final dayIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(
@@ -736,11 +735,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       ),
     ];
 
-    final currentVremeNorm = V3TimeUtils.normalizeToHHmm(_selectedVreme);
+    final currentVremeNorm = V3BelgradeTime.normalizeToHHmm(_selectedVreme);
     final hasCurrentSelection = dayTerms.any(
       (row) =>
           (row['grad']?.toString().toUpperCase() ?? '') == _selectedGrad &&
-          V3TimeUtils.normalizeToHHmm(row['vreme']?.toString()) == currentVremeNorm,
+          V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString()) == currentVremeNorm,
     );
 
     Map<String, dynamic>? bestTerm;
@@ -748,8 +747,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final now = DateTime.now();
       final nowMinutes = now.hour * 60 + now.minute;
       dayTerms.sort((a, b) {
-        final aTime = V3TimeUtils.normalizeToHHmm(a['vreme']?.toString());
-        final bTime = V3TimeUtils.normalizeToHHmm(b['vreme']?.toString());
+        final aTime = V3BelgradeTime.normalizeToHHmm(a['vreme']?.toString());
+        final bTime = V3BelgradeTime.normalizeToHHmm(b['vreme']?.toString());
         final aDiff = _timeToMinutes(aTime) < 0 ? 99999 : (_timeToMinutes(aTime) - nowMinutes).abs();
         final bDiff = _timeToMinutes(bTime) < 0 ? 99999 : (_timeToMinutes(bTime) - nowMinutes).abs();
         if (aDiff != bDiff) return aDiff.compareTo(bDiff);
@@ -768,7 +767,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
       if (bestTerm != null) {
         _selectedGrad = bestTerm['grad']?.toString().toUpperCase() ?? _selectedGrad;
-        _selectedVreme = V3TimeUtils.normalizeToHHmm(bestTerm['vreme']?.toString());
+        _selectedVreme = V3BelgradeTime.normalizeToHHmm(bestTerm['vreme']?.toString());
       } else if (dayTerms.isEmpty) {
         _selectedVreme = '';
       }
@@ -776,7 +775,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (dayTerms.isNotEmpty && _selectedVreme.isEmpty) {
         final firstTerm = dayTerms.first;
         _selectedGrad = firstTerm['grad'].toString().toUpperCase();
-        _selectedVreme = V3TimeUtils.normalizeToHHmm(firstTerm['vreme'].toString());
+        _selectedVreme = V3BelgradeTime.normalizeToHHmm(firstTerm['vreme'].toString());
       }
       _resetMapSyncState();
     });
@@ -830,7 +829,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozac == null) return 0;
     final vozacAuthId = vozac.id.toString().trim();
 
-    final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
+    final vremeNorm = V3BelgradeTime.normalizeToHHmm(vreme);
     final gradUp = grad.toUpperCase();
 
     bool hasActivePutnik(Map<String, dynamic> row) {
@@ -853,9 +852,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     for (final raw in rm.operativnaNedeljaCache.values) {
-      final rowDatum = V3DateUtils.parseIsoDatePart(raw['datum'] as String? ?? '');
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3TimeUtils.normalizeToHHmm(raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
       if (rowDatum != _selectedDatumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
       if (raw['created_by'] == null) continue;
 
@@ -1445,7 +1444,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
               final weekRange = V3DanHelper.schedulingWeekRange();
               final today = V3DanHelper.dateOnly(DateTime.now());
               final hasNeradan = rules.any((rule) {
-                final dateIso = V3DateUtils.parseIsoDatePart(rule['date'] ?? '');
+                final dateIso = V3BelgradeTime.parseIsoDatePart(rule['date'] ?? '');
                 final date = DateTime.tryParse(dateIso);
                 if (date == null) return false;
                 final onlyDate = V3DanHelper.dateOnly(date);

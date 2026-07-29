@@ -1,5 +1,5 @@
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_date_utils.dart';
 
 /// Model za dnevne predaje vozača u V3 migraciji.
 class V3DnevnaPredaja {
@@ -37,8 +37,8 @@ class V3DnevnaPredaja {
       ukupnoNaplaceno: (json['ukupno_naplaceno'] as num?)?.toDouble() ?? 0,
       razlika: (json['razlika'] as num?)?.toDouble() ?? 0,
       napomena: json['napomena'] as String?,
-      createdAt: V3DateUtils.parseTs(json['created_at'] as String?),
-      updatedAt: V3DateUtils.parseTs(json['updated_at'] as String?),
+      createdAt: V3BelgradeTime.parseTs(json['created_at'] as String?),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at'] as String?),
     );
   }
 

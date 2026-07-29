@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_dug.dart';
 import 'package:gavra_android/services/v3/v3_finansije_service.dart';
-import 'package:gavra_android/utils/v3_date_utils.dart';
 import 'package:gavra_android/utils/v3_string_utils.dart';
 
 import '../helpers/v3_placanje_dialog_helper.dart';
+import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _DugTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('dugoviScreen');
@@ -230,7 +230,7 @@ class _DugCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final initial = dug.imePrezime.isNotEmpty ? dug.imePrezime[0].toUpperCase() : '?';
-    final periodStr = '${V3DateUtils.mesecNaziv(dug.mesec)} ${dug.godina}';
+    final periodStr = '${V3BelgradeTime.mesecNaziv(dug.mesec)} ${dug.godina}';
     final obracunStr =
         '${_DugTr.tr('uplaceno')} ${dug.uplaceno.toStringAsFixed(0)} + ${_DugTr.tr('dug').toLowerCase()} ${dug.iznos.toStringAsFixed(0)} = ${dug.ukupnaObaveza.toStringAsFixed(0)} RSD';
 

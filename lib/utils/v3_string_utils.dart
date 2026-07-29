@@ -1,4 +1,4 @@
-import 'v3_time_utils.dart';
+import 'v3_belgrade_time.dart';
 
 /// Centralni string utilities — normalizacija za pretragu i sortiranje.
 /// Podržava srpska latinična slova: č→c, š→s, ž→z, ć→c, đ→d
@@ -94,7 +94,7 @@ class V3StringUtils {
   /// Trimuje vreme string sa HH:mm:ss na HH:mm format
   /// Primer: "15:30:00" → "15:30", "09:15" → "09:15"
   static String trimTimeToHhMm(String time) {
-    return V3TimeUtils.normalizeToHHmm(time);
+    return V3BelgradeTime.normalizeToHHmm(time);
   }
 
   /// Normalizuje alternativno vreme za prikaz (null-safe)

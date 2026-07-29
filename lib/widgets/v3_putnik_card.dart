@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../helpers/v3_placanje_dialog_helper.dart';
+import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -17,10 +18,10 @@ import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dan_helper.dart';
-import '../utils/v3_date_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_safe_text.dart';
@@ -30,7 +31,6 @@ import '../utils/v3_stream_utils.dart';
 import '../utils/v3_style_helper.dart';
 import '../utils/v3_tip_putnika_utils.dart';
 import '../utils/v3_validation_utils.dart';
-import '../l10n/app_translations.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
 /// Vizuelni stil i logika prepisani iz V2PutnikCard.
@@ -172,7 +172,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           datum: widget.entry?.datum ?? widget.zahtev?.datum ?? DateTime.now(),
           operativnaId: widget.entry?.id,
           evidentiraoBy: currentVozac.id,
-          pokupljenAt: V3DateUtils.nowIsoUtc(),
+          pokupljenAt: V3BelgradeTime.nowIsoUtc(),
           dodaoBy: widget.entry?.createdBy,
           azuriraoBy: widget.entry?.updatedBy,
           grad: widget.entry?.grad,

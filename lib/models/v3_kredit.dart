@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../utils/v3_date_utils.dart';
+import '../utils/v3_belgrade_time.dart';
 import 'v3_kredit_uplata.dart';
 
 /// Model za tabelu v3_krediti.
@@ -84,10 +84,10 @@ class V3Kredit {
       ukupanIznos: (json['ukupan_iznos'] as num?)?.toDouble() ?? 0.0,
       uplaceno: izracunatoUplaceno,
       napomena: json['napomena']?.toString(),
-      krajKredita: V3DateUtils.parseDatum(json['kraj_kredita']?.toString()),
+      krajKredita: V3BelgradeTime.parseDatum(json['kraj_kredita']?.toString()),
       uplate: uplate,
-      createdAt: V3DateUtils.parseTs(json['created_at']?.toString()),
-      updatedAt: V3DateUtils.parseTs(json['updated_at']?.toString()),
+      createdAt: V3BelgradeTime.parseTs(json['created_at']?.toString()),
+      updatedAt: V3BelgradeTime.parseTs(json['updated_at']?.toString()),
     );
   }
 
@@ -97,7 +97,7 @@ class V3Kredit {
         'ukupan_iznos': ukupanIznos,
         'uplaceno': uplaceno,
         if (napomena != null && napomena!.isNotEmpty) 'napomena': napomena,
-        if (krajKredita != null) 'kraj_kredita': V3DateUtils.parseIsoDatePart(krajKredita!.toIso8601String()),
+        if (krajKredita != null) 'kraj_kredita': V3BelgradeTime.parseIsoDatePart(krajKredita!.toIso8601String()),
         'uplate_json': uplate.map((u) => u.toJson()).toList(),
       };
 

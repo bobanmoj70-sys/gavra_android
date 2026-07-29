@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
-import '../../utils/v3_date_utils.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 
 class V3TrenutnaDodelaSlotService {
   V3TrenutnaDodelaSlotService._();
@@ -14,14 +13,14 @@ class V3TrenutnaDodelaSlotService {
   static const String colVozacId = 'vozac_v3_auth_id';
   static const String colUpdatedBy = 'updated_by';
 
-  /// Delegira na deljeni `V3DateUtils.parseIsoDatePart` (JEDAN IZVOR ISTINE za
+  /// Delegira na deljeni `V3BelgradeTime.parseIsoDatePart` (JEDAN IZVOR ISTINE za
   /// normalizaciju ISO datuma na `yyyy-MM-dd`, ranije duplirano ovde kao manje
   /// robustna kopija bez podrške za timezone offset).
-  static String _normalizeDatumIso(String? raw) => V3DateUtils.parseIsoDatePart(raw);
+  static String _normalizeDatumIso(String? raw) => V3BelgradeTime.parseIsoDatePart(raw);
 
   static String _normalizeGrad(String? raw) => (raw ?? '').trim().toUpperCase();
 
-  static String _normalizeVreme(String? raw) => V3TimeUtils.normalizeToHHmm(raw);
+  static String _normalizeVreme(String? raw) => V3BelgradeTime.normalizeToHHmm(raw);
 
   static String slotKey({
     required String datumIso,

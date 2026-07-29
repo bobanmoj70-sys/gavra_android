@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
@@ -104,13 +104,13 @@ class V3PutnikService {
     required String vreme,
   }) {
     final rm = V3MasterRealtimeManager.instance;
-    final vremeNorm = V3TimeUtils.normalizeToHHmm(vreme);
+    final vremeNorm = V3BelgradeTime.normalizeToHHmm(vreme);
 
     return rm.operativnaNedeljaCache.values
         .where((row) {
           if ((row['datum']?.toString() ?? '') != datumIso) return false;
           if ((row['grad']?.toString() ?? '') != grad) return false;
-          if (V3TimeUtils.normalizeToHHmm(row['polazak_at']) != vremeNorm) return false;
+          if (V3BelgradeTime.normalizeToHHmm(row['polazak_at']) != vremeNorm) return false;
           if (row['otkazano_at'] != null) return false;
           if (row['created_by'] == null) return false;
           return true;

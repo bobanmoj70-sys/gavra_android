@@ -1,6 +1,6 @@
 import '../../models/v3_dnevna_predaja.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_dan_helper.dart';
-import '../../utils/v3_date_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_finansije_repository.dart';
 
@@ -21,12 +21,12 @@ class V3DnevnaPredajaService {
         tip: _tip,
         kategorija: _kategorija,
         vozacId: vozacId,
-        dayStartIso: V3DateUtils.toIsoUtc(dayStart),
-        dayEndIso: V3DateUtils.toIsoUtc(dayEnd),
+        dayStartIso: V3BelgradeTime.toIsoUtc(dayStart),
+        dayEndIso: V3BelgradeTime.toIsoUtc(dayEnd),
       );
 
       if (res == null) return null;
-      final createdAt = V3DateUtils.parseTs(res['created_at'] as String?);
+      final createdAt = V3BelgradeTime.parseTs(res['created_at'] as String?);
       final datumPredaje = createdAt ?? dayStart;
       final predaoIznos = (res['iznos'] as num?)?.toDouble() ?? 0;
 
@@ -36,7 +36,7 @@ class V3DnevnaPredajaService {
         datum: V3DanHelper.dateOnly(datumPredaje),
         predaoIznos: predaoIznos,
         createdAt: createdAt,
-        updatedAt: V3DateUtils.parseTs(res['updated_at'] as String?),
+        updatedAt: V3BelgradeTime.parseTs(res['updated_at'] as String?),
       );
     } catch (e) {
       return null;
@@ -52,8 +52,8 @@ class V3DnevnaPredajaService {
       tip: _tip,
       kategorija: _kategorija,
       vozacId: predaja.vozacId ?? '',
-      dayStartIso: V3DateUtils.toIsoUtc(dayStart),
-      dayEndIso: V3DateUtils.toIsoUtc(dayEnd),
+      dayStartIso: V3BelgradeTime.toIsoUtc(dayStart),
+      dayEndIso: V3BelgradeTime.toIsoUtc(dayEnd),
       selectColumns: 'id',
     );
 
@@ -76,7 +76,7 @@ class V3DnevnaPredajaService {
 
     final insertData = {
       ...baseData,
-      'created_at': V3DateUtils.toIsoUtc(dayStart),
+      'created_at': V3BelgradeTime.toIsoUtc(dayStart),
       if (predaja.id.isNotEmpty) 'id': predaja.id,
     };
 

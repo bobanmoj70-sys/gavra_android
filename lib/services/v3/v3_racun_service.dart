@@ -9,7 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../../utils/v3_app_snack_bar.dart';
-import '../../utils/v3_date_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 import 'repositories/v3_racun_repository.dart';
 
 /// V3 servis za generisanje PDF računa.
@@ -92,7 +92,7 @@ class V3RacunService {
       await _ensureAssets();
 
       // Generišemo mesec i godinu iz datuma prometa
-      final mesecStr = '${V3DateUtils.mesecNaziv(datumPrometa.month)} ${datumPrometa.year}.';
+      final mesecStr = '${V3BelgradeTime.mesecNaziv(datumPrometa.month)} ${datumPrometa.year}.';
       final puniOpis = '$opisUsluge za $mesecStr';
 
       final pdfBytes = await _kreirajUnifiedRacun(
@@ -183,7 +183,7 @@ class V3RacunService {
         final firmaMb = r['firma_mb']?.toString();
         final firmaZiro = r['firma_ziro']?.toString();
 
-        final mesecStr = '${V3DateUtils.mesecNaziv(datumPrometa.month)} ${datumPrometa.year}.';
+        final mesecStr = '${V3BelgradeTime.mesecNaziv(datumPrometa.month)} ${datumPrometa.year}.';
         final opis = 'Usluga prevoza putnika za $mesecStr';
 
         pdf.addPage(

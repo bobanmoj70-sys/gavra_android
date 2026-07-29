@@ -1,5 +1,4 @@
-import '../../utils/v3_date_utils.dart';
-import '../../utils/v3_time_utils.dart';
+import '../../utils/v3_belgrade_time.dart';
 
 /// Immutable, normalized payload for `vozac_auto_start_tracking` push.
 ///
@@ -23,8 +22,8 @@ class V3AutoStartPayload {
   factory V3AutoStartPayload.fromMap(Map<String, String> data) {
     final vozacId = (data['v3_auth_id'] ?? data['vozac_id'] ?? '').trim();
     final grad = (data['grad'] ?? '').trim().toUpperCase();
-    final vreme = V3TimeUtils.normalizeToHHmm(data['vreme'] ?? '');
-    final datumIso = V3DateUtils.parseIsoDatePart(data['datum'] ?? '');
+    final vreme = V3BelgradeTime.normalizeToHHmm(data['vreme'] ?? '');
+    final datumIso = V3BelgradeTime.parseIsoDatePart(data['datum'] ?? '');
     return V3AutoStartPayload(
       vozacId: vozacId,
       datumIso: datumIso,
