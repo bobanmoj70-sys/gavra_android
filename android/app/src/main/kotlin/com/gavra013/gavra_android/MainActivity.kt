@@ -41,9 +41,6 @@ class MainActivity : FlutterFragmentActivity() {
         if (pendingFcmData != null) {
             android.util.Log.d(TAG, "onCreate: pendingFcmData=${pendingFcmData}")
         }
-
-        // ⏰ Periodično proveravaj/pokreći background tracking servis
-        TrackingWatchdogWorker.schedule(this)
     }
 
     override fun onNewIntent(intent: Intent) {

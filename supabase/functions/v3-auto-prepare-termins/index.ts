@@ -523,12 +523,15 @@ Deno.serve(async (req) => {
             if (t2) vozacTokens.push({ token: t2, provider: "fcm" });
 
             if (vozacTokens.length > 0) {
+              // Postavi flag PRE slanja da sprečimo dupli push u slučaju
+              // da se cron pokrene ponovo pre nego što notify_push završi.
+              await client
+                .from("v3_trenutna_dodela_slot")
+                .update({ auto_driver_notified_at: new Date().toISOString() })
+                .eq("id", slotId);
+
               const eventId = `vozac_auto_start:${vozacId}:${datumIso}:${grad}:${vreme}`;
               const localeCode = String(vozacAuth.locale_code ?? "").trim().toLowerCase();
-              // 🔔 Persistent notification payload je NEOPHODAN na Android 12+
-              // da bi FCM dozvolio pokretanje foreground servisa iz push-a.
-              // Bez notification payload-a, data-only push se tiho ignorise
-              // i background GPS tracking se ne pokrece.
               await client.rpc("notify_push", {
                 tokens: vozacTokens,
                 recipient_id: vozacId,
@@ -564,54 +567,23 @@ Deno.serve(async (req) => {
                   body_de: `Automatisches Tracking für ${grad} ${vreme} ist aktiv.`,
                   body_zh: `${grad} ${vreme} 的自动跟踪已激活。`,
                 },
-                // 📱 Android 12+ zahteva notification payload da bi dozvolio
-                // startForegroundService() iz FCM push-a. Ovo prikazuje
-                // persistent notifikaciju koju vozač vidi dok se tracking ne pokrene.
-                notification: {
-                  title: "Praćenje pokrenuto",
-                  body: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
-                  channel_id: "gavra_push_v2",
-                },
               });
-              console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start (with notification payload)`);
+              console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);
             }
           }
-
-          // Upiši odmah nakon uspešnog slanja (ili best-effort pokušaja),
-          // pre nego što ispod eventualno pukne notifikacija za putnike.
-          await client
-            .from("v3_trenutna_dodela_slot")
-            .update({ auto_driver_notified_at: new Date().toISOString() })
-            .eq("id", slotId);
         } catch (e) {
           console.error(`[v3-auto-prepare-termins] Driver notify error: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
 
-      // Send push notification to passengers if not already sent
-      if (!autoNotifiedAt) {
-        try {
-          const notifyResult = await client.rpc("v3_notify_passengers_driver_started", {
-            p_vozac_id: vozacId,
-            p_datum: datumIso,
-            p_grad: grad,
-            p_vreme: vreme,
-          });
-
-          const notifyData = notifyResult.data as Record<string, unknown> | null;
-          const notified = Number(notifyData?.notified ?? 0);
-          notifiedCount += notified;
-
-          await client
-            .from("v3_trenutna_dodela_slot")
-            .update({ auto_notified_at: new Date().toISOString() })
-            .eq("id", slotId);
-
-          console.log(`[v3-auto-prepare-termins] Slot ${key} notified ${notified} passengers`);
-        } catch (e) {
-          console.error(`[v3-auto-prepare-termins] Notify error: ${e instanceof Error ? e.message : String(e)}`);
-        }
-      }
+      // NAPOMENA: putnici se VIŠE NE obaveštavaju ovde slepo na T-10min.
+      // Tracking je foreground-only — ako vozač nije otvorio app, GPS/ETA
+      // realno ne postoji, pa je slanje "Vozač je krenuo" push-a na ovom
+      // mestu bilo lažno obećanje. Umesto toga, obaveštavanje putnika je
+      // sada okinuto DB trigger-om `trg_v3_notify_passengers_on_tracking_start`
+      // (vidi `20260730_notify_passengers_on_real_tracking_start.sql`) koji
+      // se aktivira TEK kada `v3_trenutna_dodela_slot.tracking_started_at`
+      // bude stvarno upisan iz `activateSlotWithRetry` (real tracking start).
     }
 
     return json(200, {

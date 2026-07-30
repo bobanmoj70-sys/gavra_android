@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_belgrade_time.dart';
@@ -10,21 +9,22 @@ import '../../utils/v3_status_policy.dart';
 
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
 
-/// JEDAN IZVOR ISTINE za watchdog proveru "da li je tracking predugo aktivan"
-/// — deljeno između Android background isolate-a, iOS tick-a i restore/resume
-/// puta (main isolate). Ranije je identična provera (`now.difference(startedAt)
-/// >= v3TrackingMaxDuration`) bila duplirana na 3 mesta.
+/// JEDAN IZVOR ISTINE za "koliko pre polaska" vozač sme ručno da pokrene
+/// tracking, i posle kog trenutka (ako vozač nije ručno pokrenuo) auto-start
+/// push (`vozac_auto_start_tracking`, zakazan server-side u
+/// `v3-auto-prepare-termins`) preuzima. Server šalje auto-start push tačno
+/// na ovoj granici (T-10min), pa ova konstanta MORA biti usklađena sa
+/// windowStart/windowEnd u `supabase/functions/v3-auto-prepare-termins/index.ts`.
+const Duration v3ManualStartLeadTime = Duration(minutes: 10);
+
+/// JEDAN IZVOR ISTINE za watchdog proveru "da li je tracking predugo aktivan".
 bool v3TrackingTimedOut(DateTime? startedAt) {
   if (startedAt == null) return false;
   return V3BelgradeTime.now().difference(startedAt) >= v3TrackingMaxDuration;
 }
 
-/// JEDAN IZVOR ISTINE za razmak između GPS/ETA tick-ova, deljen između
-/// Android background isolate-a (`v3_background_location_handler.dart`) i
-/// iOS tracking petlje (`v3_vozac_location_tracking_service.dart`). Ranije
-/// je svaka platforma imala sopstvenu `Duration(seconds: 20)` konstantu —
-/// definisane odvojeno, lako je moglo doći do razminuti (npr. jedna
-/// promenjena, druga zaboravljena).
+/// JEDAN IZVOR ISTINE za razmak između GPS/ETA tick-ova u foreground-only
+/// tracking petlji (`v3_vozac_location_tracking_service.dart`).
 const Duration v3TrackingTickInterval = Duration(seconds: 20);
 
 /// Maksimalno dozvoljeno trajanje JEDNOG tick-a ([onTick]) pre nego što se
@@ -128,31 +128,7 @@ class V3SelfReschedulingTicker {
   }
 }
 
-/// JEDAN IZVOR ISTINE za SharedPreferences ključeve "željenog stanja"
-/// tracking-a — deljeno između main isolate-a (`V3VozacLocationTrackingService`)
-/// i Android background isolate-a (`v3_background_location_handler.dart`).
-/// Ranije je svaki fajl imao sopstvene identične `_kKey*` konstante — lako je
-/// moglo doći do razmimoilaženja. Vrednosti MORAJU ostati identične sa
-/// `KEY_ACTIVE_*` konstantama u `GavraFcmService.kt` (Kotlin strana ne može
-/// da uvozi ovaj Dart fajl, pa se sinhronizacija tamo održava ručno).
-const String v3KeyVozacId = 'bg_active_vozac_id';
-const String v3KeyDatumIso = 'bg_active_datum_iso';
-const String v3KeyGrad = 'bg_active_grad';
-const String v3KeyVreme = 'bg_active_vreme';
-const String v3KeyStartedAt = 'bg_active_started_at';
-
-/// JEDAN IZVOR ISTINE za brisanje "željenog stanja" tracking-a iz
-/// SharedPreferences — deljeno između main isolate-a (`_clearDesiredState` u
-/// `v3_vozac_location_tracking_service.dart`) i Android background isolate-a
-/// (`_bgClearDesiredState` u `v3_background_location_handler.dart`). Ranije
-/// je identičan niz `prefs.remove(...)` poziva bio dupliran na oba mesta.
-Future<void> v3ClearDesiredState(SharedPreferences prefs) async {
-  await prefs.remove(v3KeyVozacId);
-  await prefs.remove(v3KeyDatumIso);
-  await prefs.remove(v3KeyGrad);
-  await prefs.remove(v3KeyVreme);
-  await prefs.remove(v3KeyStartedAt);
-}
+/// JEDAN IZVOR ISTINE za brisanje zaostalih ETA redova za vozača.
 
 /// JEDAN IZVOR ISTINE za brisanje zaostalih ETA redova za vozača —
 /// deljeno između main isolate-a (`clearEtaForVozac`) i Android background
@@ -174,11 +150,7 @@ Future<void> v3ClearEtaForVozac({
 }
 
 /// JEDAN IZVOR ISTINE za proveru "da li su svi putnici u aktivnom slotu
-/// završeni (pokupljeni ili otkazani)" — deljeno između main isolate-a
-/// (iOS tracking petlja) i Android background isolate-a. Ranije je ista
-/// upitna logika bila duplirana (`_allPassengersCompleted` /
-/// `_bgAllPassengersCompleted`), uključujući i lokalnu proveru timestamp-a
-/// (`_bgIsTimestampSet` je bio duplikat `V3StatusPolicy.isTimestampSet`).
+/// završeni (pokupljeni ili otkazani)".
 /// Vraća `false` ako slot/putnici ne postoje (konzervativno — ne zaustavlja
 /// tracking ako se stanje ne može pouzdano utvrditi).
 Future<bool> v3AllPassengersCompleted({
@@ -230,11 +202,7 @@ Future<bool> v3AllPassengersCompleted({
 }
 
 /// JEDAN IZVOR ISTINE za proveru da li su lokacijski preduslovi zadovoljeni
-/// (GPS uključen + dozvola za lokaciju). Deljeno između main isolate-a
-/// (`V3VozacLocationTrackingService`) i Android background isolate-a
-/// (`v3_background_location_handler.dart`). Ranije je ista logika bila
-/// duplirana na oba mesta, a u main isolate-u je bila umotana u nepotrebnu
-/// `V3LocationPrereqStatus` enum klasu.
+/// (GPS uključen + dozvola za lokaciju).
 ///
 /// [requestIfDenied] treba biti `true` samo u foreground-u (main isolate), jer
 /// background isolate ne može da prikaže permission dijalog.

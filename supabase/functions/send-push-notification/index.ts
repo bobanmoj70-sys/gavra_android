@@ -293,18 +293,13 @@ async function sendFcm(
     const projectId = cachedFcmToken?.projectId;
     if (!projectId) throw new Error('FCM project_id unavailable after auth');
 
-    // Na Androidu NE šaljemo `notification` polje — GavraFcmService sam prikazuje notifikaciju
-    // iz `data` polja. Ako bismo slali `notification`, Android bi prikazao notifikaciju automatski
-    // dok GavraFcmService šalje još jednu Flutteru → duple notifikacije.
-    // title i body dodajemo u android.data da ih GavraFcmService može pročitati.
+    // Na Androidu NE šaljemo `notification` polje — GavraFcmService
+    // sam prikazuje notifikaciju iz `data` polja. iOS koristi apns.payload.aps.alert.
     const androidData: Record<string, string> = { ...data };
     if (!dataOnly) {
       if (title) androidData.title = title;
       if (body) androidData.body = body;
     }
-
-    const effectiveType = String(data.type ?? '').trim();
-    const isAutoStartTracking = effectiveType === 'vozac_auto_start_tracking';
 
     const message: Record<string, unknown> = {
       token,
@@ -312,7 +307,7 @@ async function sendFcm(
       data,
       android: {
         priority: 'high',
-        // android.data se merge-uje sa top-level data — dodajemo title/body samo za Android
+        // android.data se merge-uje sa top-level data
         data: androidData,
       },
       apns: {
@@ -323,16 +318,10 @@ async function sendFcm(
             : {
                 alert: { title, body },
                 sound: 'default',
-                // Za auto-start tracking uvek šaljemo content-available kako bi iOS
-                // pokrenuo background handler i automatski započeo tracking bez tap-a.
-                ...(isAutoStartTracking ? { 'content-available': 1 } : {}),
               },
         },
       },
     };
-
-    // notification polje se NIKAD ne šalje — Android ga koristi za auto-prikaz (duplikat),
-    // a iOS dobija sadržaj kroz apns.payload.aps.alert gore.
 
     const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
       method: 'POST',
@@ -423,10 +412,8 @@ Deno.serve(async (req) => {
     const resolvedBody = resolveLocalizedText(body, data, 'body', localeCode);
 
     const pushType = String(data.type ?? '').trim();
-    if (pushType === 'v3_alternativa' || pushType === 'vozac_auto_start_tracking') {
+    if (pushType === 'v3_alternativa') {
       // v3_alternativa: klikabilna akciona notifikacija se gradi ručno na Android strani.
-      // vozac_auto_start_tracking: tracking se pokreće tiho (bez tap-a) — foreground GPS
-      // servis već prikazuje sopstvenu trajnu notifikaciju, pa ovde ne treba duplikat.
       dataOnly = true;
     }
 

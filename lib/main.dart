@@ -7,7 +7,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -22,7 +21,6 @@ import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
 import 'services/v3/v3_auto_start_payload.dart';
-import 'services/v3/v3_background_location_handler.dart';
 import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
@@ -344,15 +342,6 @@ void main() async {
   } catch (e) {
     debugPrint('❌ [main] Supabase.initialize greška/timeout: $e');
     startupPhaseNotifier.value = V3StartupPhase.degraded;
-  }
-
-  // FOREGROUND SERVICE - konfiguracija za background GPS tracking
-  try {
-    debugPrint('🚀 [main] 4b. Foreground service config start');
-    await configureBackgroundService();
-    debugPrint('🚀 [main] 4b. Foreground service config completed');
-  } catch (e) {
-    debugPrint('⚠️ [main] Foreground service config greška: $e');
   }
 
   // FIREBASE BACKGROUND HANDLER - MORA biti registrovan pre runApp() da bi
@@ -779,45 +768,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
-  // Auto-start tracking: na Androidu native GavraFcmService vec radi sve
-  // sto je potrebno, pa headless Dart isolate samo return-uje. Na iOS-u
-  // background handler upisuje zeljeno stanje, a pravi tracking pokrece
-  // _restoreAndResumeIfNeeded() kada app dodje u foreground.
-  if (type == 'vozac_auto_start_tracking') {
-    final payload = V3AutoStartPayload.fromMap(data);
-
-    if (!payload.isValid) {
-      return;
-    }
-
-    // Na Androidu native GavraFcmService uvek upisuje zeljeno stanje i
-    // pokrece foreground servis — nema potrebe da headless Dart isolate
-    // ponavlja taj posao (idempotentno je, ali suvisno komplikuje tok).
-    if (Platform.isAndroid) {
-      return;
-    }
-
-    // Na iOS-u background handler ima ograniceno vreme izvrsavanja.
-    // Samo upisujemo zeljeno stanje — pravi tracking pokrece
-    // _restoreAndResumeIfNeeded() kada app dodje u foreground.
-    if (!isSupabaseReady) {
-      try {
-        await _ensureSupabaseInitialized().timeout(const Duration(seconds: 5));
-      } catch (e) {
-        debugPrint('⚠️ [FCM][BG] Auto-start: Supabase init nije uspeo: $e');
-        return;
-      }
-    }
-
-    debugPrint(
-        '[FCM][BG] Auto-start tracking: vozac=${payload.vozacId} grad=${payload.grad} vreme=${payload.vreme} datum=${payload.datumIso}');
-
-    await V3VozacLocationTrackingService.instance.autoStartFromPayload(
-      payload,
-      startService: false,
-    );
-    return;
-  }
+  // vozac_auto_start_tracking se više NE pokreće automatski iz background-a/killed app.
+  // Korisnik mora da otvori app da bi tracking krenuo.
 
   // Za sve ostale tipove: ako nema notification payload-a (data-only push),
   // background handler mora sam da prikaze lokalnu notifikaciju.
@@ -906,7 +858,10 @@ Future<void> _initIosFcmHandlers() async {
           debugPrint('[FCM][iOS] vozac_auto_start_tracking ignorisan: neispravan payload');
           return;
         }
-        // Sva autostart logika je u V3VozacScreen; samo rutiramo tamo.
+        // Sačuvaj payload da tracking može da krene i bez tapa na notifikaciju
+        // kada vozač kasnije otvori app.
+        unawaited(v3SavePendingAutoStartPayload(payload));
+        // Ako je app trenutno u foreground-u, odmah rutiraj na ekran.
         unawaited(
           _navigateToVozacScreenWithPayload(payload)
               .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] navigacija na vozački ekran greška: $e')),
@@ -987,7 +942,7 @@ Future<void> _initFcmChannel() async {
         case 'onMessage':
           final args = _toStringDynamicMap(call.arguments);
           if (args.isEmpty) {
-            debugPrint('[FCM] onMessage ignorisan: neispravni arguments.');
+            debugPrint('[FCM] onMessage ignorisan: neispravan arguments.');
             return;
           }
           final title = args['title']?.toString() ?? '';
@@ -1016,7 +971,10 @@ Future<void> _initFcmChannel() async {
               debugPrint('[FCM] vozac_auto_start_tracking ignorisan: neispravan payload');
               return;
             }
-            // Sva autostart logika je u V3VozacScreen; samo rutiramo tamo.
+            // Sačuvaj payload da tracking može da krene i bez tapa na notifikaciju
+            // kada vozač kasnije otvori app.
+            unawaited(v3SavePendingAutoStartPayload(payload));
+            // Ako je app trenutno u foreground-u, odmah rutiraj na ekran.
             unawaited(
               _navigateToVozacScreenWithPayload(payload)
                   .catchError((Object e) => debugPrint('⚠️ [FCM] navigacija na vozački ekran greška: $e')),
@@ -1154,6 +1112,8 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
         debugPrint('[FCM launch] vozac_auto_start_tracking ignorisan: neispravan payload');
         return;
       }
+      // Sačuvaj payload da tracking može da krene i bez tapa na notifikaciju.
+      await v3SavePendingAutoStartPayload(payload);
       await _navigateToVozacScreenWithPayload(payload);
       return;
 
@@ -1593,31 +1553,4 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       },
     );
   }
-}
-
-// ============================================================================
-// Background service konfiguracija — izdvojena jer se mora pozvati i u main()
-// i u _firebaseMessagingBackgroundHandler (killed-app scenario). Bez ovoga,
-// flutter_background_service ne zna koji onStart handler da izvrši kada ga
-// GavraFcmService.kt pokrene iz pozadine.
-// ============================================================================
-Future<void> configureBackgroundService() async {
-  final service = FlutterBackgroundService();
-  await service.configure(
-    androidConfiguration: AndroidConfiguration(
-      onStart: onBackgroundServiceStart,
-      autoStart: false,
-      isForegroundMode: true,
-      notificationChannelId: 'gavra_gps_tracking',
-      initialNotificationTitle: 'GPS Tracking',
-      initialNotificationContent: 'Praćenje lokacije aktivno',
-      foregroundServiceNotificationId: 888,
-      foregroundServiceTypes: [AndroidForegroundType.location],
-    ),
-    iosConfiguration: IosConfiguration(
-      autoStart: false,
-      onForeground: null,
-      onBackground: (_) => true,
-    ),
-  );
 }

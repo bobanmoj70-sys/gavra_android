@@ -18,6 +18,7 @@ import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_push_token_edge_service.dart';
 import '../services/v3/v3_route_models.dart';
 import '../services/v3/v3_route_waypoint_resolver_service.dart';
+import '../services/v3/v3_tracking_config.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
@@ -103,6 +104,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   String _lastSentRouteSignature = '';
   bool _osrmUnavailableShown = false;
   bool _etaReoptimizeInFlight = false;
+
+  /// Periodična provera za automatsko pokretanje trackinga 10 min pre polaska.
+  Timer? _autoStartCheckTimer;
+  static const Duration _autoStartCheckInterval = Duration(minutes: 1);
 
   void _resetMapSyncState() {
     _hasSentRouteToMap = false;
@@ -699,6 +704,28 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
+  /// Datum+vreme polaska za trenutno izabrani termin (tretirano kao lokalno
+  /// Beogradsko vreme, isto kao i ostatak ekrana). Null ako vreme nije izabrano.
+  DateTime? get _selectedPolazakDateTime {
+    if (_selectedVreme.isEmpty) return null;
+    final parts = _selectedVreme.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, minute);
+  }
+
+  /// Da li vozac sme RUCNO da pokrene tracking za izabrani termin — dozvoljeno
+  /// samo do [v3ManualStartLeadTime] pre polaska. Posle te granice auto-start
+  /// push preuzima (samo dok je ovaj ekran otvoren u foreground-u).
+  bool get _canManualStartTracking {
+    final polazak = _selectedPolazakDateTime;
+    if (polazak == null) return false;
+    final deadline = polazak.subtract(v3ManualStartLeadTime);
+    return V3BelgradeTime.now().isBefore(deadline);
+  }
+
   void _onPolazakChanged(String grad, String vreme) {
     final normalizedGrad = grad.toUpperCase();
     final normalizedVreme = V3BelgradeTime.normalizeToHHmm(vreme);
@@ -1119,14 +1146,52 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  // Ručno pokretanje trackinga je namerno onemogućeno — tracking se uvek
-  // pokreće automatski preko `vozac_auto_start_tracking` push notifikacije
-  // (vidi `_autoStartTrackingFromPush()` i `GavraFcmService.kt`).
-  void _handleStartTap() {
-    V3AppSnackBar.warning(
-      context,
-      'Tracking se pokreće automatski za dodeljeni termin. Ručno pokretanje nije dostupno.',
+  // Rucno pokretanje trackinga: dozvoljeno je do `v3ManualStartLeadTime`
+  // (10 min) pre polaska. Ako vozac ne pokrene rucno do te granice, tracking
+  // se pokrece automatski preko `vozac_auto_start_tracking` push notifikacije
+  // — ali SAMO ako je ovaj ekran (V3VozacScreen) otvoren u foreground-u (vidi
+  // `_autoStartTrackingFromPush()` i FCM handlere u `main.dart`).
+  Future<void> _handleStartTap() async {
+    if (V3VozacLocationTrackingService.instance.isRunning) {
+      if (mounted) V3AppSnackBar.info(context, _tr('statusAktivno'));
+      return;
+    }
+
+    if (_selectedVreme.isEmpty || _mojiPutnici.isEmpty) {
+      if (mounted) V3AppSnackBar.warning(context, _tr('nemaPutnikaZaTermin'));
+      return;
+    }
+
+    if (!_canManualStartTracking) {
+      if (mounted) {
+        V3AppSnackBar.warning(
+          context,
+          'Rucno pokretanje je moguce samo do 10 minuta pre polaska. Tracking ce se automatski pokrenuti.',
+        );
+      }
+      return;
+    }
+
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isEmpty) {
+      if (mounted) V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+      return;
+    }
+
+    V3VozacLocationTrackingService.instance.setActiveTermin(
+      datumIso: _selectedDatumIso,
+      grad: _selectedGrad,
+      vreme: _selectedVreme,
     );
+    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
+
+    if (!mounted) return;
+    V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
+    if (_isNavigating) {
+      V3AppSnackBar.success(context, _tr('statusAktivno'));
+    } else {
+      V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+    }
   }
 
   @override
@@ -1258,7 +1323,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                   color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.grey,
                                   height: appBarButtonHeight,
                                   onTap: () {
-                                    _handleStartTap();
+                                    unawaited(_handleStartTap());
                                   },
                                 ),
                               ),

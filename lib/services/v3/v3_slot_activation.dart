@@ -5,11 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Idempotentan upsert u `v3_trenutna_dodela_slot` sa exponential-backoff
 /// retry logikom (500ms, 1000ms, 2000ms).
 ///
-/// JEDINA implementacija ove logike u celoj aplikaciji — koriste je i main
-/// isolate (`V3VozacLocationTrackingService.start`) i Android background
-/// isolate (`v3_background_location_handler.dart`). Ranije su postojale dve
-/// odvojene, međusobno duplirane verzije; ovo ih zamenjuje jednim izvorom
-/// istine za "aktiviraj slot" operaciju, bez obzira odakle se poziva.
+/// Koristi je `V3VozacLocationTrackingService.start()` — jedini poziv koji
+/// realno pokreće tracking (foreground-only, ručno ili auto-start).
 Future<void> activateSlotWithRetry({
   required SupabaseClient client,
   required String vozacId,
@@ -32,6 +29,12 @@ Future<void> activateSlotWithRetry({
           'vreme': vreme,
           'vozac_v3_auth_id': vozacId,
           'updated_by': vozacId,
+          // Upisuje se SAMO ovde (real tracking start, foreground-only).
+          // DB trigger `trg_v3_notify_passengers_on_tracking_start` koristi
+          // ovo polje kao pouzdan okidač za obaveštavanje putnika — umesto
+          // da se putnicima slepo javlja na T-10min iz crona bez obzira da
+          // li je tracking stvarno aktivan.
+          'tracking_started_at': DateTime.now().toUtc().toIso8601String(),
         },
         onConflict: 'datum,grad,vreme',
       );

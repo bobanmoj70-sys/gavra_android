@@ -359,7 +359,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'en': '✅ PIN has been changed successfully.',
       'ru': '✅ PIN успешно изменён.',
       'de': '✅ PIN wurde erfolgreich geändert.',
-      'zh': '✅ PIN码已成功更改。',
+      'zh': '✅ PIN码已成功修改。',
     },
   },
   'putnikProfilScreen': {
@@ -374,7 +374,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'odjava': {'sr': 'Odjava', 'en': 'Log out', 'ru': 'Выйти', 'de': 'Abmelden', 'zh': '退出登录'},
     'tipUcenik': {'sr': '🎓 Učenik', 'en': '🎓 Student', 'ru': '🎓 Ученик', 'de': '🎓 Schüler', 'zh': '🎓 学生'},
     'tipPosiljka': {'sr': '📦 Pošiljka', 'en': '📦 Parcel', 'ru': '📦 Посылка', 'de': '📦 Paket', 'zh': '📦 包裹'},
-    'tipDnevni': {'sr': '📅 Dnevni', 'en': '📅 Daily', 'ru': '📅 Ежедневно', 'de': '📅 Täglich', 'zh': '📅 日常'},
+    'tipDnevni': {'sr': '📅 Dnevni', 'en': '📅 Daily', 'ru': '📅 Ежедневно', 'de': '📅 Täglich', 'zh': '📅 每日'},
     'tipRadnik': {'sr': '💼 Radnik', 'en': '💼 Worker', 'ru': '💼 Рабочий', 'de': '💼 Arbeiter', 'zh': '💼 工人'},
     'tipPutnik': {'sr': '👤 Putnik', 'en': '👤 Passenger', 'ru': '👤 Пассажир', 'de': '👤 Fahrgast', 'zh': '👤 乘客'},
     'uputstvo': {
@@ -1212,6 +1212,22 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
     'statusAktivno': {'sr': '🟢 AKTIVNO', 'en': '🟢 ACTIVE', 'ru': '🟢 АКТИВНО', 'de': '🟢 AKTIV', 'zh': '🟢 运行中'},
     'statusCeka': {'sr': '⚫ ČEKA', 'en': '⚫ WAITING', 'ru': '⚫ ОЖИДАНИЕ', 'de': '⚫ WARTET', 'zh': '⚫ 等待中'},
+    'statusPokreni': {'sr': '🟡 POKRENI', 'en': '🟡 START', 'ru': '🟡 СТАРТ', 'de': '🟡 STARTEN', 'zh': '🟡 开始'},
+    'manualStartTooEarly': {
+      'sr': 'Tracking možete pokrenuti ručno najkasnije do 10 minuta pre polaska. Posle toga kreće automatski.',
+      'en': 'You can start tracking manually up to 10 minutes before departure. After that it starts automatically.',
+      'ru':
+          'Вы можете запустить отслеживание вручную не позднее чем за 10 минут до отправления. После этого оно начнётся автоматически.',
+      'de': 'Sie können das Tracking bis zu 10 Minuten vor Abfahrt manuell starten. Danach startet es automatisch.',
+      'zh': '您可以在出发前最多10分钟手动开始跟踪。之后将自动开始。',
+    },
+    'trackingAlreadyActive': {
+      'sr': 'Tracking je već aktivan za izabrani termin.',
+      'en': 'Tracking is already active for the selected slot.',
+      'ru': 'Отслеживание уже активно для выбранного слота.',
+      'de': 'Tracking ist bereits für den ausgewählten Termin aktiv.',
+      'zh': '所选时段的跟踪已处于活动状态。',
+    },
     'mapaDugme': {'sr': 'MAPA', 'en': 'MAP', 'ru': 'КАРТА', 'de': 'KARTE', 'zh': '地图'},
     'rutaBiceDostupna': {
       'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.',
@@ -1378,7 +1394,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
     'noviPinMora6Cifara': {
       'sr': 'Novi PIN mora imati tačno 6 cifara.',
-      'en': 'New PIN must be exactly 6 digits.',
+      'en': 'New PIN must have exactly 6 digits.',
       'ru': 'Новый PIN должен содержать ровно 6 цифр.',
       'de': 'Die neue PIN muss genau 6 Ziffern haben.',
       'zh': '新PIN码必须正好为6位数字。',
@@ -1431,7 +1447,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'en': 'Enter current and new PIN (6 digits)',
       'ru': 'Введите текущий и новый PIN (6 цифр)',
       'de': 'Aktuelle und neue PIN eingeben (6 Ziffern)',
-      'zh': '请输入当前和新PIN码（6位数字）',
+      'zh': '输入当前和新PIN码（6位数字）',
     },
     'trenutniPin': {
       'sr': 'Trenutni PIN',
