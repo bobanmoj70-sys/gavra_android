@@ -1212,25 +1212,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
     'statusAktivno': {'sr': 'AKTIVNO', 'en': 'ACTIVE', 'ru': 'АКТИВНО', 'de': 'AKTIV', 'zh': '运行中'},
     'statusCeka': {'sr': 'ČEKAM', 'en': 'WAITING', 'ru': 'ОЖИДАНИЕ', 'de': 'WARTET', 'zh': '等待中'},
-    'statusPokreni': {'sr': '🟡 POKRENI', 'en': '🟡 START', 'ru': '🟡 СТАРТ', 'de': '🟡 STARTEN', 'zh': '🟡 开始'},
-    'manualStartTooEarly': {
-      'sr':
-          'Tracking kreće automatski 15 minuta pre polaska dok ste na vozačkom ekranu. Nema ručnog pokretanja.',
-      'en':
-          'Tracking starts automatically 15 minutes before departure while you are on the driver screen. There is no manual start.',
-      'ru':
-          'Отслеживание запускается автоматически за 15 минут до отправления, пока вы на экране водителя. Ручного запуска нет.',
-      'de':
-          'Das Tracking startet automatisch 15 Minuten vor Abfahrt, solange Sie auf dem Fahrerbildschirm sind. Es gibt keinen manuellen Start.',
-      'zh': '在司机屏幕上时，跟踪将在出发前15分钟自动开始。没有手动启动。',
-    },
-    'trackingAlreadyActive': {
-      'sr': 'Tracking je već aktivan za izabrani termin.',
-      'en': 'Tracking is already active for the selected slot.',
-      'ru': 'Отслеживание уже активно для выбранного слота.',
-      'de': 'Tracking ist bereits für den ausgewählten Termin aktiv.',
-      'zh': '所选时段的跟踪已处于活动状态。',
-    },
     'mapaDugme': {'sr': 'MAPA', 'en': 'MAP', 'ru': 'КАРТА', 'de': 'KARTE', 'zh': '地图'},
     'rutaBiceDostupna': {
       'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.',

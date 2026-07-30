@@ -391,18 +391,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Tracking se zaustavlja SAMO kada je aplikacija stvarno ubijena (detached).
-    // NE zaustavljati pri promeni ekrana ili background — to radi sam servis.
-    if (state == AppLifecycleState.detached) {
-      debugPrint('[V3VozacScreen] stop reason=detached');
-      V3VozacLocationTrackingService.instance.stop();
-    }
-    // Sigurnosna mreža: kada app dodje nazad u foreground, ponovo zakazati
-    // auto-start timer. Dart Timer se može pauzirati dok je app u background-u,
-    // pa se ovim osiguravamo da ne propustimo prozor za auto-start
-    // (T-15min do T+55min pre/po polaska).
+    // Stop na detached radi V3VozacLocationTrackingService (jedan izvor).
+    // Timer se može pauzirati u backgroundu — na resume ponovo zakazati.
     if (state == AppLifecycleState.resumed) {
-      _scheduleAutoStartTimer();
+      _scheduleAutoStart();
     }
   }
 
@@ -435,90 +427,54 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  /// Zakazuje jednokratni auto-start timer na T-15min pre polaska.
-  /// Ako je taj trenutak već prošao, pokušava odmah.
-  ///
-  /// ⚠️ VAŽNO: Auto-start trackinga radi ISKLJUČIVO dok je V3VozacScreen
-  /// otvoren u foreground-u. Ne postoji dugme/ručna opcija za pokretanje
-  /// trackinga. Ako vozač u T-15min nije na ovom ekranu (app u background-u,
-  /// zatvorena, ili na drugom screen-u), tracking NEĆE krenuti i
-  /// v3_vozac_location će ostati prazno.
-  void _scheduleAutoStartTimer() {
+  /// Jedan ulaz za auto-start: zakazuje timer na T-15min ili startuje odmah.
+  /// Radi samo dok je V3VozacScreen mounted (foreground).
+  void _scheduleAutoStart() {
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
+    unawaited(_tryAutoStart());
+  }
 
+  Future<void> _tryAutoStart() async {
+    if (!mounted || _autoStartInProgress) return;
     if (V3VozacLocationTrackingService.instance.isRunning) return;
 
     final termin = _findAutoStartTermin();
     if (termin == null) return;
 
     final deadline = termin.polazak.subtract(v3AutoStartLeadTime);
-    final now = V3BelgradeTime.now();
-    final delay = deadline.difference(now);
-
-    if (delay.isNegative || delay == Duration.zero) {
-      debugPrint('[V3VozacScreen] auto-start: T-15min već prošao, pokušavam odmah');
-      unawaited(_maybeAutoStartTracking());
+    final delay = deadline.difference(V3BelgradeTime.now());
+    if (delay > Duration.zero) {
+      debugPrint('[V3VozacScreen] auto-start za ${delay.inSeconds}s (${termin.grad} ${termin.vreme})');
+      _autoStartTimer = Timer(delay, () => unawaited(_tryAutoStart()));
       return;
     }
 
-    debugPrint('[V3VozacScreen] auto-start zakazan za ${deadline.toIso8601String()} (za ${delay.inSeconds}s)');
-    _autoStartTimer = Timer(delay, () {
-      unawaited(_maybeAutoStartTracking());
-    });
-  }
-
-  /// Automatski pokreće tracking ako je ekran otvoren, vreme je došlo do
-  /// T-15min (ili kasnije), i tracking već nije aktivan.
-  Future<void> _maybeAutoStartTracking() async {
-    if (!mounted) return;
-    if (_autoStartInProgress) return;
-    if (V3VozacLocationTrackingService.instance.isRunning) return;
-
-    final termin = _findAutoStartTermin();
-    if (termin == null) return;
-
-    final deadline = termin.polazak.subtract(v3AutoStartLeadTime);
-    if (V3BelgradeTime.now().isBefore(deadline)) return;
-
-    _autoStartInProgress = true;
-    try {
-      debugPrint('[V3VozacScreen] auto-start pokreće tracking za ${termin.grad} ${termin.vreme}');
-      await _startTrackingForTermin(
-        datumIso: termin.datumIso,
-        grad: termin.grad,
-        vreme: termin.vreme,
-      );
-    } finally {
-      _autoStartInProgress = false;
-    }
-  }
-
-  /// Zajednička logika za automatsko pokretanje trackinga za zadati termin.
-  Future<void> _startTrackingForTermin({
-    required String datumIso,
-    required String grad,
-    required String vreme,
-  }) async {
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isEmpty) {
       if (mounted) V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
       return;
     }
 
-    V3VozacLocationTrackingService.instance.setActiveTermin(
-      datumIso: datumIso,
-      grad: grad,
-      vreme: vreme,
-    );
-    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
-
-    if (!mounted) return;
-    V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
-    if (_isNavigating) {
-      V3AppSnackBar.success(context, _tr('statusAktivno'));
-    } else {
-      V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+    _autoStartInProgress = true;
+    try {
+      debugPrint('[V3VozacScreen] auto-start → ${termin.grad} ${termin.vreme}');
+      await V3VozacLocationTrackingService.instance.start(
+        vozacId: vozacId,
+        datumIso: termin.datumIso,
+        grad: termin.grad,
+        vreme: termin.vreme,
+      );
+      if (!mounted) return;
+      final running = V3VozacLocationTrackingService.instance.isRunning;
+      V3StateUtils.safeSetState(this, () => _isNavigating = running);
+      if (running) {
+        V3AppSnackBar.success(context, _tr('statusAktivno'));
+      } else {
+        V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+      }
+    } finally {
+      _autoStartInProgress = false;
     }
   }
 
@@ -671,7 +627,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       unawaited(_syncMapRouteIfNeeded(reason: 'realtime_refresh'));
     }
 
-    _scheduleAutoStartTimer();
+    _scheduleAutoStart();
   }
 
   void _selectFirstTermin() {

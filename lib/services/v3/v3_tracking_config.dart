@@ -9,68 +9,29 @@ import '../../utils/v3_status_policy.dart';
 
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
 
-/// JEDAN IZVOR ISTINE za "koliko pre polaska" kreće auto-start trackinga.
-/// Auto-start se dešava isključivo iz V3VozacScreen-a koji mora biti otvoren
-/// u foreground-u; nema ručnog dugmeta i nema server-side push notifikacije
-/// vozaču. Ova konstanta mora biti usklađena sa windowStart/windowEnd u
-/// `supabase/functions/v3-auto-prepare-termins/index.ts`.
+/// Koliko pre polaska kreće auto-start (V3VozacScreen, foreground).
+/// Uskladiti sa windowStart u `v3-auto-prepare-termins`.
 const Duration v3AutoStartLeadTime = Duration(minutes: 15);
 
-/// Alias radi starih referenci / dokumentacije.
-const Duration v3ManualStartLeadTime = v3AutoStartLeadTime;
+const Duration v3TrackingTickInterval = Duration(seconds: 20);
 
-/// JEDAN IZVOR ISTINE za watchdog proveru "da li je tracking predugo aktivan".
+/// Spoljni timeout jednog tick-a (GPS + ETA). Mora biti > [v3ComputeEtaNetworkTimeout] + GPS.
+const Duration v3TrackingTickTimeout = Duration(seconds: 90);
+
+/// Client timeout za `v3-compute-eta` (edge worst-case OSRM ~55s + margina).
+const Duration v3ComputeEtaNetworkTimeout = Duration(seconds: 65);
+
+const LocationSettings v3TrackingLocationSettings = LocationSettings(
+  accuracy: LocationAccuracy.high,
+  timeLimit: Duration(seconds: 12),
+);
+
 bool v3TrackingTimedOut(DateTime? startedAt) {
   if (startedAt == null) return false;
   return V3BelgradeTime.now().difference(startedAt) >= v3TrackingMaxDuration;
 }
 
-/// JEDAN IZVOR ISTINE za razmak između GPS/ETA tick-ova u foreground i
-/// background tracking petlji (`v3_vozac_location_tracking_service.dart`,
-/// `v3_background_tracking_entry.dart`).
-const Duration v3TrackingTickInterval = Duration(seconds: 20);
-
-/// Maksimalno dozvoljeno trajanje JEDNOG tick-a ([onTick]) pre nego što se
-/// prisilno prekine i zakaže sledeći — zaštita od trajno "zaglavljenog"
-/// tick-a. `supabase` `functions.invoke()` (HTTP poziv koji `onTick` radi
-/// iznutra) NEMA ugrađen timeout (`functions_client` paket ne postavlja
-/// nikakav rok na `http.Client.send()`) — na lošoj/nestabilnoj mobilnoj mreži
-/// konekcija ume da "visi" beskonačno (server prihvati konekciju ali nikad ne
-/// pošalje odgovor). Bez ove zaštite, `V3SelfReschedulingTicker` bi zauvek
-/// čekao takav `onTick` i NIKAD više ne bi zakazao sledeći tick — tracking bi
-/// se potpuno (i trajno, do restarta aplikacije) zaustavio, što je GORE od
-/// običnog kašnjenja. Mora biti VEĆA od [v3ComputeEtaNetworkTimeout] + GPS
-/// fix-a (do 12s) + margine, da normalan (spor, ali validan) tick ne bude
-/// prekinut od strane OVE spoljne zaštite pre unutrašnjeg mrežnog timeout-a.
-const Duration v3TrackingTickTimeout = Duration(seconds: 90);
-
-/// JEDAN IZVOR ISTINE za timeout na `v3-compute-eta` mrežni poziv (Supabase
-/// Edge Function). `functions_client` paket ne postavlja sopstveni timeout
-/// (vidi napomenu iznad [v3TrackingTickTimeout]) — ovaj `.timeout(...)` na
-/// pozivaočevoj strani je JEDINA zaštita od beskonačnog čekanja. Edge
-/// funkcija (`v3-compute-eta`) iznutra radi do 4 OSRM pokušaja (12s timeout
-/// svaki) + do 7s eksponencijalnog backoff-a između njih — worst-case ~55s —
-/// pa vrednost MORA biti veća od toga, inače bi ovaj client-side timeout
-/// prekidao baš one spore-ali-legitimne OSRM retry pokušaje koje edge
-/// funkcija radi namerno (vidi `OSRM_MAX_RETRIES`/`OSRM_REQUEST_TIMEOUT_MS`
-/// u `supabase/functions/v3-compute-eta/index.ts`). Dodatih ~10s margine za
-/// mrežni round-trip/DB upite van OSRM faze.
-const Duration v3ComputeEtaNetworkTimeout = Duration(seconds: 65);
-
-/// Sam-zakazujući tajmer — JEDAN IZVOR ISTINE za "kako se tick-uje svakih
-/// [v3TrackingTickInterval]" na OBE platforme (Android background isolate i
-/// iOS main isolate). Namerno NE koristi `Timer.periodic`: taj bi sledeći
-/// tick okinuo tačno na `interval` OD POČETKA prethodnog, bez obzira da li
-/// je prethodni [onTick] (GPS fix + `v3-compute-eta` poziv, koji iznutra
-/// radi i do 3 OSRM retry-a sa eksponencijalnim backoff-om) još u toku —
-/// pozivalac bi tada morao da tiho preskoči taj tick (in-flight guard), pa bi
-/// efektivni razmak umeo da bude i 40s+ umesto 20s, bez ikakvog upozorenja.
-///
-/// Ovde se sledeći tick zakazuje TEK `interval` NAKON ŠTO SE prethodni
-/// [onTick] završio — garantovano, bez tihog gubljenja tick-ova. Dodatno,
-/// [onTick] se izvršava pod [v3TrackingTickTimeout] zaštitom — ako
-/// "zaglavi" (npr. mrežni poziv bez timeout-a), tajmer nastavlja dalje umesto
-/// da se trajno blokira.
+/// Sam-zakazujući tajmer — fiksni razmak [interval] između početaka tick-ova.
 class V3SelfReschedulingTicker {
   V3SelfReschedulingTicker({
     required this.interval,
@@ -88,13 +49,6 @@ class V3SelfReschedulingTicker {
 
   bool get isActive => !_cancelled;
 
-  /// Pokreće ticker: odmah izvršava prvi [onTick], zatim samo-zakazuje
-  /// sledeći tick tako da se održava fiksni razmak [interval] između
-  /// POČETAKA tick-ova (ne između završetka i početka). Ako jedan tick
-  /// potraje duže od [interval], sledeći kreće odmah — ne čeka dodatnih
-  /// [interval] sekundi. Ovo rešava problem "lokacija se ne šalje na 20s"
-  /// uzrokovan prethodnom implementacijom koja je dodavala trajanje tick-a
-  /// na 20s pauzu.
   void start() {
     cancel();
     _cancelled = false;
@@ -106,17 +60,10 @@ class V3SelfReschedulingTicker {
     try {
       await onTick().timeout(tickTimeout);
     } catch (e) {
-      // Tick je "zaglavio" (timeout) ili bacio grešku koju pozivalac nije
-      // uhvatio — logujemo i NASTAVLJAMO dalje, ne dozvoljavamo da jedan
-      // neuspeo tick zaustavi ceo tracking zauvek.
       debugPrint('[V3SelfReschedulingTicker] tick greška/timeout: $e');
     }
-    // Ako je u međuvremenu pozvan cancel(), ne zakazuj sledeći tick.
     if (_cancelled) return;
 
-    // Održavaj fiksne granice: sledeći tick treba da bude [interval] nakon
-    // prethodnog planiranog trenutka, bez obzira koliko je trenutni tick
-    // trajao. Ako smo već promašili granicu, kreći odmah.
     _nextTickAt = _nextTickAt!.add(interval);
     final now = DateTime.now();
     final delay = _nextTickAt!.isAfter(now) ? _nextTickAt!.difference(now) : Duration.zero;
@@ -131,12 +78,77 @@ class V3SelfReschedulingTicker {
   }
 }
 
-/// JEDAN IZVOR ISTINE za brisanje zaostalih ETA redova za vozača.
+/// Parsira odgovor edge funkcije `v3-compute-eta`.
+({Map<String, int> etaMap, List<String> order}) v3ParseEtaResponse(dynamic data) {
+  final etaMap = <String, int>{};
+  final order = <String>[];
+  if (data is! Map || data['ok'] != true) {
+    return (etaMap: etaMap, order: order);
+  }
 
-/// JEDAN IZVOR ISTINE za brisanje zaostalih ETA redova za vozača —
-/// deljeno između main isolate-a (`clearEtaForVozac`) i Android background
-/// isolate-a (`_bgClearEtaForVozac`). Ranije identičan upit dupliran na oba
-/// mesta.
+  final etaList = data['eta_results'];
+  if (etaList is List) {
+    for (final item in etaList) {
+      if (item is! Map) continue;
+      final pid = item['putnik_id']?.toString();
+      final sec = (item['eta_seconds'] as num?)?.toInt();
+      if (pid != null && pid.isNotEmpty && sec != null) {
+        etaMap[pid] = sec;
+      }
+    }
+  }
+
+  final optimizedOrder = data['optimized_order'];
+  if (optimizedOrder is List) {
+    for (final pid in optimizedOrder) {
+      if (pid is String && pid.isNotEmpty) order.add(pid);
+    }
+  }
+
+  return (etaMap: etaMap, order: order);
+}
+
+/// Jedan GPS fix + upsert lokacije + `v3-compute-eta`.
+/// Koriste ga i foreground servis i background isolate.
+Future<({Map<String, int> etaMap, List<String> order, Position position})> v3RunTrackingTick({
+  required SupabaseClient client,
+  required String vozacId,
+  required String grad,
+  required String vreme,
+  required String datumIso,
+  String logTag = '[v3RunTrackingTick]',
+  void Function(String message)? log,
+}) async {
+  final position = await Geolocator.getCurrentPosition(
+    locationSettings: v3TrackingLocationSettings,
+  );
+
+  await v3UpdateVozacLocation(
+    client: client,
+    vozacId: vozacId,
+    lat: position.latitude,
+    lng: position.longitude,
+    logTag: logTag,
+    log: log,
+  );
+
+  final requestBody = <String, dynamic>{
+    'vozac_id': vozacId,
+    'grad': grad,
+    'vreme': vreme,
+    if (datumIso.isNotEmpty) 'datum_iso': datumIso,
+  };
+  log?.call('$logTag computeEta request: $requestBody');
+
+  final response = await client.functions
+      .invoke('v3-compute-eta', body: requestBody)
+      .timeout(v3ComputeEtaNetworkTimeout);
+  log?.call('$logTag computeEta response: ${response.data}');
+
+  final parsed = v3ParseEtaResponse(response.data);
+  return (etaMap: parsed.etaMap, order: parsed.order, position: position);
+}
+
 Future<void> v3ClearEtaForVozac({
   required SupabaseClient client,
   required String vozacId,
@@ -144,7 +156,6 @@ Future<void> v3ClearEtaForVozac({
 }) async {
   final normalized = vozacId.trim();
   if (normalized.isEmpty) return;
-
   try {
     await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
   } catch (e) {
@@ -152,10 +163,7 @@ Future<void> v3ClearEtaForVozac({
   }
 }
 
-/// JEDAN IZVOR ISTINE za proveru "da li su svi putnici u aktivnom slotu
-/// završeni (pokupljeni ili otkazani)".
-/// Vraća `false` ako slot/putnici ne postoje (konzervativno — ne zaustavlja
-/// tracking ako se stanje ne može pouzdano utvrditi).
+/// `true` samo ako slot postoji i svi putnici u njemu su pokupljeni/otkazani.
 Future<bool> v3AllPassengersCompleted({
   required SupabaseClient client,
   required String datumIso,
@@ -204,13 +212,7 @@ Future<bool> v3AllPassengersCompleted({
   }
 }
 
-/// JEDAN IZVOR ISTINE za proveru da li su lokacijski preduslovi zadovoljeni
-/// (GPS uključen + dozvola za lokaciju).
-///
-/// Ova funkcija NE TRAŽI dozvole — to radi samo [V3RolePermissionService],
-/// koji prethodno prikazuje Google Play-ov "prominent disclosure". Traženje
-/// bilo koje lokacijske dozvole iz drugih delova aplikacije kršilo bi
-/// smernicu o uočljivom obaveštenju.
+/// GPS uključen + dozvola. Ne traži dozvole (to radi V3RolePermissionService).
 Future<bool> v3CheckLocationPrerequisites({
   String logTag = '[v3CheckLocationPrerequisites]',
 }) async {
@@ -221,7 +223,6 @@ Future<bool> v3CheckLocationPrerequisites({
   }
 
   final permission = await Geolocator.checkPermission();
-
   if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
     debugPrint('$logTag Dozvola za lokaciju nije odobrena: $permission');
     return false;
@@ -230,9 +231,6 @@ Future<bool> v3CheckLocationPrerequisites({
   return true;
 }
 
-/// JEDAN IZVOR ISTINE za upsert trenutne GPS pozicije vozača u
-/// `v3_vozac_location`. Deljeno između main isolate-a
-/// (`V3VozacLocationTrackingService`) i Android background isolate-a.
 Future<void> v3UpdateVozacLocation({
   required SupabaseClient client,
   required String? vozacId,
