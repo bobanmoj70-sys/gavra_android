@@ -10,12 +10,11 @@ import '../../utils/v3_status_policy.dart';
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
 
 /// JEDAN IZVOR ISTINE za "koliko pre polaska" vozač sme ručno da pokrene
-/// tracking, i posle kog trenutka (ako vozač nije ručno pokrenuo) auto-start
-/// push (`vozac_auto_start_tracking`, zakazan server-side u
-/// `v3-auto-prepare-termins`) preuzima. Server šalje auto-start push tačno
-/// na ovoj granici (T-10min), pa ova konstanta MORA biti usklađena sa
-/// windowStart/windowEnd u `supabase/functions/v3-auto-prepare-termins/index.ts`.
-const Duration v3ManualStartLeadTime = Duration(minutes: 10);
+/// tracking, i posle kog trenutka kreće auto-start. Auto-start se dešava
+/// isključivo iz V3VozacScreen-a koji mora biti otvoren u foreground-u;
+/// nema server-side push notifikacije vozaču. Ova konstanta mora biti
+/// usklađena sa windowStart/windowEnd u `supabase/functions/v3-auto-prepare-termins/index.ts`.
+const Duration v3ManualStartLeadTime = Duration(minutes: 15);
 
 /// JEDAN IZVOR ISTINE za watchdog proveru "da li je tracking predugo aktivan".
 bool v3TrackingTimedOut(DateTime? startedAt) {

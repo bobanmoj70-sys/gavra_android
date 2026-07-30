@@ -10,7 +10,6 @@ import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
-import '../services/v3/v3_auto_start_payload.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
@@ -50,12 +49,10 @@ import 'v3_welcome_screen.dart';
 /// iz cache-a građenog iz v3_operativna_nedelja.
 class V3VozacScreen extends StatefulWidget {
   final String? vozacId;
-  final V3AutoStartPayload? autoStartPayload;
 
   const V3VozacScreen({
     super.key,
     this.vozacId,
-    this.autoStartPayload,
   });
 
   @override
@@ -94,9 +91,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Set<String> _assignedOperativnaIds = <String>{};
   List<Map<String, String>> _assignedSlotRows = <Map<String, String>>[];
   Map<String, String> _allTerminToVozac = <String, String>{};
-  bool _autoStopInProgress = false;
-  Timer? _uiAutoStopFallbackTimer;
-  static const Duration _uiAutoStopFallbackDelay = Duration(seconds: 25);
   bool _isNavigating = false;
   String _lastSyncedPassengersSignature = '';
   bool _hasSentRouteToMap = false;
@@ -105,9 +99,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _osrmUnavailableShown = false;
   bool _etaReoptimizeInFlight = false;
 
-  /// Periodična provera za automatsko pokretanje trackinga 10 min pre polaska.
-  Timer? _autoStartCheckTimer;
-  static const Duration _autoStartCheckInterval = Duration(minutes: 1);
+  /// Tajmer za automatsko pokretanje trackinga tačno na T-15min pre polaska.
+  Timer? _autoStartTimer;
+  bool _autoStartInProgress = false;
 
   void _resetMapSyncState() {
     _hasSentRouteToMap = false;
@@ -375,7 +369,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Ako je tracking već aktivan (npr. vozač se vratio back), obnovi state
     _isNavigating = V3VozacLocationTrackingService.instance.isRunning;
     _startTrenutnaDodelaRealtime();
-    _initData();
+    unawaited(_initData());
   }
 
   @override
@@ -383,19 +377,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_trenutnaDodelaRevisionSub?.cancel());
     _trenutnaDodelaRevisionSub = null;
-    _uiAutoStopFallbackTimer?.cancel();
-    _uiAutoStopFallbackTimer = null;
+    _autoStartTimer?.cancel();
+    _autoStartTimer = null;
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Tracking se zaustavlja SAMO kada su svi putnici pokupljeni/otkazani
-    // ili kada je aplikacija stvarno ubijena (detached)
-    // NE zaustavljati pri promeni ekrana ili background
-
+    // Tracking se zaustavlja SAMO kada je aplikacija stvarno ubijena (detached).
+    // NE zaustavljati pri promeni ekrana ili background — to radi sam servis.
     if (state == AppLifecycleState.detached) {
-      // SAMO kad je app stvarno ubijena
       debugPrint('[V3VozacScreen] stop reason=detached');
       V3VozacLocationTrackingService.instance.stop();
       if (mounted) {
@@ -404,7 +395,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         });
       }
     }
-    // Za sve druge stateove (paused, inactive, resumed) - NE RADITI NIŠTA
   }
 
   Future<void> _initData() async {
@@ -424,57 +414,98 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
     }
 
-    if (mounted) {
-      await _reloadTrenutnaDodelaForVozac();
-      _rebuild();
-      V3StateUtils.safeSetState(this, () => _isLoading = false);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _rebuild();
-        // Ako je navigacija aktivna (app ubijena pa ponovo otvorena),
-        // ponovo izračunaj ETA-e sa TRENUTNOM (live) GPS pozicijom
-        if (_isNavigating) {
-          unawaited(_recomputeEtaFromCurrentPosition());
-        }
-        // Auto-start tracking ako je ekran otvoren preko push notifikacije
-        if (widget.autoStartPayload != null && !_isNavigating) {
-          unawaited(_autoStartTrackingFromPush());
-        }
-      });
+    if (!mounted) return;
+    await _reloadTrenutnaDodelaForVozac();
+    _rebuild();
+    V3StateUtils.safeSetState(this, () => _isLoading = false);
+
+    // Ako je navigacija aktivna (app ubijena pa ponovo otvorena),
+    // ponovo izračunaj ETA-e sa TRENUTNOM (live) GPS pozicijom.
+    if (_isNavigating) {
+      unawaited(_recomputeEtaFromCurrentPosition());
     }
   }
 
-  Future<void> _autoStartTrackingFromPush() async {
-    final payload = widget.autoStartPayload;
-    if (payload == null || !payload.isValid) {
-      debugPrint('[V3VozacScreen] Auto-start: nema validnog payload-a');
+  /// Zakazuje jednokratni auto-start timer na T-15min pre polaska.
+  /// Ako je taj trenutak već prošao, pokušava odmah.
+  void _scheduleAutoStartTimer() {
+    _autoStartTimer?.cancel();
+    _autoStartTimer = null;
+
+    if (V3VozacLocationTrackingService.instance.isRunning) return;
+
+    final termin = _findAutoStartTermin();
+    if (termin == null) return;
+
+    final deadline = termin.polazak.subtract(v3ManualStartLeadTime);
+    final now = V3BelgradeTime.now();
+    final delay = deadline.difference(now);
+
+    if (delay.isNegative || delay == Duration.zero) {
+      debugPrint('[V3VozacScreen] auto-start: T-15min već prošao, pokušavam odmah');
+      unawaited(_maybeAutoStartTracking());
       return;
     }
 
-    V3StateUtils.safeSetState(this, () {
-      _selectedGrad = payload.grad;
-      _selectedVreme = payload.vreme;
-      try {
-        _selectedDate = V3BelgradeTime.parseDatum(payload.datumIso) ?? V3BelgradeTime.today();
-      } catch (_) {}
+    debugPrint('[V3VozacScreen] auto-start zakazan za ${deadline.toIso8601String()} (za ${delay.inSeconds}s)');
+    _autoStartTimer = Timer(delay, () {
+      unawaited(_maybeAutoStartTracking());
     });
+  }
 
-    await V3VozacLocationTrackingService.instance.autoStartFromPayload(
-      payload,
-      startService: true,
-    );
+  /// Automatski pokreće tracking ako je ekran otvoren, vreme je došlo do
+  /// T-15min (ili kasnije), i tracking već nije aktivan.
+  Future<void> _maybeAutoStartTracking() async {
+    if (!mounted) return;
+    if (_autoStartInProgress) return;
+    if (V3VozacLocationTrackingService.instance.isRunning) return;
 
-    if (mounted) {
-      V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
+    final termin = _findAutoStartTermin();
+    if (termin == null) return;
+
+    final deadline = termin.polazak.subtract(v3ManualStartLeadTime);
+    if (V3BelgradeTime.now().isBefore(deadline)) return;
+
+    _autoStartInProgress = true;
+    try {
+      debugPrint('[V3VozacScreen] auto-start pokreće tracking za ${termin.grad} ${termin.vreme}');
+      await _startTrackingForTermin(
+        datumIso: termin.datumIso,
+        grad: termin.grad,
+        vreme: termin.vreme,
+      );
+    } finally {
+      _autoStartInProgress = false;
     }
   }
 
-  // _startDriverLocationTracking() ne postoji — vozač nikad ne pokreće
-  // tracking ručno. Tracking se uvek aktivira automatski preko
-  // `vozac_auto_start_tracking` push notifikacije: ili direktno iz native
-  // `GavraFcmService.kt` (kad je app u pozadini/killed), ili iz
-  // `_autoStartTrackingFromPush()` iznad (kad je ekran otvoren tapom na tu
-  // notifikaciju dok je app u foreground-u).
+  /// Zajednička logika za automatsko pokretanje trackinga za zadati termin.
+  Future<void> _startTrackingForTermin({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+  }) async {
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isEmpty) {
+      if (mounted) V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+      return;
+    }
+
+    V3VozacLocationTrackingService.instance.setActiveTermin(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+    );
+    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
+
+    if (!mounted) return;
+    V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
+    if (_isNavigating) {
+      V3AppSnackBar.success(context, _tr('statusAktivno'));
+    } else {
+      V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+    }
+  }
 
   bool _isPutnikEntryCompleted(_PutnikEntry item) {
     final entry = item.entry;
@@ -482,59 +513,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final pokupljen = V3StatusPolicy.isTimestampSet(entry.pokupljenAt);
     final otkazan = V3StatusPolicy.isTimestampSet(entry.otkazanoAt);
     return pokupljen || otkazan;
-  }
-
-  bool _shouldAutoStopTracking(List<_PutnikEntry> putnici) {
-    if (putnici.isEmpty) return false;
-    return putnici.every(_isPutnikEntryCompleted);
-  }
-
-  void _maybeAutoStopTrackingForCompletedTermin(List<_PutnikEntry> putnici) {
-    if (!V3VozacLocationTrackingService.instance.isRunning || _autoStopInProgress) return;
-    if (!_shouldAutoStopTracking(putnici)) {
-      _uiAutoStopFallbackTimer?.cancel();
-      _uiAutoStopFallbackTimer = null;
-      return;
-    }
-
-    // UI autostop je samo fallback. Primarni autoritet za autostop je servis
-    // (foreground/background), pa UI čeka kratko da servis sam ugasi tracking.
-    final activeDatumIso = V3VozacLocationTrackingService.instance.activeDatumIso;
-    final activeGrad = V3VozacLocationTrackingService.instance.activeGrad;
-    final activeVreme = V3VozacLocationTrackingService.instance.activeVreme;
-    if (activeDatumIso != _selectedDatumIso || activeGrad != _selectedGrad || activeVreme != _selectedVreme) {
-      _uiAutoStopFallbackTimer?.cancel();
-      _uiAutoStopFallbackTimer = null;
-      return;
-    }
-
-    _uiAutoStopFallbackTimer?.cancel();
-    _uiAutoStopFallbackTimer = Timer(_uiAutoStopFallbackDelay, () async {
-      if (!V3VozacLocationTrackingService.instance.isRunning || _autoStopInProgress) return;
-      if (!_shouldAutoStopTracking(_mojiPutnici)) return;
-
-      final latestActiveDatumIso = V3VozacLocationTrackingService.instance.activeDatumIso;
-      final latestActiveGrad = V3VozacLocationTrackingService.instance.activeGrad;
-      final latestActiveVreme = V3VozacLocationTrackingService.instance.activeVreme;
-      if (latestActiveDatumIso != _selectedDatumIso ||
-          latestActiveGrad != _selectedGrad ||
-          latestActiveVreme != _selectedVreme) {
-        return;
-      }
-
-      _autoStopInProgress = true;
-      try {
-        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed source=ui_fallback');
-        await V3VozacLocationTrackingService.instance.stop();
-        if (mounted) {
-          setState(() {
-            _isNavigating = false;
-          });
-        }
-      } finally {
-        _autoStopInProgress = false;
-      }
-    });
   }
 
   void _rebuild() {
@@ -678,7 +656,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       unawaited(_syncMapRouteIfNeeded(reason: 'realtime_refresh'));
     }
 
-    _maybeAutoStopTrackingForCompletedTermin(putniciZaPrikaz);
+    _scheduleAutoStartTimer();
   }
 
   void _selectFirstTermin() {
@@ -702,29 +680,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return V3DanHelper.toIsoDate(_selectedDate);
   }
 
-  String? get _neradanDanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
-
-  /// Datum+vreme polaska za trenutno izabrani termin (tretirano kao lokalno
-  /// Beogradsko vreme, isto kao i ostatak ekrana). Null ako vreme nije izabrano.
-  DateTime? get _selectedPolazakDateTime {
-    if (_selectedVreme.isEmpty) return null;
-    final parts = _selectedVreme.split(':');
-    if (parts.length < 2) return null;
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
-    return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, minute);
-  }
-
-  /// Da li vozac sme RUCNO da pokrene tracking za izabrani termin — dozvoljeno
-  /// samo do [v3ManualStartLeadTime] pre polaska. Posle te granice auto-start
-  /// push preuzima (samo dok je ovaj ekran otvoren u foreground-u).
-  bool get _canManualStartTracking {
-    final polazak = _selectedPolazakDateTime;
-    if (polazak == null) return false;
-    final deadline = polazak.subtract(v3ManualStartLeadTime);
-    return V3BelgradeTime.now().isBefore(deadline);
-  }
+  String? get _neradanRazlog => getNeradanDanRazlog(datumIso: _selectedDatumIso, grad: _selectedGrad);
 
   void _onPolazakChanged(String grad, String vreme) {
     final normalizedGrad = grad.toUpperCase();
@@ -1146,52 +1102,60 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  // Rucno pokretanje trackinga: dozvoljeno je do `v3ManualStartLeadTime`
-  // (10 min) pre polaska. Ako vozac ne pokrene rucno do te granice, tracking
-  // se pokrece automatski preko `vozac_auto_start_tracking` push notifikacije
-  // — ali SAMO ako je ovaj ekran (V3VozacScreen) otvoren u foreground-u (vidi
-  // `_autoStartTrackingFromPush()` i FCM handlere u `main.dart`).
-  Future<void> _handleStartTap() async {
-    if (V3VozacLocationTrackingService.instance.isRunning) {
-      if (mounted) V3AppSnackBar.info(context, _tr('statusAktivno'));
-      return;
+  /// Pronalazi najbliži termin vozača danas čiji je T-15min trenutak sada ili
+  /// u budućnosti. Ne zavisi od toga šta je izabrano na UI-ju — selektor služi
+  /// samo za prikaz.
+  ({String datumIso, String grad, String vreme, DateTime polazak})? _findAutoStartTermin() {
+    final now = V3BelgradeTime.now();
+    final todayIso = V3DanHelper.toIsoDate(now);
+
+    final rows = <Map<String, dynamic>>[];
+    rows.addAll(_assignedOperativnaRows(datumIso: todayIso));
+    rows.addAll(_assignedSlotTermRows(datumIso: todayIso));
+
+    final seen = <String>{};
+    final uniqueRows = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final datum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final grad = row['grad']?.toString().toUpperCase() ?? '';
+      final vreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString() ?? row['polazak_at']?.toString());
+      final key = '$datum|$grad|$vreme';
+      if (seen.contains(key)) continue;
+      seen.add(key);
+      uniqueRows.add(row);
     }
 
-    if (_selectedVreme.isEmpty || _mojiPutnici.isEmpty) {
-      if (mounted) V3AppSnackBar.warning(context, _tr('nemaPutnikaZaTermin'));
-      return;
-    }
+    ({String datumIso, String grad, String vreme, DateTime polazak})? best;
+    Duration bestDelay = const Duration(days: 1);
 
-    if (!_canManualStartTracking) {
-      if (mounted) {
-        V3AppSnackBar.warning(
-          context,
-          'Rucno pokretanje je moguce samo do 10 minuta pre polaska. Tracking ce se automatski pokrenuti.',
-        );
+    for (final row in uniqueRows) {
+      final datum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final grad = row['grad']?.toString().toUpperCase() ?? '';
+      final vreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString() ?? row['polazak_at']?.toString());
+      if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) continue;
+
+      final parsedDate = V3BelgradeTime.parseDatum(datum);
+      if (parsedDate == null) continue;
+      final parts = vreme.split(':');
+      if (parts.length < 2) continue;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) continue;
+      final polazak = DateTime(parsedDate.year, parsedDate.month, parsedDate.day, hour, minute);
+
+      final deadline = polazak.subtract(v3ManualStartLeadTime);
+      final delay = deadline.difference(now);
+
+      // Prihvatljivo je ako je T-15min do 1 minuta u prošlosti (timer zakasnio)
+      // ili bilo kada u budućnosti. Biramo onaj sa najmanjim kašnjenjem.
+      if (delay < const Duration(minutes: -1)) continue;
+      if (delay < bestDelay) {
+        bestDelay = delay;
+        best = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
       }
-      return;
     }
 
-    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (vozacId.isEmpty) {
-      if (mounted) V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
-      return;
-    }
-
-    V3VozacLocationTrackingService.instance.setActiveTermin(
-      datumIso: _selectedDatumIso,
-      grad: _selectedGrad,
-      vreme: _selectedVreme,
-    );
-    await V3VozacLocationTrackingService.instance.start(vozacId: vozacId);
-
-    if (!mounted) return;
-    V3StateUtils.safeSetState(this, () => _isNavigating = V3VozacLocationTrackingService.instance.isRunning);
-    if (_isNavigating) {
-      V3AppSnackBar.success(context, _tr('statusAktivno'));
-    } else {
-      V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
-    }
+    return best;
   }
 
   @override
@@ -1312,7 +1276,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                           // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
                           Row(
                             children: [
-                              // STATUS: Tracking (samo auto-start)
+                              // STATUS: Tracking (samo auto-start, nema ručnog dugmeta)
                               Expanded(
                                 flex: 2,
                                 child: _buildAppBarBtn(
@@ -1322,9 +1286,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                       : _tr('statusCeka'),
                                   color: V3VozacLocationTrackingService.instance.isRunning ? Colors.blue : Colors.grey,
                                   height: appBarButtonHeight,
-                                  onTap: () {
-                                    unawaited(_handleStartTap());
-                                  },
+                                  onTap: null,
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -1443,7 +1405,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
               bottomNavigationBar: ValueListenableBuilder<String>(
                 valueListenable: navBarTypeNotifier,
                 builder: (context, navType, _) {
-                  final neradanRazlog = _neradanDanRazlog;
+                  final neradanRazlog = _neradanRazlog;
                   if (neradanRazlog != null) {
                     return SafeArea(
                       child: Container(
@@ -1621,7 +1583,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     required String label,
     required Color color,
     required double height,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     return InkWell(
       onTap: onTap,

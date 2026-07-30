@@ -307,7 +307,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
     'trenutniPinMora6Cifara': {
       'sr': 'Trenutni PIN mora imati tačno 6 cifara.',
-      'en': 'Current PIN must have exactly 6 digits.',
+      'en': 'Current PIN must be exactly 6 digits.',
       'ru': 'Текущий PIN должен содержать ровно 6 цифр.',
       'de': 'Die aktuelle PIN muss genau 6 Ziffern haben.',
       'zh': '当前PIN码必须正好是6位数字。',
@@ -1214,12 +1214,12 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'statusCeka': {'sr': '⚫ ČEKA', 'en': '⚫ WAITING', 'ru': '⚫ ОЖИДАНИЕ', 'de': '⚫ WARTET', 'zh': '⚫ 等待中'},
     'statusPokreni': {'sr': '🟡 POKRENI', 'en': '🟡 START', 'ru': '🟡 СТАРТ', 'de': '🟡 STARTEN', 'zh': '🟡 开始'},
     'manualStartTooEarly': {
-      'sr': 'Tracking možete pokrenuti ručno najkasnije do 10 minuta pre polaska. Posle toga kreće automatski.',
-      'en': 'You can start tracking manually up to 10 minutes before departure. After that it starts automatically.',
+      'sr': 'Tracking možete pokrenuti ručno najkasnije do 15 minuta pre polaska. Posle toga kreće automatski.',
+      'en': 'You can start tracking manually up to 15 minutes before departure. After that it starts automatically.',
       'ru':
-          'Вы можете запустить отслеживание вручную не позднее чем за 10 минут до отправления. После этого оно начнётся автоматически.',
-      'de': 'Sie können das Tracking bis zu 10 Minuten vor Abfahrt manuell starten. Danach startet es automatisch.',
-      'zh': '您可以在出发前最多10分钟手动开始跟踪。之后将自动开始。',
+          'Вы можете запустить отслеживание вручную не позднее чем за 15 минут до отправления. После этого оно начнётся автоматически.',
+      'de': 'Sie können das Tracking bis zu 15 Minuten vor Abfahrt manuell starten. Danach startet es automatisch.',
+      'zh': '您可以在出发前最多15分钟手动开始跟踪。之后将自动开始。',
     },
     'trackingAlreadyActive': {
       'sr': 'Tracking je već aktivan za izabrani termin.',

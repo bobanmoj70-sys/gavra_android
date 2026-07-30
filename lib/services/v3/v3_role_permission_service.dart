@@ -23,8 +23,7 @@ class V3RolePermissionService {
   static Future<void> ensureDriverPermissionsOnLogin() async {
     await _requestCommonPermissions();
     // GPS/lokacija + battery optimization SAMO za vozača — mora biti odobreno
-    // UNAPRED (pri loginu) da bi tracking mogao da krene čim vozač otvori app
-    // nakon obaveštenja (vozac_auto_start_tracking).
+    // UNAPRED (pri loginu) da bi tracking mogao da krene čim vozač otvori app.
     await _requestDriverLocationPermissions();
   }
 

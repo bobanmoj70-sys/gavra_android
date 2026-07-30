@@ -15,12 +15,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'globals.dart';
 import 'screens/v3_putnik_profil_screen.dart';
-import 'screens/v3_vozac_screen.dart';
 import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
-import 'services/v3/v3_auto_start_payload.dart';
 import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
@@ -345,8 +343,7 @@ void main() async {
   }
 
   // FIREBASE BACKGROUND HANDLER - MORA biti registrovan pre runApp() da bi
-  // iOS ispravno hvatao background/killed push notifikacije (posebno
-  // vozac_auto_start_tracking sa content-available: 1).
+  // iOS ispravno hvatao background/killed push notifikacije.
   try {
     debugPrint('🚀 [main] 4c. Firebase background handler start');
     await _ensureFirebaseInitialized().timeout(const Duration(seconds: 5));
@@ -768,9 +765,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
-  // vozac_auto_start_tracking se više NE pokreće automatski iz background-a/killed app.
-  // Korisnik mora da otvori app da bi tracking krenuo.
-
   // Za sve ostale tipove: ako nema notification payload-a (data-only push),
   // background handler mora sam da prikaze lokalnu notifikaciju.
   if (title.isNotEmpty || body.isNotEmpty) {
@@ -842,32 +836,6 @@ Future<void> _initIosFcmHandlers() async {
 
       debugPrint('[FCM][iOS] onMessage type=$type title=$title');
       unawaited(V3RolePermissionService.wakeScreenOnPush());
-
-      if (type == 'v3_alternativa') {
-        await _showAlternativaFromData(
-          data,
-          title: title,
-          body: body,
-        );
-        return;
-      }
-
-      if (type == 'vozac_auto_start_tracking') {
-        final payload = V3AutoStartPayload.fromMap(data);
-        if (!payload.isValid) {
-          debugPrint('[FCM][iOS] vozac_auto_start_tracking ignorisan: neispravan payload');
-          return;
-        }
-        // Sačuvaj payload da tracking može da krene i bez tapa na notifikaciju
-        // kada vozač kasnije otvori app.
-        unawaited(v3SavePendingAutoStartPayload(payload));
-        // Ako je app trenutno u foreground-u, odmah rutiraj na ekran.
-        unawaited(
-          _navigateToVozacScreenWithPayload(payload)
-              .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] navigacija na vozački ekran greška: $e')),
-        );
-        return;
-      }
 
       // Uvek prikaži lokalnu notifikaciju dok je app u foregroundu.
       // Na Androidu FCM ne prikazuje notification automatski — app mora sama.
@@ -965,23 +933,6 @@ Future<void> _initFcmChannel() async {
             return;
           }
 
-          if (type == 'vozac_auto_start_tracking') {
-            final payload = V3AutoStartPayload.fromMap(data);
-            if (!payload.isValid) {
-              debugPrint('[FCM] vozac_auto_start_tracking ignorisan: neispravan payload');
-              return;
-            }
-            // Sačuvaj payload da tracking može da krene i bez tapa na notifikaciju
-            // kada vozač kasnije otvori app.
-            unawaited(v3SavePendingAutoStartPayload(payload));
-            // Ako je app trenutno u foreground-u, odmah rutiraj na ekran.
-            unawaited(
-              _navigateToVozacScreenWithPayload(payload)
-                  .catchError((Object e) => debugPrint('⚠️ [FCM] navigacija na vozački ekran greška: $e')),
-            );
-            return;
-          }
-
           // Prikaži lokalnu notifikaciju (foreground)
           if (title.isNotEmpty || body.isNotEmpty) {
             await _showForegroundPushNotification(
@@ -1035,34 +986,6 @@ Future<void> _initFcmChannel() async {
   }
 }
 
-/// Navigira na V3VozacScreen sa autostart payload-om.
-/// Koriste foreground push handleri i launch handler; sama logika pokretanja
-/// trackinga živi u V3VozacScreen.
-Future<void> _navigateToVozacScreenWithPayload(V3AutoStartPayload payload) async {
-  final nav = navigatorKey.currentState;
-  if (nav == null) return;
-
-  // Sačekaj da navigator bude dostupan (max 5s)
-  for (var i = 0; i < 50 && navigatorKey.currentState == null; i++) {
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-  }
-
-  final currentNav = navigatorKey.currentState;
-  if (currentNav == null) {
-    debugPrint('⚠️ [FCM] Navigator nije dostupan za autostart navigaciju');
-    return;
-  }
-
-  currentNav.push(
-    MaterialPageRoute<void>(
-      builder: (_) => V3VozacScreen(
-        vozacId: payload.vozacId,
-        autoStartPayload: payload,
-      ),
-    ),
-  );
-}
-
 /// Rutira na pravi ekran kada korisnik tapne FCM notifikaciju dok je app bila killed/background.
 ///
 /// Tipovi koji otvaraju V3PutnikProfilScreen:
@@ -1104,17 +1027,6 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
       final putnikId = (data['v3_auth_id'] ?? data['recipient_id'] ?? '').trim();
       final payload = putnikId.isNotEmpty ? 'zahtev_status:$putnikId' : 'zahtev_status';
       await _openPutnikProfilFromNotification(payload);
-      return;
-
-    case 'vozac_auto_start_tracking':
-      final payload = V3AutoStartPayload.fromMap(data);
-      if (!payload.isValid) {
-        debugPrint('[FCM launch] vozac_auto_start_tracking ignorisan: neispravan payload');
-        return;
-      }
-      // Sačuvaj payload da tracking može da krene i bez tapa na notifikaciju.
-      await v3SavePendingAutoStartPayload(payload);
-      await _navigateToVozacScreenWithPayload(payload);
       return;
 
     default:

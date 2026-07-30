@@ -5,7 +5,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_belgrade_time.dart';
-import 'v3_auto_start_payload.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
@@ -13,8 +12,13 @@ import 'v3_tracking_config.dart';
 ///
 /// Tracking radi ISKLJUČIVO dok je app u foreground-u. Nema background
 /// servisa, nema background lokacije, nema trajne notifikacije. Vozač može
-/// ručno da pokrene tracking pre 10 minuta pre polaska, a ako to ne uradi,
-/// tracking se automatski pokreće kada dođe do 10 minuta pre polaska.
+/// ručno da pokrene tracking do 15 minuta pre polaska, a ako to ne uradi,
+/// tracking se automatski pokreće tačno na 15 minuta pre polaska —
+/// isključivo iz V3VozacScreen-a koji mora biti otvoren u foreground-u.
+///
+/// Kada tracking stvarno krene, `activateSlotWithRetry` upisuje
+/// `tracking_started_at` u slot, što okida DB trigger koji obaveštava
+/// putnike push-om "Vozač je krenuo".
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
 
@@ -63,29 +67,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     // Očisti deljene ETA/redosled keševe jer je termin promenjen
     _optimizedPutnikIds.clear();
     _etaSecondsCache.clear();
-  }
-
-  /// Applies a normalized payload to the active session state.
-  /// Returns the normalized vozacId; termin fields are set via [setActiveTermin].
-  String _applyPayload(V3AutoStartPayload payload) {
-    setActiveTermin(
-      datumIso: payload.datumIso,
-      grad: payload.grad,
-      vreme: payload.vreme,
-    );
-    return payload.vozacId.trim();
-  }
-
-  /// Entry point za auto-start iz push payload-a. U foreground-only režimu
-  /// ovo je samo proxy ka [start] ako je [startService] true.
-  Future<void> autoStartFromPayload(
-    V3AutoStartPayload payload, {
-    required bool startService,
-  }) async {
-    final normalizedVozacId = _applyPayload(payload);
-    if (startService) {
-      await start(vozacId: normalizedVozacId);
-    }
   }
 
   Future<void> clearEtaForVozac({required String vozacId}) {

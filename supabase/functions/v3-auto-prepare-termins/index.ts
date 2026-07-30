@@ -160,9 +160,11 @@ Deno.serve(async (req) => {
     const now = new Date();
     // `polazak_at`/`datum` u bazi se čuvaju kao lokalno Beogradsko vreme
     // (bez TZ konverzije pri upisu — vidi v3-alternativa-action), pa ovde
-    // MORAMO poredи u istoj zoni, a ne u UTC-u (razlika je 1-2h zavisno od DST).
-    const windowStart = new Date(now.getTime() + 10 * 60 * 1000);
-    const windowEnd = new Date(now.getTime() + 11 * 60 * 1000);
+    // MORAMO porediti u istoj zoni, a ne u UTC-u (razlika je 1-2h zavisno od DST).
+    // Ovaj prozor mora biti usklađen sa v3ManualStartLeadTime na klijentu
+    // (trenutno 15 minuta pre polaska).
+    const windowStart = new Date(now.getTime() + 15 * 60 * 1000);
+    const windowEnd = new Date(now.getTime() + 16 * 60 * 1000);
 
     const todayIso = toBelgradeDateIso(now);
     const startTime = toBelgradeHHmm(windowStart);
@@ -197,7 +199,6 @@ Deno.serve(async (req) => {
     }
 
     let preparedCount = 0;
-    let notifiedCount = 0;
 
     for (const [key, slotTermins] of bySlot.entries()) {
       const first = slotTermins[0];
@@ -219,7 +220,7 @@ Deno.serve(async (req) => {
       // po fizičkom ključu slota.
       const { data: existingSlots, error: slotError } = await client
         .from("v3_trenutna_dodela_slot")
-        .select("id, vozac_v3_auth_id, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
+        .select("id, vozac_v3_auth_id, auto_prepared_at, auto_notified_at")
         .eq("datum", datumIso)
         .eq("grad", grad)
         .eq("vreme", vreme);
@@ -232,14 +233,12 @@ Deno.serve(async (req) => {
       let slotId: string;
       let autoPreparedAt: string | null = null;
       let autoNotifiedAt: string | null = null;
-      let autoDriverNotifiedAt: string | null = null;
 
       if (existingSlots && existingSlots.length > 0) {
         const existing = existingSlots[0];
         slotId = existing.id;
         autoPreparedAt = existing.auto_prepared_at;
         autoNotifiedAt = existing.auto_notified_at;
-        autoDriverNotifiedAt = existing.auto_driver_notified_at;
 
         if (existing.vozac_v3_auth_id && existing.vozac_v3_auth_id !== vozacId) {
           console.warn(
@@ -261,7 +260,7 @@ Deno.serve(async (req) => {
             },
             { onConflict: "datum,grad,vreme", ignoreDuplicates: false },
           )
-          .select("id, auto_prepared_at, auto_notified_at, auto_driver_notified_at")
+          .select("id, auto_prepared_at, auto_notified_at")
           .single();
 
         if (insertError || !newSlot) {
@@ -271,7 +270,6 @@ Deno.serve(async (req) => {
         slotId = newSlot.id;
         autoPreparedAt = newSlot.auto_prepared_at ?? null;
         autoNotifiedAt = newSlot.auto_notified_at ?? null;
-        autoDriverNotifiedAt = newSlot.auto_driver_notified_at ?? null;
       }
 
       // Ensure individual dodela exists and is linked to slot
@@ -503,84 +501,10 @@ Deno.serve(async (req) => {
       preparedCount++;
       console.log(`[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers`);
 
-      // Send push notification to driver to auto-start tracking
-      // NAPOMENA: koristi SVOJ flag (auto_driver_notified_at), odvojen od
-      // auto_notified_at (putnici) — sprečava dupliran push vozaču ako RPC
-      // za putnike ispod baci grešku pre upisa auto_notified_at.
-      if (!autoDriverNotifiedAt) {
-        try {
-          const { data: vozacAuth, error: vozacError } = await client
-            .from("v3_auth")
-            .select("push_token, push_token_2, locale_code")
-            .eq("id", vozacId)
-            .single();
-
-          if (!vozacError && vozacAuth) {
-            const vozacTokens: Record<string, string>[] = [];
-            const t1 = String(vozacAuth.push_token ?? "").trim();
-            const t2 = String(vozacAuth.push_token_2 ?? "").trim();
-            if (t1) vozacTokens.push({ token: t1, provider: "fcm" });
-            if (t2) vozacTokens.push({ token: t2, provider: "fcm" });
-
-            if (vozacTokens.length > 0) {
-              // Postavi flag PRE slanja da sprečimo dupli push u slučaju
-              // da se cron pokrene ponovo pre nego što notify_push završi.
-              await client
-                .from("v3_trenutna_dodela_slot")
-                .update({ auto_driver_notified_at: new Date().toISOString() })
-                .eq("id", slotId);
-
-              const eventId = `vozac_auto_start:${vozacId}:${datumIso}:${grad}:${vreme}`;
-              const localeCode = String(vozacAuth.locale_code ?? "").trim().toLowerCase();
-              await client.rpc("notify_push", {
-                tokens: vozacTokens,
-                recipient_id: vozacId,
-                title: "Praćenje pokrenuto",
-                body: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
-                title_sr: "Praćenje pokrenuto",
-                title_en: "Tracking started",
-                title_ru: "Отслеживание начато",
-                title_de: "Tracking gestartet",
-                title_zh: "跟踪已启动",
-                body_sr: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
-                body_en: `Automatic tracking for ${grad} ${vreme} is active.`,
-                body_ru: `Автоматическое отслеживание для ${grad} ${vreme} активно.`,
-                body_de: `Automatisches Tracking für ${grad} ${vreme} ist aktiv.`,
-                body_zh: `${grad} ${vreme} 的自动跟踪已激活。`,
-                data: {
-                  type: "vozac_auto_start_tracking",
-                  event_id: eventId,
-                  vozac_id: vozacId,
-                  datum: datumIso,
-                  grad: grad,
-                  vreme: vreme,
-                  screen: "v3_vozac",
-                  locale_code: localeCode || "sr",
-                  title_sr: "Praćenje pokrenuto",
-                  title_en: "Tracking started",
-                  title_ru: "Отслеживание начато",
-                  title_de: "Tracking gestartet",
-                  title_zh: "跟踪已启动",
-                  body_sr: `Automatski praćenje za ${grad} ${vreme} je aktivno.`,
-                  body_en: `Automatic tracking for ${grad} ${vreme} is active.`,
-                  body_ru: `Автоматическое отслеживание для ${grad} ${vreme} активно.`,
-                  body_de: `Automatisches Tracking für ${grad} ${vreme} ist aktiv.`,
-                  body_zh: `${grad} ${vreme} 的自动跟踪已激活。`,
-                },
-              });
-              console.log(`[v3-auto-prepare-termins] Driver ${vozacId} notified for auto-start`);
-            }
-          }
-        } catch (e) {
-          console.error(`[v3-auto-prepare-termins] Driver notify error: ${e instanceof Error ? e.message : String(e)}`);
-        }
-      }
-
-      // NAPOMENA: putnici se VIŠE NE obaveštavaju ovde slepo na T-10min.
-      // Tracking je foreground-only — ako vozač nije otvorio app, GPS/ETA
-      // realno ne postoji, pa je slanje "Vozač je krenuo" push-a na ovom
-      // mestu bilo lažno obećanje. Umesto toga, obaveštavanje putnika je
-      // sada okinuto DB trigger-om `trg_v3_notify_passengers_on_tracking_start`
+      // NAPOMENA: vozač se VIŠE NE obaveštava ovde push-om da pokrene app.
+      // Auto-start trackinga se dešava isključivo u foreground-u iz
+      // V3VozacScreen-a (timer na T-15min pre polaska). Putnici se
+      // obaveštavaju DB trigger-om `trg_v3_notify_passengers_on_tracking_start`
       // (vidi `20260730_notify_passengers_on_real_tracking_start.sql`) koji
       // se aktivira TEK kada `v3_trenutna_dodela_slot.tracking_started_at`
       // bude stvarno upisan iz `activateSlotWithRetry` (real tracking start).
@@ -589,7 +513,7 @@ Deno.serve(async (req) => {
     return json(200, {
       ok: true,
       prepared: preparedCount,
-      notified: notifiedCount,
+      notified: 0,
       termins_found: termins.length,
     });
   } catch (error) {
