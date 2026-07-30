@@ -1211,7 +1211,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'zh': '运营周：',
     },
     'statusAktivno': {'sr': '🟢 AKTIVNO', 'en': '🟢 ACTIVE', 'ru': '🟢 АКТИВНО', 'de': '🟢 AKTIV', 'zh': '🟢 运行中'},
-    'statusCeka': {'sr': '⚫ ČEKA', 'en': '⚫ WAITING', 'ru': '⚫ ОЖИДАНИЕ', 'de': '⚫ WARTET', 'zh': '⚫ 等待中'},
+    'statusCeka': {'sr': 'ČEKAM', 'en': 'WAITING', 'ru': 'ОЖИДАНИЕ', 'de': 'WARTET', 'zh': '等待中'},
     'statusPokreni': {'sr': '🟡 POKRENI', 'en': '🟡 START', 'ru': '🟡 СТАРТ', 'de': '🟡 STARTEN', 'zh': '🟡 开始'},
     'manualStartTooEarly': {
       'sr': 'Tracking možete pokrenuti ručno najkasnije do 15 minuta pre polaska. Posle toga kreće automatski.',
