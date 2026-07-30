@@ -419,7 +419,7 @@ class V3FinansijeService {
     var ukupanIznos = 0.0;
 
     final rm = V3MasterRealtimeManager.instance;
-    final putnikData = rm.putniciCache[putnikId] ?? const <String, dynamic>{};
+    final putnikData = rm.putniciCache[putnik] ?? const <String, dynamic>{};
     final tipPutnika = (putnikData['tip_putnika'] as String? ?? '').toLowerCase();
 
     for (final row in naplataRows) {
