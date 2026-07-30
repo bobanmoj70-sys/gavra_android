@@ -11,65 +11,54 @@ import 'v3_tracking_config.dart';
 /// GPS/ETA tracking vozača.
 ///
 /// Start: V3VozacScreen auto-start (foreground).
-/// Tick izvor (međusobno isključivi):
-///   - app u foreground → main isolate ticker
-///   - app u background → FlutterBackgroundService isolate
-///
-/// `activateSlotWithRetry` upisuje `tracking_started_at` (samo prvi put) →
-/// DB trigger obaveštava putnike.
+/// Tick: FG u foregroundu, BG isolate kad je app paused.
+/// Stop: polazak+55min, svi putnici gotovi, ili ručni stop.
+/// `activateSlotWithRetry` → `tracking_started_at` → DB trigger putnicima.
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
 
   static final V3VozacLocationTrackingService instance = V3VozacLocationTrackingService._();
 
-  String _activeVozacId = '';
-  String _activeDatumIso = '';
-  String _activeGrad = '';
-  String _activeVreme = '';
+  static const _tag = '[V3VozacLocationTrackingService]';
+
+  String _vozacId = '';
+  String _datumIso = '';
+  String _grad = '';
+  String _vreme = '';
   bool _isRunning = false;
   bool _startInProgress = false;
-  DateTime? _trackingStartedAt;
-  V3SelfReschedulingTicker? _foregroundTicker;
+  DateTime? _startedAt;
+  DateTime? _polazakAt;
+  V3SelfReschedulingTicker? _fgTicker;
 
   final List<String> _optimizedPutnikIds = [];
-  final Map<String, int> _etaSecondsCache = {};
 
   bool get isRunning => _isRunning;
-  String? get activeVozacId => _activeVozacId.isNotEmpty ? _activeVozacId : null;
-  String get activeDatumIso => _activeDatumIso;
-  String get activeGrad => _activeGrad;
-  String get activeVreme => _activeVreme;
   List<String> get optimizedPutnikIds => List.unmodifiable(_optimizedPutnikIds);
-  Map<String, int> get etaSecondsCache => Map.unmodifiable(_etaSecondsCache);
 
   void initialize() {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  /// Pokreće tracking za termin. Termin se postavlja ovde (jedan API).
   Future<void> start({
     required String vozacId,
     required String datumIso,
     required String grad,
     required String vreme,
   }) async {
-    final normalizedVozacId = vozacId.trim();
-    final normalizedDatum = V3BelgradeTime.parseIsoDatePart(datumIso);
-    final normalizedGrad = grad.trim().toUpperCase();
-    final normalizedVreme = V3BelgradeTime.normalizeToHHmm(vreme);
+    final id = vozacId.trim();
+    final datum = V3BelgradeTime.parseIsoDatePart(datumIso);
+    final g = grad.trim().toUpperCase();
+    final v = V3BelgradeTime.normalizeToHHmm(vreme);
 
-    debugPrint(
-        '[V3VozacLocationTrackingService] start vozac=$normalizedVozacId $normalizedGrad $normalizedVreme');
+    debugPrint('$_tag start vozac=$id $g $v');
 
-    if (normalizedVozacId.isEmpty ||
-        normalizedDatum.isEmpty ||
-        normalizedGrad.isEmpty ||
-        normalizedVreme.isEmpty) {
-      debugPrint('[V3VozacLocationTrackingService] start prekinut: nedostaju podaci');
+    if (id.isEmpty || datum.isEmpty || g.isEmpty || v.isEmpty) {
+      debugPrint('$_tag start prekinut: nedostaju podaci');
       return;
     }
     if (_startInProgress) {
-      debugPrint('[V3VozacLocationTrackingService] start u toku, preskačem');
+      debugPrint('$_tag start u toku, preskačem');
       return;
     }
     _startInProgress = true;
@@ -77,15 +66,15 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     try {
       if (_isRunning) await stop();
 
-      _activeVozacId = normalizedVozacId;
-      _activeDatumIso = normalizedDatum;
-      _activeGrad = normalizedGrad;
-      _activeVreme = normalizedVreme;
-      _trackingStartedAt = V3BelgradeTime.now();
+      _vozacId = id;
+      _datumIso = datum;
+      _grad = g;
+      _vreme = v;
+      _polazakAt = v3PolazakDateTime(datumIso: datum, vreme: v);
+      _startedAt = V3BelgradeTime.now();
       _optimizedPutnikIds.clear();
-      _etaSecondsCache.clear();
 
-      if (!await v3CheckLocationPrerequisites(logTag: '[V3VozacLocationTrackingService]')) {
+      if (!await v3CheckLocationPrerequisites()) {
         await stop();
         return;
       }
@@ -93,190 +82,166 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       // Slot aktivacija SAMO ovde (main isolate) — BG ne radi activate.
       unawaited(activateSlotWithRetry(
         client: Supabase.instance.client,
-        vozacId: normalizedVozacId,
-        datumIso: _activeDatumIso,
-        grad: _activeGrad,
-        vreme: _activeVreme,
-        logTag: '[V3VozacLocationTrackingService]',
+        vozacId: id,
+        datumIso: datum,
+        grad: g,
+        vreme: v,
+        logTag: _tag,
         log: debugPrint,
       ));
 
       _isRunning = true;
-      _startForegroundTicker();
-      // BG se diže tek kad app ode u background (vidi lifecycle).
+      _startFgTicker();
     } finally {
       _startInProgress = false;
     }
   }
 
   Future<void> stop() async {
-    debugPrint('[V3VozacLocationTrackingService] stop()');
+    debugPrint('$_tag stop()');
     _startInProgress = false;
-    final vozacIdToClean = _activeVozacId;
-    _activeVozacId = '';
-    _activeDatumIso = '';
-    _activeGrad = '';
-    _activeVreme = '';
+    final vozacIdToClean = _vozacId;
+    _vozacId = '';
+    _datumIso = '';
+    _grad = '';
+    _vreme = '';
+    _polazakAt = null;
+    _startedAt = null;
     _isRunning = false;
-    _trackingStartedAt = null;
     _optimizedPutnikIds.clear();
-    _etaSecondsCache.clear();
 
-    _foregroundTicker?.cancel();
-    _foregroundTicker = null;
-    unawaited(_stopBackgroundTracking());
+    _fgTicker?.cancel();
+    _fgTicker = null;
+    unawaited(_stopBg());
 
     if (vozacIdToClean.isNotEmpty) {
-      await v3ClearEtaForVozac(
-        client: Supabase.instance.client,
-        vozacId: vozacIdToClean,
-        logTag: '[V3VozacLocationTrackingService]',
-      );
+      await v3ClearEtaForVozac(client: Supabase.instance.client, vozacId: vozacIdToClean);
     }
   }
 
-  /// Jednokratni GPS+ETA (UI resume / odmah reoptimizacija).
+  /// Jednokratni GPS+ETA (UI resume / reoptimizacija).
   Future<({Map<String, int> etaMap, List<String> order})> fetchPositionAndComputeEta() async {
-    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) {
-      return (etaMap: <String, int>{}, order: <String>[]);
-    }
+    if (_vozacId.isEmpty) return (etaMap: <String, int>{}, order: <String>[]);
     try {
-      final result = await v3RunTrackingTick(
-        client: Supabase.instance.client,
-        vozacId: _activeVozacId,
-        grad: _activeGrad,
-        vreme: _activeVreme,
-        datumIso: _activeDatumIso,
-        logTag: '[V3VozacLocationTrackingService]',
-        log: debugPrint,
-      );
-      _applyEtaCache(result.etaMap, result.order);
-      return (etaMap: result.etaMap, order: result.order);
+      return await _runTick();
     } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] fetchPositionAndComputeEta error: $e');
+      debugPrint('$_tag fetchPositionAndComputeEta error: $e');
       _optimizedPutnikIds.clear();
-      _etaSecondsCache.clear();
       return (etaMap: <String, int>{}, order: <String>[]);
     }
   }
 
-  void _applyEtaCache(Map<String, int> etaMap, List<String> order) {
+  void _startFgTicker() {
+    _fgTicker?.cancel();
+    _fgTicker = V3SelfReschedulingTicker(interval: v3TrackingTickInterval, onTick: _fgTick)..start();
+  }
+
+  Future<({Map<String, int> etaMap, List<String> order})> _runTick() async {
+    final result = await v3RunTrackingTick(
+      client: Supabase.instance.client,
+      vozacId: _vozacId,
+      grad: _grad,
+      vreme: _vreme,
+      datumIso: _datumIso,
+      logTag: _tag,
+    );
     _optimizedPutnikIds
       ..clear()
-      ..addAll(order);
-    _etaSecondsCache
-      ..clear()
-      ..addAll(etaMap);
+      ..addAll(result.order);
+    return result;
   }
 
-  void _startForegroundTicker() {
-    _foregroundTicker?.cancel();
-    _foregroundTicker = V3SelfReschedulingTicker(
-      interval: v3TrackingTickInterval,
-      onTick: _foregroundTick,
-    )..start();
-  }
-
-  Future<void> _foregroundTick() async {
+  Future<void> _fgTick() async {
     if (!_isRunning) return;
-    if (v3TrackingTimedOut(_trackingStartedAt)) {
-      debugPrint('[V3VozacLocationTrackingService] stop reason=timeout');
+    if (v3TrackingTimedOut(startedAt: _startedAt, polazakAt: _polazakAt)) {
+      debugPrint('$_tag stop reason=timeout polazak=$_polazakAt');
       await stop();
       return;
     }
-    if (_activeVozacId.isEmpty || _activeGrad.isEmpty || _activeVreme.isEmpty || _activeDatumIso.isEmpty) {
-      return;
-    }
+    if (_vozacId.isEmpty) return;
 
     try {
-      final result = await v3RunTrackingTick(
-        client: Supabase.instance.client,
-        vozacId: _activeVozacId,
-        grad: _activeGrad,
-        vreme: _activeVreme,
-        datumIso: _activeDatumIso,
-        logTag: '[V3VozacLocationTrackingService]',
-        log: debugPrint,
-      );
-      _applyEtaCache(result.etaMap, result.order);
-
+      await _runTick();
       final allDone = await v3AllPassengersCompleted(
         client: Supabase.instance.client,
-        datumIso: _activeDatumIso,
-        grad: _activeGrad,
-        vreme: _activeVreme,
-        logTag: '[V3VozacLocationTrackingService]',
+        datumIso: _datumIso,
+        grad: _grad,
+        vreme: _vreme,
       );
       if (allDone) {
-        debugPrint('[V3VozacLocationTrackingService] stop reason=all_passengers_completed');
+        debugPrint('$_tag stop reason=all_passengers_completed');
         await stop();
       }
     } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] tick error: $e');
+      debugPrint('$_tag tick error: $e');
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!_isRunning) {
-      if (state == AppLifecycleState.detached) {
+      if (state == AppLifecycleState.detached) stop();
+      return;
+    }
+
+    switch (state) {
+      case AppLifecycleState.inactive:
+        // Kratki prekid (control center) — pauza FG, bez BG.
+        _fgTicker?.cancel();
+        _fgTicker = null;
+      case AppLifecycleState.paused:
+        _fgTicker?.cancel();
+        _fgTicker = null;
+        unawaited(_startBg());
+      case AppLifecycleState.resumed:
+        unawaited(_onResumed());
+      case AppLifecycleState.detached:
         stop();
-      }
-      return;
-    }
-
-    // Jedan izvor tick-ova: FG u foregroundu, BG samo kad je app stvarno u pozadini.
-    if (state == AppLifecycleState.inactive) {
-      // Kratki prekid (npr. control center) — samo pauziraj FG, ne diži BG.
-      _foregroundTicker?.cancel();
-      _foregroundTicker = null;
-      return;
-    }
-    if (state == AppLifecycleState.paused) {
-      _foregroundTicker?.cancel();
-      _foregroundTicker = null;
-      unawaited(_startBackgroundTracking());
-      return;
-    }
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_stopBackgroundTracking());
-      if (_foregroundTicker == null) _startForegroundTicker();
-      return;
-    }
-
-    if (state == AppLifecycleState.detached) {
-      stop();
+      case AppLifecycleState.hidden:
+        break;
     }
   }
 
-  Future<void> _startBackgroundTracking() async {
-    if (_activeVozacId.isEmpty) return;
+  Future<void> _onResumed() async {
+    await _stopBg();
+    if (!_isRunning) return;
+    if (v3TrackingTimedOut(startedAt: _startedAt, polazakAt: _polazakAt)) {
+      debugPrint('$_tag stop reason=timeout_on_resume');
+      await stop();
+      return;
+    }
+    if (_fgTicker == null) _startFgTicker();
+  }
+
+  Future<void> _startBg() async {
+    if (_vozacId.isEmpty) return;
     try {
       final service = FlutterBackgroundService();
       if (!await service.isRunning()) {
         await service.startService();
       }
       service.invoke('startTracking', <String, dynamic>{
-        'vozac_id': _activeVozacId,
-        'datum_iso': _activeDatumIso,
-        'grad': _activeGrad,
-        'vreme': _activeVreme,
-        'started_at': _trackingStartedAt?.toUtc().toIso8601String(),
+        'vozac_id': _vozacId,
+        'datum_iso': _datumIso,
+        'grad': _grad,
+        'vreme': _vreme,
+        'started_at': _startedAt?.toUtc().toIso8601String(),
+        'polazak_at': _polazakAt?.toUtc().toIso8601String(),
       });
-      debugPrint('[V3VozacLocationTrackingService] BG tracking startovan');
+      debugPrint('$_tag BG startovan');
     } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] BG start greška: $e');
+      debugPrint('$_tag BG start greška: $e');
     }
   }
 
-  Future<void> _stopBackgroundTracking() async {
+  Future<void> _stopBg() async {
     try {
       final service = FlutterBackgroundService();
       service.invoke('stopTracking');
       await Future<void>.delayed(const Duration(milliseconds: 200));
       service.invoke('stopService');
     } catch (e) {
-      debugPrint('[V3VozacLocationTrackingService] BG stop greška: $e');
+      debugPrint('$_tag BG stop greška: $e');
     }
   }
 }

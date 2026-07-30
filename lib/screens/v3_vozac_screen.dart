@@ -429,24 +429,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   /// Jedan ulaz za auto-start: zakazuje timer na T-15min ili startuje odmah.
   /// Radi samo dok je V3VozacScreen mounted (foreground).
-  void _scheduleAutoStart() {
+  Future<void> _scheduleAutoStart() async {
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
-    unawaited(_tryAutoStart());
-  }
-
-  Future<void> _tryAutoStart() async {
     if (!mounted || _autoStartInProgress) return;
     if (V3VozacLocationTrackingService.instance.isRunning) return;
 
     final termin = _findAutoStartTermin();
     if (termin == null) return;
 
-    final deadline = termin.polazak.subtract(v3AutoStartLeadTime);
-    final delay = deadline.difference(V3BelgradeTime.now());
+    final delay = termin.polazak.subtract(v3AutoStartLeadTime).difference(V3BelgradeTime.now());
     if (delay > Duration.zero) {
       debugPrint('[V3VozacScreen] auto-start za ${delay.inSeconds}s (${termin.grad} ${termin.vreme})');
-      _autoStartTimer = Timer(delay, () => unawaited(_tryAutoStart()));
+      _autoStartTimer = Timer(delay, () => unawaited(_scheduleAutoStart()));
       return;
     }
 
@@ -1123,82 +1118,40 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return false;
   }
 
-  /// Pronalazi najbliži termin vozača danas unutar prozora za tracking:
-  /// od T-15min do T+55min (ili dok svi putnici nisu pokupljeni/otkazani).
-  /// Ne zavisi od toga šta je izabrano na UI-ju — selektor služi samo za prikaz.
+  /// Najbliži termin danas u prozoru T-15 … T+55 (nezavisno od UI selektora).
   ({String datumIso, String grad, String vreme, DateTime polazak})? _findAutoStartTermin() {
     final now = V3BelgradeTime.now();
     final todayIso = V3DanHelper.toIsoDate(now);
 
-    final rows = <Map<String, dynamic>>[];
-    rows.addAll(_assignedOperativnaRows(datumIso: todayIso));
-    rows.addAll(_assignedSlotTermRows(datumIso: todayIso));
-
     final seen = <String>{};
-    final uniqueRows = <Map<String, dynamic>>[];
-    for (final row in rows) {
+    final candidates = <({String datumIso, String grad, String vreme, DateTime polazak})>[];
+
+    for (final row in [
+      ..._assignedOperativnaRows(datumIso: todayIso),
+      ..._assignedSlotTermRows(datumIso: todayIso),
+    ]) {
       final datum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
       final grad = row['grad']?.toString().toUpperCase() ?? '';
       final vreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString() ?? row['polazak_at']?.toString());
       final key = '$datum|$grad|$vreme';
-      if (seen.contains(key)) continue;
-      seen.add(key);
-      uniqueRows.add(row);
-    }
+      if (datum.isEmpty || grad.isEmpty || vreme.isEmpty || !seen.add(key)) continue;
 
-    ({String datumIso, String grad, String vreme, DateTime polazak})? bestReady;
-    // delay za ready termine je uvek ≤ 0; startujemo ispod svih mogućih
-    // vrednosti da prvi kandidat uvek prođe, a zatim biramo najbliži
-    // deadline-u (najmanje negativan delay = trenutno aktivan prozor).
-    Duration bestReadyDelay = const Duration(days: -365);
-    ({String datumIso, String grad, String vreme, DateTime polazak})? bestFuture;
-    Duration bestFutureDelay = const Duration(days: 1);
-
-    for (final row in uniqueRows) {
-      final datum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
-      final grad = row['grad']?.toString().toUpperCase() ?? '';
-      final vreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString() ?? row['polazak_at']?.toString());
-      if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) continue;
-
-      final parsedDate = V3BelgradeTime.parseDatum(datum);
-      if (parsedDate == null) continue;
-      final parts = vreme.split(':');
-      if (parts.length < 2) continue;
-      final hour = int.tryParse(parts[0]);
-      final minute = int.tryParse(parts[1]);
-      if (hour == null || minute == null) continue;
-      // Polazak u Europe/Belgrade — nezavisno od timezone-a uređaja.
-      final polazak = V3BelgradeTime.dateTime(
-        parsedDate.year,
-        parsedDate.month,
-        parsedDate.day,
-        hour,
-        minute,
-      );
-
-      // Bez aktivnih putnika nema smisla auto-start / tajmer za ovaj termin.
+      final polazak = v3PolazakDateTime(datumIso: datum, vreme: vreme);
+      if (polazak == null) continue;
+      if (now.isAfter(polazak.add(v3TrackingMaxDuration))) continue;
       if (!_terminHasActivePassengers(datum, grad, vreme)) continue;
 
-      final deadline = polazak.subtract(v3AutoStartLeadTime);
-      final delay = deadline.difference(now);
-
-      // Spreman za odmah: T-15min je prošlo, ali nije prošlo T+55min.
-      // Biramo termin sa delay najbližim nuli (trenutno aktivan prozor).
-      if (delay <= Duration.zero &&
-          now.isBefore(polazak.add(v3TrackingMaxDuration)) &&
-          delay > bestReadyDelay) {
-        bestReadyDelay = delay;
-        bestReady = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
-      }
-
-      // Budući termin za zakazivanje jednokratnog tajmera.
-      if (delay > Duration.zero && delay < bestFutureDelay) {
-        bestFutureDelay = delay;
-        bestFuture = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
-      }
+      candidates.add((datumIso: datum, grad: grad, vreme: vreme, polazak: polazak));
     }
 
-    return bestReady ?? bestFuture;
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) => a.polazak.compareTo(b.polazak));
+
+    // Prvo aktivan prozor (T-15 prošlo), inače najraniji budući.
+    for (final c in candidates) {
+      if (!now.isBefore(c.polazak.subtract(v3AutoStartLeadTime))) return c;
+    }
+    return candidates.first;
   }
 
   @override
@@ -1665,10 +1618,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
-        final t = _pulseController.value; // 0..1
-        // Sweep pozicija prelaska sa leva na desno na svaki tick
-        final sweep = t * 3.0 - 1.0; // -1 → 2, da preliv uđe i izađe iz kutije
-        // Blagi "dah" pulsiranje opacity/scale
+        final t = _pulseController.value;
+        final sweep = t * 3.0 - 1.0;
         final pulse = 0.5 + 0.5 * math.sin(t * 2 * math.pi);
         final glow = 0.35 + 0.25 * pulse;
 

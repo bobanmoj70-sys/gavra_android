@@ -16,11 +16,12 @@ Future<void> onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
   V3BelgradeTime.location;
 
-  String? activeVozacId;
-  String? activeDatumIso;
-  String? activeGrad;
-  String? activeVreme;
-  DateTime? trackingStartedAt;
+  String? vozacId;
+  String? datumIso;
+  String? grad;
+  String? vreme;
+  DateTime? startedAt;
+  DateTime? polazakAt;
   V3SelfReschedulingTicker? ticker;
   SupabaseClient? client;
 
@@ -31,9 +32,7 @@ Future<void> onStart(ServiceInstance service) async {
         client = Supabase.instance.client;
         return;
       }
-    } catch (_) {
-      // isolate bez inicijalizovanog Supabase-a
-    }
+    } catch (_) {}
     try {
       await configService.initializeBasic();
       final url = configService.getSupabaseUrl().trim();
@@ -50,11 +49,10 @@ Future<void> onStart(ServiceInstance service) async {
   }
 
   Future<void> doTick() async {
-    if (activeVozacId == null || activeDatumIso == null || activeGrad == null || activeVreme == null) {
-      return;
-    }
-    if (v3TrackingTimedOut(trackingStartedAt)) {
-      debugPrint('[BG_TRACKING] stop reason=timeout');
+    if (vozacId == null || datumIso == null || grad == null || vreme == null) return;
+
+    if (v3TrackingTimedOut(startedAt: startedAt, polazakAt: polazakAt)) {
+      debugPrint('[BG_TRACKING] stop reason=timeout polazak=$polazakAt');
       service.stopSelf();
       return;
     }
@@ -65,20 +63,18 @@ Future<void> onStart(ServiceInstance service) async {
     try {
       await v3RunTrackingTick(
         client: client!,
-        vozacId: activeVozacId!,
-        grad: activeGrad!,
-        vreme: activeVreme!,
-        datumIso: activeDatumIso!,
+        vozacId: vozacId!,
+        grad: grad!,
+        vreme: vreme!,
+        datumIso: datumIso!,
         logTag: '[BG_TRACKING]',
-        log: debugPrint,
       );
 
       final allDone = await v3AllPassengersCompleted(
         client: client!,
-        datumIso: activeDatumIso!,
-        grad: activeGrad!,
-        vreme: activeVreme!,
-        logTag: '[BG_TRACKING]',
+        datumIso: datumIso!,
+        grad: grad!,
+        vreme: vreme!,
       );
       if (allDone) {
         debugPrint('[BG_TRACKING] stop reason=all_passengers_completed');
@@ -91,22 +87,23 @@ Future<void> onStart(ServiceInstance service) async {
 
   void startTracking(Map<String, dynamic>? args) {
     final m = args ?? <String, dynamic>{};
-    final vozacId = (m['vozac_id']?.toString() ?? '').trim();
-    final datumIso = V3BelgradeTime.parseIsoDatePart(m['datum_iso']?.toString() ?? '');
-    final grad = (m['grad']?.toString() ?? '').trim().toUpperCase();
-    final vreme = V3BelgradeTime.normalizeToHHmm(m['vreme']?.toString() ?? '');
+    final id = (m['vozac_id']?.toString() ?? '').trim();
+    final datum = V3BelgradeTime.parseIsoDatePart(m['datum_iso']?.toString() ?? '');
+    final g = (m['grad']?.toString() ?? '').trim().toUpperCase();
+    final v = V3BelgradeTime.normalizeToHHmm(m['vreme']?.toString() ?? '');
 
-    if (vozacId.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) {
+    if (id.isEmpty || datum.isEmpty || g.isEmpty || v.isEmpty) {
       debugPrint('[BG_TRACKING] start preskočen: nedostaju podaci');
       return;
     }
 
-    activeVozacId = vozacId;
-    activeDatumIso = datumIso;
-    activeGrad = grad;
-    activeVreme = vreme;
-    trackingStartedAt = V3BelgradeTime.parseTs(m['started_at']?.toString()) ?? V3BelgradeTime.now();
-    debugPrint('[BG_TRACKING] start $grad $vreme');
+    vozacId = id;
+    datumIso = datum;
+    grad = g;
+    vreme = v;
+    startedAt = V3BelgradeTime.parseTs(m['started_at']?.toString()) ?? V3BelgradeTime.now();
+    polazakAt = V3BelgradeTime.parseTs(m['polazak_at']?.toString()) ?? v3PolazakDateTime(datumIso: datum, vreme: v);
+    debugPrint('[BG_TRACKING] start $g $v polazak=$polazakAt');
 
     ticker?.cancel();
     ticker = V3SelfReschedulingTicker(interval: v3TrackingTickInterval, onTick: doTick)..start();
@@ -116,11 +113,12 @@ Future<void> onStart(ServiceInstance service) async {
     debugPrint('[BG_TRACKING] stop');
     ticker?.cancel();
     ticker = null;
-    activeVozacId = null;
-    activeDatumIso = null;
-    activeGrad = null;
-    activeVreme = null;
-    trackingStartedAt = null;
+    vozacId = null;
+    datumIso = null;
+    grad = null;
+    vreme = null;
+    startedAt = null;
+    polazakAt = null;
   }
 
   service.on('startTracking').listen((event) {

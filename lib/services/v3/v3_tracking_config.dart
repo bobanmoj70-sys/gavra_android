@@ -7,18 +7,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 
+/// Hard stop: polazak + ovoliko (T+55).
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
 
-/// Koliko pre polaska kreće auto-start (V3VozacScreen, foreground).
-/// Uskladiti sa windowStart u `v3-auto-prepare-termins`.
+/// Auto-start koliko pre polaska (T-15). Uskladiti sa `v3-auto-prepare-termins`.
 const Duration v3AutoStartLeadTime = Duration(minutes: 15);
 
 const Duration v3TrackingTickInterval = Duration(seconds: 20);
 
-/// Spoljni timeout jednog tick-a (GPS + ETA). Mora biti > [v3ComputeEtaNetworkTimeout] + GPS.
+/// Spoljni timeout jednog tick-a (GPS + ETA).
 const Duration v3TrackingTickTimeout = Duration(seconds: 90);
 
-/// Client timeout za `v3-compute-eta` (edge worst-case OSRM ~55s + margina).
+/// Client timeout za `v3-compute-eta`.
 const Duration v3ComputeEtaNetworkTimeout = Duration(seconds: 65);
 
 const LocationSettings v3TrackingLocationSettings = LocationSettings(
@@ -26,9 +26,38 @@ const LocationSettings v3TrackingLocationSettings = LocationSettings(
   timeLimit: Duration(seconds: 12),
 );
 
-bool v3TrackingTimedOut(DateTime? startedAt) {
-  if (startedAt == null) return false;
-  return V3BelgradeTime.now().difference(startedAt) >= v3TrackingMaxDuration;
+/// Polazak termina u Europe/Belgrade (datum ISO + HH:mm).
+DateTime? v3PolazakDateTime({required String datumIso, required String vreme}) {
+  final datePart = V3BelgradeTime.parseIsoDatePart(datumIso);
+  final parsedDate = V3BelgradeTime.parseDatum(datePart);
+  if (parsedDate == null) return null;
+  final hhmm = V3BelgradeTime.normalizeToHHmm(vreme);
+  final parts = hhmm.split(':');
+  if (parts.length < 2) return null;
+  final hour = int.tryParse(parts[0]);
+  final minute = int.tryParse(parts[1]);
+  if (hour == null || minute == null) return null;
+  return V3BelgradeTime.dateTime(
+    parsedDate.year,
+    parsedDate.month,
+    parsedDate.day,
+    hour,
+    minute,
+  );
+}
+
+/// Hard-stop: raniji od (polazak+55) i (start+15+55).
+bool v3TrackingTimedOut({DateTime? startedAt, DateTime? polazakAt}) {
+  DateTime? deadline;
+  if (polazakAt != null) {
+    deadline = polazakAt.add(v3TrackingMaxDuration);
+  }
+  if (startedAt != null) {
+    final fromStart = startedAt.add(v3AutoStartLeadTime + v3TrackingMaxDuration);
+    if (deadline == null || fromStart.isBefore(deadline)) deadline = fromStart;
+  }
+  if (deadline == null) return false;
+  return !V3BelgradeTime.now().isBefore(deadline);
 }
 
 /// Sam-zakazujući tajmer — fiksni razmak [interval] između početaka tick-ova.
@@ -46,8 +75,6 @@ class V3SelfReschedulingTicker {
   Timer? _timer;
   bool _cancelled = true;
   DateTime? _nextTickAt;
-
-  bool get isActive => !_cancelled;
 
   void start() {
     cancel();
@@ -110,14 +137,13 @@ class V3SelfReschedulingTicker {
 
 /// Jedan GPS fix + upsert lokacije + `v3-compute-eta`.
 /// Koriste ga i foreground servis i background isolate.
-Future<({Map<String, int> etaMap, List<String> order, Position position})> v3RunTrackingTick({
+Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
   required SupabaseClient client,
   required String vozacId,
   required String grad,
   required String vreme,
   required String datumIso,
   String logTag = '[v3RunTrackingTick]',
-  void Function(String message)? log,
 }) async {
   final position = await Geolocator.getCurrentPosition(
     locationSettings: v3TrackingLocationSettings,
@@ -129,7 +155,6 @@ Future<({Map<String, int> etaMap, List<String> order, Position position})> v3Run
     lat: position.latitude,
     lng: position.longitude,
     logTag: logTag,
-    log: log,
   );
 
   final requestBody = <String, dynamic>{
@@ -138,28 +163,25 @@ Future<({Map<String, int> etaMap, List<String> order, Position position})> v3Run
     'vreme': vreme,
     if (datumIso.isNotEmpty) 'datum_iso': datumIso,
   };
-  log?.call('$logTag computeEta request: $requestBody');
+  debugPrint('$logTag computeEta request: $requestBody');
 
-  final response = await client.functions
-      .invoke('v3-compute-eta', body: requestBody)
-      .timeout(v3ComputeEtaNetworkTimeout);
-  log?.call('$logTag computeEta response: ${response.data}');
+  final response =
+      await client.functions.invoke('v3-compute-eta', body: requestBody).timeout(v3ComputeEtaNetworkTimeout);
+  debugPrint('$logTag computeEta response: ${response.data}');
 
-  final parsed = v3ParseEtaResponse(response.data);
-  return (etaMap: parsed.etaMap, order: parsed.order, position: position);
+  return v3ParseEtaResponse(response.data);
 }
 
 Future<void> v3ClearEtaForVozac({
   required SupabaseClient client,
   required String vozacId,
-  String logTag = '[v3ClearEtaForVozac]',
 }) async {
   final normalized = vozacId.trim();
   if (normalized.isEmpty) return;
   try {
     await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
   } catch (e) {
-    debugPrint('$logTag ETA cleanup error: $e');
+    debugPrint('[v3ClearEtaForVozac] error: $e');
   }
 }
 
@@ -169,7 +191,6 @@ Future<bool> v3AllPassengersCompleted({
   required String datumIso,
   required String grad,
   required String vreme,
-  String logTag = '[v3AllPassengersCompleted]',
 }) async {
   if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
 
@@ -207,24 +228,21 @@ Future<bool> v3AllPassengersCompleted({
     }
     return true;
   } catch (e) {
-    debugPrint('$logTag Greška pri proveri putnika: $e');
+    debugPrint('[v3AllPassengersCompleted] greška: $e');
     return false;
   }
 }
 
 /// GPS uključen + dozvola. Ne traži dozvole (to radi V3RolePermissionService).
-Future<bool> v3CheckLocationPrerequisites({
-  String logTag = '[v3CheckLocationPrerequisites]',
-}) async {
-  final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    debugPrint('$logTag GPS servis isključen');
+Future<bool> v3CheckLocationPrerequisites() async {
+  if (!await Geolocator.isLocationServiceEnabled()) {
+    debugPrint('[v3CheckLocationPrerequisites] GPS isključen');
     return false;
   }
 
   final permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
-    debugPrint('$logTag Dozvola za lokaciju nije odobrena: $permission');
+  if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+    debugPrint('[v3CheckLocationPrerequisites] dozvola: $permission');
     return false;
   }
 
@@ -233,16 +251,12 @@ Future<bool> v3CheckLocationPrerequisites({
 
 Future<void> v3UpdateVozacLocation({
   required SupabaseClient client,
-  required String? vozacId,
+  required String vozacId,
   required double lat,
   required double lng,
   String logTag = '[v3UpdateVozacLocation]',
-  void Function(String message)? log,
 }) async {
-  if (vozacId == null || vozacId.isEmpty) {
-    log?.call('$logTag preskačem: nedostaje vozacId');
-    return;
-  }
+  if (vozacId.isEmpty) return;
 
   try {
     await client.from('v3_vozac_location').upsert(<String, dynamic>{
@@ -251,8 +265,8 @@ Future<void> v3UpdateVozacLocation({
       'lng': lng,
       'updated_at': V3BelgradeTime.nowIsoUtc(),
     });
-    log?.call('$logTag lokacija ažurirana $lat, $lng za vozača $vozacId');
+    debugPrint('$logTag lokacija $lat, $lng vozac=$vozacId');
   } catch (e) {
-    log?.call('$logTag greška: $e');
+    debugPrint('$logTag greška: $e');
   }
 }
