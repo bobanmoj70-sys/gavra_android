@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     // `polazak_at`/`datum` u bazi se čuvaju kao lokalno Beogradsko vreme
     // (bez TZ konverzije pri upisu — vidi v3-alternativa-action), pa ovde
     // MORAMO porediti u istoj zoni, a ne u UTC-u (razlika je 1-2h zavisno od DST).
-    // Ovaj prozor mora biti usklađen sa v3ManualStartLeadTime na klijentu
+    // Ovaj prozor mora biti usklađen sa v3AutoStartLeadTime na klijentu
     // (trenutno 15 minuta pre polaska).
     const windowStart = new Date(now.getTime() + 15 * 60 * 1000);
     const windowEnd = new Date(now.getTime() + 16 * 60 * 1000);

@@ -397,6 +397,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       debugPrint('[V3VozacScreen] stop reason=detached');
       V3VozacLocationTrackingService.instance.stop();
     }
+    // Sigurnosna mreža: kada app dodje nazad u foreground, ponovo zakazati
+    // auto-start timer. Dart Timer se može pauzirati dok je app u background-u,
+    // pa se ovim osiguravamo da ne propustimo prozor za auto-start
+    // (T-15min do T+55min pre/po polaska).
+    if (state == AppLifecycleState.resumed) {
+      _scheduleAutoStartTimer();
+    }
   }
 
   Future<void> _initData() async {
@@ -430,6 +437,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   /// Zakazuje jednokratni auto-start timer na T-15min pre polaska.
   /// Ako je taj trenutak već prošao, pokušava odmah.
+  ///
+  /// ⚠️ VAŽNO: Auto-start trackinga radi ISKLJUČIVO dok je V3VozacScreen
+  /// otvoren u foreground-u. Ne postoji dugme/ručna opcija za pokretanje
+  /// trackinga. Ako vozač u T-15min nije na ovom ekranu (app u background-u,
+  /// zatvorena, ili na drugom screen-u), tracking NEĆE krenuti i
+  /// v3_vozac_location će ostati prazno.
   void _scheduleAutoStartTimer() {
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
@@ -439,7 +452,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final termin = _findAutoStartTermin();
     if (termin == null) return;
 
-    final deadline = termin.polazak.subtract(v3ManualStartLeadTime);
+    final deadline = termin.polazak.subtract(v3AutoStartLeadTime);
     final now = V3BelgradeTime.now();
     final delay = deadline.difference(now);
 
@@ -465,7 +478,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final termin = _findAutoStartTermin();
     if (termin == null) return;
 
-    final deadline = termin.polazak.subtract(v3ManualStartLeadTime);
+    final deadline = termin.polazak.subtract(v3AutoStartLeadTime);
     if (V3BelgradeTime.now().isBefore(deadline)) return;
 
     _autoStartInProgress = true;
@@ -1154,9 +1167,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return false;
   }
 
-  /// Pronalazi najbliži termin vozača danas čiji je T-15min trenutak sada ili
-  /// u budućnosti. Ne zavisi od toga šta je izabrano na UI-ju — selektor služi
-  /// samo za prikaz.
+  /// Pronalazi najbliži termin vozača danas unutar prozora za tracking:
+  /// od T-15min do T+55min (ili dok svi putnici nisu pokupljeni/otkazani).
+  /// Ne zavisi od toga šta je izabrano na UI-ju — selektor služi samo za prikaz.
   ({String datumIso, String grad, String vreme, DateTime polazak})? _findAutoStartTermin() {
     final now = V3BelgradeTime.now();
     final todayIso = V3DanHelper.toIsoDate(now);
@@ -1177,8 +1190,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       uniqueRows.add(row);
     }
 
-    ({String datumIso, String grad, String vreme, DateTime polazak})? best;
-    Duration bestDelay = const Duration(days: 1);
+    ({String datumIso, String grad, String vreme, DateTime polazak})? bestReady;
+    // delay za ready termine je uvek ≤ 0; startujemo ispod svih mogućih
+    // vrednosti da prvi kandidat uvek prođe, a zatim biramo najbliži
+    // deadline-u (najmanje negativan delay = trenutno aktivan prozor).
+    Duration bestReadyDelay = const Duration(days: -365);
+    ({String datumIso, String grad, String vreme, DateTime polazak})? bestFuture;
+    Duration bestFutureDelay = const Duration(days: 1);
 
     for (final row in uniqueRows) {
       final datum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
@@ -1193,26 +1211,38 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final hour = int.tryParse(parts[0]);
       final minute = int.tryParse(parts[1]);
       if (hour == null || minute == null) continue;
-      final polazak = DateTime(parsedDate.year, parsedDate.month, parsedDate.day, hour, minute);
+      // Polazak u Europe/Belgrade — nezavisno od timezone-a uređaja.
+      final polazak = V3BelgradeTime.dateTime(
+        parsedDate.year,
+        parsedDate.month,
+        parsedDate.day,
+        hour,
+        minute,
+      );
 
-      final deadline = polazak.subtract(v3ManualStartLeadTime);
+      // Bez aktivnih putnika nema smisla auto-start / tajmer za ovaj termin.
+      if (!_terminHasActivePassengers(datum, grad, vreme)) continue;
+
+      final deadline = polazak.subtract(v3AutoStartLeadTime);
       final delay = deadline.difference(now);
 
-      // Prihvatljivo je ako je T-15min do 1 minuta u prošlosti (timer zakasnio)
-      // ili bilo kada u budućnosti. Biramo onaj sa najmanjim kašnjenjem.
-      if (delay < const Duration(minutes: -1)) continue;
-      if (delay < bestDelay) {
-        bestDelay = delay;
-        best = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
+      // Spreman za odmah: T-15min je prošlo, ali nije prošlo T+55min.
+      // Biramo termin sa delay najbližim nuli (trenutno aktivan prozor).
+      if (delay <= Duration.zero &&
+          now.isBefore(polazak.add(v3TrackingMaxDuration)) &&
+          delay > bestReadyDelay) {
+        bestReadyDelay = delay;
+        bestReady = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
+      }
+
+      // Budući termin za zakazivanje jednokratnog tajmera.
+      if (delay > Duration.zero && delay < bestFutureDelay) {
+        bestFutureDelay = delay;
+        bestFuture = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
       }
     }
 
-    // Ako najbolji termin nema nerešenih putnika, nema auto-starta.
-    if (best != null && !_terminHasActivePassengers(best.datumIso, best.grad, best.vreme)) {
-      return null;
-    }
-
-    return best;
+    return bestReady ?? bestFuture;
   }
 
   @override

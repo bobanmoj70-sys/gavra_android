@@ -23,7 +23,6 @@ import 'v3_tracking_config.dart';
 @pragma('vm:entry-point')
 Future<void> onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
-  WidgetsFlutterBinding.ensureInitialized();
 
   // Inicijalizuj timezone podatke koji su potrebni za V3BelgradeTime.now().
   V3BelgradeTime.location;

@@ -482,7 +482,6 @@ Future<void> _initializeBackgroundTrackingService() async {
 
 @pragma('vm:entry-point')
 Future<bool> _onIosBackground(ServiceInstance service) async {
-  WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
   return true;
 }

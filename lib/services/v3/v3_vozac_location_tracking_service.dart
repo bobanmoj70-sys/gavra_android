@@ -11,16 +11,16 @@ import 'v3_tracking_config.dart';
 
 /// GPS/ETA tracking servis za vozača.
 ///
-/// Tracking počinje iz foreground-a (V3VozacScreen), ali nakon starta se
-/// istovremeno pokreće i foreground foreground servis
+/// Tracking počinje iz foreground-a (V3VozacScreen auto-start), a nakon
+/// starta se istovremeno pokreće i background foreground-servis
 /// ([FlutterBackgroundService]) koji nastavlja da šalje lokaciju i računa
 /// ETA dok je app u pozadini, dok je telefon zaključan, ili dok vozač koristi
 /// druge aplikacije. Foreground ticker se pauzira u pozadini da ne bi
 /// duplirao rad, a nastavlja kada se app vrati u foreground.
 ///
 /// Kada tracking stvarno krene, `activateSlotWithRetry` upisuje
-/// `tracking_started_at` u slot, što okida DB trigger koji obaveštava
-/// putnike push-om "Vozač je krenuo".
+/// `tracking_started_at` u slot (samo prvi put), što okida DB trigger koji
+/// obaveštava putnike push-om "Vozač je krenuo".
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
 
@@ -35,9 +35,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   DateTime? _trackingStartedAt;
 
-  /// Foreground ticker — jedini izvor tick-ova na obe platforme. Radi samo
-  /// dok je app u foreground-u; lifecycle observer ga zaustavlja pri
-  /// background-u.
+  /// Foreground ticker — tick-ovi dok je app u foreground-u. Lifecycle
+  /// observer ga pauzira pri background-u; background isolate preuzima rad.
   V3SelfReschedulingTicker? _foregroundTicker;
 
   /// Optimizovani redosled putnika (deljen između ekrana)
@@ -357,15 +356,15 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
-  /// Registruje lifecycle observer. U foreground-only režimu ne vršimo
-  /// restore sesije — ako je app ubijena, tracking se ne nastavlja.
+  /// Registruje lifecycle observer (pause/resume foreground tickera).
   void initialize() {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  /// Za foreground-only režim restore nije potreban.
+  /// Restore sesije nije potreban — ako je app ubijena, tracking se ne nastavlja
+  /// sam; auto-start na V3VozacScreen-u ga ponovo pokreće u prozoru T-15…T+55.
   Future<void> restoreAndResumeIfNeeded() async {
-    debugPrint('[V3VozacLocationTrackingService] restoreAndResumeIfNeeded(): foreground-only, ništa se ne restore-uje');
+    debugPrint('[V3VozacLocationTrackingService] restoreAndResumeIfNeeded(): nema restore-a, auto-start na ekranu');
   }
 
   @override

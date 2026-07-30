@@ -1214,12 +1214,15 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'statusCeka': {'sr': 'ČEKAM', 'en': 'WAITING', 'ru': 'ОЖИДАНИЕ', 'de': 'WARTET', 'zh': '等待中'},
     'statusPokreni': {'sr': '🟡 POKRENI', 'en': '🟡 START', 'ru': '🟡 СТАРТ', 'de': '🟡 STARTEN', 'zh': '🟡 开始'},
     'manualStartTooEarly': {
-      'sr': 'Tracking možete pokrenuti ručno najkasnije do 15 minuta pre polaska. Posle toga kreće automatski.',
-      'en': 'You can start tracking manually up to 15 minutes before departure. After that it starts automatically.',
+      'sr':
+          'Tracking kreće automatski 15 minuta pre polaska dok ste na vozačkom ekranu. Nema ručnog pokretanja.',
+      'en':
+          'Tracking starts automatically 15 minutes before departure while you are on the driver screen. There is no manual start.',
       'ru':
-          'Вы можете запустить отслеживание вручную не позднее чем за 15 минут до отправления. После этого оно начнётся автоматически.',
-      'de': 'Sie können das Tracking bis zu 15 Minuten vor Abfahrt manuell starten. Danach startet es automatisch.',
-      'zh': '您可以在出发前最多15分钟手动开始跟踪。之后将自动开始。',
+          'Отслеживание запускается автоматически за 15 минут до отправления, пока вы на экране водителя. Ручного запуска нет.',
+      'de':
+          'Das Tracking startet automatisch 15 Minuten vor Abfahrt, solange Sie auf dem Fahrerbildschirm sind. Es gibt keinen manuellen Start.',
+      'zh': '在司机屏幕上时，跟踪将在出发前15分钟自动开始。没有手动启动。',
     },
     'trackingAlreadyActive': {
       'sr': 'Tracking je već aktivan za izabrani termin.',

@@ -9,12 +9,15 @@ import '../../utils/v3_status_policy.dart';
 
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
 
-/// JEDAN IZVOR ISTINE za "koliko pre polaska" vozač sme ručno da pokrene
-/// tracking, i posle kog trenutka kreće auto-start. Auto-start se dešava
-/// isključivo iz V3VozacScreen-a koji mora biti otvoren u foreground-u;
-/// nema server-side push notifikacije vozaču. Ova konstanta mora biti
-/// usklađena sa windowStart/windowEnd u `supabase/functions/v3-auto-prepare-termins/index.ts`.
-const Duration v3ManualStartLeadTime = Duration(minutes: 15);
+/// JEDAN IZVOR ISTINE za "koliko pre polaska" kreće auto-start trackinga.
+/// Auto-start se dešava isključivo iz V3VozacScreen-a koji mora biti otvoren
+/// u foreground-u; nema ručnog dugmeta i nema server-side push notifikacije
+/// vozaču. Ova konstanta mora biti usklađena sa windowStart/windowEnd u
+/// `supabase/functions/v3-auto-prepare-termins/index.ts`.
+const Duration v3AutoStartLeadTime = Duration(minutes: 15);
+
+/// Alias radi starih referenci / dokumentacije.
+const Duration v3ManualStartLeadTime = v3AutoStartLeadTime;
 
 /// JEDAN IZVOR ISTINE za watchdog proveru "da li je tracking predugo aktivan".
 bool v3TrackingTimedOut(DateTime? startedAt) {
@@ -22,8 +25,9 @@ bool v3TrackingTimedOut(DateTime? startedAt) {
   return V3BelgradeTime.now().difference(startedAt) >= v3TrackingMaxDuration;
 }
 
-/// JEDAN IZVOR ISTINE za razmak između GPS/ETA tick-ova u foreground-only
-/// tracking petlji (`v3_vozac_location_tracking_service.dart`).
+/// JEDAN IZVOR ISTINE za razmak između GPS/ETA tick-ova u foreground i
+/// background tracking petlji (`v3_vozac_location_tracking_service.dart`,
+/// `v3_background_tracking_entry.dart`).
 const Duration v3TrackingTickInterval = Duration(seconds: 20);
 
 /// Maksimalno dozvoljeno trajanje JEDNOG tick-a ([onTick]) pre nego što se
