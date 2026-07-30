@@ -23,6 +23,10 @@
   <uses-permission android:name="android.permission.VIBRATE" />
   <!-- Required for Android 13+ runtime notification permission -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- Background foreground service permissions for driver tracking -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
   <!-- SMS dozvole NISU potrebne - koristimo url_launcher (sms: URI) koji otvara SMS app -->
 
   <!-- 🔐 BIOMETRIC AUTHENTICATION (otisak prsta) -->
@@ -91,6 +95,12 @@
         <action android:name="com.google.firebase.MESSAGING_EVENT" />
       </intent-filter>
     </service>
+
+    <!-- 🛰️ Background location tracking service -->
+    <service
+      android:name="id.flutter.flutter_background_service.BackgroundService"
+      android:foregroundServiceType="location"
+      android:exported="false" />
 
     <receiver
       android:name=".AlternativaActionReceiver"

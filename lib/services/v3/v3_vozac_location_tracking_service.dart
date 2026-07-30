@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -8,13 +9,14 @@ import '../../utils/v3_belgrade_time.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
-/// Foreground-only GPS/ETA tracking servis za vozača.
+/// GPS/ETA tracking servis za vozača.
 ///
-/// Tracking radi ISKLJUČIVO dok je app u foreground-u. Nema background
-/// servisa, nema background lokacije, nema trajne notifikacije. Vozač može
-/// ručno da pokrene tracking do 15 minuta pre polaska, a ako to ne uradi,
-/// tracking se automatski pokreće tačno na 15 minuta pre polaska —
-/// isključivo iz V3VozacScreen-a koji mora biti otvoren u foreground-u.
+/// Tracking počinje iz foreground-a (V3VozacScreen), ali nakon starta se
+/// istovremeno pokreće i foreground foreground servis
+/// ([FlutterBackgroundService]) koji nastavlja da šalje lokaciju i računa
+/// ETA dok je app u pozadini, dok je telefon zaključan, ili dok vozač koristi
+/// druge aplikacije. Foreground ticker se pauzira u pozadini da ne bi
+/// duplirao rad, a nastavlja kada se app vrati u foreground.
 ///
 /// Kada tracking stvarno krene, `activateSlotWithRetry` upisuje
 /// `tracking_started_at` u slot, što okida DB trigger koji obaveštava
@@ -134,6 +136,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _startForegroundTicker();
       _isRunning = true;
       debugPrint('[V3VozacLocationTrackingService] Tracking označen kao aktivan (_isRunning=true)');
+
+      // Pokreni isti tracking u background servisu kako bi radio dok je app
+      // u pozadini ili telefon zaključan.
+      unawaited(_startBackgroundTracking(normalizedVozacId));
     } finally {
       _startInProgress = false;
     }
@@ -156,11 +162,28 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     _foregroundTicker?.cancel();
     _foregroundTicker = null;
 
+    // Zaustavi background tracking servis.
+    unawaited(_stopBackgroundTracking());
+
     if (vozacIdToClean.isNotEmpty) {
       debugPrint('[V3VozacLocationTrackingService] Brišem ETA za vozača=$vozacIdToClean');
       await clearEtaForVozac(vozacId: vozacIdToClean);
     }
     debugPrint('[V3VozacLocationTrackingService] stop() završen');
+  }
+
+  /// Zaustavlja background foreground servis.
+  Future<void> _stopBackgroundTracking() async {
+    try {
+      final service = FlutterBackgroundService();
+      service.invoke('stopTracking');
+      // Sačekaj kratko da background servis završi cleanup, zatim ga ugasi.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      service.invoke('stopService');
+      debugPrint('[V3VozacLocationTrackingService] Background servis zaustavljen');
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] Background stop greška: $e');
+    }
   }
 
   /// Dobavi trenutnu GPS poziciju i odmah izračunaj ETA.
@@ -321,6 +344,19 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       debugPrint('[V3VozacLocationTrackingService] computeEta error: $e');
     }
     debugPrint('[V3VozacLocationTrackingService] _foregroundTick() kraj');
+
+    // Pokreni background servis ako već nije pokrenut
+    if (_activeVozacId.isNotEmpty) {
+      try {
+        final isBackgroundServiceRunning = await FlutterBackgroundService().isRunning();
+        if (!isBackgroundServiceRunning) {
+          debugPrint('[V3VozacLocationTrackingService] Pokrećem background servis');
+          await FlutterBackgroundService().startService();
+        }
+      } catch (e) {
+        debugPrint('[V3VozacLocationTrackingService] Greška pri pokretanju background servisa: $e');
+      }
+    }
   }
 
   /// Registruje lifecycle observer. U foreground-only režimu ne vršimo
@@ -336,11 +372,58 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Tracking radi SAMO u foreground-u. Zaustavi ga čim app ode u pozadinu
-    // ili bude detached.
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
-      debugPrint('[V3VozacLocationTrackingService] lifecycle=$state — zaustavljam foreground tracking');
+    // Foreground ticker radi samo dok je app vidljiva. Kada app ode u
+    // pozadinu ili se telefon zaključa, pauziramo foreground tick (štedi
+    // bateriju i izbegava dupliranje sa background servisom), ali NE
+    // zaustavljamo ceo tracking — background foreground servis nastavlja
+    // da šalje lokaciju i računa ETA.
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (_foregroundTicker != null) {
+        debugPrint('[V3VozacLocationTrackingService] lifecycle=$state — pauziram foreground ticker');
+        _foregroundTicker?.cancel();
+        _foregroundTicker = null;
+      }
+      return;
+    }
+
+    // Kada se app vrati u foreground, nastavi foreground tick ako tracking
+    // još uvek treba da radi.
+    if (state == AppLifecycleState.resumed) {
+      if (_isRunning && _foregroundTicker == null) {
+        debugPrint('[V3VozacLocationTrackingService] lifecycle=resumed — nastavljam foreground ticker');
+        _startForegroundTicker();
+      }
+      return;
+    }
+
+    // Ako je app stvarno ubijena (detached), tek tada zaustavi sve.
+    if (state == AppLifecycleState.detached) {
+      debugPrint('[V3VozacLocationTrackingService] lifecycle=detached — zaustavljam tracking');
       stop();
+    }
+  }
+
+  /// Pokreće background foreground servis sa istim aktivnim podacima.
+  Future<void> _startBackgroundTracking(String vozacId) async {
+    try {
+      final service = FlutterBackgroundService();
+      final isRunning = await service.isRunning();
+      if (!isRunning) {
+        debugPrint('[V3VozacLocationTrackingService] Pokrećem background servis');
+        await service.startService();
+      }
+      service.invoke(
+        'startTracking',
+        <String, dynamic>{
+          'vozac_id': vozacId,
+          'datum_iso': _activeDatumIso,
+          'grad': _activeGrad,
+          'vreme': _activeVreme,
+        },
+      );
+      debugPrint('[V3VozacLocationTrackingService] Background tracking startovan');
+    } catch (e) {
+      debugPrint('[V3VozacLocationTrackingService] Background start greška: $e');
     }
   }
 }

@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -19,6 +20,7 @@ import 'screens/v3_welcome_screen.dart';
 import 'services/realtime/v3_master_realtime_manager.dart';
 import 'services/v3/v3_app_settings_service.dart';
 import 'services/v3/v3_app_update_service.dart';
+import 'services/v3/v3_background_tracking_entry.dart' as bg_tracking;
 import 'services/v3/v3_device_identity_service.dart';
 import 'services/v3/v3_push_token_provider.dart';
 import 'services/v3/v3_putnik_service.dart';
@@ -444,6 +446,45 @@ Future<void> _postRunAppInitialization() async {
     timeout: const Duration(seconds: 20),
     retries: 0,
   );
+
+  // 5. Konfiguriši background tracking servis (ne pokreće ga automatski,
+  //    već ga priprema da foreground servis može da ga pokrene po potrebi).
+  unawaited(_initializeBackgroundTrackingService());
+}
+
+/// Priprema FlutterBackgroundService za vozački tracking u pozadini.
+/// Servis se ne pokreće automatski — startuje ga tek
+/// V3VozacLocationTrackingService kada vozač započne vožnju.
+Future<void> _initializeBackgroundTrackingService() async {
+  try {
+    final service = FlutterBackgroundService();
+    await service.configure(
+      androidConfiguration: AndroidConfiguration(
+        onStart: bg_tracking.onStart,
+        autoStart: false,
+        isForegroundMode: true,
+        notificationChannelId: 'gavra_bg_tracking',
+        initialNotificationTitle: 'Gavra 013',
+        initialNotificationContent: 'Praćenje lokacije je aktivno',
+        foregroundServiceNotificationId: 888,
+      ),
+      iosConfiguration: IosConfiguration(
+        autoStart: false,
+        onForeground: bg_tracking.onStart,
+        onBackground: _onIosBackground,
+      ),
+    );
+    debugPrint('[main] Background tracking servis konfigurisan');
+  } catch (e) {
+    debugPrint('⚠️ [main] Background tracking servis greška: $e');
+  }
+}
+
+@pragma('vm:entry-point')
+Future<bool> _onIosBackground(ServiceInstance service) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+  return true;
 }
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
