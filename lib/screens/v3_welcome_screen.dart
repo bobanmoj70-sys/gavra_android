@@ -181,8 +181,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
     final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
     final putnikId = putnik['id']?.toString().trim() ?? '';
-    final pinHash =
-        putnikId == V3AppUpdateService.appleReviewUserId ? 'x' : (putnik['pin_hash']?.toString().trim() ?? '');
+    final isReviewAccount =
+        putnikId == V3AppUpdateService.appleReviewUserId || putnikId == V3AppUpdateService.googleReviewUserId;
+    final pinHash = isReviewAccount ? 'x' : (putnik['pin_hash']?.toString().trim() ?? '');
     return ime.isEmpty || tip.isEmpty || bc.isEmpty || vs.isEmpty || pinHash.isEmpty;
   }
 

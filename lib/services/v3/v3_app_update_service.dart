@@ -13,9 +13,11 @@ class V3AppUpdateService {
 
   static const String bojanUserId = '824f7bd7-e19c-4471-b7a2-d6031d810242';
   static const String appleReviewUserId = 'db969766-e0ec-422c-95d7-620c8c9b8df5';
+  static const String googleReviewUserId = '3927044f-52c7-4c4a-825f-0eb824f702b0';
   static const Set<String> _forceUpdateBypassUserIds = <String>{
     bojanUserId,
     appleReviewUserId,
+    googleReviewUserId,
   };
 
   static final V3AppSettingsRepository _repository = V3AppSettingsRepository();

@@ -396,11 +396,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (state == AppLifecycleState.detached) {
       debugPrint('[V3VozacScreen] stop reason=detached');
       V3VozacLocationTrackingService.instance.stop();
-      if (mounted) {
-        setState(() {
-          _isNavigating = false;
-        });
-      }
     }
   }
 
@@ -1109,6 +1104,56 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
+  /// Vraća true ako termin (datum/grad/vreme) ima barem jednog putnika
+  /// koji nije pokupljen, otkazan ili odbijen.
+  bool _terminHasActivePassengers(String datumIso, String grad, String vreme) {
+    final rm = V3MasterRealtimeManager.instance;
+    final vozac = _efektivniVozac;
+    if (vozac == null) return false;
+    final vozacAuthId = vozac.id.toString().trim();
+    final gradUp = grad.toUpperCase();
+    final vremeNorm = V3BelgradeTime.normalizeToHHmm(vreme);
+
+    bool isActive(Map<String, dynamic> row) {
+      return V3StatusPolicy.canAssign(
+        status: row['status']?.toString(),
+        otkazanoAt: row['otkazano_at'],
+        pokupljenAt: row['pokupljen_at'],
+      );
+    }
+
+    // 1. Individualno dodeljeni putnici
+    for (final row in _assignedOperativnaRows(
+      datumIso: datumIso,
+      grad: gradUp,
+      vreme: vremeNorm,
+      onlyEligible: false,
+    )) {
+      if (row['created_by'] == null) continue;
+      if (isActive(row)) return true;
+    }
+
+    // 2. Ostali putnici iz istog termina koji nisu dodeljeni drugom vozaču
+    for (final raw in rm.operativnaNedeljaCache.values) {
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
+      final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
+      if (rowDatum != datumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
+      if (raw['created_by'] == null) continue;
+
+      final entryId = raw['id']?.toString() ?? '';
+      if (entryId.isEmpty) continue;
+      if (_assignedOperativnaIds.contains(entryId)) continue;
+
+      final assignedVozac = _allTerminToVozac[entryId];
+      if (assignedVozac != null && assignedVozac != vozacAuthId) continue;
+
+      if (isActive(raw)) return true;
+    }
+
+    return false;
+  }
+
   /// Pronalazi najbliži termin vozača danas čiji je T-15min trenutak sada ili
   /// u budućnosti. Ne zavisi od toga šta je izabrano na UI-ju — selektor služi
   /// samo za prikaz.
@@ -1160,6 +1205,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         bestDelay = delay;
         best = (datumIso: datum, grad: grad, vreme: vreme, polazak: polazak);
       }
+    }
+
+    // Ako najbolji termin nema nerešenih putnika, nema auto-starta.
+    if (best != null && !_terminHasActivePassengers(best.datumIso, best.grad, best.vreme)) {
+      return null;
     }
 
     return best;

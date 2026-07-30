@@ -423,7 +423,9 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final missingBc = (putnik['adresa_bc_id']?.toString().trim() ?? '').isEmpty;
     final missingVs = (putnik['adresa_vs_id']?.toString().trim() ?? '').isEmpty;
     final missingPin =
-        authId == V3AppUpdateService.appleReviewUserId ? false : (putnik['pin_hash']?.toString().trim() ?? '').isEmpty;
+        (authId == V3AppUpdateService.appleReviewUserId || authId == V3AppUpdateService.googleReviewUserId)
+            ? false
+            : (putnik['pin_hash']?.toString().trim() ?? '').isEmpty;
 
     if (missingIme || missingTip || missingBc || missingVs || missingPin) {
       final bcId = putnik['adresa_bc_id']?.toString().trim() ?? '';
@@ -888,8 +890,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     final tip = putnik['tip_putnika']?.toString().trim() ?? '';
     final bc = putnik['adresa_bc_id']?.toString().trim() ?? '';
     final vs = putnik['adresa_vs_id']?.toString().trim() ?? '';
-    final isAppleReview = (authId ?? putnik['id']?.toString().trim()) == V3AppUpdateService.appleReviewUserId;
-    final pinHash = isAppleReview ? 'x' : (putnik['pin_hash']?.toString().trim() ?? '');
+    final resolvedAuthId = authId ?? putnik['id']?.toString().trim();
+    final isReviewAccount = resolvedAuthId == V3AppUpdateService.appleReviewUserId ||
+        resolvedAuthId == V3AppUpdateService.googleReviewUserId;
+    final pinHash = isReviewAccount ? 'x' : (putnik['pin_hash']?.toString().trim() ?? '');
 
     if (includeIdentityFields) {
       if (ime.isEmpty) missing.add('imeKratko');

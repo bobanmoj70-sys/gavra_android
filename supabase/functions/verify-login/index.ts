@@ -6,6 +6,9 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 // Apple Review test nalog - koristi ga Apple-ov reviewer prilikom provere aplikacije.
 // Za ovaj nalog PIN se nikad ne traži (ni na novom uređaju), da se reviewer ne zbuni.
 const APPLE_REVIEW_USER_ID = "db969766-e0ec-422c-95d7-620c8c9b8df5";
+// Google Play Review test nalog - koristi ga Google-ov reviewer prilikom provere aplikacije.
+// Za ovaj nalog PIN se nikad ne traži (ni na novom uređaju), da se reviewer ne zbuni.
+const GOOGLE_REVIEW_USER_ID = "3927044f-52c7-4c4a-825f-0eb824f702b0";
 
 type VerifyLoginPayload = {
   v3_auth_id?: string;
@@ -100,12 +103,14 @@ Deno.serve(async (req) => {
     const incomingHardwareId = String(payload.hardware_id ?? "").trim();
     const pinAlreadySet = String(account.pin_hash ?? "").trim() !== "";
     const isAppleReviewAccount = userId === APPLE_REVIEW_USER_ID;
+    const isGoogleReviewAccount = userId === GOOGLE_REVIEW_USER_ID;
+    const isReviewAccount = isAppleReviewAccount || isGoogleReviewAccount;
     let deviceRecognized = false;
     let deviceSlotsFull = false;
     let deviceAllowed = true;
 
-    if (isAppleReviewAccount) {
-      // Apple Review nalog uvek prolazi bez PIN provere, bez obzira na uređaj/slotove.
+    if (isReviewAccount) {
+      // Apple/Google Review nalozi uvek prolaze bez PIN provere, bez obzira na uređaj/slotove.
       deviceRecognized = true;
       deviceAllowed = true;
     } else if (incomingInstallationId || incomingHardwareId) {
@@ -153,7 +158,7 @@ Deno.serve(async (req) => {
       telefon: canonicalPhone,
       device_recognized: deviceRecognized,
       device_slots_full: deviceSlotsFull,
-      pin_required: isAppleReviewAccount ? false : !pinAlreadySet,
+      pin_required: isReviewAccount ? false : !pinAlreadySet,
     });
   } catch (error) {
     return json(200, {

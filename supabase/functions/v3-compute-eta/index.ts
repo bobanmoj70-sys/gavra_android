@@ -7,6 +7,10 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 /// Mora biti sinhronizovano sa etaStaleThreshold u lib/globals.dart
 const ETA_STALE_THRESHOLD_SECONDS = 130;
 
+/// Maksimalna starost lokacije vozača pre nego što se smatra zastarelom
+/// za live ETA/optimizaciju. Tracking tick šalje lokaciju svakih 20s.
+const DRIVER_LOCATION_MAX_AGE_MS = 5 * 60 * 1000;
+
 /// OSRM retry konfiguracija
 const OSRM_MAX_RETRIES = 3;
 const OSRM_BASE_DELAY_MS = 1000;
@@ -68,7 +72,7 @@ async function readDriverLocation(
 ): Promise<{ lat: number; lng: number } | null> {
   const { data: row, error } = await client
     .from("v3_vozac_location")
-    .select("lat, lng")
+    .select("lat, lng, updated_at")
     .eq("vozac_id", vozacId)
     .maybeSingle();
 
@@ -77,6 +81,11 @@ async function readDriverLocation(
   const lat = Number(row.lat);
   const lng = Number(row.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const tsRaw = row.updated_at;
+  const ts = typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
+  if (!Number.isFinite(ts)) return null;
+  if (Date.now() - ts > ETA_STALE_THRESHOLD_SECONDS * 1000) return null;
 
   return { lat, lng };
 }
@@ -175,15 +184,6 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "invalid_payload", detail: "missing vozac_id" });
     }
     if (!activeGrad || !activeVreme) {
-      return json(200, { ok: false, reason: "missing_grad_vreme" });
-    }
-    if (!activeDatumIso) {
-      return json(200, { ok: false, reason: "missing_datum_iso" });
-    }
-
-    const client = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
 
     // 1. Obriši zastarele ETA redove globalno
     const staleThreshold = new Date(Date.now() - ETA_STALE_THRESHOLD_SECONDS * 1000).toISOString();
