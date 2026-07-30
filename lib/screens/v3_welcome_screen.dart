@@ -306,7 +306,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       if (!mounted) return false;
 
-      await V3RolePermissionService.ensureDriverPermissionsOnLogin();
+      await V3RolePermissionService.ensureDriverPermissionsOnLogin(context);
       unawaited(_writePushTokenOnLogin(v3AuthId: restoredVozac.id, isVozac: true));
       unawaited(V3AppUpdateService.refreshUpdateInfo()
           .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
@@ -528,7 +528,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           authId: vozac.id,
         ).timeout(_startupTimeout, onTimeout: () => Future.value());
         await V3ClosedAuthService.clearManualSmsPutnikPhone().timeout(_startupTimeout, onTimeout: () => null);
-        await V3RolePermissionService.ensureDriverPermissionsOnLogin().timeout(_startupTimeout, onTimeout: () => null);
+        await V3RolePermissionService.ensureDriverPermissionsOnLogin(context)
+            .timeout(_startupTimeout, onTimeout: () => null);
         unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
         unawaited(V3AppUpdateService.refreshUpdateInfo()
             .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));

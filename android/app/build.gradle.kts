@@ -75,9 +75,9 @@ android {
 
     buildTypes {
         named("release") {
-            // 🚀 R8 ENABLED (2026-01-05) - smanjuje APK za ~40%
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // 🚀 R8 ENABLED (2026-07-30) - smanjuje APK, ubrzava pokretanje i smanjuje potrošnju memorije
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

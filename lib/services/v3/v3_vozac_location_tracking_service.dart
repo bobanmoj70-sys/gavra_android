@@ -216,8 +216,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   Future<bool> _checkLocationPrerequisites() async {
     return v3CheckLocationPrerequisites(
-      requestIfDenied: true,
-      log: debugPrint,
       logTag: '[V3VozacLocationTrackingService]',
     );
   }

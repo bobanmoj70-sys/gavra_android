@@ -1,10 +1,15 @@
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+import '../../l10n/app_translations.dart';
+import '../../utils/v3_button_utils.dart';
+import '../../utils/v3_dialog_helper.dart';
+import '../v3_locale_manager.dart';
 
 class V3RolePermissionService {
   V3RolePermissionService._();
@@ -20,11 +25,11 @@ class V3RolePermissionService {
   // Javni API
   // ─────────────────────────────────────────────────────────────────────
 
-  static Future<void> ensureDriverPermissionsOnLogin() async {
+  static Future<void> ensureDriverPermissionsOnLogin(BuildContext context) async {
     await _requestCommonPermissions();
     // GPS/lokacija + battery optimization SAMO za vozača — mora biti odobreno
     // UNAPRED (pri loginu) da bi tracking mogao da krene čim vozač otvori app.
-    await _requestDriverLocationPermissions();
+    await _requestDriverLocationPermissions(context);
   }
 
   static Future<void> ensurePassengerPermissionsOnLogin() async {
@@ -105,39 +110,88 @@ class V3RolePermissionService {
   /// foreground-a. Dozvole MORAJU biti odobrene unapred (ovde, pri loginu,
   /// dok app ima aktivni foreground UI) jer OS ne dozvoljava dijalog u
   /// pozadini.
-  static Future<void> _requestDriverLocationPermissions() async {
+  ///
+  /// Location permission is requested only for the DRIVER role.
+  /// Passengers do not request or use location/background-location access.
+  static Future<void> _requestDriverLocationPermissions(BuildContext context) async {
     final alreadyPrompted = await _storage.read(key: _locationPromptedKey) == 'true';
     if (alreadyPrompted) return;
 
+    // Ako korisnik već ima sve potrebne dozvole, nema potrebe ponovo
+    // prikazivati disclosure (npr. nakon reinstalacije ili restore-a).
+    final locationStatus = await Permission.locationWhenInUse.status;
+    final alwaysStatus = await Permission.locationAlways.status;
+    final batteryStatus =
+        Platform.isAndroid ? await Permission.ignoreBatteryOptimizations.status : PermissionStatus.granted;
+    if (locationStatus.isGranted && alwaysStatus.isGranted && batteryStatus.isGranted) {
+      await _storage.write(key: _locationPromptedKey, value: 'true');
+      return;
+    }
+
+    // Google Play zahteva "prominent disclosure" PRE nego što se zatraži
+    // bilo koja osetljiva dozvola, posebno BACKGROUND_LOCATION.
+    final accepted = await _showLocationDisclosure(context);
+    if (!accepted) {
+      debugPrint('[Permissions] Vozač odbio prominent disclosure — lokacija se ne traži.');
+      return;
+    }
+
+    // Beležimo tek nakon prihvatanja, tako da korisnik koji slučajno odbije
+    // disclosure može ponovo da ga vidi pri sledećem login-u.
+    await _storage.write(key: _locationPromptedKey, value: 'true');
+
     try {
-      final locationStatus = await Permission.locationWhenInUse.status;
       if (!locationStatus.isGranted) {
         await Permission.locationWhenInUse.request();
       }
 
-      // iOS zahteva "Always" dozvolu da bi Geolocator position stream sa
-      // allowBackgroundLocationUpdates radio dok je app u pozadini/suspendovana.
+      // "Always" dozvola je neophodna za background location tracking kako na
+      // iOS-u tako i na Android-u (manifest već deklariše ACCESS_BACKGROUND_LOCATION).
       // Redosled je bitan: locationWhenInUse MORA biti odobren pre nego što se
       // može tražiti locationAlways.
-      if (Platform.isIOS) {
-        final alwaysStatus = await Permission.locationAlways.status;
-        if (!alwaysStatus.isGranted) {
-          await Permission.locationAlways.request();
-        }
+      if (!alwaysStatus.isGranted) {
+        await Permission.locationAlways.request();
       }
 
-      if (Platform.isAndroid) {
-        final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
-        if (!batteryStatus.isGranted) {
-          await Permission.ignoreBatteryOptimizations.request();
-        }
+      if (Platform.isAndroid && !batteryStatus.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
       }
 
       debugPrint('[Permissions] Vozač GPS/battery dozvole obrađene.');
     } catch (e) {
       debugPrint('[Permissions] Vozač GPS/battery dozvola greška: $e');
-    } finally {
-      await _storage.write(key: _locationPromptedKey, value: 'true');
     }
+  }
+
+  /// Prikazuje "prominent disclosure" dijalog koji objašnjava zašto aplikacija
+  /// prikuplja lokaciju u pozadini. Vraća `true` ako korisnik pristane da nastavi
+  /// sa zahtevom za dozvolu.
+  static Future<bool> _showLocationDisclosure(BuildContext context) async {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    final t = AppTranslations.ns('locationDisclosure');
+    String tr(String key) => t[key]?[code] ?? t[key]?['sr'] ?? key;
+
+    final result = await V3DialogHelper.showBasicDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      title: tr('title'),
+      content: tr('message'),
+      titleIcon: Icons.location_on,
+      titleIconColor: Colors.amber,
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context, false),
+          text: tr('dontAllow'),
+          foregroundColor: Colors.grey,
+        ),
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context, true),
+          text: tr('allow'),
+          foregroundColor: Colors.amber,
+        ),
+      ],
+    );
+
+    return result ?? false;
   }
 }

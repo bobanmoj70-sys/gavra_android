@@ -203,26 +203,23 @@ Future<bool> v3AllPassengersCompleted({
 /// JEDAN IZVOR ISTINE za proveru da li su lokacijski preduslovi zadovoljeni
 /// (GPS uključen + dozvola za lokaciju).
 ///
-/// [requestIfDenied] treba biti `true` samo u foreground-u (main isolate), jer
-/// background isolate ne može da prikaže permission dijalog.
+/// Ova funkcija NE TRAŽI dozvole — to radi samo [V3RolePermissionService],
+/// koji prethodno prikazuje Google Play-ov "prominent disclosure". Traženje
+/// bilo koje lokacijske dozvole iz drugih delova aplikacije kršilo bi
+/// smernicu o uočljivom obaveštenju.
 Future<bool> v3CheckLocationPrerequisites({
-  bool requestIfDenied = false,
-  void Function(String message)? log,
   String logTag = '[v3CheckLocationPrerequisites]',
 }) async {
   final serviceEnabled = await Geolocator.isLocationServiceEnabled();
   if (!serviceEnabled) {
-    log?.call('$logTag GPS servis isključen');
+    debugPrint('$logTag GPS servis isključen');
     return false;
   }
 
-  var permission = await Geolocator.checkPermission();
-  if (requestIfDenied && permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-  }
+  final permission = await Geolocator.checkPermission();
 
   if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
-    log?.call('$logTag Dozvola za lokaciju nije odobrena: $permission');
+    debugPrint('$logTag Dozvola za lokaciju nije odobrena: $permission');
     return false;
   }
 

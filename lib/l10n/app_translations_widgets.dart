@@ -436,4 +436,39 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'zh': '无法打开Google地图',
     },
   },
+  'locationDisclosure': {
+    'title': {
+      'sr': 'Lokacija u pozadini',
+      'en': 'Background location',
+      'ru': 'Местоположение в фоне',
+      'de': 'Standort im Hintergrund',
+      'zh': '后台位置',
+    },
+    'message': {
+      'sr':
+          'Gavra 013 prikuplja podatke o Vašoj lokaciji i kada aplikacija nije otvorena, kako bismo dispečerima i putnicima mogli da prikažemo gde se trenutno nalazite i procenimo vreme dolaska.\n\nLokacija se koristi isključivo dok ste na dužnosti kao vozač, ne delimo je sa nezavisnim oglašivačima, a možete je isključiti u podešavanjima aplikacije ili operativnog sistema.',
+      'en':
+          'Gavra 013 collects your location data even when the app is not open, so that dispatchers and passengers can see where you currently are and we can estimate your arrival time.\n\nLocation is used only while you are on duty as a driver, it is not shared with third-party advertisers, and you can turn it off in the app or system settings.',
+      'ru':
+          'Gavra 013 собирает данные о вашем местоположении даже тогда, когда приложение закрыто, чтобы диспетчеры и пассажиры могли видеть, где вы находитесь, и мы могли оценить время прибытия.\n\nМестоположение используется только во время дежурства водителя, не передаётся сторонним рекламодателям, и вы можете отключить его в настройках приложения или операционной системы.',
+      'de':
+          'Gavra 013 erfasst Ihre Standortdaten auch dann, wenn die App nicht geöffnet ist, damit Disponenten und Fahrgäste sehen können, wo Sie sich gerade befinden, und wir die Ankunftszeit schätzen können.\n\nDer Standort wird nur während Ihres Dienstes als Fahrer verwendet, nicht mit Werbetreibenden geteilt und kann in den App- oder Systemeinstellungen deaktiviert werden.',
+      'zh':
+          'Gavra 013 即使在应用未打开时也会收集您的位置数据，以便调度员和乘客可以看到您当前所在位置，并估算到达时间。\n\n位置信息仅在您作为司机值班时使用，不会与第三方广告商共享，您可以在应用或系统设置中关闭。',
+    },
+    'allow': {
+      'sr': 'Dozvoli',
+      'en': 'Allow',
+      'ru': 'Разрешить',
+      'de': 'Erlauben',
+      'zh': '允许',
+    },
+    'dontAllow': {
+      'sr': 'Ne dozvoljavam',
+      'en': "Don't allow",
+      'ru': 'Не разрешать',
+      'de': 'Nicht erlauben',
+      'zh': '不允许',
+    },
+  },
 };
