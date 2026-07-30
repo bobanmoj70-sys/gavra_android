@@ -218,15 +218,20 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       log: debugPrint,
     );
 
-    final response = await supabase.functions.invoke(
-      'v3-compute-eta',
-      body: <String, dynamic>{
-        'vozac_id': vozacId,
-        'grad': grad,
-        'vreme': vreme,
-        if (datumIso != null && datumIso.isNotEmpty) 'datum_iso': datumIso,
-      },
-    ).timeout(v3ComputeEtaNetworkTimeout);
+    final requestBody = <String, dynamic>{
+      'vozac_id': vozacId,
+      'grad': grad,
+      'vreme': vreme,
+      if (datumIso != null && datumIso.isNotEmpty) 'datum_iso': datumIso,
+    };
+    debugPrint('[V3VozacLocationTrackingService] computeEta request body: $requestBody');
+
+    final response = await supabase.functions
+        .invoke(
+          'v3-compute-eta',
+          body: requestBody,
+        )
+        .timeout(v3ComputeEtaNetworkTimeout);
     debugPrint('[V3VozacLocationTrackingService] computeEta response: ${response.data}');
 
     final etaMap = <String, int>{};

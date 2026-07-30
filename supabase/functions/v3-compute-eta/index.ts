@@ -168,8 +168,11 @@ Deno.serve(async (req) => {
     const activeVreme = normalizeTime(payload.vreme);
     const activeDatumIso = normalizeDateIso(payload.datum_iso);
 
+    console.log(`[v3-compute-eta] payload received: ${JSON.stringify(payload)}`);
+    console.log(`[v3-compute-eta] parsed: vozacId=${vozacId || "<empty>"} grad=${activeGrad} vreme=${activeVreme} datum_iso=${activeDatumIso}`);
+
     if (!vozacId) {
-      return json(200, { ok: false, reason: "invalid_payload" });
+      return json(200, { ok: false, reason: "invalid_payload", detail: "missing vozac_id" });
     }
     if (!activeGrad || !activeVreme) {
       return json(200, { ok: false, reason: "missing_grad_vreme" });
