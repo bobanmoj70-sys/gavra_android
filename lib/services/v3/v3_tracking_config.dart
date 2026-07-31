@@ -280,14 +280,20 @@ Future<bool> v3AllPassengersCompleted({
   if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
 
   try {
-    final slotRows = await client
-        .from('v3_trenutna_dodela_slot')
-        .select('id')
-        .eq('datum', datumIso)
-        .eq('grad', grad)
-        .eq('vreme', vreme);
+    // Isto kao edge: datum+grad, pa match HH:mm (DB može biti 07:00 ili 07:00:00).
+    final slotRows =
+        await client.from('v3_trenutna_dodela_slot').select('id, vreme').eq('datum', datumIso).eq('grad', grad);
 
-    final activeSlot = (slotRows as List<dynamic>?)?.firstOrNull as Map<String, dynamic>?;
+    final wantVreme = V3BelgradeTime.normalizeToHHmm(vreme);
+    Map<String, dynamic>? activeSlot;
+    for (final raw in (slotRows as List<dynamic>? ?? const [])) {
+      if (raw is! Map) continue;
+      final row = Map<String, dynamic>.from(raw);
+      if (V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString()) == wantVreme) {
+        activeSlot = row;
+        break;
+      }
+    }
     if (activeSlot == null) return false;
 
     final dodelaRows = await client.from('v3_trenutna_dodela').select('termin_id').eq('slot_id', activeSlot['id']);

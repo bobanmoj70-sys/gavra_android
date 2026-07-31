@@ -336,8 +336,13 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           final etaVozacId = etaState.vozacId;
           final etaTerminId = etaState.terminId;
 
-          final hasFreshEta =
-              eta != null && !isStale && etaTerminId != null && nextTerminId != null && etaTerminId == nextTerminId;
+          final hasFreshEta = eta != null &&
+              !isStale &&
+              etaTerminId != null &&
+              nextTerminId != null &&
+              etaTerminId == nextTerminId &&
+              // Ako znamo dodele, ne prikazuj ETA od drugog vozača.
+              (assignedVozacId == null || etaVozacId == null || assignedVozacId == etaVozacId);
           final minutes = hasFreshEta ? _buildEtaMinutes(eta) : null;
           final nextRideLabel =
               nextRide == null ? _tr('nemaZakazaneVoznje') : _formatNextRide(nextRide.departure, nextRide.grad);

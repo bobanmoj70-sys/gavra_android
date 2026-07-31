@@ -348,8 +348,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     if (Platform.isIOS) {
       _startIosLocationKeepAlive();
     }
-    // Odmah jedan tick sa live GPS (ne čekaj interval) + nastavi FG ticker.
+    // Nastavi FG ticker + odmah jedan tick (iOS može ostati sa starim timerom
+    // posle BG — ne čekaj sledeći interval).
     if (_fgTicker == null) _startFgTicker();
+    unawaited(_fgTick());
   }
 
   Future<void> _startBg() async {
