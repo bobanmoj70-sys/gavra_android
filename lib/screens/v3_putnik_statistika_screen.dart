@@ -91,7 +91,12 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...meseci.map((m) => _MesecCard(putnikId: widget.putnikId, stats: m)),
+                    ...meseci.map((m) => _MesecCard(
+                          putnikId: widget.putnikId,
+                          tipPutnikaFallback: widget.tipPutnika,
+                          imePrezimeFallback: widget.imePrezime,
+                          stats: m,
+                        )),
                   ],
                 ),
               ),
@@ -113,9 +118,16 @@ class _V3PutnikStatistikaScreenState extends State<V3PutnikStatistikaScreen> {
 
 class _MesecCard extends StatelessWidget {
   final String putnikId;
+  final String tipPutnikaFallback;
+  final String imePrezimeFallback;
   final V3PutnikMesecnaStatistika stats;
 
-  const _MesecCard({required this.putnikId, required this.stats});
+  const _MesecCard({
+    required this.putnikId,
+    required this.tipPutnikaFallback,
+    required this.imePrezimeFallback,
+    required this.stats,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -130,10 +142,16 @@ class _MesecCard extends StatelessWidget {
       mesec: stats.mesec,
     );
     final putnikData = V3MasterRealtimeManager.instance.putniciCache[putnikId] ?? const <String, dynamic>{};
-    final tipPutnika = (putnikData['tip_putnika'] as String? ?? '').trim();
+    final tipFromCache = (putnikData['tip_putnika'] as String? ?? putnikData['tip'] as String? ?? '').trim();
+    final tipPutnika = tipFromCache.isNotEmpty ? tipFromCache : tipPutnikaFallback.trim();
     final ime = (putnikData['ime'] as String? ?? '').trim();
     final prezime = (putnikData['prezime'] as String? ?? '').trim();
-    final imePrezime = [ime, prezime].where((s) => s.isNotEmpty).join(' ');
+    final imePrezimeFromCache = [ime, prezime].where((s) => s.isNotEmpty).join(' ');
+    final imePrezime = imePrezimeFromCache.isNotEmpty
+        ? imePrezimeFromCache
+        : ((putnikData['ime_prezime'] as String? ?? '').trim().isNotEmpty
+            ? (putnikData['ime_prezime'] as String).trim()
+            : imePrezimeFallback.trim());
 
     return GestureDetector(
       onTap: () {

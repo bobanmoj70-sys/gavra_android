@@ -70,7 +70,15 @@ class _V3PutnikVoznjeMesecScreenState extends State<V3PutnikVoznjeMesecScreen> {
           tipPutnika: widget.tipPutnika,
         );
 
-        final ukupnoVoznji = stavke.fold<int>(0, (sum, s) => sum + s.brojVoznji);
+        // Isti izvor kao detaljne statistike / getNaplataSummary (samo JSON:
+        // realizovane + nenaplacene) — ne sabirati dnevne redove jer arhiva
+        // realizovanih može biti nepotpuna posle brisanja operativne nedelje.
+        final obracun = V3PutnikStatistikaService.getMesecniObracun(
+          putnikId: widget.putnikId,
+          godina: widget.godina,
+          mesec: widget.mesec,
+        );
+        final ukupnoVoznji = obracun.brojVoznji;
         final ukupnoUplata = stavke.fold<double>(0, (sum, s) => sum + s.uplataIznos);
         final ukupnoOtkazano = stavke.fold<int>(0, (sum, s) => sum + s.otkazivanja.length);
 

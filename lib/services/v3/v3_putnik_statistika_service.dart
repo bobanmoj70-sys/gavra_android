@@ -730,6 +730,11 @@ class V3PutnikStatistikaService {
   }
 
   /// Vraća spojeni dnevni pregled vožnji i uplata za putnika u izabranom mesecu.
+  ///
+  /// Broj vožnji po danu koristi istu logiku kao [getNaplataSummaryForPutnik] /
+  /// detaljne statistike: unique `operativna_id` (ili dan za radnik/učenik) iz
+  /// `realizovane_voznje_json`, dopunjeno stavkama iz `nenaplacene_voznje_json`
+  /// kad arhiva nije potpuna. Tip se uvek rešava iz keša putnika (ne iz UI prop-a).
   static List<V3PutnikDnevnaStavka> getDnevneStavkeZaMesec({
     required String putnikId,
     required int godina,
@@ -739,9 +744,31 @@ class V3PutnikStatistikaService {
     final safePutnikId = putnikId.trim();
     if (safePutnikId.isEmpty) return const <V3PutnikDnevnaStavka>[];
 
-    final isPoDanu = _isPoDanuTip(tipPutnika);
+    // Isti izvor tipa kao getNaplataSummaryForPutnik — prazan UI prop ne sme
+    // da prebaci radnik/učenik na po-vožnji brojanje.
+    final tipFromCache = _tipICena(safePutnikId).tip.trim().toLowerCase();
+    final tip = tipFromCache.isNotEmpty ? tipFromCache : tipPutnika.trim().toLowerCase();
+    final isPoDanu = _isPoDanuTip(tip);
 
-    final voznje = V3FinansijeService.getRealizovaneVoznjeZaMesec(
+    final voznjeRaw = V3FinansijeService.getRealizovaneVoznjeZaMesec(
+      putnikId: safePutnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    // Race trigger/app često pravi više finansijskih redova sa istim
+    // operativna_id — brojimo unique kao summary, ne sirovu listu.
+    final seenOperativna = <String>{};
+    final voznje = <Map<String, dynamic>>[];
+    for (final v in voznjeRaw) {
+      final opId = (v['operativna_id']?.toString() ?? '').trim();
+      if (opId.isNotEmpty) {
+        if (!seenOperativna.add(opId)) continue;
+      }
+      voznje.add(v);
+    }
+
+    final nenaplacene = V3FinansijeService.getNenaplaceneVoznjeZaMesec(
       putnikId: safePutnikId,
       godina: godina,
       mesec: mesec,
@@ -760,6 +787,17 @@ class V3PutnikStatistikaService {
     );
 
     final poDanu = <DateTime, _DnevniAgregat>{};
+
+    // Brojač naplativih jedinica po danu iz nenaplacene_voznje_json.
+    final nenaplacenePoDanu = <DateTime, int>{};
+    for (final stavka in nenaplacene) {
+      final dt = stavka['_datum_parsed'] as DateTime? ??
+          V3BelgradeTime.parseTs(stavka['datum']?.toString()) ??
+          V3BelgradeTime.parseDatum(stavka['datum']?.toString());
+      if (dt == null) continue;
+      final dan = DateTime(dt.year, dt.month, dt.day);
+      nenaplacenePoDanu[dan] = (nenaplacenePoDanu[dan] ?? 0) + 1;
+    }
 
     for (final v in voznje) {
       final dt = v['_datum_parsed'] as DateTime? ??
@@ -788,6 +826,22 @@ class V3PutnikStatistikaService {
         if (formatted != null && formatted.isNotEmpty) {
           agregat.vremenaPokupljenja.add(formatted);
         }
+      }
+    }
+
+    // Dani koji postoje samo u nenaplaćenim (nema/nepotpuna realizacija),
+    // ili imaju više naplativih jedinica od unique-realizacija (npr. 2× isti dan).
+    for (final entry in nenaplacenePoDanu.entries) {
+      final dan = entry.key;
+      final agregat = poDanu.putIfAbsent(dan, () => _DnevniAgregat());
+      if (entry.value > agregat.brojVoznjiFromNena) {
+        agregat.brojVoznjiFromNena = entry.value;
+      }
+      if (isPoDanu) {
+        agregat.daniSaVoznjom.add(dan);
+      } else if (agregat.brojVoznji < entry.value) {
+        // max(realizovane unique, nena stavke) — isto kao summary na nivou meseca.
+        agregat.brojVoznji = entry.value;
       }
     }
 
@@ -834,9 +888,19 @@ class V3PutnikStatistikaService {
           final yv = y.vreme ?? '';
           return xv.compareTo(yv);
         });
+      // Po danu: max(nena jedinice, 1 ako ima realizaciju) — ne brojimo
+      // unique-dane kao "0" kad je sve plaćeno i nena prazna.
+      // Po vožnji: unique realizovane (već u brojVoznji), podignuto nena max-om.
+      final int broj;
+      if (isPoDanu) {
+        final fromRealizacija = a.daniSaVoznjom.isEmpty ? 0 : 1;
+        broj = a.brojVoznjiFromNena > fromRealizacija ? a.brojVoznjiFromNena : fromRealizacija;
+      } else {
+        broj = a.brojVoznji;
+      }
       return V3PutnikDnevnaStavka(
         datum: dan,
-        brojVoznji: isPoDanu ? a.daniSaVoznjom.length : a.brojVoznji,
+        brojVoznji: broj,
         vozaciPokupljeni: a.vozaciPokupljeni,
         vremenaPokupljenja: a.vremenaPokupljenja,
         uplataIznos: a.uplataIznos,
@@ -858,6 +922,9 @@ class V3PutnikStatistikaService {
 
 class _DnevniAgregat {
   int brojVoznji = 0;
+
+  /// Broj naplativih jedinica iz nenaplacene_voznje_json za taj dan (može > 1).
+  int brojVoznjiFromNena = 0;
   final Set<DateTime> daniSaVoznjom = <DateTime>{};
   final List<String> vozaciPokupljeni = <String>[];
   final List<String> vremenaPokupljenja = <String>[];
