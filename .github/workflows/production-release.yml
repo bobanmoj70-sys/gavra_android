@@ -218,9 +218,6 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           tracks: production
           status: completed
-          # Required when Play Console has pending changes that cannot auto-go to review
-          # (e.g. store listing / policy). Release is committed; send for review in Console if needed.
-          changesNotSentForReview: true
 
       - name: Upload AAB artifact
         if: always()
