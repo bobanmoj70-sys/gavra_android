@@ -48,12 +48,37 @@ Future<void> onStart(ServiceInstance service) async {
     }
   }
 
+  void stopTracking() {
+    debugPrint('[BG_TRACKING] stop');
+    ticker?.cancel();
+    ticker = null;
+    vozacId = null;
+    datumIso = null;
+    grad = null;
+    vreme = null;
+    startedAt = null;
+    polazakAt = null;
+  }
+
+  /// Potpuno gasi BG: ticker, GPS tickovi, foreground notifikacija (stopSelf).
+  /// Obaveštava main isolate da resetuje `_isRunning` (inače bi na resume
+  /// ponovo digao tracking).
+  void finishAndStop(String reason) {
+    debugPrint('[BG_TRACKING] stop reason=$reason');
+    stopTracking();
+    try {
+      service.invoke('trackingEnded', <String, dynamic>{'reason': reason});
+    } catch (e) {
+      debugPrint('[BG_TRACKING] trackingEnded invoke greška: $e');
+    }
+    service.stopSelf();
+  }
+
   Future<void> doTick() async {
     if (vozacId == null || datumIso == null || grad == null || vreme == null) return;
 
     if (v3TrackingTimedOut(startedAt: startedAt, polazakAt: polazakAt)) {
-      debugPrint('[BG_TRACKING] stop reason=timeout polazak=$polazakAt');
-      service.stopSelf();
+      finishAndStop('timeout polazak=$polazakAt');
       return;
     }
 
@@ -77,8 +102,7 @@ Future<void> onStart(ServiceInstance service) async {
         vreme: vreme!,
       );
       if (allDone) {
-        debugPrint('[BG_TRACKING] stop reason=all_passengers_completed');
-        service.stopSelf();
+        finishAndStop('all_passengers_completed');
       }
     } catch (e) {
       debugPrint('[BG_TRACKING] tick greška: $e');
@@ -107,18 +131,6 @@ Future<void> onStart(ServiceInstance service) async {
 
     ticker?.cancel();
     ticker = V3SelfReschedulingTicker(interval: v3TrackingTickInterval, onTick: doTick)..start();
-  }
-
-  void stopTracking() {
-    debugPrint('[BG_TRACKING] stop');
-    ticker?.cancel();
-    ticker = null;
-    vozacId = null;
-    datumIso = null;
-    grad = null;
-    vreme = null;
-    startedAt = null;
-    polazakAt = null;
   }
 
   service.on('startTracking').listen((event) {

@@ -135,7 +135,11 @@ class V3SelfReschedulingTicker {
   return (etaMap: etaMap, order: order);
 }
 
-/// Jedan GPS fix + upsert lokacije + `v3-compute-eta`.
+/// Jedan tick: live GPS fix + upsert `v3_vozac_location` + `v3-compute-eta`.
+///
+/// Uvek se izvršava u celini — nema distance/speed/idle uslova koji bi
+/// preskočili ETA. Trenutna GPS lokacija je jedini ulaz za optimizaciju;
+/// edge funkcija čita isključivo iz `v3_vozac_location` (ne iz payload lat/lng).
 /// Koriste ga i foreground servis i background isolate.
 Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
   required SupabaseClient client,
@@ -149,6 +153,7 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
     locationSettings: v3TrackingLocationSettings,
   );
 
+  // Mora uspeti pre compute-eta — inače edge bi računao na staroj lokaciji.
   await v3UpdateVozacLocation(
     client: client,
     vozacId: vozacId,
@@ -157,6 +162,7 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
     logTag: logTag,
   );
 
+  // Lokacija ide u v3_vozac_location; edge ne prima lat/lng — čita iz tabele.
   final requestBody = <String, dynamic>{
     'vozac_id': vozacId,
     'grad': grad,
@@ -256,17 +262,15 @@ Future<void> v3UpdateVozacLocation({
   required double lng,
   String logTag = '[v3UpdateVozacLocation]',
 }) async {
-  if (vozacId.isEmpty) return;
-
-  try {
-    await client.from('v3_vozac_location').upsert(<String, dynamic>{
-      'vozac_id': vozacId,
-      'lat': lat,
-      'lng': lng,
-      'updated_at': V3BelgradeTime.nowIsoUtc(),
-    });
-    debugPrint('$logTag lokacija $lat, $lng vozac=$vozacId');
-  } catch (e) {
-    debugPrint('$logTag greška: $e');
+  if (vozacId.isEmpty) {
+    throw StateError('$logTag empty vozacId');
   }
+
+  await client.from('v3_vozac_location').upsert(<String, dynamic>{
+    'vozac_id': vozacId,
+    'lat': lat,
+    'lng': lng,
+    'updated_at': V3BelgradeTime.nowIsoUtc(),
+  });
+  debugPrint('$logTag lokacija $lat, $lng vozac=$vozacId');
 }

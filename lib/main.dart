@@ -238,11 +238,22 @@ Future<void> _ensureLocalNotificationsInitialized() async {
       enableVibration: false,
     );
 
+    // Isti channelId kao AndroidConfiguration u _initializeBackgroundTrackingService.
+    const AndroidNotificationChannel bgTrackingChannel = AndroidNotificationChannel(
+      'gavra_bg_tracking',
+      'Praćenje vožnje',
+      description: 'Aktivno praćenje lokacije vozača u pozadini',
+      importance: Importance.low,
+      playSound: false,
+      enableVibration: false,
+    );
+
     final androidImpl =
         flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.createNotificationChannel(channel);
     await androidImpl?.createNotificationChannel(alternativaChannel);
     await androidImpl?.createNotificationChannel(gpsTrackingChannel);
+    await androidImpl?.createNotificationChannel(bgTrackingChannel);
 
     if (!_notificationLaunchHandled) {
       final launchDetails = await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();

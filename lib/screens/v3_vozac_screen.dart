@@ -78,6 +78,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _isLoading = true;
   bool _loadingDodela = false;
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
+  StreamSubscription<({Map<String, int> etaMap, List<String> order})>? _etaTickSub;
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   int? _lastRealtimeTick;
 
@@ -258,8 +259,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     List<_PutnikEntry> putnici,
   ) {
     final sorted = List<_PutnikEntry>.from(putnici);
-    final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    final osrmOrder = sharedOptimizedIds.isNotEmpty ? sharedOptimizedIds : _getOsrmOrderFromSlot();
+    final osrmOrder = _resolveOptimizedOrder();
 
     sorted.sort((a, b) {
       // Završeni (pokupljeni/otkazani) idu na kraj
@@ -289,10 +289,25 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return sorted;
   }
 
+  /// Lanac istine za redosled:
+  /// 1) live tick (`optimizedPutnikIds`) — GPS+OSRM sa poslednjeg 20s tick-a
+  /// 2) `v3_eta_results.optimized_order` — poslednji uspešan compute-eta (isti izvor)
+  /// 3) slot `optimized_order` — samo pre navigacije (auto-prepare, nije live GPS)
+  List<String> _resolveOptimizedOrder() {
+    final live = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
+    if (live.isNotEmpty) return live;
+
+    final fromEta = _getOsrmOrderFromEtaResults();
+    if (fromEta.isNotEmpty) return fromEta;
+
+    // Tokom live navigacije ne koristi cron/slot order (može biti DEFAULT_START).
+    if (_isNavigating) return const [];
+    return _getOsrmOrderFromSlot();
+  }
+
   void _refreshPutniciOrderFromEtaCache() {
-    final sharedOptimizedIds = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    final osrmOrder = _getOsrmOrderFromSlot();
-    if (sharedOptimizedIds.isEmpty && osrmOrder.isEmpty) {
+    final osrmOrder = _resolveOptimizedOrder();
+    if (osrmOrder.isEmpty) {
       if (_isNavigating && !_osrmUnavailableShown) {
         _osrmUnavailableShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -314,6 +329,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         _mojiPutnici = sorted;
       });
     }
+  }
+
+  /// Poslednji redosled upisan od `v3-compute-eta` (GPS tick), ne od auto-prepare.
+  List<String> _getOsrmOrderFromEtaResults() {
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (vozacId.isEmpty) return const [];
+    for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
+      final rowVozac = row['vozac_id']?.toString() ?? '';
+      if (rowVozac != vozacId) continue;
+      final order = row['optimized_order'];
+      if (order is List && order.isNotEmpty) {
+        return order.whereType<String>().toList();
+      }
+    }
+    return const [];
   }
 
   List<String> _getOsrmOrderFromSlot() {
@@ -338,11 +368,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return const [];
   }
 
-  /// Ponovo izračunaj ETA-e sa TRENUTNOM (live) GPS pozicijom kada se app
-  /// vrati u foreground sa aktivnom navigacijom (npr. vozač je ubio app a
-  /// background servis je i dalje trajao). `fetchPositionAndComputeEta()`
-  /// interno traži svežu poziciju preko `Geolocator.getCurrentPosition()` —
-  /// ne koristi se nikakva stara/keširana pozicija.
+  /// Jedan GPS+ETA tick (init sa aktivnim trackingom). UI ide preko onEtaTick.
   Future<void> _recomputeEtaFromCurrentPosition() async {
     if (!_isNavigating) return;
     final vid = (_efektivniVozac?.id?.toString() ?? '').trim();
@@ -352,11 +378,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
       debugPrint('[RESUME_ETA] ETA map: ${etaResult.etaMap}');
       debugPrint('[RESUME_ETA] optimized order: ${etaResult.order}');
-
-      if (!mounted) return;
-      _refreshPutniciOrderFromEtaCache();
-      debugPrint('[RESUME_ETA] cards re-sorted by OSRM order');
-      unawaited(_syncMapRouteIfNeeded(reason: 'resume_eta_recompute'));
     } catch (e) {
       debugPrint('[RESUME_ETA] ETA recompute error: $e');
     }
@@ -375,6 +396,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Ako je tracking već aktivan (npr. vozač se vratio back), obnovi state
     _isNavigating = V3VozacLocationTrackingService.instance.isRunning;
     _startTrenutnaDodelaRealtime();
+    _etaTickSub = V3VozacLocationTrackingService.instance.onEtaTick.listen((result) {
+      if (!mounted || !_isNavigating) return;
+      debugPrint('[ETA_TICK] order=${result.order} etaKeys=${result.etaMap.length}');
+      _refreshPutniciOrderFromEtaCache();
+      unawaited(_syncMapRouteIfNeeded(reason: 'eta_tick_20s'));
+    });
     unawaited(_initData());
   }
 
@@ -383,6 +410,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_trenutnaDodelaRevisionSub?.cancel());
     _trenutnaDodelaRevisionSub = null;
+    unawaited(_etaTickSub?.cancel());
+    _etaTickSub = null;
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
     _pulseController.dispose();
@@ -938,18 +967,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return;
     }
 
-    // Odmah reoptimizuj OSRM redosled — ne čekaj sledeći periodični GPS tick
-    // (Android tajmer do 20s, iOS do sledećeg pomaka ≥20m). Ovo osigurava da
-    // se redosled kartica/rute ažurira odmah čim je putnik pokupljen/otkazan
-    // ili mu je promenjena adresa.
+    // Odmah GPS+ETA tick — UI (sort/mapa) ide preko onEtaTick stream-a.
     if (_etaReoptimizeInFlight || !_isNavigating) return;
     _etaReoptimizeInFlight = true;
     try {
       final etaResult = await V3VozacLocationTrackingService.instance.fetchPositionAndComputeEta();
       debugPrint('[SYNC] immediate re-optimize order: ${etaResult.order}');
-      if (!mounted) return;
-      _refreshPutniciOrderFromEtaCache();
-      unawaited(_syncMapRouteIfNeeded(reason: 'immediate_reoptimize'));
     } catch (e) {
       debugPrint('[SYNC] immediate re-optimize error: $e');
     } finally {

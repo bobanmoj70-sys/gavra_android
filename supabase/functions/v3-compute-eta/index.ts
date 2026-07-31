@@ -20,8 +20,6 @@ const OSRM_MAX_WAYPOINTS = 100;
 
 type ComputeEtaPayload = {
   vozac_id?: string;
-  lat?: number;
-  lng?: number;
   grad?: string;
   vreme?: string;
   datum_iso?: string;
