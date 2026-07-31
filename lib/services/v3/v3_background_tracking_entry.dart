@@ -11,6 +11,10 @@ import 'v3_tracking_config.dart';
 
 /// Background isolate — isti [v3RunTrackingTick] kao foreground.
 /// Ne aktivira slot (to radi samo main `start()`).
+///
+/// Sesija se čita iz SharedPreferences na startu isolate-a jer
+/// `invoke('startTracking')` može stići PRE nego što se listener registruje
+/// (Android servicePipe onda tiho odbaci event → tracking se "prekine" u BG).
 @pragma('vm:entry-point')
 Future<void> onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
@@ -66,6 +70,7 @@ Future<void> onStart(ServiceInstance service) async {
   void finishAndStop(String reason) {
     debugPrint('[BG_TRACKING] stop reason=$reason');
     stopTracking();
+    unawaited(v3ClearBgTrackingSession());
     try {
       service.invoke('trackingEnded', <String, dynamic>{'reason': reason});
     } catch (e) {
@@ -136,9 +141,23 @@ Future<void> onStart(ServiceInstance service) async {
   service.on('startTracking').listen((event) {
     startTracking(event is Map<String, dynamic> ? event : null);
   });
-  service.on('stopTracking').listen((_) => stopTracking());
+  service.on('stopTracking').listen((_) {
+    // Privremeni handoff FG↔BG — ne briši prefs (main stop() briše sesiju).
+    stopTracking();
+  });
   service.on('stopService').listen((_) {
     stopTracking();
     service.stopSelf();
   });
+
+  // Ako je invoke izgubljen zbog race-a, sesija iz prefs i dalje podiže tickove.
+  try {
+    final saved = await v3LoadBgTrackingSession();
+    if (saved != null) {
+      debugPrint('[BG_TRACKING] resume iz prefs');
+      startTracking(saved);
+    }
+  } catch (e) {
+    debugPrint('[BG_TRACKING] prefs resume greška: $e');
+  }
 }

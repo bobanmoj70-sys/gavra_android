@@ -16,6 +16,11 @@ import 'v3_tracking_config.dart';
 /// Stop: polazak+55min, svi putnici gotovi, ili ručni stop.
 /// Na stop: FG ticker + BG foreground service (GPS + persistent notif) se gase.
 /// `activateSlotWithRetry` → `tracking_started_at` → DB trigger putnicima.
+///
+/// Lifecycle:
+/// - paused/hidden → BG FGS (isti tickovi)
+/// - resumed → ugasi BG, nastavi FG
+/// - detached dok traje vožnja → NE gasi tracking (FGS ostaje)
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
 
@@ -60,6 +65,15 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       }
     });
   }
+
+  Map<String, dynamic> _sessionPayload() => <String, dynamic>{
+        'vozac_id': _vozacId,
+        'datum_iso': _datumIso,
+        'grad': _grad,
+        'vreme': _vreme,
+        'started_at': _startedAt?.toUtc().toIso8601String(),
+        'polazak_at': _polazakAt?.toUtc().toIso8601String(),
+      };
 
   Future<void> start({
     required String vozacId,
@@ -112,6 +126,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       ));
 
       _isRunning = true;
+      // Prefs pre prvog BG starta — isolate može da se digne i bez uspešnog invoke-a.
+      await v3SaveBgTrackingSession(_sessionPayload());
       _startFgTicker();
     } finally {
       _startInProgress = false;
@@ -136,6 +152,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
       _fgTicker?.cancel();
       _fgTicker = null;
+      await v3ClearBgTrackingSession();
       // Sačekaj da BG foreground service + notifikacija stvarno nestanu.
       await _stopBg();
 
@@ -212,25 +229,26 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_isRunning) {
-      if (state == AppLifecycleState.detached) unawaited(stop());
-      return;
-    }
+    if (!_isRunning) return;
 
     switch (state) {
       case AppLifecycleState.inactive:
-        // Kratki prekid (control center) — pauza FG, bez BG.
-        _fgTicker?.cancel();
-        _fgTicker = null;
+        // Ne gasimo FG ovde — kratki UI prekidi (shade/dialog). BG digne paused.
+        break;
+      case AppLifecycleState.hidden:
       case AppLifecycleState.paused:
         _fgTicker?.cancel();
         _fgTicker = null;
         unawaited(_startBg());
+        break;
       case AppLifecycleState.resumed:
         unawaited(_onResumed());
+        break;
       case AppLifecycleState.detached:
-        unawaited(stop());
-      case AppLifecycleState.hidden:
+        // App engine nestaje, ali FGS mora da nastavi vožnju.
+        _fgTicker?.cancel();
+        _fgTicker = null;
+        unawaited(_startBg());
         break;
     }
   }
@@ -268,18 +286,25 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   Future<void> _startBg() async {
     if (_vozacId.isEmpty || !_isRunning) return;
     try {
+      final payload = _sessionPayload();
+      // Prvo prefs — BG onStart čita ovo ako invoke stigne pre listener-a.
+      await v3SaveBgTrackingSession(payload);
+
       final service = FlutterBackgroundService();
       if (!await service.isRunning()) {
         await service.startService();
       }
-      service.invoke('startTracking', <String, dynamic>{
-        'vozac_id': _vozacId,
-        'datum_iso': _datumIso,
-        'grad': _grad,
-        'vreme': _vreme,
-        'started_at': _startedAt?.toUtc().toIso8601String(),
-        'polazak_at': _polazakAt?.toUtc().toIso8601String(),
-      });
+
+      // Android servicePipe dropuje event dok isolate nema listener — retry.
+      for (var i = 0; i < 8; i++) {
+        service.invoke('startTracking', payload);
+        await Future<void>.delayed(Duration(milliseconds: 150 + (i * 50)));
+        if (await service.isRunning()) {
+          // Jedan uspešan invoke posle što je servis up je dovoljan u praksi;
+          // prefs je ionako fallback u onStart.
+          if (i >= 2) break;
+        }
+      }
       debugPrint('$_tag BG startovan');
     } catch (e) {
       debugPrint('$_tag BG start greška: $e');

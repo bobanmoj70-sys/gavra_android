@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_belgrade_time.dart';
@@ -25,6 +27,44 @@ const LocationSettings v3TrackingLocationSettings = LocationSettings(
   accuracy: LocationAccuracy.high,
   timeLimit: Duration(seconds: 12),
 );
+
+/// SharedPreferences ključ — BG isolate čita ovo ako `invoke(startTracking)` stigne pre listener-a.
+const String v3BgTrackingSessionPrefsKey = 'v3_bg_tracking_session';
+
+/// Snima aktivnu tracking sesiju da BG FGS može da je podigne bez race-a na invoke.
+Future<void> v3SaveBgTrackingSession(Map<String, dynamic> session) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(v3BgTrackingSessionPrefsKey, jsonEncode(session));
+  } catch (e) {
+    debugPrint('[v3SaveBgTrackingSession] greška: $e');
+  }
+}
+
+Future<Map<String, dynamic>?> v3LoadBgTrackingSession() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    // BG isolate često vidi stale snapshot dok se ne uradi reload.
+    await prefs.reload();
+    final raw = prefs.getString(v3BgTrackingSessionPrefsKey);
+    if (raw == null || raw.isEmpty) return null;
+    final decoded = jsonDecode(raw);
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+  } catch (e) {
+    debugPrint('[v3LoadBgTrackingSession] greška: $e');
+  }
+  return null;
+}
+
+Future<void> v3ClearBgTrackingSession() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(v3BgTrackingSessionPrefsKey);
+  } catch (e) {
+    debugPrint('[v3ClearBgTrackingSession] greška: $e');
+  }
+}
 
 /// Polazak termina u Europe/Belgrade (datum ISO + HH:mm).
 DateTime? v3PolazakDateTime({required String datumIso, required String vreme}) {

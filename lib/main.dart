@@ -473,11 +473,13 @@ Future<void> _initializeBackgroundTrackingService() async {
       androidConfiguration: AndroidConfiguration(
         onStart: bg_tracking.onStart,
         autoStart: false,
+        autoStartOnBoot: false,
         isForegroundMode: true,
         notificationChannelId: 'gavra_bg_tracking',
         initialNotificationTitle: 'Gavra 013',
         initialNotificationContent: 'Praćenje lokacije je aktivno',
         foregroundServiceNotificationId: 888,
+        foregroundServiceTypes: const [AndroidForegroundType.location],
       ),
       iosConfiguration: IosConfiguration(
         autoStart: false,
