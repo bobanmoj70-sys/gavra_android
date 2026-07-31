@@ -161,3 +161,61 @@ Future<void> onStart(ServiceInstance service) async {
     debugPrint('[BG_TRACKING] prefs resume greška: $e');
   }
 }
+
+/// iOS background-fetch / BGTask fallback — jedan tick iz sačuvane sesije.
+/// Primarni iOS put je main-isolate location stream + FG ticker; ovo je mreža.
+@pragma('vm:entry-point')
+Future<bool> onIosBackground(ServiceInstance service) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+  V3BelgradeTime.location;
+
+  try {
+    final saved = await v3LoadBgTrackingSession();
+    if (saved == null) return true;
+
+    final id = (saved['vozac_id']?.toString() ?? '').trim();
+    final datum = V3BelgradeTime.parseIsoDatePart(saved['datum_iso']?.toString() ?? '');
+    final g = (saved['grad']?.toString() ?? '').trim().toUpperCase();
+    final v = V3BelgradeTime.normalizeToHHmm(saved['vreme']?.toString() ?? '');
+    if (id.isEmpty || datum.isEmpty || g.isEmpty || v.isEmpty) return true;
+
+    final startedAt = V3BelgradeTime.parseTs(saved['started_at']?.toString());
+    final polazakAt =
+        V3BelgradeTime.parseTs(saved['polazak_at']?.toString()) ?? v3PolazakDateTime(datumIso: datum, vreme: v);
+    if (v3TrackingTimedOut(startedAt: startedAt, polazakAt: polazakAt)) {
+      await v3ClearBgTrackingSession();
+      return true;
+    }
+
+    SupabaseClient? client;
+    try {
+      client = Supabase.instance.client;
+    } catch (_) {
+      client = null;
+    }
+    if (client == null) {
+      await configService.initializeBasic();
+      final url = configService.getSupabaseUrl().trim();
+      final anonKey = configService.getSupabaseAnonKey().trim();
+      if (url.isEmpty || anonKey.isEmpty) return true;
+      await Supabase.initialize(url: url, anonKey: anonKey);
+      client = Supabase.instance.client;
+    }
+
+    // Kratak timeout — iOS BG fetch prozor je ograničen.
+    await v3RunTrackingTick(
+      client: client,
+      vozacId: id,
+      grad: g,
+      vreme: v,
+      datumIso: datum,
+      logTag: '[BG_TRACKING_IOS]',
+    ).timeout(const Duration(seconds: 25));
+
+    debugPrint('[BG_TRACKING_IOS] jedan background tick OK');
+  } catch (e) {
+    debugPrint('[BG_TRACKING_IOS] background tick greška: $e');
+  }
+  return true;
+}

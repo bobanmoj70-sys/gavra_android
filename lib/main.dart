@@ -484,19 +484,13 @@ Future<void> _initializeBackgroundTrackingService() async {
       iosConfiguration: IosConfiguration(
         autoStart: false,
         onForeground: bg_tracking.onStart,
-        onBackground: _onIosBackground,
+        onBackground: bg_tracking.onIosBackground,
       ),
     );
     debugPrint('[main] Background tracking servis konfigurisan');
   } catch (e) {
     debugPrint('⚠️ [main] Background tracking servis greška: $e');
   }
-}
-
-@pragma('vm:entry-point')
-Future<bool> _onIosBackground(ServiceInstance service) async {
-  DartPluginRegistrant.ensureInitialized();
-  return true;
 }
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI

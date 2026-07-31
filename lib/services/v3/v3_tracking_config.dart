@@ -23,10 +23,49 @@ const Duration v3TrackingTickTimeout = Duration(seconds: 90);
 /// Client timeout za `v3-compute-eta`.
 const Duration v3ComputeEtaNetworkTimeout = Duration(seconds: 65);
 
-const LocationSettings v3TrackingLocationSettings = LocationSettings(
-  accuracy: LocationAccuracy.high,
-  timeLimit: Duration(seconds: 12),
-);
+/// GPS settings za `getCurrentPosition` (tick).
+///
+/// iOS: Always + `allowBackgroundLocationUpdates` + automotive navigation —
+/// inače OS suspenduje app i ETA zastari u pozadini.
+/// Android: high accuracy + interval hint za FusedLocation.
+LocationSettings get v3TrackingLocationSettings {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    return AppleSettings(
+      accuracy: LocationAccuracy.high,
+      activityType: ActivityType.automotiveNavigation,
+      distanceFilter: 0,
+      pauseLocationUpdatesAutomatically: false,
+      showBackgroundLocationIndicator: true,
+      allowBackgroundLocationUpdates: true,
+      timeLimit: const Duration(seconds: 12),
+    );
+  }
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    return AndroidSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 0,
+      intervalDuration: const Duration(seconds: 10),
+      timeLimit: const Duration(seconds: 12),
+    );
+  }
+  return const LocationSettings(
+    accuracy: LocationAccuracy.high,
+    timeLimit: Duration(seconds: 12),
+  );
+}
+
+/// iOS continuous stream — drži proces živim u pozadini (UIBackgroundModes=location).
+/// `distanceFilter` smanjuje wake-upove; tick i dalje ide na 20s tajmeru / throttle.
+LocationSettings get v3IosBackgroundStreamSettings {
+  return AppleSettings(
+    accuracy: LocationAccuracy.high,
+    activityType: ActivityType.automotiveNavigation,
+    distanceFilter: 25,
+    pauseLocationUpdatesAutomatically: false,
+    showBackgroundLocationIndicator: true,
+    allowBackgroundLocationUpdates: true,
+  );
+}
 
 /// SharedPreferences ključ — BG isolate čita ovo ako `invoke(startTracking)` stigne pre listener-a.
 const String v3BgTrackingSessionPrefsKey = 'v3_bg_tracking_session';
@@ -279,16 +318,35 @@ Future<bool> v3AllPassengersCompleted({
   }
 }
 
-/// GPS uključen + dozvola. Ne traži dozvole (to radi V3RolePermissionService).
+/// GPS uključen + **Always** dozvola.
+///
+/// WhenInUse nije dovoljno: Android FGS location i iOS background location
+/// zahtevaju Always da bi ETA tickovi nastavili dok je app u pozadini.
+/// Dozvole se traže pri login-u (`V3RolePermissionService`); ovde samo gate.
+/// Ako je status whileInUse, jednom pokušavamo upgrade na Always.
 Future<bool> v3CheckLocationPrerequisites() async {
   if (!await Geolocator.isLocationServiceEnabled()) {
     debugPrint('[v3CheckLocationPrerequisites] GPS isključen');
     return false;
   }
 
-  final permission = await Geolocator.checkPermission();
+  var permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+  }
   if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
     debugPrint('[v3CheckLocationPrerequisites] dozvola: $permission');
+    return false;
+  }
+
+  // whileInUse → pokušaj Always (iOS upgrade dijalog / Android background).
+  if (permission == LocationPermission.whileInUse) {
+    debugPrint('[v3CheckLocationPrerequisites] whileInUse — tražim Always');
+    permission = await Geolocator.requestPermission();
+  }
+
+  if (permission != LocationPermission.always) {
+    debugPrint('[v3CheckLocationPrerequisites] treba Always, trenutno: $permission');
     return false;
   }
 
