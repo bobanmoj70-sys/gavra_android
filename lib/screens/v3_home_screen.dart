@@ -88,6 +88,7 @@ DateTime _lastDayOfMonth(DateTime mesec) {
     putnikId: putnikId,
     mesec: mesec.month,
     godina: mesec.year,
+    tipPutnika: tip,
   );
 
   return (brojDana: summary.brojVoznji, cenaPoDanu: cena);

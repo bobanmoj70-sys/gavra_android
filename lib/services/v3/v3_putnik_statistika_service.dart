@@ -199,16 +199,28 @@ class V3PutnikStatistikaService {
 
   static ({String tip, double cena}) _tipICena(String putnikId) {
     final rm = V3MasterRealtimeManager.instance;
-    final putnikData = rm.putniciCache[putnikId] ?? const <String, dynamic>{};
-    final tip = (putnikData['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
+    final putnikData = rm.putniciCache[putnikId] ??
+        rm.putniciCache[putnikId.toLowerCase()] ??
+        rm.putniciCache.entries
+            .where((e) => e.key.toLowerCase() == putnikId.trim().toLowerCase())
+            .map((e) => e.value)
+            .firstOrNull ??
+        rm.authCache[putnikId] ??
+        rm.authCache[putnikId.toLowerCase()] ??
+        const <String, dynamic>{};
+    final tipRaw = (putnikData['tip_putnika'] ?? putnikData['tip'] ?? 'dnevni').toString();
+    final tip = tipRaw.trim().toLowerCase();
     final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0;
     final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0;
+    // Heuristika: samo cena po danu → radnik model (sprečava 20 pokupljanja × 700).
+    final effectiveTip =
+        tip.isNotEmpty && tip != 'dnevni' ? tip : (cenaPoDanu > 0.009 && cenaPoPokupljenju <= 0.009 ? 'radnik' : tip);
     final cena = _cenaZaTip(
-      tip: tip,
+      tip: effectiveTip,
       cenaPoDanu: cenaPoDanu,
       cenaPoPokupljenju: cenaPoPokupljenju,
     );
-    return (tip: tip, cena: cena);
+    return (tip: effectiveTip, cena: cena);
   }
 
   static V3MesecniObracun getMesecniObracun({
@@ -234,6 +246,7 @@ class V3PutnikStatistikaService {
       putnikId: safePutnikId,
       godina: godina,
       mesec: mesec,
+      tipPutnika: tipICena.tip,
     );
 
     final brojVoznji = summary.brojVoznji;

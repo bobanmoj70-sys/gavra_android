@@ -137,6 +137,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       putnikId: widget.putnik.id,
       mesec: datumRef.month,
       godina: datumRef.year,
+      tipPutnika: tipPutnika,
     );
 
     final brojVoznji = summary.brojVoznji;

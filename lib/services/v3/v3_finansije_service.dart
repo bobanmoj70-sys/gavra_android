@@ -60,6 +60,68 @@ class V3FinansijeService {
     return normalized == 'radnik' || normalized == 'ucenik';
   }
 
+  /// Pouzdan lookup putnika: putniciCache → case-insensitive → authCache (mapiran).
+  static Map<String, dynamic> _lookupPutnikData(String putnikId) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return const <String, dynamic>{};
+
+    final rm = V3MasterRealtimeManager.instance;
+    final fromPutnici = rm.putniciCache[putnik] ??
+        rm.putniciCache[putnik.toLowerCase()] ??
+        rm.putniciCache.entries
+            .where((e) => e.key.toLowerCase() == putnik.toLowerCase())
+            .map((e) => e.value)
+            .firstOrNull;
+    if (fromPutnici != null && fromPutnici.isNotEmpty) {
+      return fromPutnici;
+    }
+
+    final fromAuth = rm.authCache[putnik] ??
+        rm.authCache[putnik.toLowerCase()] ??
+        rm.authCache.entries.where((e) => e.key.toLowerCase() == putnik.toLowerCase()).map((e) => e.value).firstOrNull;
+    if (fromAuth == null || fromAuth.isEmpty) return const <String, dynamic>{};
+
+    // Mapiraj auth shape → putnik shape (tip / cene).
+    return <String, dynamic>{
+      'id': fromAuth['id'],
+      'ime_prezime': fromAuth['ime'],
+      'tip_putnika': fromAuth['tip'],
+      'tip': fromAuth['tip'],
+      'cena_po_danu': fromAuth['cena_po_danu'],
+      'cena_po_pokupljenju': fromAuth['cena_po_pokupljenju'],
+    };
+  }
+
+  /// Rešava tip putnika + da li je model po danu (radnik/učenik).
+  /// [tipOverride] ima prioritet (npr. sa kartice putnika gde je tip već poznat).
+  /// Fallback: ako tip fali u kešu a postoji samo cena_po_danu > 0 → po-danu model.
+  static ({String tip, bool isPoDanu}) _resolveTipIModel(
+    String putnikId, {
+    String? tipOverride,
+  }) {
+    final override = (tipOverride ?? '').trim().toLowerCase();
+    if (override.isNotEmpty) {
+      return (tip: override, isPoDanu: _isPoDanuTip(override));
+    }
+
+    final putnikData = _lookupPutnikData(putnikId);
+    final tip = (putnikData['tip_putnika']?.toString() ?? putnikData['tip']?.toString() ?? '').trim().toLowerCase();
+    if (_isPoDanuTip(tip)) {
+      return (tip: tip, isPoDanu: true);
+    }
+    if (tip.isNotEmpty) {
+      return (tip: tip, isPoDanu: false);
+    }
+
+    // Tip nije u kešu — heuristika po cenama (radnik ima samo cenu po danu).
+    final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+    final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+    if (cenaPoDanu > 0.009 && cenaPoPokupljenju <= 0.009) {
+      return (tip: 'radnik', isPoDanu: true);
+    }
+    return (tip: tip, isPoDanu: false);
+  }
+
   static double _cenaZaTip({
     required String tip,
     required double cenaPoDanu,
@@ -399,6 +461,7 @@ class V3FinansijeService {
     required String putnikId,
     int? godina,
     int? mesec,
+    String? tipPutnika,
   }) {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return (brojVoznji: 0, ukupanIznos: 0.0);
@@ -419,18 +482,11 @@ class V3FinansijeService {
 
     var ukupanIznos = 0.0;
 
-    final rm = V3MasterRealtimeManager.instance;
-    // Case-insensitive lookup — keš ključ je id iz auth, ali filter redova
-    // poredi lower-case; tip mora biti pouzdan radi po-danu brojanja.
-    final putnikData = rm.putniciCache[putnik] ??
-        rm.putniciCache[putnik.toLowerCase()] ??
-        rm.putniciCache.entries
-            .where((e) => e.key.toLowerCase() == putnik.toLowerCase())
-            .map((e) => e.value)
-            .firstOrNull ??
-        const <String, dynamic>{};
-    final tipPutnika = (putnikData['tip_putnika'] as String? ?? putnikData['tip'] as String? ?? '').toLowerCase();
-    final isPoDanu = _isPoDanuTip(tipPutnika);
+    // Tip mora biti pouzdan: radnik/učenik se naplaćuju PO DANU (jedna
+    // naplativa jedinica po kalendarskom danu), ne po svakom pokupljanju.
+    // Bez ispravnog tipa, 2 vožnje istog dana (BC+VS) bi se brojale kao 2.
+    final resolved = _resolveTipIModel(putnik, tipOverride: tipPutnika);
+    final isPoDanu = resolved.isPoDanu;
 
     // Brojanje preko SVIH redova meseca (ne po redu pa zbir): race trigger/app
     // često pravi 2 reda.
@@ -440,15 +496,27 @@ class V3FinansijeService {
     var brojBezId = 0;
     var brojNenaplacenihStavki = 0;
 
+    void _addDan(String? rawDatum) {
+      final dan = V3BelgradeTime.parseIsoDatePart(rawDatum ?? '');
+      if (dan.isNotEmpty) uniqueDani.add(dan);
+    }
+
     for (final row in naplataRows) {
       ukupanIznos += _getUkupanIznosUplata(row);
-      brojNenaplacenihStavki += _readNenaplaceneVoznje(row).length;
+      final nena = _readNenaplaceneVoznje(row);
+      brojNenaplacenihStavki += nena.length;
+
+      // Za po-danu model i nena ulazi u union dana (arhiva može biti nepotpuna).
+      if (isPoDanu) {
+        for (final s in nena) {
+          _addDan(s['datum']?.toString());
+        }
+      }
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {
         if (isPoDanu) {
-          final dan = V3BelgradeTime.parseIsoDatePart(v['datum']?.toString() ?? '');
-          if (dan.isNotEmpty) uniqueDani.add(dan);
+          _addDan(v['datum']?.toString());
         } else {
           final id = (v['operativna_id']?.toString() ?? '').trim();
           if (id.isNotEmpty) {
@@ -460,14 +528,15 @@ class V3FinansijeService {
       }
     }
 
-    final brojVoznjiRealizacija = isPoDanu ? uniqueDani.length : uniqueOperativna.length + brojBezId;
-
-    // Izvor istine isključivo JSON kolone:
-    // 1) nenaplacene_voznje_json — preostale naplative jedinice (dug)
-    // 2) realizovane_voznje_json — arhiva unique dan / operativna_id
-    // max: nepotpuna arhiva ne sme spustiti broj ispod nena stavki
-    // (npr. 2 nena isti dan → 2 jedinice; ili plaćeno pa nena prazna → real).
-    final brojVoznji = brojVoznjiRealizacija > brojNenaplacenihStavki ? brojVoznjiRealizacija : brojNenaplacenihStavki;
+    // Po danu: unique kalendarski dani (BC+VS isti dan = 1 naplativa jedinica).
+    // Po vožnji: unique operativna_id, max sa brojem nena stavki.
+    final int brojVoznji;
+    if (isPoDanu) {
+      brojVoznji = uniqueDani.length;
+    } else {
+      final brojVoznjiRealizacija = uniqueOperativna.length + brojBezId;
+      brojVoznji = brojVoznjiRealizacija > brojNenaplacenihStavki ? brojVoznjiRealizacija : brojNenaplacenihStavki;
+    }
 
     return (brojVoznji: brojVoznji, ukupanIznos: ukupanIznos);
   }
@@ -976,7 +1045,7 @@ class V3FinansijeService {
     return result;
   }
 
-  /// Vraća све воžње које је возаč otkazao на задати дан из архиве v3_finansije.
+  /// Vraća све воžње које је возаč otkazao на задати дан из архиве v3_finансија.
   static List<Map<String, dynamic>> getOtkazaneVoznjeZaVozacaDan({
     required String vozacId,
     required DateTime dan,
@@ -1069,18 +1138,16 @@ class V3FinansijeService {
       if (godina == null || mesec == null) continue;
 
       var putnikId = entry.value;
-      var putnikData = rm.putniciCache[putnikId] ??
-          rm.putniciCache[putnikLower] ??
-          rm.putniciCache.entries.where((e) => e.key.toLowerCase() == putnikLower).map((e) => e.value).firstOrNull;
-
-      if (putnikData != null) {
+      final putnikData = _lookupPutnikData(putnikId);
+      if (putnikData.isNotEmpty) {
         final cachedId = putnikData['id']?.toString().trim();
         if (cachedId != null && cachedId.isNotEmpty) putnikId = cachedId;
       }
 
-      final tip = (putnikData?['tip_putnika'] as String? ?? 'dnevni').toLowerCase();
-      final cenaPoDanu = (putnikData?['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
-      final cenaPoPokupljenju = (putnikData?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+      final resolved = _resolveTipIModel(putnikId);
+      final tip = resolved.tip.isNotEmpty ? resolved.tip : 'dnevni';
+      final cenaPoDanu = (putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+      final cenaPoPokupljenju = (putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
       final cena = _cenaZaTip(
         tip: tip,
         cenaPoDanu: cenaPoDanu,
@@ -1099,6 +1166,7 @@ class V3FinansijeService {
         putnikId: putnikId,
         godina: godina,
         mesec: mesec,
+        tipPutnika: tip,
       );
       // Ne filtriramo po brojVoznji iz realizovanih — dug može postojati i kada
       // je arhiva realizovanih prazna/nepotpuna; tada koristimo broj nenaplaćenih.
@@ -1168,7 +1236,7 @@ class V3FinansijeService {
         V3Dug(
           id: '$putnikId:$godina:$mesec',
           putnikId: putnikId,
-          imePrezime: putnikData?['ime_prezime'] as String? ?? 'Nepoznato',
+          imePrezime: putnikData['ime_prezime'] as String? ?? putnikData['ime'] as String? ?? 'Nepoznato',
           tipPutnika: tip,
           godina: godina,
           mesec: mesec,
@@ -1369,6 +1437,7 @@ class V3FinansijeService {
         final operativnaId = (item['operativna_id']?.toString() ?? '').trim();
         final datum = item['datum']?.toString();
         // Ghost stavke (bez stvarnog pokupljanja) ne ulaze u arhivsku
+
         // evidenciju za brojanje/prikaz — operativna se briše nedeljno, pa
         // pokupljen_at u JSON-u mora biti jedini dokaz da je vožnja realizovana.
         final pokupljenAt = (item['pokupljen_at']?.toString() ?? '').trim();
@@ -1599,7 +1668,7 @@ class V3FinansijeService {
     return result;
   }
 
-  /// Vraća sve otkazane vožnje за путника у задатом месецу, са парсираним датумом.
+  /// Vraća све отказане воžње за путника у задатом месецу, са парсираним датумом.
   static List<Map<String, dynamic>> getOtkazaneVoznjeZaMesec({
     required String putnikId,
     required int godina,
