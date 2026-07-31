@@ -51,7 +51,6 @@ class V3AppUpdateService {
 
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version.trim();
-      final playStoreUrl = 'https://play.google.com/store/apps/details?id=${packageInfo.packageName}';
 
       final key = Platform.isIOS ? 'ios' : 'android';
       final selected = _resolvePlatformConfig(row, key);
@@ -62,8 +61,9 @@ class V3AppUpdateService {
       final maintenanceTitle = (selected['maintenanceTitle'] ?? '').toString().trim();
       final maintenanceMessage = (selected['maintenanceMessage'] ?? '').toString().trim();
       var storeUrl = (selected['storeUrl'] ?? '').toString().trim();
+      // Android fallback without embedding third-party store web URLs in the binary.
       if (Platform.isAndroid && storeUrl.isEmpty) {
-        storeUrl = playStoreUrl;
+        storeUrl = 'market://details?id=${packageInfo.packageName}';
       }
       final forceFlag = selected['force'] == true;
 

@@ -36,7 +36,6 @@ import '../utils/v3_uuid_utils.dart';
 import '../widgets/v3_info_banner.dart';
 import '../widgets/v3_update_banner.dart';
 import '../widgets/v3_vreme_dolaska_widget.dart';
-import 'v3_help_screen.dart';
 import 'v3_putnik_statistika_screen.dart';
 import 'v3_welcome_screen.dart';
 
@@ -1003,31 +1002,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         const SizedBox(height: 16),
                         // ── RASPORED TERMINA ─────────────────────────────────
                         _buildRasporedCard(nedeljaInfo: nedeljaInfo),
-                        const SizedBox(height: 16),
-                        // ── UPUTSTVO ZA KORIŠĆENJE ───────────────────────────
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const V3HelpScreen()),
-                          ),
-                          child: V3ContainerUtils.styledContainer(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                            backgroundColor: V3StyleHelper.whiteAlpha06,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: V3StyleHelper.whiteAlpha13),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.help_outline, color: Colors.white70, size: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _tr('uputstvo'),
-                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         const SizedBox(height: 16),
                       ],
                     ),

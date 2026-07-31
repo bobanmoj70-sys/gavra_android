@@ -324,14 +324,14 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'en': 'New PINs do not match.',
       'ru': 'Новые PIN-коды не совпадают.',
       'de': 'Die neuen PINs stimmen nicht überein.',
-      'zh': '新PIN码不匹配。',
+      'zh': '两次输入的新PIN码不一致。',
     },
     'noviPinMoraBitiRazlicit': {
       'sr': 'Novi PIN mora biti različit od trenutnog.',
       'en': 'New PIN must be different from the current one.',
       'ru': 'Новый PIN должен отличаться от текущего.',
       'de': 'Die neue PIN muss sich von der aktuellen unterscheiden.',
-      'zh': '新PIN码必须与当前不同。',
+      'zh': '新PIN码必须与当前PIN码不同。',
     },
     'trenutniPinNijeIspravan': {
       'sr': 'Trenutni PIN nije ispravan.',
@@ -352,7 +352,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'en': 'Error changing PIN. Please try again.',
       'ru': 'Ошибка при смене PIN. Попробуйте снова.',
       'de': 'Fehler beim Ändern der PIN. Bitte versuche es erneut.',
-      'zh': '更改PIN码时出错。请重试。',
+      'zh': '修改PIN码时出错。请重试。',
     },
   },
   'putnikProfilScreen': {
@@ -370,13 +370,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'tipDnevni': {'sr': '📅 Dnevni', 'en': '📅 Daily', 'ru': '📅 Ежедневно', 'de': '📅 Täglich', 'zh': '📅 每日'},
     'tipRadnik': {'sr': '💼 Radnik', 'en': '💼 Worker', 'ru': '💼 Рабочий', 'de': '💼 Arbeiter', 'zh': '💼 工人'},
     'tipPutnik': {'sr': '👤 Putnik', 'en': '👤 Passenger', 'ru': '👤 Пассажир', 'de': '👤 Fahrgast', 'zh': '👤 乘客'},
-    'uputstvo': {
-      'sr': 'Uputstvo za korišćenje',
-      'en': 'Usage instructions',
-      'ru': 'Инструкция по использованию',
-      'de': 'Gebrauchsanweisung',
-      'zh': '使用说明',
-    },
     'cenaPoVoznji': {
       'sr': 'Cena po vožnji',
       'en': 'Price per ride',
@@ -722,29 +715,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'ru': 'Биометрия не настроена на устройстве. Включите её в настройках телефона.',
       'de': 'Biometrie ist auf diesem Gerät nicht eingerichtet. Aktivieren Sie sie in den Telefoneinstellungen.',
       'zh': '此设备未设置生物识别。请在手机设置中启用它。',
-    },
-    'sigurnosnaObavestenja': {
-      'sr': 'Poštovani korisnici, zbog dodatnih bezbednosnih usklađivanja sa zahtevima platformi (Google Play i '
-          'iOS), kao i završetka sertifikacionih procedura radi veće zaštite vaših podataka, produžen je period '
-          'ograničene dostupnosti aplikacije. Ove mere su uvedene kako bi se smanjio rizik od zloupotreba, '
-          'uključujući pokušaje phishing napada, krađe vaših podataka i neovlašćenog oglašavanja. Hvala vam na strpljenju i razumevanju.',
-      'en': 'Dear users, due to additional security alignment with platform requirements (Google Play and iOS), '
-          'as well as the completion of certification procedures for stronger data protection, the period of '
-          'limited app availability has been extended. These measures were introduced to reduce the risk of '
-          'misuse, including phishing attempts, data theft and unauthorized advertising. Thank you for your '
-          'patience and understanding.',
-      'ru': 'Уважаемые пользователи, в связи с дополнительными мерами безопасности в соответствии с требованиями '
-          'платформ (Google Play и iOS), а также завершением сертификационных процедур для усиления защиты ваших '
-          'данных, продлён период ограниченной доступности приложения. Эти меры введены для снижения риска '
-          'злоупотреблений, включая попытки фишинга, кражу ваших данных и несанкционированную рекламу. Спасибо за '
-          'терпение и понимание.',
-      'de': 'Sehr geehrte Nutzer, aufgrund zusätzlicher Sicherheitsanpassungen an die Anforderungen der Plattformen '
-          '(Google Play und iOS) sowie des Abschlusses von Zertifizierungsverfahren zum besseren Schutz Ihrer Daten '
-          'wurde der Zeitraum der eingeschränkten App-Verfügbarkeit verlängert. Diese Maßnahmen wurden eingeführt, '
-          'um das Risiko von Missbrauch zu verringern, einschließlich Phishing-Versuchen, Datendiebstahl und '
-          'unbefugter Werbung. Vielen Dank für Ihre Geduld und Ihr Verständnis.',
-      'zh': '尊敬的用户，由于需要进一步符合平台（Google Play 和 iOS）的安全要求，以及为加强数据保护而完成的认证流程，应用的受限可用期已延长。'
-          '采取这些措施是为了降低滥用风险，包括钓鱼攻击、数据盗窃和未经授权的广告。感谢您的耐心与理解。',
     },
     'unesitePodatke': {
       'sr': 'Unesite podatke za nalog',

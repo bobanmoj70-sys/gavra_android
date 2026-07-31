@@ -128,7 +128,7 @@ class V3RolePermissionService {
       return;
     }
 
-    // Google Play zahteva "prominent disclosure" PRE nego što se zatraži
+    // Store guidelines require prominent disclosure BEFORE requesting
     // bilo koja osetljiva dozvola, posebno BACKGROUND_LOCATION.
     final accepted = await _showLocationDisclosure(context);
     if (!accepted) {

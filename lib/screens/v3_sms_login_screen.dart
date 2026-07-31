@@ -1029,29 +1029,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
             onPressed: _isLoading ? null : () => _loginWithBiometric(),
           ),
         ],
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _tr('sigurnosnaObavestenja'),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  fontSize: 15.5,
-                  height: 1.6,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }

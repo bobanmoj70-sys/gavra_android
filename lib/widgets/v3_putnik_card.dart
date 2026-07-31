@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -516,7 +517,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final lat = coords.lat.toStringAsFixed(6);
     final lng = coords.lng.toStringAsFixed(6);
     final appUri = Uri.parse('here-route://mylocation/$lat,$lng?m=d');
-    final installUri = Uri.parse('https://play.google.com/store/apps/details?id=com.here.app.maps');
+    final installUri = Platform.isIOS
+        ? Uri.parse('https://apps.apple.com/app/id955837750') // App Store install link for iOS
+        : Uri.parse('market://details?id=com.here.app.maps'); // Google Play Store link for Android
 
     if (await canLaunchUrl(appUri)) {
       await launchUrl(appUri, mode: LaunchMode.externalApplication);
