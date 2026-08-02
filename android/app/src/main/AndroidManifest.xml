@@ -123,11 +123,8 @@
       <data android:mimeType="text/plain"/>
     </intent>
 
-    <!-- 🗺️ NAVIGATION APPS - Required for Android 11+ to query navigation intents -->
-    <!-- Only HERE WeGo navigation app supported -->
+    <!-- 🗺️ NAVIGATION — only HERE WeGo (install required; no other map apps) -->
     <package android:name="com.here.app.maps"/>
-    
-    <!-- HERE WeGo -->
     <intent>
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="here-route"/>
@@ -136,24 +133,12 @@
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="here.directions"/>
     </intent>
-    <intent>
-      <action android:name="android.intent.action.VIEW"/>
-      <data android:scheme="here.directions"/>
-    </intent>
     
-    <!-- Yandex Maps -->
-    <intent>
-      <action android:name="android.intent.action.VIEW"/>
-      <data android:scheme="yandexmaps"/>
-    </intent>
-    
-    <!-- Generic geo intent -->
+    <!-- Generic geo / https (phone helpers, store links) — not used as map navigation fallback -->
     <intent>
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="geo"/>
     </intent>
-    
-    <!-- HTTP/HTTPS for browser fallback -->
     <intent>
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="https"/>

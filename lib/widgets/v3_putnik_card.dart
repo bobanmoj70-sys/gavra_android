@@ -1,7 +1,6 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +13,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v2_haptic_service.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_finansije_service.dart';
+import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
@@ -514,32 +514,26 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
       return;
     }
 
-    final lat = coords.lat.toStringAsFixed(6);
-    final lng = coords.lng.toStringAsFixed(6);
-    final appUri = Uri.parse('here-route://mylocation/$lat,$lng?m=d');
-    final installUri = Platform.isIOS
-        ? Uri.parse('https://apps.apple.com/app/id955837750') // App Store install link for iOS
-        : Uri.parse('market://details?id=com.here.app.maps'); // Google Play Store link for Android
-
-    if (await canLaunchUrl(appUri)) {
-      await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(_tr('hereWeGoInstallTitle')),
-        action: SnackBarAction(
-          label: _tr('hereWeGoInstallAction'),
-          onPressed: () async {
-            await launchUrl(installUri, mode: LaunchMode.externalApplication);
-          },
-        ),
-      ),
+    final result = await V3NavigationAppLauncherService.launchHereWeGoToCoordinate(
+      latitude: coords.lat,
+      longitude: coords.lng,
+      label: _getAdresaNaziv(),
     );
+    if (!mounted) return;
+
+    switch (result) {
+      case V3HereWeGoLaunchResult.opened:
+        return;
+      case V3HereWeGoLaunchResult.notInstalled:
+        V3NavigationAppLauncherService.showInstallPrompt(
+          context,
+          message: _tr('hereWeGoInstallTitle'),
+          actionLabel: _tr('hereWeGoInstallAction'),
+        );
+      case V3HereWeGoLaunchResult.noWaypoints:
+      case V3HereWeGoLaunchResult.failed:
+        V3AppSnackBar.error(context, _tr('hereWeGoInstallTitle'));
+    }
   }
 
   // ─── Build ─────────────────────────────────────────────────────

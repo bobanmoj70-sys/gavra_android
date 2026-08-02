@@ -10,6 +10,36 @@ import '../../utils/v3_belgrade_time.dart';
 import 'v3_slot_activation.dart';
 import 'v3_tracking_config.dart';
 
+/// Ishod [V3VozacLocationTrackingService.start].
+enum V3TrackingStartResult {
+  started,
+  alreadyRunning,
+  missingData,
+  inProgress,
+  gpsDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+  permissionAlwaysRequired,
+  failed,
+}
+
+extension V3TrackingStartResultX on V3TrackingStartResult {
+  bool get isSuccess => this == V3TrackingStartResult.started || this == V3TrackingStartResult.alreadyRunning;
+
+  /// l10n ključ za grešku; `null` ako je uspeh.
+  String? get errorL10nKey => switch (this) {
+        V3TrackingStartResult.started || V3TrackingStartResult.alreadyRunning => null,
+        V3TrackingStartResult.gpsDisabled => 'gpsIskljucen',
+        V3TrackingStartResult.permissionDenied => 'dozvolaOdbijena',
+        V3TrackingStartResult.permissionDeniedForever => 'dozvolaTrajnoOdbijena',
+        V3TrackingStartResult.permissionAlwaysRequired => 'dozvolaPotrebnaUvek',
+        V3TrackingStartResult.missingData ||
+        V3TrackingStartResult.inProgress ||
+        V3TrackingStartResult.failed =>
+          'nemogucIdentifikovatiVozaca',
+      };
+}
+
 /// GPS/ETA tracking vozača.
 ///
 /// Start: V3VozacScreen auto-start (foreground).
@@ -25,6 +55,7 @@ import 'v3_tracking_config.dart';
 ///   (nema pravog FGS; UIBackgroundModes=location + Always drži proces)
 /// - resumed → ugasi BG (Android), nastavi FG
 /// - detached dok traje vožnja → NE gasi tracking (FGS / iOS stream ostaje)
+/// - cold start → [tryRestoreFromSession] reattach na prefs / orphan FGS
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
   V3VozacLocationTrackingService._();
 
@@ -39,6 +70,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   bool _isRunning = false;
   bool _startInProgress = false;
   bool _stopInProgress = false;
+  bool _restoreInProgress = false;
   DateTime? _startedAt;
   DateTime? _polazakAt;
   DateTime? _lastTickAt;
@@ -53,11 +85,24 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   final StreamController<({Map<String, int> etaMap, List<String> order})> _etaTickController =
       StreamController<({Map<String, int> etaMap, List<String> order})>.broadcast();
 
+  /// UI sluša da sinkronizuje `_isNavigating` (start / stop / BG ended / restore).
+  final StreamController<bool> _runningController = StreamController<bool>.broadcast();
+
   bool get isRunning => _isRunning;
   List<String> get optimizedPutnikIds => List.unmodifiable(_optimizedPutnikIds);
 
   /// Stream rezultata svakog tick-a — UI sluša radi re-sort kartica/rute.
   Stream<({Map<String, int> etaMap, List<String> order})> get onEtaTick => _etaTickController.stream;
+
+  Stream<bool> get onRunningChanged => _runningController.stream;
+
+  void _setRunning(bool value) {
+    if (_isRunning == value) return;
+    _isRunning = value;
+    if (!_runningController.isClosed) {
+      _runningController.add(value);
+    }
+  }
 
   void initialize() {
     WidgetsBinding.instance.addObserver(this);
@@ -69,8 +114,13 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       debugPrint('$_tag BG trackingEnded reason=$reason');
       if (_isRunning || _vozacId.isNotEmpty) {
         unawaited(stop());
+      } else {
+        // Main već mrtav, a FGS je sam završio — očisti orphan prefs.
+        unawaited(v3ClearBgTrackingSession());
       }
     });
+    // Cold start: FGS / prefs sesija može biti živa dok je _isRunning false.
+    unawaited(tryRestoreFromSession());
   }
 
   Map<String, dynamic> _sessionPayload() => <String, dynamic>{
@@ -82,7 +132,120 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         'polazak_at': _polazakAt?.toUtc().toIso8601String(),
       };
 
-  Future<void> start({
+  bool _isSameSession({
+    required String vozacId,
+    required String datumIso,
+    required String grad,
+    required String vreme,
+  }) {
+    return _isRunning && _vozacId == vozacId && _datumIso == datumIso && _grad == grad && _vreme == vreme;
+  }
+
+  bool get _isAppInForeground {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null || state == AppLifecycleState.resumed;
+  }
+
+  /// Reattach posle process death / cold start.
+  ///
+  /// Čita prefs sesiju i/ili Android FGS. Ne zove [activateSlotWithRetry]
+  /// (slot je već aktiviran pri originalnom startu).
+  /// Vraća `true` ako je tracking ponovo označen kao aktivan.
+  Future<bool> tryRestoreFromSession() async {
+    if (_isRunning) return true;
+    if (_startInProgress || _stopInProgress || _restoreInProgress) return _isRunning;
+    _restoreInProgress = true;
+
+    try {
+      final saved = await v3LoadBgTrackingSession();
+      var bgRunning = false;
+      if (!Platform.isIOS) {
+        try {
+          bgRunning = await FlutterBackgroundService().isRunning();
+        } catch (e) {
+          debugPrint('$_tag restore isRunning greška: $e');
+        }
+      }
+
+      if (saved == null) {
+        if (bgRunning) {
+          debugPrint('$_tag restore: orphan BG bez sesije — gasim');
+          await _stopBg();
+        }
+        return false;
+      }
+
+      final id = (saved['vozac_id']?.toString() ?? '').trim();
+      final datum = V3BelgradeTime.parseIsoDatePart(saved['datum_iso']?.toString() ?? '');
+      final g = (saved['grad']?.toString() ?? '').trim().toUpperCase();
+      final v = V3BelgradeTime.normalizeToHHmm(saved['vreme']?.toString() ?? '');
+      if (id.isEmpty || datum.isEmpty || g.isEmpty || v.isEmpty) {
+        debugPrint('$_tag restore: neispravna sesija');
+        await v3ClearBgTrackingSession();
+        if (bgRunning) await _stopBg();
+        return false;
+      }
+
+      final startedAt = V3BelgradeTime.parseTs(saved['started_at']?.toString());
+      final polazakAt =
+          V3BelgradeTime.parseTs(saved['polazak_at']?.toString()) ?? v3PolazakDateTime(datumIso: datum, vreme: v);
+
+      if (v3TrackingTimedOut(startedAt: startedAt, polazakAt: polazakAt)) {
+        debugPrint('$_tag restore: sesija istekla');
+        await v3ClearBgTrackingSession();
+        if (bgRunning) await _stopBg();
+        return false;
+      }
+
+      _vozacId = id;
+      _datumIso = datum;
+      _grad = g;
+      _vreme = v;
+      _startedAt = startedAt ?? V3BelgradeTime.now();
+      _polazakAt = polazakAt;
+      _lastTickAt = null;
+      _optimizedPutnikIds.clear();
+      _setRunning(true);
+
+      debugPrint('$_tag restore OK $g $v bgRunning=$bgRunning fg=$_isAppInForeground');
+
+      if (_isAppInForeground) {
+        // Preuzmi sa BG FGS-a — spreči dual tick.
+        if (!Platform.isIOS) {
+          await _stopBg();
+        }
+
+        final prereq = await v3CheckLocationPrerequisites();
+        if (prereq != V3LocationPrereqResult.ok) {
+          debugPrint('$_tag restore: nema Always GPS ($prereq) — stop');
+          await stop();
+          return false;
+        }
+
+        await v3SaveBgTrackingSession(_sessionPayload());
+        if (Platform.isIOS) {
+          _startIosLocationKeepAlive();
+        }
+        if (_fgTicker == null) _startFgTicker();
+        unawaited(_fgTick());
+      } else {
+        // App još u pozadini — ostavi / digni FGS, bez FG tickera.
+        await v3SaveBgTrackingSession(_sessionPayload());
+        if (!Platform.isIOS && !bgRunning) {
+          unawaited(_startBg());
+        }
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('$_tag restore greška: $e');
+      return false;
+    } finally {
+      _restoreInProgress = false;
+    }
+  }
+
+  Future<V3TrackingStartResult> start({
     required String vozacId,
     required String datumIso,
     required String grad,
@@ -97,16 +260,34 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     if (id.isEmpty || datum.isEmpty || g.isEmpty || v.isEmpty) {
       debugPrint('$_tag start prekinut: nedostaju podaci');
-      return;
+      return V3TrackingStartResult.missingData;
     }
-    if (_startInProgress) {
+    if (_startInProgress || _restoreInProgress) {
       debugPrint('$_tag start u toku, preskačem');
-      return;
+      return V3TrackingStartResult.inProgress;
     }
+
+    // Ista sesija već aktivna — reattach FG bez novog activate/stop.
+    if (_isSameSession(vozacId: id, datumIso: datum, grad: g, vreme: v)) {
+      debugPrint('$_tag start: ista sesija već radi');
+      if (_isAppInForeground) {
+        if (!Platform.isIOS) await _stopBg();
+        if (Platform.isIOS) _startIosLocationKeepAlive();
+        if (_fgTicker == null) _startFgTicker();
+        unawaited(_fgTick());
+      }
+      return V3TrackingStartResult.alreadyRunning;
+    }
+
     _startInProgress = true;
 
     try {
-      if (_isRunning) await stop();
+      if (_isRunning) {
+        await stop();
+      } else {
+        // Cold start: orphan FGS iz prethodnog procesa — ugasi pre novog starta.
+        await _stopBg();
+      }
 
       _vozacId = id;
       _datumIso = datum;
@@ -117,13 +298,22 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _lastTickAt = null;
       _optimizedPutnikIds.clear();
 
-      if (!await v3CheckLocationPrerequisites()) {
-        await stop();
-        return;
+      final prereq = await v3CheckLocationPrerequisites();
+      if (prereq != V3LocationPrereqResult.ok) {
+        debugPrint('$_tag start prekinut: $prereq');
+        await _resetLocalSessionFields();
+        return switch (prereq) {
+          V3LocationPrereqResult.gpsDisabled => V3TrackingStartResult.gpsDisabled,
+          V3LocationPrereqResult.denied => V3TrackingStartResult.permissionDenied,
+          V3LocationPrereqResult.deniedForever => V3TrackingStartResult.permissionDeniedForever,
+          V3LocationPrereqResult.alwaysRequired => V3TrackingStartResult.permissionAlwaysRequired,
+          V3LocationPrereqResult.ok => V3TrackingStartResult.failed,
+        };
       }
 
       // Slot aktivacija SAMO ovde (main isolate) — BG ne radi activate.
-      unawaited(activateSlotWithRetry(
+      // await: putnički trigger i prvi tick posle stvarnog tracking_started_at.
+      await activateSlotWithRetry(
         client: Supabase.instance.client,
         vozacId: id,
         datumIso: datum,
@@ -131,9 +321,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         vreme: v,
         logTag: _tag,
         log: debugPrint,
-      ));
+      );
 
-      _isRunning = true;
+      _setRunning(true);
       // Prefs pre prvog BG starta — isolate može da se digne i bez uspešnog invoke-a.
       await v3SaveBgTrackingSession(_sessionPayload());
       _startFgTicker();
@@ -141,9 +331,29 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       if (Platform.isIOS) {
         _startIosLocationKeepAlive();
       }
+      // Odmah prvi tick — ne čekaj prvi 20s interval.
+      unawaited(_fgTick());
+      return V3TrackingStartResult.started;
+    } catch (e) {
+      debugPrint('$_tag start greška: $e');
+      await stop();
+      return V3TrackingStartResult.failed;
     } finally {
       _startInProgress = false;
     }
+  }
+
+  Future<void> _resetLocalSessionFields() async {
+    _vozacId = '';
+    _datumIso = '';
+    _grad = '';
+    _vreme = '';
+    _polazakAt = null;
+    _startedAt = null;
+    _lastTickAt = null;
+    _optimizedPutnikIds.clear();
+    _setRunning(false);
+    await v3ClearBgTrackingSession();
   }
 
   Future<void> stop() async {
@@ -160,8 +370,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _polazakAt = null;
       _startedAt = null;
       _lastTickAt = null;
-      _isRunning = false;
       _optimizedPutnikIds.clear();
+      _setRunning(false);
 
       _fgTicker?.cancel();
       _fgTicker = null;
@@ -171,7 +381,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       await _stopBg();
 
       if (vozacIdToClean.isNotEmpty) {
-        await v3ClearEtaForVozac(client: Supabase.instance.client, vozacId: vozacIdToClean);
+        try {
+          await v3ClearEtaForVozac(client: Supabase.instance.client, vozacId: vozacIdToClean);
+        } catch (e) {
+          debugPrint('$_tag clearEta greška: $e');
+        }
       }
     } finally {
       _stopInProgress = false;
@@ -186,7 +400,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       return await _runTick();
     } catch (e) {
       debugPrint('$_tag fetchPositionAndComputeEta error: $e');
-      // Zadrži poslednji dobar redosled — ne briši zbog prolazne greške.
+      // Zadrži posledji dobar redosled — ne briši zbog prolazne greške.
       return (etaMap: <String, int>{}, order: List<String>.from(_optimizedPutnikIds));
     }
   }
@@ -281,6 +495,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Resume uvek — i kad _isRunning=false posle cold start (restore iz prefs/FGS).
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_onResumed());
+      return;
+    }
     if (!_isRunning) return;
 
     switch (state) {
@@ -301,7 +520,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
         }
         break;
       case AppLifecycleState.resumed:
-        unawaited(_onResumed());
         break;
       case AppLifecycleState.detached:
         if (Platform.isIOS) {
@@ -318,6 +536,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   }
 
   Future<void> _onResumed() async {
+    // Ako je process death skinuo _isRunning a sesija/FGS žive — reattach.
+    if (!_isRunning) {
+      final restored = await tryRestoreFromSession();
+      if (!restored) return;
+    }
+
     if (!Platform.isIOS) {
       await _stopBg();
     }

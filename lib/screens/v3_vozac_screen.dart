@@ -1049,11 +1049,15 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     _mapResyncInFlight = true;
     try {
-      await V3NavigationAppLauncherService.launchHereWeGoAppOnly(
+      final result = await V3NavigationAppLauncherService.launchHereWeGo(
         waypoints: preparedRoute.waypointsToOpen,
       );
-      _lastSentRouteSignature = signature;
-      debugPrint('[V3VozacScreen] map route synced ($reason)');
+      if (result == V3HereWeGoLaunchResult.opened) {
+        _lastSentRouteSignature = signature;
+        debugPrint('[V3VozacScreen] map route synced ($reason)');
+      } else {
+        debugPrint('[V3VozacScreen] map route sync skipped ($reason): $result');
+      }
     } catch (e) {
       debugPrint('[V3VozacScreen] map route sync error ($reason): $e');
     } finally {
@@ -1076,18 +1080,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (preparedRoute == null) return;
     final waypointsToOpen = preparedRoute.waypointsToOpen;
 
-    try {
-      await V3NavigationAppLauncherService.launchHereWeGoAppOnly(
-        waypoints: waypointsToOpen,
-      );
-      _hasSentRouteToMap = true;
-      _lastSentRouteSignature = _routeSignatureFromWaypoints(waypointsToOpen);
-      if (!mounted) return;
-      V3AppSnackBar.success(context, _tr('hereWeGoOtvoren'));
-    } catch (e) {
-      if (mounted) {
-        V3AppSnackBar.error(context, '${_tr('mapaNijeOtvorena')} $e');
-      }
+    final result = await V3NavigationAppLauncherService.launchHereWeGo(
+      waypoints: waypointsToOpen,
+    );
+    if (!mounted) return;
+
+    switch (result) {
+      case V3HereWeGoLaunchResult.opened:
+        _hasSentRouteToMap = true;
+        _lastSentRouteSignature = _routeSignatureFromWaypoints(waypointsToOpen);
+        V3AppSnackBar.success(context, _tr('hereWeGoOtvoren'));
+      case V3HereWeGoLaunchResult.notInstalled:
+        V3NavigationAppLauncherService.showInstallPrompt(
+          context,
+          message: _tr('hereWeGoInstallTitle'),
+          actionLabel: _tr('hereWeGoInstallAction'),
+        );
+      case V3HereWeGoLaunchResult.noWaypoints:
+        V3AppSnackBar.error(context, _tr('rutaNemaKoordinate'));
+      case V3HereWeGoLaunchResult.failed:
+        V3AppSnackBar.error(context, _tr('mapaNijeOtvorena'));
     }
   }
 

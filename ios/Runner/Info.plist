@@ -47,6 +47,16 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- HERE WeGo deep links: required so canLaunchUrl can detect install status -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>here-route</string>
+		<string>here.directions</string>
+		<string>here-location</string>
+		<string>tel</string>
+		<string>sms</string>
+		<string>mailto</string>
+	</array>
 	<key>NSContactsUsageDescription</key>
 	<string>Aplikacija pristupa kontaktima kako biste mogli izabrati broj telefona putnika iz imenika.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

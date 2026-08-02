@@ -213,6 +213,24 @@ Future<bool> onIosBackground(ServiceInstance service) async {
       logTag: '[BG_TRACKING_IOS]',
     ).timeout(const Duration(seconds: 25));
 
+    final allDone = await v3AllPassengersCompleted(
+      client: client,
+      datumIso: datum,
+      grad: g,
+      vreme: v,
+    ).timeout(const Duration(seconds: 10), onTimeout: () => false);
+
+    if (allDone) {
+      debugPrint('[BG_TRACKING_IOS] all_passengers_completed — clear session');
+      await v3ClearBgTrackingSession();
+      try {
+        service.invoke('trackingEnded', <String, dynamic>{'reason': 'all_passengers_completed'});
+      } catch (e) {
+        debugPrint('[BG_TRACKING_IOS] trackingEnded invoke greška: $e');
+      }
+      return true;
+    }
+
     debugPrint('[BG_TRACKING_IOS] jedan background tick OK');
   } catch (e) {
     debugPrint('[BG_TRACKING_IOS] background tick greška: $e');
