@@ -927,7 +927,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Die PINs stimmen nicht überein.',
       'zh': 'PIN码不匹配。',
     },
-    'cuvamPin': {
+    'cuvaPin': {
       'sr': '💾 Čuvam PIN...',
       'en': '💾 Saving PIN...',
       'ru': '💾 Сохраняю PIN...',
@@ -1141,7 +1141,7 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'en': 'Your shift for today has ended. Please enter today\'s earnings amount.',
       'ru': 'Ваша смена на сегодня завершена. Пожалуйста, введите сумму сегодняшней выручки.',
       'de': 'Ihre Schicht für heute ist beendet. Bitte geben Sie den heutigen Einnahmenbetrag ein.',
-      'zh': '您今天的班次已结束。请输入今天的收入金额。'
+      'zh': '您今天的班次已结束。请输入今天的收入金额。',
     },
     'unesitePredatIznos': {
       'sr': 'Unesite predat iznos',

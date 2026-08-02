@@ -256,7 +256,7 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'en': 'INSTALL',
       'ru': 'УСТАНОВИТЬ',
       'de': 'INSTALLIEREN',
-      'zh': '安装'
+      'zh': '安装',
     },
     'noGpsCoordinatesForAddress': {
       'sr': 'Nema GPS koordinata za ovu adresu',

@@ -1,12 +1,14 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_telefon_helper.dart';
-import '../l10n/app_translations.dart';
 
 class V3ONamaScreen extends StatefulWidget {
   const V3ONamaScreen({super.key});
@@ -158,7 +160,10 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
                     children: [
                       _buildInfoRow(_tr('verzija'), _appVersion),
                       const Divider(color: Colors.white24, height: 16),
-                      _buildInfoRow(_tr('platforma'), 'Android'),
+                      _buildInfoRow(
+                        _tr('platforma'),
+                        Platform.isIOS ? 'iOS' : (Platform.isAndroid ? 'Android' : Platform.operatingSystem),
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         _tr('copyright'),

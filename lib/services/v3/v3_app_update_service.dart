@@ -60,11 +60,8 @@ class V3AppUpdateService {
       final maintenanceMode = selected['maintenanceMode'] == true;
       final maintenanceTitle = (selected['maintenanceTitle'] ?? '').toString().trim();
       final maintenanceMessage = (selected['maintenanceMessage'] ?? '').toString().trim();
-      var storeUrl = (selected['storeUrl'] ?? '').toString().trim();
-      // Android fallback without embedding third-party store web URLs in the binary.
-      if (Platform.isAndroid && storeUrl.isEmpty) {
-        storeUrl = 'market://details?id=${packageInfo.packageName}';
-      }
+      final storeUrl = (selected['storeUrl'] ?? '').toString().trim();
+      // Store URL only from remote config — no hardcoded store listing URLs in binary.
       final forceFlag = selected['force'] == true;
 
       if (maintenanceMode) {

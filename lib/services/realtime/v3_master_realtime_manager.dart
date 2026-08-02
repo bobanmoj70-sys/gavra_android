@@ -151,6 +151,17 @@ class V3MasterRealtimeManager {
       }
     }
 
+    if (row.containsKey('here_wego_install_url_android')) {
+      V3AppSettingsState.instance.setHereWegoInstallUrlAndroid(
+        row['here_wego_install_url_android']?.toString(),
+      );
+    }
+    if (row.containsKey('here_wego_install_url_ios')) {
+      V3AppSettingsState.instance.setHereWegoInstallUrlIos(
+        row['here_wego_install_url_ios']?.toString(),
+      );
+    }
+
     unawaited(
       V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row)
           .catchError((Object e) => debugPrint('[V3MasterRealtimeManager] app update info error: $e')),

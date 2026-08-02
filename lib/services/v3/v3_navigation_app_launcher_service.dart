@@ -4,6 +4,7 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'v3_app_settings_state.dart';
 import 'v3_route_models.dart';
 
 /// Rezultat pokušaja otvaranja HERE WeGo navigacije.
@@ -11,8 +12,8 @@ import 'v3_route_models.dart';
 /// Politika (iOS + Android, uniformno):
 /// - HERE WeGo je jedina podržana map/nav app
 /// - Ako je instalirana → otvori rutu
-/// - Ako nije → ponudi instalaciju (store)
-/// - Ako korisnik ne instalira → navigacija se ne koristi (nema Apple/Google Maps fallback)
+/// - Ako nije → obavesti korisnika; opciono otvori install URL iz remote config-a
+/// - Nema Apple Maps / Google Maps fallback
 enum V3HereWeGoLaunchResult {
   opened,
   notInstalled,
@@ -23,13 +24,13 @@ enum V3HereWeGoLaunchResult {
 /// Centralni launcher za GPS navigaciju putnika / multi-stop rute.
 ///
 /// Samo HERE WeGo. Nema fallback na druge mape.
+/// Install URL-ovi dolaze isključivo iz `v3_app_settings` (runtime),
+/// nisu hardkodovani u binaru (Guideline 2.3.10).
 class V3NavigationAppLauncherService {
   V3NavigationAppLauncherService._();
 
+  /// Android package name — samo za Intent `package:` filter, ne store URL.
   static const String androidPackage = 'com.here.app.maps';
-
-  /// App Store ID za HERE WeGo.
-  static const String iosAppStoreId = '955837750';
 
   /// Deep-link šema koju HERE WeGo registruje za rute.
   static const String routeScheme = 'here-route';
@@ -90,56 +91,56 @@ class V3NavigationAppLauncherService {
     return '$routeScheme://mylocation/$points?m=d';
   }
 
-  static Uri installStoreUri() {
-    if (Platform.isIOS) {
-      return Uri.parse('https://apps.apple.com/app/id$iosAppStoreId');
-    }
-    return Uri.parse('market://details?id=$androidPackage');
+  /// Install listing URL iz remote config-a (platform-specific).
+  static String? installUrlFromRemoteConfig() {
+    return V3AppSettingsState.instance.hereWegoInstallUrlForCurrentPlatform(
+      isIos: Platform.isIOS,
+      isAndroid: Platform.isAndroid,
+    );
   }
 
-  static Uri installStoreHttpsUri() {
-    if (Platform.isIOS) {
-      return Uri.parse('https://apps.apple.com/app/id$iosAppStoreId');
-    }
-    return Uri.parse('https://play.google.com/store/apps/details?id=$androidPackage');
-  }
-
-  /// Otvori store stranicu za instalaciju HERE WeGo.
-  static Future<bool> openInstallStore() async {
+  /// Otvori install listing za HERE WeGo (URL samo iz Supabase).
+  static Future<bool> openInstallFromRemoteConfig() async {
+    final raw = installUrlFromRemoteConfig();
+    if (raw == null || raw.isEmpty) return false;
     try {
-      final primary = installStoreUri();
-      if (await canLaunchUrl(primary)) {
-        return launchUrl(primary, mode: LaunchMode.externalApplication);
-      }
-      final https = installStoreHttpsUri();
-      if (await canLaunchUrl(https)) {
-        return launchUrl(https, mode: LaunchMode.externalApplication);
+      final uri = Uri.tryParse(raw);
+      if (uri == null) return false;
+      if (await canLaunchUrl(uri)) {
+        return launchUrl(uri, mode: LaunchMode.externalApplication);
       }
       return false;
     } catch (e) {
-      debugPrint('[V3NavigationAppLauncher] openInstallStore failed: $e');
+      debugPrint('[V3NavigationAppLauncher] openInstallFromRemoteConfig failed: $e');
       return false;
     }
   }
 
-  /// SnackBar: „instaliraj HERE WeGo” + akcija INSTALIRAJ.
+  /// SnackBar: instaliraj HERE WeGo; dugme samo ako postoji remote install URL.
   static void showInstallPrompt(
     BuildContext context, {
     required String message,
-    required String actionLabel,
+    String? actionLabel,
   }) {
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
+
+    final hasInstallUrl = installUrlFromRemoteConfig()?.isNotEmpty == true;
+    final label = (actionLabel ?? '').trim();
+    final showAction = hasInstallUrl && label.isNotEmpty;
+
     messenger.showSnackBar(
       SnackBar(
         content: Text(message),
         duration: const Duration(seconds: 8),
-        action: SnackBarAction(
-          label: actionLabel,
-          onPressed: () {
-            openInstallStore();
-          },
-        ),
+        action: showAction
+            ? SnackBarAction(
+                label: label,
+                onPressed: () {
+                  openInstallFromRemoteConfig();
+                },
+              )
+            : null,
       ),
     );
   }
