@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../globals.dart';
 import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
+import '../services/v3/v3_app_settings_state.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
@@ -270,7 +272,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return (lat: lat, lng: lng);
   }
 
-  Future<void> _openGoogleMapsForRide(Map<String, dynamic> rideRow) async {
+  Future<void> _openMapsForRide(Map<String, dynamic> rideRow) async {
     final coords = _resolveWaitingAddressCoords(rideRow);
     if (coords == null) {
       if (mounted) {
@@ -281,24 +283,49 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       return;
     }
 
-    final lat = coords.lat.toStringAsFixed(6);
-    final lng = coords.lng.toStringAsFixed(6);
-    final appUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
-    final webUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final settings = V3AppSettingsState.instance;
 
-    if (await canLaunchUrl(appUri)) {
-      await launchUrl(appUri, mode: LaunchMode.externalApplication);
-      return;
+    // 1) Google Maps app deep link from Supabase.
+    final appUri = settings.buildMapsAppUri(
+      latitude: coords.lat,
+      longitude: coords.lng,
+      isIos: Platform.isIOS,
+      isAndroid: Platform.isAndroid,
+    );
+    if (appUri != null) {
+      try {
+        if (await canLaunchUrl(appUri)) {
+          final ok = await launchUrl(appUri, mode: LaunchMode.externalApplication);
+          if (ok) return;
+        } else {
+          // iOS canLaunchUrl can be false for custom schemes; still try launch.
+          final ok = await launchUrl(appUri, mode: LaunchMode.externalApplication);
+          if (ok) return;
+        }
+      } catch (_) {
+        // fall through to web
+      }
     }
 
-    if (await canLaunchUrl(webUri)) {
-      await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      return;
+    // 2) Web fallback from Supabase (maps_web_url_template).
+    final webUri = settings.buildMapsWebUri(
+      latitude: coords.lat,
+      longitude: coords.lng,
+    );
+    if (webUri != null) {
+      try {
+        if (await canLaunchUrl(webUri)) {
+          final ok = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+          if (ok) return;
+        }
+      } catch (_) {
+        // show error below
+      }
     }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_tr('cannotOpenGoogleMaps'))),
+        SnackBar(content: Text(_tr('cannotOpenMaps'))),
       );
     }
   }
@@ -406,7 +433,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
                       if (waitingAddress != null && nextRide != null) ...[
                         const SizedBox(height: 8),
                         GestureDetector(
-                          onTap: () => _openGoogleMapsForRide(nextRide.row),
+                          onTap: () => _openMapsForRide(nextRide.row),
                           child: V3ContainerUtils.styledContainer(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             backgroundColor: Colors.white.withValues(alpha: 0.06),

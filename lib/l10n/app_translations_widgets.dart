@@ -428,12 +428,12 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'de': 'Keine GPS-Koordinaten für diese Adresse',
       'zh': '此地址没有GPS坐标',
     },
-    'cannotOpenGoogleMaps': {
-      'sr': 'Ne mogu da otvorim Google Maps',
-      'en': 'Cannot open Google Maps',
-      'ru': 'Не удается открыть Google Maps',
-      'de': 'Google Maps kann nicht geöffnet werden',
-      'zh': '无法打开Google地图',
+    'cannotOpenMaps': {
+      'sr': 'Ne mogu da otvorim mape',
+      'en': 'Cannot open maps',
+      'ru': 'Не удается открыть карты',
+      'de': 'Karten können nicht geöffnet werden',
+      'zh': '无法打开地图',
     },
   },
   'locationDisclosure': {

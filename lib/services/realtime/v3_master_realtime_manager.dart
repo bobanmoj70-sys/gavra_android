@@ -161,6 +161,21 @@ class V3MasterRealtimeManager {
         row['here_wego_install_url_ios']?.toString(),
       );
     }
+    if (row.containsKey('maps_app_url_template_android')) {
+      V3AppSettingsState.instance.setMapsAppUrlTemplateAndroid(
+        row['maps_app_url_template_android']?.toString(),
+      );
+    }
+    if (row.containsKey('maps_app_url_template_ios')) {
+      V3AppSettingsState.instance.setMapsAppUrlTemplateIos(
+        row['maps_app_url_template_ios']?.toString(),
+      );
+    }
+    if (row.containsKey('maps_web_url_template')) {
+      V3AppSettingsState.instance.setMapsWebUrlTemplate(
+        row['maps_web_url_template']?.toString(),
+      );
+    }
 
     unawaited(
       V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row)
