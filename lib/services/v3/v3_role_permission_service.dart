@@ -20,16 +20,16 @@ class V3RolePermissionService {
   /// Vozač: push + lokacija (WhenInUse → Always).
   /// Isti redosled na Android i iOS. Ponavlja se pri svakom loginu dok Always nije granted.
   static Future<void> ensureDriverPermissionsOnLogin(BuildContext context) async {
-    await _requestCommonPermissions();
+    await _requestCommonPermissions(context);
     await _requestDriverLocationPermissions(context);
   }
 
-  static Future<void> ensurePassengerPermissionsOnLogin() async {
-    await _requestCommonPermissions();
+  static Future<void> ensurePassengerPermissionsOnLogin(BuildContext context) async {
+    await _requestCommonPermissions(context);
   }
 
-  static Future<void> _requestCommonPermissions() async {
-    await _requestPushOnce();
+  static Future<void> _requestCommonPermissions(BuildContext context) async {
+    await _requestPushOnce(context);
   }
 
   /// Android: budi ekran na dolazni push.
@@ -45,7 +45,7 @@ class V3RolePermissionService {
     }
   }
 
-  static Future<void> _requestPushOnce() async {
+  static Future<void> _requestPushOnce(BuildContext context) async {
     if (Platform.isIOS) {
       try {
         var settings = await FirebaseMessaging.instance.getNotificationSettings();
@@ -58,6 +58,9 @@ class V3RolePermissionService {
           );
         }
         debugPrint('[Permissions][iOS] Push: ${settings.authorizationStatus}');
+        if (settings.authorizationStatus == AuthorizationStatus.denied && context.mounted) {
+          await _offerOpenSettingsForNotifications(context);
+        }
       } catch (e) {
         debugPrint('[Permissions][iOS] Push greška: $e');
       }
@@ -65,9 +68,12 @@ class V3RolePermissionService {
     }
 
     try {
-      final status = await Permission.notification.status;
+      var status = await Permission.notification.status;
       if (status.isDenied || status.isPermanentlyDenied) {
-        await Permission.notification.request();
+        status = await Permission.notification.request();
+      }
+      if (!status.isGranted && status.isPermanentlyDenied && context.mounted) {
+        await _offerOpenSettingsForNotifications(context);
       }
     } catch (e) {
       debugPrint('[Permissions] Push greška: $e');
@@ -103,10 +109,15 @@ class V3RolePermissionService {
       }
       if (!whenInUse.isGranted) {
         debugPrint('[Permissions] WhenInUse nije odobren: $whenInUse');
-        if (context.mounted) {
-          await _offerOpenSettingsForLocation(context, permanentlyDenied: whenInUse.isPermanentlyDenied);
+        if (!context.mounted) return;
+        final opened = await _showWhenInUseLocationGuide(context);
+        if (!opened) return;
+        await _openAppSettingsAndWaitForResume();
+        whenInUse = await Permission.locationWhenInUse.status;
+        if (!whenInUse.isGranted) {
+          debugPrint('[Permissions] WhenInUse i posle Settings nije odobren');
+          return;
         }
-        return;
       }
 
       // 2) Always — background tracking / FGS.
@@ -144,27 +155,61 @@ class V3RolePermissionService {
     }
   }
 
-  static Future<bool> _showLocationDisclosure(BuildContext context) async {
+  static String _trLocation(String key) {
     final code = V3LocaleManager().currentLocale.languageCode;
     final t = AppTranslations.ns('locationDisclosure');
-    String tr(String key) => t[key]?[code] ?? t[key]?['sr'] ?? key;
+    return t[key]?[code] ?? t[key]?['sr'] ?? key;
+  }
 
+  static String _trNotification(String key) {
+    final code = V3LocaleManager().currentLocale.languageCode;
+    final t = AppTranslations.ns('notificationPermission');
+    return t[key]?[code] ?? t[key]?['sr'] ?? key;
+  }
+
+  static Future<bool> _showLocationDisclosure(BuildContext context) async {
     final result = await V3DialogHelper.showBasicDialog<bool>(
       context: context,
       barrierDismissible: false,
-      title: tr('title'),
-      content: tr('message'),
+      title: _trLocation('title'),
+      content: _trLocation('message'),
       titleIcon: Icons.location_on,
       titleIconColor: Colors.amber,
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, false),
-          text: tr('dontAllow'),
+          text: _trLocation('dontAllow'),
           foregroundColor: Colors.grey,
         ),
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, true),
-          text: tr('allow'),
+          text: _trLocation('allow'),
+          foregroundColor: Colors.amber,
+        ),
+      ],
+    );
+
+    return result ?? false;
+  }
+
+  /// WhenInUse odbijen — vodi u Settings (Android + iOS).
+  static Future<bool> _showWhenInUseLocationGuide(BuildContext context) async {
+    final result = await V3DialogHelper.showBasicDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      title: _trLocation('whenInUseTitle'),
+      content: _trLocation('whenInUseMessage'),
+      titleIcon: Icons.location_off,
+      titleIconColor: Colors.amber,
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context, false),
+          text: _trLocation('notNow'),
+          foregroundColor: Colors.grey,
+        ),
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context, true),
+          text: _trLocation('openSettings'),
           foregroundColor: Colors.amber,
         ),
       ],
@@ -176,26 +221,22 @@ class V3RolePermissionService {
   /// Objašnjava da Always mora ručno u Settings (Huawei / Android 11+).
   /// Vraća true ako vozač želi da otvori podešavanja.
   static Future<bool> _showAlwaysLocationGuide(BuildContext context) async {
-    final code = V3LocaleManager().currentLocale.languageCode;
-    final t = AppTranslations.ns('locationDisclosure');
-    String tr(String key) => t[key]?[code] ?? t[key]?['sr'] ?? key;
-
     final result = await V3DialogHelper.showBasicDialog<bool>(
       context: context,
       barrierDismissible: false,
-      title: tr('alwaysTitle'),
-      content: tr('alwaysMessage'),
+      title: _trLocation('alwaysTitle'),
+      content: _trLocation('alwaysMessage'),
       titleIcon: Icons.settings_suggest,
       titleIconColor: Colors.amber,
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, false),
-          text: tr('notNow'),
+          text: _trLocation('notNow'),
           foregroundColor: Colors.grey,
         ),
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, true),
-          text: tr('openSettings'),
+          text: _trLocation('openSettings'),
           foregroundColor: Colors.amber,
         ),
       ],
@@ -204,13 +245,29 @@ class V3RolePermissionService {
     return result ?? false;
   }
 
-  static Future<void> _offerOpenSettingsForLocation(
-    BuildContext context, {
-    required bool permanentlyDenied,
-  }) async {
-    if (!permanentlyDenied && !Platform.isAndroid) return;
-    final opened = await _showAlwaysLocationGuide(context);
-    if (opened) {
+  static Future<void> _offerOpenSettingsForNotifications(BuildContext context) async {
+    if (!context.mounted) return;
+    final opened = await V3DialogHelper.showBasicDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      title: _trNotification('title'),
+      content: _trNotification('message'),
+      titleIcon: Icons.notifications_off,
+      titleIconColor: Colors.amber,
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context, false),
+          text: _trLocation('notNow'),
+          foregroundColor: Colors.grey,
+        ),
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.pop(context, true),
+          text: _trLocation('openSettings'),
+          foregroundColor: Colors.amber,
+        ),
+      ],
+    );
+    if (opened == true) {
       await _openAppSettingsAndWaitForResume();
     }
   }

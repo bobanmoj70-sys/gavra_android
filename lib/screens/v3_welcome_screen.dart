@@ -281,7 +281,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       if (!mounted) return false;
 
-      await V3RolePermissionService.ensurePassengerPermissionsOnLogin();
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin(context);
 
       final putnikId = restored['id']?.toString().trim() ?? '';
       if (putnikId.isNotEmpty) {
@@ -498,7 +498,8 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         authId: resolvedId,
       ).timeout(_startupTimeout, onTimeout: () => Future.value());
       await V3ClosedAuthService.clearManualSmsVozacPhone().timeout(_startupTimeout, onTimeout: () => null);
-      await V3RolePermissionService.ensurePassengerPermissionsOnLogin().timeout(_startupTimeout, onTimeout: () => null);
+      // Bez timeout-a: OS dijalog za notifikacije mora da sačeka korisnika.
+      await V3RolePermissionService.ensurePassengerPermissionsOnLogin(context);
       final putnikId = putnik['id']?.toString().trim() ?? '';
       if (putnikId.isNotEmpty) {
         unawaited(_writePushTokenOnLogin(v3AuthId: putnikId, isVozac: false));

@@ -489,6 +489,24 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'zh':
           '手机系统对话框通常只提供“使用时允许”，没有“始终允许”。\n\n行程追踪需要手动开启：\n\n1. 打开权限设置\n2. 位置 → 始终允许 / Allow all the time\n\n华为手机：在系统对话框中点“Permission manager”，再选“Allow all the time”。\n\n否则后台追踪无法工作。',
     },
+    'whenInUseTitle': {
+      'sr': 'Potrebna dozvola za lokaciju',
+      'en': 'Location permission required',
+      'ru': 'Нужно разрешение на геолокацию',
+      'de': 'Standortberechtigung erforderlich',
+      'zh': '需要位置权限',
+    },
+    'whenInUseMessage': {
+      'sr':
+          'Za praćenje vožnje prvo uključi lokaciju za ovu aplikaciju.\n\n1. Otvori podešavanja\n2. Lokacija → Dozvoli (dok je app u upotrebi ili Uvek)\n\nBez toga tracking ne može da krene.',
+      'en':
+          'Trip tracking needs location access for this app.\n\n1. Open settings\n2. Location → Allow (while using the app or always)\n\nWithout this, tracking cannot start.',
+      'ru':
+          'Для отслеживания поездки включите геолокацию для этого приложения.\n\n1. Откройте настройки\n2. Геолокация → Разрешить\n\nБез этого отслеживание не запустится.',
+      'de':
+          'Für die Fahrtverfolgung braucht die App Standortzugriff.\n\n1. Einstellungen öffnen\n2. Standort → Zulassen\n\nOhne das kann Tracking nicht starten.',
+      'zh': '行程追踪需要为本应用开启位置权限。\n\n1. 打开设置\n2. 位置 → 允许\n\n否则无法开始追踪。',
+    },
     'openSettings': {
       'sr': 'Otvori podešavanja',
       'en': 'Open settings',
@@ -502,6 +520,26 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'ru': 'Позже',
       'de': 'Später',
       'zh': '稍后',
+    },
+  },
+  'notificationPermission': {
+    'title': {
+      'sr': 'Uključi obaveštenja',
+      'en': 'Enable notifications',
+      'ru': 'Включите уведомления',
+      'de': 'Benachrichtigungen aktivieren',
+      'zh': '开启通知',
+    },
+    'message': {
+      'sr':
+          'Obaveštenja su isključena. Bez njih nećeš dobijati poruke o vožnji i statusu zahteva.\n\nOtvori podešavanja i uključi dozvolu za obaveštenja.',
+      'en':
+          'Notifications are off. Without them you will not get ride and request status messages.\n\nOpen settings and enable notification permission.',
+      'ru':
+          'Уведомления выключены. Без них вы не будете получать сообщения о поездках и статусе заявок.\n\nОткройте настройки и включите уведомления.',
+      'de':
+          'Benachrichtigungen sind aus. Ohne sie erhalten Sie keine Nachrichten zu Fahrten und Anfragestatus.\n\nÖffnen Sie die Einstellungen und aktivieren Sie Benachrichtigungen.',
+      'zh': '通知已关闭。关闭后将无法收到行程和请求状态消息。\n\n请打开设置并开启通知权限。',
     },
   },
 };
