@@ -41,6 +41,12 @@ post_install do |installer|
     flutter_additional_ios_build_settings(target)
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+
+      # permission_handler: enable ONLY what the app uses (defaults are all 0).
+      # Avoid App Store rejection for unused privacy APIs / missing usage strings.
+      defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+      defs << 'PERMISSION_LOCATION=1' unless defs.any? { |d| d.to_s.include?('PERMISSION_LOCATION=') }
+      defs << 'PERMISSION_NOTIFICATIONS=1' unless defs.any? { |d| d.to_s.include?('PERMISSION_NOTIFICATIONS=') }
     end
   end
 end

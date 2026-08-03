@@ -2,68 +2,114 @@
   xmlns:tools="http://schemas.android.com/tools"
   package="com.gavra013.gavra_android">
 
-  <!-- 🚫 Remove AD_ID permission - not needed, Firebase Messaging works without it -->
+  <!--
+    Play Store / privacy: keep only permissions the app actually uses.
+    Explicit tools:node="remove" blocks sensitive permissions that plugins may merge in.
+  -->
+
+  <!-- 🚫 Advertising ID — not used -->
   <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
 
-  <!-- 🚫 Remove unused media permissions added by plugins (flutter_contacts) -->
-  <!-- Google Play rejects apps that request photo/video permissions without using them -->
+  <!--
+    🚫 Photo / media / storage — NOT used by the app.
+    open_filex declares these for generic file open, but we only open PDFs from
+    app cache via FileProvider (no gallery/photos access) → strip all of them.
+  -->
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
+  <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:node="remove" />
+  <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" tools:node="remove" />
 
-  <!-- 🛰️ GPS/Location permissions -->
+  <!-- 🚫 Phone / SMS / contacts — dialer & SMS via intents only (no CALL_PHONE / SEND_SMS) -->
+  <uses-permission android:name="android.permission.CALL_PHONE" tools:node="remove" />
+  <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+  <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" tools:node="remove" />
+  <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
+  <uses-permission android:name="android.permission.WRITE_CALL_LOG" tools:node="remove" />
+  <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" tools:node="remove" />
+  <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" tools:node="remove" />
+  <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
+  <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
+  <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
+  <uses-permission android:name="android.permission.RECEIVE_MMS" tools:node="remove" />
+  <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" tools:node="remove" />
+  <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
+  <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
+  <uses-permission android:name="android.permission.GET_ACCOUNTS" tools:node="remove" />
+
+  <!-- 🚫 Camera / mic / bluetooth / activity — not used -->
+  <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
+  <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+  <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" tools:node="remove" />
+  <uses-permission android:name="android.permission.BLUETOOTH" tools:node="remove" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" tools:node="remove" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:node="remove" />
+  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" tools:node="remove" />
+  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" tools:node="remove" />
+  <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" tools:node="remove" />
+
+  <!-- 🚫 Restricted / high-scrutiny Play permissions — not declared -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove" />
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+  <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
+  <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" tools:node="remove" />
+  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:node="remove" />
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:node="remove" />
+
+  <!-- ✅ Core network -->
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <!-- ✅ Location (drivers only at runtime) + background tracking FGS -->
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-  <!-- 📱 Other required permissions -->
-  <uses-permission android:name="android.permission.INTERNET" />
-  <uses-permission android:name="android.permission.WAKE_LOCK" />
-  <uses-permission android:name="android.permission.VIBRATE" />
-  <!-- Required for Android 13+ runtime notification permission -->
-  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-  <!-- Background foreground service permissions for driver tracking -->
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-  <!-- SMS dozvole NISU potrebne - koristimo url_launcher (sms: URI) koji otvara SMS app -->
 
-  <!-- 🔐 BIOMETRIC AUTHENTICATION (otisak prsta) -->
+  <!-- ✅ Notifications / background reliability -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+  <!-- ✅ Biometric login (local_auth) -->
   <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-  <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
-  <!-- 🔊 VOICE NAVIGATION PERMISSIONS -->
-  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+  <application
+    android:label="Gavra 013"
+    android:name="${applicationName}"
+    android:icon="@mipmap/ic_launcher"
+    android:roundIcon="@mipmap/ic_launcher_round"
+    android:largeHeap="true"
+    android:enableOnBackInvokedCallback="true">
 
-  <application android:label="Gavra 013" android:name="${applicationName}" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:largeHeap="true" android:enableOnBackInvokedCallback="true">
     <!-- 🔔 FCM Notification icon and color -->
     <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />
     <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_color" />
 
-    <!-- UTF-8 ENCODING SUPPORT -->
     <meta-data
         android:name="flutterEmbedding"
         android:value="2" />
 
-    <!-- 📱 LARGE SCREEN SUPPORT for Android 16+ (foldables, tablets) -->
-    <!-- Explicitly declare support for all screen sizes and orientations -->
-    <activity android:name=".MainActivity" 
-      android:exported="true" 
-      android:launchMode="singleTop" 
-      android:taskAffinity="" 
-      android:theme="@style/LaunchTheme" 
-      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" 
-      android:hardwareAccelerated="true" 
-      android:windowSoftInputMode="adjustResize" 
-      android:resizeableActivity="true" 
+    <activity android:name=".MainActivity"
+      android:exported="true"
+      android:launchMode="singleTop"
+      android:taskAffinity=""
+      android:theme="@style/LaunchTheme"
+      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+      android:hardwareAccelerated="true"
+      android:windowSoftInputMode="adjustResize"
+      android:resizeableActivity="true"
       android:supportsPictureInPicture="true"
       android:showWhenLocked="true"
       android:turnScreenOn="true">
-      <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
       <meta-data android:name="io.flutter.embedding.android.NormalTheme" android:resource="@style/NormalTheme" />
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
@@ -87,7 +133,7 @@
       </intent-filter>
     </activity>
 
-    <!-- 🔥 FCM Service - prima push notifikacije u foreground/background, prosleđuje Flutteru -->
+    <!-- 🔥 FCM Service -->
     <service
       android:name=".GavraFcmService"
       android:exported="false">
@@ -107,23 +153,15 @@
       android:name=".AlternativaActionReceiver"
       android:exported="false" />
 
-    <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
-    <meta-data android:name="flutterEmbedding" android:value="2" />
-
   </application>
-  <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
   <queries>
     <intent>
       <action android:name="android.intent.action.PROCESS_TEXT"/>
       <data android:mimeType="text/plain"/>
     </intent>
 
-    <!-- 🗺️ NAVIGATION — only HERE WeGo (install required; no other map apps) -->
+    <!-- 🗺️ HERE WeGo only -->
     <package android:name="com.here.app.maps"/>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -133,8 +171,8 @@
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="here.directions"/>
     </intent>
-    
-    <!-- Generic geo / https (phone helpers, store links) — not used as map navigation fallback -->
+
+    <!-- Generic helpers -->
     <intent>
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="geo"/>
@@ -147,14 +185,12 @@
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="http"/>
     </intent>
-
-    <!-- 🛒 Google Play Store - za instalaciju HERE WeGo -->
     <intent>
       <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="market"/>
     </intent>
 
-    <!-- 📞 Phone/SMS intents -->
+    <!-- 📞 Phone/SMS intents (no CALL_PHONE / SEND_SMS permission) -->
     <intent>
       <action android:name="android.intent.action.DIAL"/>
       <data android:scheme="tel"/>
@@ -162,6 +198,10 @@
     <intent>
       <action android:name="android.intent.action.SENDTO"/>
       <data android:scheme="smsto"/>
+    </intent>
+    <intent>
+      <action android:name="android.intent.action.SENDTO"/>
+      <data android:scheme="sms"/>
     </intent>
   </queries>
 </manifest>

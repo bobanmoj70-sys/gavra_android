@@ -470,5 +470,38 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
       'de': 'Nicht erlauben',
       'zh': '不允许',
     },
+    'alwaysTitle': {
+      'sr': 'Potrebna dozvola „Uvek“',
+      'en': '“Allow all the time” required',
+      'ru': 'Нужно разрешение «Всегда»',
+      'de': 'Berechtigung „Immer“ erforderlich',
+      'zh': '需要“始终允许”',
+    },
+    'alwaysMessage': {
+      'sr':
+          'Telefon često ne nudi opciju „Uvek“ u prvom prozoru — samo „Dok je aplikacija u upotrebi“.\n\nZa praćenje vožnje moraš ručno uključiti:\n\n1. Otvori podešavanja dozvola\n2. Lokacija → Dozvoli sve vreme / Uvek / Allow all the time\n\nNa Huawei: dodirni „Permission manager“ u sistemskom prozoru, pa izaberi „Allow all the time“.\n\nBez toga tracking u pozadini ne radi.',
+      'en':
+          'Phones often do not offer “Allow all the time” in the first dialog — only “While in use”.\n\nFor trip tracking you must enable it manually:\n\n1. Open permission settings\n2. Location → Allow all the time\n\nOn Huawei: tap “Permission manager” in the system dialog, then choose “Allow all the time”.\n\nWithout this, background tracking will not work.',
+      'ru':
+          'Телефон часто не предлагает «Всегда» в первом окне — только «При использовании».\n\nДля отслеживания поездки включите вручную:\n\n1. Откройте настройки разрешений\n2. Геолокация → Всегда / Allow all the time\n\nНа Huawei: нажмите «Permission manager», затем «Allow all the time».\n\nБез этого фоновое отслеживание не работает.',
+      'de':
+          'Viele Telefone bieten im ersten Dialog nur „Nur während der Nutzung“ — nicht „Immer“.\n\nFür die Fahrtverfolgung bitte manuell aktivieren:\n\n1. Berechtigungseinstellungen öffnen\n2. Standort → Immer zulassen / Allow all the time\n\nAuf Huawei: im Systemdialog „Permission manager“ antippen und „Allow all the time“ wählen.\n\nOhne das funktioniert Hintergrund-Tracking nicht.',
+      'zh':
+          '手机系统对话框通常只提供“使用时允许”，没有“始终允许”。\n\n行程追踪需要手动开启：\n\n1. 打开权限设置\n2. 位置 → 始终允许 / Allow all the time\n\n华为手机：在系统对话框中点“Permission manager”，再选“Allow all the time”。\n\n否则后台追踪无法工作。',
+    },
+    'openSettings': {
+      'sr': 'Otvori podešavanja',
+      'en': 'Open settings',
+      'ru': 'Открыть настройки',
+      'de': 'Einstellungen öffnen',
+      'zh': '打开设置',
+    },
+    'notNow': {
+      'sr': 'Kasnije',
+      'en': 'Not now',
+      'ru': 'Позже',
+      'de': 'Später',
+      'zh': '稍后',
+    },
   },
 };

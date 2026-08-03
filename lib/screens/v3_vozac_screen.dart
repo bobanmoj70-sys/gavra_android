@@ -16,6 +16,7 @@ import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_push_token_edge_service.dart';
+import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_route_models.dart';
 import '../services/v3/v3_route_waypoint_resolver_service.dart';
 import '../services/v3/v3_tracking_config.dart';
@@ -483,12 +484,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _autoStartInProgress = true;
     try {
       debugPrint('[V3VozacScreen] auto-start → ${termin.grad} ${termin.vreme}');
-      final result = await V3VozacLocationTrackingService.instance.start(
+      var result = await V3VozacLocationTrackingService.instance.start(
         vozacId: vozacId,
         datumIso: termin.datumIso,
         grad: termin.grad,
         vreme: termin.vreme,
       );
+
+      // Always nije u sistemskom dijalogu (Huawei/Android) — vodi u Settings pa retry.
+      if (!result.isSuccess && result == V3TrackingStartResult.permissionAlwaysRequired && mounted) {
+        final granted = await V3RolePermissionService.promptAlwaysLocationIfNeeded(context);
+        if (granted && mounted) {
+          result = await V3VozacLocationTrackingService.instance.start(
+            vozacId: vozacId,
+            datumIso: termin.datumIso,
+            grad: termin.grad,
+            vreme: termin.vreme,
+          );
+        }
+      }
+
       if (!mounted) return;
       final running = result.isSuccess;
       V3StateUtils.safeSetState(this, () => _isNavigating = running);

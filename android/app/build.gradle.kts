@@ -75,10 +75,13 @@ android {
 
     buildTypes {
         named("release") {
-            // 🚀 R8 ENABLED (2026-07-30) - smanjuje APK, ubrzava pokretanje i smanjuje potrošnju memorije
+            // R8 code shrinking/obfuscation + resource shrinking
+            // With AGP 9.0+, isShrinkResources enables optimized resource shrinking
+            // (android.r8.optimizedResourceShrinking=true in gradle.properties)
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
+                // Default optimize rules (required by AGP 9; proguard-android.txt disallowed)
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
