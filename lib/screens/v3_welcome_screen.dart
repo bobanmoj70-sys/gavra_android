@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../l10n/app_translations.dart';
@@ -16,7 +15,6 @@ import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_role_permission_service.dart';
 import '../services/v3/v3_vozac_service.dart';
-import '../services/v3_biometric_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../utils/v3_animation_utils.dart';
@@ -37,7 +35,6 @@ class V3WelcomeScreen extends StatefulWidget {
 }
 
 class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
-  static const String _biometricPhoneKey = 'v3_biometric_login_phone';
   static const String _fadeAnimationKey = 'welcome_fade';
   static const String _slideAnimationKey = 'welcome_slide';
   static const String _pulseAnimationKey = 'welcome_pulse';
@@ -126,16 +123,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         false;
     if (vozacRestored) return;
 
-    final putnikRestored = await _runStartupStep<bool>(
-          label: 'auto-login putnik',
-          action: _tryAutoLoginPutnik,
-        ) ??
-        false;
-    if (putnikRestored) return;
-
-    await _runStartupStep<void>(
-      label: 'biometric auto-login',
-      action: _tryBiometricAutoLogin,
+    await _runStartupStep<bool>(
+      label: 'auto-login putnik',
+      action: _tryAutoLoginPutnik,
     );
   }
 
@@ -218,7 +208,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       V3SmsLoginScreen(
         title: 'Prijava',
         initialPhone: initialPhone,
-        biometricKey: _biometricPhoneKey,
         onVerified: _onLoginVerified,
       ),
     );
@@ -234,60 +223,9 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       V3SmsLoginScreen(
         title: 'Prijava',
         initialPhone: initialPhone,
-        biometricKey: _biometricPhoneKey,
         onVerified: _onLoginVerified,
       ),
     );
-  }
-
-  Future<void> _tryBiometricAutoLogin() async {
-    try {
-      const secureStorage = FlutterSecureStorage();
-      final rawPhone = await secureStorage.read(key: _biometricPhoneKey);
-
-      if (rawPhone != null && rawPhone.isNotEmpty) {
-        final bio = V3BiometricService();
-        final enabledForUser = await bio.isBiometricEnabled();
-        final isAvailable = await bio.isBiometricAvailable();
-
-        if (enabledForUser && isAvailable && mounted) {
-          final authenticated = await bio.authenticate(
-            reason: 'Potvrdi identitet za automatski ulazak',
-          );
-
-          if (authenticated && mounted) {
-            await _stopAudio();
-            final normalizedPhone = V3ClosedAuthService.normalizePhone(rawPhone);
-            if (normalizedPhone.isEmpty) return;
-
-            final authId = (await V3ClosedAuthService.findAuthIdByPhone(normalizedPhone) ?? '').trim();
-            if (authId.isEmpty) return;
-
-            final deviceId = await V3DeviceIdentityService.getStableDeviceId();
-            final hardwareId = await V3DeviceIdentityService.getHardwareId();
-            final verification = await V3ClosedAuthService.verifyLogin(
-              rawPhone: normalizedPhone,
-              expectedAuthId: authId,
-              installationId: deviceId,
-              hardwareId: hardwareId,
-            ).timeout(_startupTimeout, onTimeout: () => const V3LoginVerification(ok: false, reason: 'timeout'));
-
-            if (!verification.ok || !verification.deviceAllowed) {
-              if (verification.reason == 'device_limit_reached') {
-                _showSafeSnackBar(_tr('deviceLimitReached'));
-              } else {
-                _showSafeSnackBar(_tr('phoneNotPaired'));
-              }
-              return;
-            }
-
-            await _onLoginVerified(normalizedPhone, authId);
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('[V3WelcomeScreen] Biometic auto-login error: $e');
-    }
   }
 
   Future<bool> _tryAutoLoginVozac() async {
@@ -714,7 +652,6 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                 _safePushScreen(
                                   V3SmsLoginScreen(
                                     title: 'Prijava',
-                                    biometricKey: _biometricPhoneKey,
                                     onVerified: _onLoginVerified,
                                   ),
                                 );

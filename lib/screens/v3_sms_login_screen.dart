@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../l10n/app_translations.dart';
 import '../models/v3_adresa.dart';
@@ -15,7 +14,6 @@ import '../services/v3/v3_push_token_edge_service.dart';
 import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_vozac_service.dart';
-import '../services/v3_biometric_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -33,13 +31,11 @@ enum _SmsStep { unosTelefona, unosProfila }
 /// [title]         – naslov appbar-a
 /// [initialPhone]  – pre-popunjen telefon (vozač)
 /// [header]        – widget iznad forme (vozač header sa imenom)
-/// [biometricKey]  – ključ za SecureStorage biometrije (null = bez biometrije)
 /// [onVerified]    – callback nakon uspešne verifikacije, prima normalizovan telefon + auth id (ako postoji)
 class V3SmsLoginScreen extends StatefulWidget {
   final String title;
   final String? initialPhone;
   final Widget? header;
-  final String? biometricKey;
   final Future<void> Function(String canonicalPhone, String? authId) onVerified;
 
   const V3SmsLoginScreen({
@@ -48,7 +44,6 @@ class V3SmsLoginScreen extends StatefulWidget {
     required this.onVerified,
     this.initialPhone,
     this.header,
-    this.biometricKey,
   });
 
   @override
@@ -61,7 +56,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
   final _prezimeController = TextEditingController();
   final _pinController = TextEditingController();
   final _pinConfirmController = TextEditingController();
-  static const _secureStorage = FlutterSecureStorage();
 
   _SmsStep _step = _SmsStep.unosTelefona;
   bool _isLoading = false;
@@ -117,17 +111,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     return '${_tr('dopunitePolja')}: $translatedFields ${_tr('daNastavite')}';
   }
 
-  // Biometrija
-  bool _biometricChecked = false;
-  bool _biometricDeviceSupported = false;
-  bool _biometricAvailable = false;
-  bool _biometricEnabledForUser = false;
-  bool _hasSavedCredentials = false;
-  bool _autoBiometricAttempted = false;
-  IconData _biometricIcon = Icons.fingerprint;
-
-  bool get _biometricEnabled => widget.biometricKey != null;
-
   @override
   void initState() {
     super.initState();
@@ -135,7 +118,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       _phoneController.text = V3PhoneUtils.normalize(widget.initialPhone!);
     }
     unawaited(_waitForBackendReady());
-    if (_biometricEnabled) _checkBiometric();
   }
 
   @override
@@ -165,97 +147,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
       await Future<void>.delayed(const Duration(milliseconds: 600));
     }
-  }
-
-  // ─── Biometrija ────────────────────────────────────────────────
-
-  Future<void> _checkBiometric() async {
-    final bio = V3BiometricService();
-    final supported = await bio.isDeviceSupported();
-    final available = await bio.isBiometricAvailable();
-    final enabledForUser = await bio.isBiometricEnabled();
-    final savedPhone = widget.biometricKey != null ? await _secureStorage.read(key: widget.biometricKey!) : null;
-    final hasCreds = (savedPhone ?? '').trim().isNotEmpty && enabledForUser;
-    final info = await bio.getBiometricInfo();
-    if (mounted) {
-      setState(() {
-        _biometricChecked = true;
-        _biometricDeviceSupported = supported;
-        _biometricAvailable = available;
-        _biometricEnabledForUser = enabledForUser;
-        _hasSavedCredentials = hasCreds;
-        _biometricIcon = info.icon;
-      });
-      _tryAutoBiometricLogin();
-    }
-  }
-
-  void _tryAutoBiometricLogin() {
-    if (_autoBiometricAttempted) return;
-    if (!_biometricEnabled || !_biometricAvailable || !_biometricEnabledForUser || !_hasSavedCredentials) return;
-
-    _autoBiometricAttempted = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _isLoading || _step != _SmsStep.unosTelefona) return;
-      _loginWithBiometric(silentFailure: true);
-    });
-  }
-
-  Future<void> _loginWithBiometric({bool silentFailure = false}) async {
-    if (widget.biometricKey == null) return;
-
-    if (!_biometricEnabledForUser) {
-      if (!silentFailure && mounted) {
-        V3AppSnackBar.info(context, _tr('biometrijaNijeUkljucena'));
-      }
-      return;
-    }
-
-    final raw = await _secureStorage.read(key: widget.biometricKey!);
-    if (raw == null) {
-      if (!silentFailure && mounted) {
-        V3AppSnackBar.info(context, _tr('nemaSacuvanihPodataka'));
-      }
-      return;
-    }
-
-    final authenticated = await V3BiometricService().authenticate(
-      reason: 'Potvrdi identitet za prijavu',
-    );
-
-    if (!authenticated) {
-      if (!silentFailure && mounted) {
-        V3AppSnackBar.error(context, _tr('biometrijaNijeUspela'));
-      }
-      return;
-    }
-
-    final normalized = V3ClosedAuthService.normalizePhone(raw);
-    if (normalized.isEmpty) {
-      if (!silentFailure && mounted) {
-        V3AppSnackBar.error(context, _tr('sacuvanTelefonNijeIspravan'));
-      }
-      return;
-    }
-
-    if (mounted) {
-      setState(() => _normalizedPhone = normalized);
-    }
-
-    final authId = (await V3ClosedAuthService.findAuthIdByPhone(normalized) ?? '').trim();
-    if (authId.isEmpty) {
-      if (!silentFailure && mounted) {
-        V3AppSnackBar.error(context, _tr('brojNijePronadjen'));
-      }
-      return;
-    }
-
-    if (mounted) {
-      setState(() => _targetAuthId = authId);
-    }
-
-    if (!mounted) return;
-    await _advanceAfterPhoneAuth(skipBiometricSave: true);
   }
 
   // ─── Korak 1: Proveri telefon + pošalji SMS ────────────────────
@@ -313,7 +204,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
   }
 
-  Future<void> _advanceAfterPhoneAuth({bool skipBiometricSave = false}) async {
+  Future<void> _advanceAfterPhoneAuth() async {
     debugPrint('[V3SmsLogin] _advanceAfterPhoneAuth started');
     final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
     final authId = (_targetAuthId ?? '').trim();
@@ -470,7 +361,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
 
     if (!mounted) return;
-    await _finalize(skipBiometricSave: skipBiometricSave);
+    await _finalize();
   }
 
   String? _trimToNull(Object? value) {
@@ -811,7 +702,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
 
   // ─── Finalizacija ──────────────────────────────────────────────
 
-  Future<void> _finalize({bool skipBiometricSave = false}) async {
+  Future<void> _finalize() async {
     try {
       final phone = V3ClosedAuthService.normalizePhone(_normalizedPhone ?? '');
       final authId = (_targetAuthId ?? '').trim();
@@ -828,18 +719,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       }
 
       if (!mounted) return;
-
-      // Automatski sačuvaj biometriju za sledeći put (bez pitanja)
-      if (_biometricEnabled && !skipBiometricSave && _biometricAvailable) {
-        await _secureStorage.write(key: widget.biometricKey!, value: phone);
-        await V3BiometricService().setBiometricEnabled(true);
-        if (mounted) {
-          setState(() {
-            _biometricEnabledForUser = true;
-            _hasSavedCredentials = true;
-          });
-        }
-      }
 
       await widget.onVerified(phone, authId);
     } catch (e) {
@@ -947,14 +826,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
                   _SmsStep.unosProfila => _buildProfileStep(),
                 },
               ),
-              if (_biometricEnabled && _biometricChecked && _biometricDeviceSupported && !_biometricAvailable) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _tr('biometrijaNijePodesena'),
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  textAlign: TextAlign.center,
-                ),
-              ],
             ],
           ),
         ),
@@ -1020,15 +891,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           isLoading: !_isBackendReady || _isLoading,
           onPressed: _canSubmitPhoneStep ? _sendSms : null,
         ),
-        if (_biometricEnabled && _biometricChecked && _biometricAvailable && _hasSavedCredentials) ...[
-          const SizedBox(height: 10),
-          V3ButtonUtils.amberButton(
-            text: _tr('prijavaBiometrijom'),
-            icon: _biometricIcon,
-            isLoading: _isLoading,
-            onPressed: _isLoading ? null : () => _loginWithBiometric(),
-          ),
-        ],
       ],
     );
   }

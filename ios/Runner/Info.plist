@@ -64,9 +64,6 @@
 	<string>Aplikacija koristi lokaciju vozača i kada aplikacija nije u prvom planu tokom aktivne vožnje, radi praćenja rute i prikaza putnicima.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Aplikacija koristi lokaciju vozača u pozadini tokom aktivne vožnje radi praćenja rute i prikaza putnicima.</string>
-	<!-- Biometric login -->
-	<key>NSFaceIDUsageDescription</key>
-	<string>Koristite Face ID za brzu prijavu u aplikaciju umesto unosa PIN-a.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

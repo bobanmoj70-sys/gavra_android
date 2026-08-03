@@ -650,13 +650,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast', 'zh': '乘客'},
   },
   'smsLoginScreen': {
-    'biometrijaNijeUkljucena': {
-      'sr': 'ℹ️ Biometrija nije uključena za ovaj nalog.',
-      'en': 'ℹ️ Biometrics is not enabled for this account.',
-      'ru': 'ℹ️ Биометрия не включена для этой учётной записи.',
-      'de': 'ℹ️ Biometrie ist für dieses Konto nicht aktiviert.',
-      'zh': 'ℹ️ 此账户未启用生物识别。',
-    },
     'nemaSacuvanihPodataka': {
       'sr': 'ℹ️ Nema sačuvanih podataka. Prijavi se brojem telefona.',
       'en': 'ℹ️ No saved data. Log in with your phone number.',
@@ -701,20 +694,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'ru': 'Загрузка...',
       'de': 'Wird geladen...',
       'zh': '加载中...'
-    },
-    'prijavaBiometrijom': {
-      'sr': 'Prijava biometrijom',
-      'en': 'Log in with biometrics',
-      'ru': 'Вход по биометрии',
-      'de': 'Mit Biometrie anmelden',
-      'zh': '生物识别登录',
-    },
-    'biometrijaNijePodesena': {
-      'sr': 'Biometrija nije podešena na uređaju. Uključite je u podešavanjima telefona.',
-      'en': 'Biometrics is not set up on this device. Enable it in your phone settings.',
-      'ru': 'Биометрия не настроена на устройстве. Включите её в настройках телефона.',
-      'de': 'Biometrie ist auf diesem Gerät nicht eingerichtet. Aktivieren Sie sie in den Telefoneinstellungen.',
-      'zh': '此设备未设置生物识别。请在手机设置中启用它。',
     },
     'unesitePodatke': {
       'sr': 'Unesite podatke za nalog',
@@ -877,13 +856,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'ru': '❌ Вход сейчас невозможен. Попробуйте снова.',
       'de': '❌ Anmeldung ist derzeit nicht möglich. Bitte versuchen Sie es erneut.',
       'zh': '❌ 目前无法登录。请重试。',
-    },
-    'biometrijaNijeUspela': {
-      'sr': '❌ Biometrijska autentifikacija nije uspela',
-      'en': '❌ Biometric authentication failed',
-      'ru': '❌ Биометрическая аутентификация не удалась',
-      'de': '❌ Biometrische Authentifizierung fehlgeschlagen',
-      'zh': '❌ 生物识别认证失败',
     },
     'sacuvanTelefonNijeIspravan': {
       'sr': '❌ Sačuvan telefon nije ispravan. Prijavi se brojem telefona.',

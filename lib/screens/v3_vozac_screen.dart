@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
@@ -24,7 +23,6 @@ import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
 import '../services/v3/v3_vozac_service.dart';
-import '../services/v3_biometric_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
@@ -62,9 +60,6 @@ class V3VozacScreen extends StatefulWidget {
 }
 
 class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
-
   // Prevodi za vozački ekran (SR/EN/RU/DE).
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('vozacScreen');
 
@@ -788,11 +783,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (ok == true && mounted) {
       debugPrint('[V3VozacScreen] stop reason=logout');
       V3VozacLocationTrackingService.instance.stop();
-      final phoneRaw = V3VozacService.currentVozac?.telefon1 ?? '';
-      final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
-      if (normalizedPhone.isNotEmpty) {
-        await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
-      }
 
       // Oslobodi uređaj slot u bazi pre brisanja lokalne sesije
       final vozacId = V3VozacService.currentVozac?.id ?? '';
@@ -804,7 +794,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         );
       }
 
-      await V3BiometricService().clearCredentials();
       V3VozacService.currentVozac = null;
       await V3ClosedAuthService.clearManualSmsVozacPhone();
       await V3ClosedAuthService.clearManualSmsPutnikPhone();

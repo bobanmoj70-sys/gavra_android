@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../globals.dart';
 import '../l10n/app_translations.dart';
@@ -15,7 +14,6 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
-import '../services/v3_biometric_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
@@ -55,9 +53,6 @@ class V3PutnikProfilScreen extends StatefulWidget {
 }
 
 class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with WidgetsBindingObserver {
-  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  static const String _biometricPromptChoicePrefix = 'v3_biometric_prompt_choice_';
-
   late Map<String, dynamic> _putnikData;
   // Operativni termini po danu
   // key = dan kratica npr 'pon', value = lista termina (BC i VS)
@@ -881,12 +876,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     // Obrisi sesiju i kredencijale
     V3PutnikService.currentPutnik = null;
 
-    final phoneRaw = (_putnikData['telefon_1'] ?? _putnikData['telefon'] ?? '').toString();
-    final normalizedPhone = V3ClosedAuthService.normalizePhone(phoneRaw);
-    if (normalizedPhone.isNotEmpty) {
-      await _secureStorage.delete(key: '$_biometricPromptChoicePrefix$normalizedPhone');
-    }
-
     // Oslobodi uređaj slot u bazi pre brisanja lokalne sesije
     final putnikId = (_putnikData['id'] ?? '').toString().trim();
     if (putnikId.isNotEmpty) {
@@ -897,7 +886,6 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       );
     }
 
-    await V3BiometricService().clearCredentials();
     await V3ClosedAuthService.clearManualSmsPutnikPhone();
     await V3ClosedAuthService.clearManualSmsVozacPhone();
     if (!mounted) return;
