@@ -40,6 +40,10 @@ class V3CacheStore {
       }
       return null;
     }
+    if (table == 'v3_vozac_location') {
+      final vozacId = row['vozac_id']?.toString();
+      return (vozacId != null && vozacId.isNotEmpty) ? vozacId : null;
+    }
     final id = row['id']?.toString();
     return (id != null && id.isNotEmpty) ? id : null;
   }

@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
+import '../realtime/v3_master_realtime_manager.dart';
 
 /// Hard stop: polazak + ovoliko (T+55).
 const Duration v3TrackingMaxDuration = Duration(minutes: 55);
@@ -268,6 +269,10 @@ Future<void> v3ClearEtaForVozac({
   } catch (e) {
     debugPrint('[v3ClearEtaForVozac] error: $e');
   }
+  // Main isolate: odmah očisti UI cache. BG isolate nema bootstrap — no-op.
+  try {
+    V3MasterRealtimeManager.instance.clearEtaResultsForVozac(normalized);
+  } catch (_) {}
 }
 
 /// `true` samo ako slot postoji i svi putnici u njemu su pokupljeni/otkazani.
@@ -278,6 +283,16 @@ Future<bool> v3AllPassengersCompleted({
   required String vreme,
 }) async {
   if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
+
+  // Main: cache iz master managera. BG isolate → null → DB fallback.
+  try {
+    final cached = V3MasterRealtimeManager.instance.tryAllPassengersCompleted(
+      datumIso: datumIso,
+      grad: grad,
+      vreme: vreme,
+    );
+    if (cached != null) return cached;
+  } catch (_) {}
 
   try {
     // Isto kao edge: datum+grad, pa match HH:mm (DB može biti 07:00 ili 07:00:00).
@@ -370,11 +385,20 @@ Future<void> v3UpdateVozacLocation({
     throw StateError('$logTag empty vozacId');
   }
 
+  final updatedAt = V3BelgradeTime.nowIsoUtc();
   await client.from('v3_vozac_location').upsert(<String, dynamic>{
     'vozac_id': vozacId,
     'lat': lat,
     'lng': lng,
-    'updated_at': V3BelgradeTime.nowIsoUtc(),
+    'updated_at': updatedAt,
   });
+  try {
+    V3MasterRealtimeManager.instance.applyLocalVozacLocation(
+      vozacId: vozacId,
+      lat: lat,
+      lng: lng,
+      updatedAtIso: updatedAt,
+    );
+  } catch (_) {}
   debugPrint('$logTag lokacija $lat, $lng vozac=$vozacId');
 }

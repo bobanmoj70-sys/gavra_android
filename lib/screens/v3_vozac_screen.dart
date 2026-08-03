@@ -75,6 +75,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _loadingDodela = false;
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
   StreamSubscription<({Map<String, int> etaMap, List<String> order})>? _etaTickSub;
+  StreamSubscription<bool>? _runningSub;
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   int? _lastRealtimeTick;
 
@@ -398,6 +399,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       _refreshPutniciOrderFromEtaCache();
       unawaited(_syncMapRouteIfNeeded(reason: 'eta_tick_20s'));
     });
+    _runningSub = V3VozacLocationTrackingService.instance.onRunningChanged.listen((running) {
+      if (!mounted) return;
+      V3StateUtils.safeSetState(this, () => _isNavigating = running);
+    });
     unawaited(_initData());
   }
 
@@ -408,6 +413,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _trenutnaDodelaRevisionSub = null;
     unawaited(_etaTickSub?.cancel());
     _etaTickSub = null;
+    unawaited(_runningSub?.cancel());
+    _runningSub = null;
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
     _pulseController.dispose();
@@ -458,7 +465,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
     if (!mounted || _autoStartInProgress) return;
-    if (V3VozacLocationTrackingService.instance.isRunning) return;
+    if (V3VozacLocationTrackingService.instance.isRunning) {
+      if (!_isNavigating) {
+        V3StateUtils.safeSetState(this, () => _isNavigating = true);
+      }
+      return;
+    }
 
     final termin = _findAutoStartTermin();
     if (termin == null) return;
@@ -486,8 +498,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         vreme: termin.vreme,
       );
 
-      // Always nije u sistemskom dijalogu (Huawei/Android) — vodi u Settings pa retry.
-      if (!result.isSuccess && result == V3TrackingStartResult.permissionAlwaysRequired && mounted) {
+      // Always / Settings (Huawei/Android/iOS) — vodi u podešavanja pa retry.
+      final needsLocationSettings = result == V3TrackingStartResult.permissionAlwaysRequired ||
+          result == V3TrackingStartResult.permissionDenied ||
+          result == V3TrackingStartResult.permissionDeniedForever;
+      if (!result.isSuccess && needsLocationSettings && mounted) {
         final granted = await V3RolePermissionService.promptAlwaysLocationIfNeeded(context);
         if (granted && mounted) {
           result = await V3VozacLocationTrackingService.instance.start(

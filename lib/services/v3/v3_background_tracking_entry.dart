@@ -9,12 +9,11 @@ import '../../globals.dart';
 import '../../utils/v3_belgrade_time.dart';
 import 'v3_tracking_config.dart';
 
-/// Background isolate — isti [v3RunTrackingTick] kao foreground.
+/// Android FGS isolate — isti [v3RunTrackingTick] kao main.
 /// Ne aktivira slot (to radi samo main `start()`).
 ///
 /// Sesija se čita iz SharedPreferences na startu isolate-a jer
-/// `invoke('startTracking')` može stići PRE nego što se listener registruje
-/// (Android servicePipe onda tiho odbaci event → tracking se "prekine" u BG).
+/// `invoke('startTracking')` može stići pre listenera.
 @pragma('vm:entry-point')
 Future<void> onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
@@ -64,9 +63,6 @@ Future<void> onStart(ServiceInstance service) async {
     polazakAt = null;
   }
 
-  /// Potpuno gasi BG: ticker, GPS tickovi, foreground notifikacija (stopSelf).
-  /// Obaveštava main isolate da resetuje `_isRunning` (inače bi na resume
-  /// ponovo digao tracking).
   void finishAndStop(String reason) {
     debugPrint('[BG_TRACKING] stop reason=$reason');
     stopTracking();
@@ -141,16 +137,11 @@ Future<void> onStart(ServiceInstance service) async {
   service.on('startTracking').listen((event) {
     startTracking(event is Map<String, dynamic> ? event : null);
   });
-  service.on('stopTracking').listen((_) {
-    // Privremeni handoff FG↔BG — ne briši prefs (main stop() briše sesiju).
-    stopTracking();
-  });
   service.on('stopService').listen((_) {
     stopTracking();
     service.stopSelf();
   });
 
-  // Ako je invoke izgubljen zbog race-a, sesija iz prefs i dalje podiže tickove.
   try {
     final saved = await v3LoadBgTrackingSession();
     if (saved != null) {
@@ -162,8 +153,8 @@ Future<void> onStart(ServiceInstance service) async {
   }
 }
 
-/// iOS background-fetch / BGTask fallback — jedan tick iz sačuvane sesije.
-/// Primarni iOS put je main-isolate location stream + FG ticker; ovo je mreža.
+/// iOS BG fetch mreža — jedan tick iz sesije.
+/// Primarni put je main ticker + location keep-alive.
 @pragma('vm:entry-point')
 Future<bool> onIosBackground(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -183,8 +174,19 @@ Future<bool> onIosBackground(ServiceInstance service) async {
     final startedAt = V3BelgradeTime.parseTs(saved['started_at']?.toString());
     final polazakAt =
         V3BelgradeTime.parseTs(saved['polazak_at']?.toString()) ?? v3PolazakDateTime(datumIso: datum, vreme: v);
-    if (v3TrackingTimedOut(startedAt: startedAt, polazakAt: polazakAt)) {
+
+    Future<void> end(String reason) async {
+      debugPrint('[BG_TRACKING_IOS] stop reason=$reason');
       await v3ClearBgTrackingSession();
+      try {
+        service.invoke('trackingEnded', <String, dynamic>{'reason': reason});
+      } catch (e) {
+        debugPrint('[BG_TRACKING_IOS] trackingEnded invoke greška: $e');
+      }
+    }
+
+    if (v3TrackingTimedOut(startedAt: startedAt, polazakAt: polazakAt)) {
+      await end('timeout');
       return true;
     }
 
@@ -203,7 +205,6 @@ Future<bool> onIosBackground(ServiceInstance service) async {
       client = Supabase.instance.client;
     }
 
-    // Kratak timeout — iOS BG fetch prozor je ograničen.
     await v3RunTrackingTick(
       client: client,
       vozacId: id,
@@ -221,17 +222,10 @@ Future<bool> onIosBackground(ServiceInstance service) async {
     ).timeout(const Duration(seconds: 10), onTimeout: () => false);
 
     if (allDone) {
-      debugPrint('[BG_TRACKING_IOS] all_passengers_completed — clear session');
-      await v3ClearBgTrackingSession();
-      try {
-        service.invoke('trackingEnded', <String, dynamic>{'reason': 'all_passengers_completed'});
-      } catch (e) {
-        debugPrint('[BG_TRACKING_IOS] trackingEnded invoke greška: $e');
-      }
-      return true;
+      await end('all_passengers_completed');
+    } else {
+      debugPrint('[BG_TRACKING_IOS] jedan background tick OK');
     }
-
-    debugPrint('[BG_TRACKING_IOS] jedan background tick OK');
   } catch (e) {
     debugPrint('[BG_TRACKING_IOS] background tick greška: $e');
   }

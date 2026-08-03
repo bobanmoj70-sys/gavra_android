@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_belgrade_time.dart';
+import '../../utils/v3_status_policy.dart';
 import '../v3/v3_address_coordinate_service.dart';
 import '../v3/v3_app_settings_state.dart';
 import '../v3/v3_app_update_service.dart';
@@ -63,7 +64,7 @@ class V3MasterRealtimeManager {
   final Map<String, Map<String, dynamic>> appSettingsCache = {};
   final Map<String, Map<String, dynamic>> operativnaAssignedCache = {};
   final Map<String, Map<String, dynamic>> etaResultsCache = {};
-  final Map<String, Map<String, dynamic>> vozacAkcijeCache = {};
+  final Map<String, Map<String, dynamic>> vozacLocationCache = {};
 
   void _rebuildAssignedCacheFromOperativna() {
     operativnaAssignedCache.clear();
@@ -212,6 +213,7 @@ class V3MasterRealtimeManager {
     _cacheStore.registerTable('v3_app_settings', appSettingsCache);
     _cacheStore.registerTable('v3_operativna_assigned', operativnaAssignedCache);
     _cacheStore.registerTable('v3_eta_results', etaResultsCache);
+    _cacheStore.registerTable('v3_vozac_location', vozacLocationCache);
 
     _cacheStoreRegistered = true;
   }
@@ -699,8 +701,8 @@ class V3MasterRealtimeManager {
   void v3UpsertToCache(String table, Map<String, dynamic> row) {
     final normalizedRow = _normalizeRowForTable(table, row);
 
-    // v3_eta_results koristi kompozitni ključ slot_id:putnik_id — nema 'id' kolonu
-    if (table != 'v3_eta_results') {
+    // Kompozitni / specijalni ključevi — nema standardne 'id' kolone.
+    if (table != 'v3_eta_results' && table != 'v3_vozac_location') {
       final id = normalizedRow['id']?.toString();
       if (id == null) return;
     }
@@ -744,6 +746,13 @@ class V3MasterRealtimeManager {
       final currentId = normalized['id']?.toString();
       if ((currentId == null || currentId.isEmpty) && fallbackId != null && fallbackId.isNotEmpty) {
         normalized['id'] = fallbackId;
+      }
+    }
+
+    if (table == 'v3_vozac_location') {
+      final vozacId = normalized['vozac_id']?.toString();
+      if (vozacId != null && vozacId.isNotEmpty) {
+        normalized['id'] = vozacId;
       }
     }
 
@@ -794,8 +803,95 @@ class V3MasterRealtimeManager {
         return operativnaAssignedCache;
       case 'v3_eta_results':
         return etaResultsCache;
+      case 'v3_vozac_location':
+        return vozacLocationCache;
       default:
         return {};
     }
+  }
+
+  /// Lokalni upsert posle GPS tick-a (main isolate) — UI vidi lokaciju odmah,
+  /// realtime potvrđuje sa drugih uređaja.
+  void applyLocalVozacLocation({
+    required String vozacId,
+    required double lat,
+    required double lng,
+    String? updatedAtIso,
+  }) {
+    final id = vozacId.trim();
+    if (id.isEmpty) return;
+    _registerCacheStoreIfNeeded();
+    v3UpsertToCache('v3_vozac_location', <String, dynamic>{
+      'vozac_id': id,
+      'lat': lat,
+      'lng': lng,
+      'updated_at': updatedAtIso ?? V3BelgradeTime.nowIsoUtc(),
+    });
+  }
+
+  /// Briše ETA redove vozača iz cache-a (posle DB delete na stop).
+  void clearEtaResultsForVozac(String vozacId) {
+    final id = vozacId.trim();
+    if (id.isEmpty) return;
+    _registerCacheStoreIfNeeded();
+    final toRemove = <String>[];
+    for (final entry in etaResultsCache.entries) {
+      if (entry.value['vozac_id']?.toString() == id) {
+        toRemove.add(entry.key);
+      }
+    }
+    if (toRemove.isEmpty) return;
+    for (final key in toRemove) {
+      _cacheStore.remove('v3_eta_results', key);
+    }
+    _scheduleEmit(tables: {'v3_eta_results'});
+  }
+
+  /// `true`/`false` iz cache-a; `null` ako nema dovoljno podataka (BG isolate / prazan cache).
+  bool? tryAllPassengersCompleted({
+    required String datumIso,
+    required String grad,
+    required String vreme,
+  }) {
+    if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
+    if (trenutnaDodelaSlotCache.isEmpty) return null;
+
+    final wantGrad = grad.trim().toUpperCase();
+    final wantVreme = V3BelgradeTime.normalizeToHHmm(vreme);
+    final wantDatum = V3BelgradeTime.parseIsoDatePart(datumIso);
+
+    Map<String, dynamic>? activeSlot;
+    for (final row in trenutnaDodelaSlotCache.values) {
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
+      final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString());
+      if (rowDatum == wantDatum && rowGrad == wantGrad && rowVreme == wantVreme) {
+        activeSlot = row;
+        break;
+      }
+    }
+    if (activeSlot == null) return false;
+
+    final slotId = activeSlot['id']?.toString() ?? '';
+    if (slotId.isEmpty) return false;
+
+    if (trenutnaDodelaCache.isEmpty && operativnaNedeljaCache.isEmpty) return null;
+
+    final terminIds = <String>{};
+    for (final row in trenutnaDodelaCache.values) {
+      if (row['slot_id']?.toString() != slotId) continue;
+      final tid = row['termin_id']?.toString();
+      if (tid != null && tid.isNotEmpty) terminIds.add(tid);
+    }
+    if (terminIds.isEmpty) return false;
+
+    for (final tid in terminIds) {
+      final op = operativnaNedeljaCache[tid] ?? operativnaAssignedCache[tid];
+      if (op == null) return null;
+      final pokupljen = V3StatusPolicy.isTimestampSet(op['pokupljen_at']);
+      final otkazan = V3StatusPolicy.isTimestampSet(op['otkazano_at']);
+      if (!pokupljen && !otkazan) return false;
+    }
+    return true;
   }
 }

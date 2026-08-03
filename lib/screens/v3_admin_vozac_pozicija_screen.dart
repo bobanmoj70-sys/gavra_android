@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_platform.dart';
 import '../l10n/app_translations.dart';
 import '../models/v3_vozac.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_card_color_policy.dart';
@@ -24,16 +24,10 @@ class _VozacPozTr {
   }
 }
 
-/// Admin ekran — prikazuje poslednju poznatu GPS poziciju vozača, na
-/// besplatnoj OpenStreetMap mapi (bez API ključa, bez naplate).
+/// Admin ekran — poslednja GPS pozicija vozača na OSM mapi.
 ///
-/// Podrazumevano (opcija "Svi vozači") prikazuje markere SVIH vozača koji
-/// trenutno imaju lokaciju u tabeli v3_vozac_location. Preko dropdown-a admin
-/// može da izabere jednog konkretnog vozača — tada se mapa fokusira i prikazuje
-/// samo njegov marker.
-///
-/// Lokacija se čita iz tabele v3_vozac_location (jedan red po vozaču,
-/// ažurira se svakih 20s). Ekran periodično osvežava podatke.
+/// Izvor: `V3MasterRealtimeManager.vozacLocationCache` (bootstrap + realtime).
+/// Bez periodičnog poll-a ka Supabase-u.
 class V3AdminVozacPozicijaScreen extends StatefulWidget {
   const V3AdminVozacPozicijaScreen({super.key});
 
@@ -49,9 +43,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   final Map<String, ll.LatLng> _pozicije = {};
   final Map<String, DateTime> _lastUpdates = {};
 
-  Timer? _refreshTimer;
-  bool _isLoading = false;
-
+  StreamSubscription<int>? _locationSub;
   final MapController _mapController = MapController();
   bool _mapReady = false;
 
@@ -59,54 +51,53 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   void initState() {
     super.initState();
     _vozaci = V3VozacService.getAllVozaci();
-    _refresh();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _refresh());
+    _applyCacheToState(moveMap: false);
+    _locationSub = V3MasterRealtimeManager.instance.tableRevisionStream('v3_vozac_location').listen((_) {
+      if (!mounted) return;
+      _applyCacheToState(moveMap: true);
+    });
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _locationSub?.cancel();
     super.dispose();
   }
 
-  Future<void> _refresh() async {
-    if (_isLoading) return;
-    setState(() => _isLoading = true);
-    try {
-      final rows = await Supabase.instance.client.from('v3_vozac_location').select('vozac_id, lat, lng, updated_at');
+  void _applyCacheToState({required bool moveMap}) {
+    final cache = V3MasterRealtimeManager.instance.vozacLocationCache;
+    final newPozicije = <String, ll.LatLng>{};
+    final newUpdates = <String, DateTime>{};
 
-      final newPozicije = <String, ll.LatLng>{};
-      final newUpdates = <String, DateTime>{};
-      for (final row in rows as List<dynamic>) {
-        final vozacId = row['vozac_id']?.toString();
-        final lat = (row['lat'] as num?)?.toDouble();
-        final lng = (row['lng'] as num?)?.toDouble();
-        final updatedAt = row['updated_at']?.toString();
-        if (vozacId == null || lat == null || lng == null) continue;
-        newPozicije[vozacId] = ll.LatLng(lat, lng);
-        final parsed = updatedAt != null ? DateTime.tryParse(updatedAt) : null;
-        newUpdates[vozacId] = parsed ?? DateTime.now();
+    for (final entry in cache.entries) {
+      final row = entry.value;
+      final vozacId = row['vozac_id']?.toString() ?? entry.key;
+      final lat = (row['lat'] as num?)?.toDouble();
+      final lng = (row['lng'] as num?)?.toDouble();
+      if (vozacId.isEmpty || lat == null || lng == null) continue;
+      newPozicije[vozacId] = ll.LatLng(lat, lng);
+      final parsed = DateTime.tryParse(row['updated_at']?.toString() ?? '');
+      newUpdates[vozacId] = parsed?.toLocal() ?? DateTime.now();
+    }
+
+    setState(() {
+      _pozicije
+        ..clear()
+        ..addAll(newPozicije);
+      _lastUpdates
+        ..clear()
+        ..addAll(newUpdates);
+      // Ako se lista vozača popuni kasnije iz auth cache-a.
+      if (_vozaci.isEmpty) {
+        _vozaci = V3VozacService.getAllVozaci();
       }
+    });
 
-      if (!mounted) return;
-      setState(() {
-        _pozicije
-          ..clear()
-          ..addAll(newPozicije);
-        _lastUpdates
-          ..clear()
-          ..addAll(newUpdates);
-      });
-
-      if (_selectedVozacId != null && _pozicije.containsKey(_selectedVozacId) && _mapReady) {
-        _mapController.move(_pozicije[_selectedVozacId]!, 15);
-      } else if (_selectedVozacId == null && _pozicije.length == 1 && _mapReady) {
-        _mapController.move(_pozicije.values.first, 15);
-      }
-    } catch (e) {
-      debugPrint('[AdminVozacPozicija] greška pri učitavanju lokacija: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (!moveMap || !_mapReady) return;
+    if (_selectedVozacId != null && _pozicije.containsKey(_selectedVozacId)) {
+      _mapController.move(_pozicije[_selectedVozacId]!, 15);
+    } else if (_selectedVozacId == null && _pozicije.length == 1) {
+      _mapController.move(_pozicije.values.first, 15);
     }
   }
 
@@ -119,8 +110,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
     }
   }
 
-  /// Vozači koji se trenutno prikazuju kao marker na mapi (imaju lokaciju),
-  /// filtrirani po izboru u dropdown-u.
+  /// Vozači sa lokacijom, filtrirani dropdown-om.
   List<V3Vozac> get _prikazaniVozaci {
     final aktivni = _vozaci.where((v) => _pozicije.containsKey(v.id));
     if (_selectedVozacId == null) return aktivni.toList();
@@ -185,12 +175,6 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (_isLoading)
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
               ],
             ),
           ),
@@ -201,7 +185,10 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
               options: MapOptions(
                 initialCenter: const ll.LatLng(44.7866, 20.4489), // Beograd default
                 initialZoom: 12,
-                onMapReady: () => _mapReady = true,
+                onMapReady: () {
+                  _mapReady = true;
+                  _applyCacheToState(moveMap: true);
+                },
               ),
               children: [
                 TileLayer(
@@ -251,25 +238,23 @@ class _VozacMarker extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (ime.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: boja, width: 1.5),
-            ),
-            child: Text(
-              ime,
-              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: boja,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: const [
+              BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
+            ],
           ),
-        const SizedBox(height: 2),
-        Icon(Icons.location_on, color: boja, size: 40, shadows: const [
-          Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54),
-        ]),
+          child: Text(
+            ime,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Icon(Icons.location_on, color: boja, size: 36),
       ],
     );
   }
