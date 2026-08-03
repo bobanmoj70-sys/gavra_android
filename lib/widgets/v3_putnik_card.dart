@@ -10,13 +10,13 @@ import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_zahtev.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v2_haptic_service.dart';
 import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_navigation_app_launcher_service.dart';
 import '../services/v3/v3_operativna_nedelja_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_zahtev_service.dart';
+import '../services/v3_haptic_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_belgrade_time.dart';
@@ -34,7 +34,6 @@ import '../utils/v3_tip_putnika_utils.dart';
 import '../utils/v3_validation_utils.dart';
 
 /// Widget za prikaz V3Putnik kartice sa podrškom za radnike, učenike, dnevne i pošiljke.
-/// Vizuelni stil i logika prepisani iz V2PutnikCard.
 class V3PutnikCard extends StatefulWidget {
   const V3PutnikCard({
     super.key,
@@ -96,7 +95,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   void _startLongPressTimer() {
     V3StreamUtils.cancelTimer('putnik_card_${widget.putnik.id}_longpress');
     _isLongPressActive = true;
-    V2HapticService.selectionClick();
+    V3HapticService.selectionClick();
     V3StreamUtils.createLongPressTimer(
         key: 'putnik_card_${widget.putnik.id}',
         duration: const Duration(milliseconds: 1500),
@@ -162,7 +161,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     _globalProcessingLock = true;
     V3StateUtils.safeSetState(this, () => _isProcessing = true);
     try {
-      V2HapticService.mediumImpact();
+      V3HapticService.mediumImpact();
       final currentVozac = V3VozacService.currentVozac;
       if (currentVozac == null) throw _tr('notLoggedIn');
       await V3ZahtevService.oznaciPokupljen(pokupljenBy: currentVozac.id, operativnaId: widget.entry?.id);
@@ -181,7 +180,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
           vreme: widget.entry?.polazakAt,
         );
       }
-      await V2HapticService.putnikPokupljen();
+      await V3HapticService.putnikPokupljen();
       if (mounted) {
         V3AppSnackBar.success(context, _tr('rideRecorded'));
         widget.onChanged?.call();

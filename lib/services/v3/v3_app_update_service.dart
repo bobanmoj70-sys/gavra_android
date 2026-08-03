@@ -26,7 +26,7 @@ class V3AppUpdateService {
   static Future<void> refreshUpdateInfo({Map<String, dynamic>? appSettingsRow}) async {
     final refreshToken = ++_refreshTokenCounter;
 
-    void setUpdateInfoIfLatest(V2UpdateInfo? info) {
+    void setUpdateInfoIfLatest(AppUpdateInfo? info) {
       if (refreshToken != _refreshTokenCounter) return;
       updateInfoNotifier.value = info;
     }
@@ -65,7 +65,7 @@ class V3AppUpdateService {
       final forceFlag = selected['force'] == true;
 
       if (maintenanceMode) {
-        setUpdateInfoIfLatest(V2UpdateInfo(
+        setUpdateInfoIfLatest(AppUpdateInfo(
           latestVersion: latest.isNotEmpty ? latest : currentVersion,
           storeUrl: storeUrl,
           isForced: true,
@@ -106,7 +106,7 @@ class V3AppUpdateService {
 
       final effectiveLatest = latest.isNotEmpty ? latest : requiredVersion;
 
-      setUpdateInfoIfLatest(V2UpdateInfo(
+      setUpdateInfoIfLatest(AppUpdateInfo(
         latestVersion: effectiveLatest,
         storeUrl: storeUrl,
         isForced: true,

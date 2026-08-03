@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../config/app_platform.dart';
 import '../../l10n/app_translations.dart';
 import '../../utils/v3_button_utils.dart';
 import '../../utils/v3_dialog_helper.dart';
@@ -14,7 +15,7 @@ import '../v3_locale_manager.dart';
 class V3RolePermissionService {
   V3RolePermissionService._();
 
-  static const MethodChannel _wakelockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
+  static const MethodChannel _wakelockChannel = MethodChannel(AppPlatform.wakelockChannel);
 
   /// Vozač: push + lokacija (WhenInUse → Always).
   /// Isti redosled na Android i iOS. Ponavlja se pri svakom loginu dok Always nije granted.
@@ -35,7 +36,10 @@ class V3RolePermissionService {
   static Future<void> wakeScreenOnPush({int durationMs = 8000}) async {
     if (!Platform.isAndroid) return;
     try {
-      await _wakelockChannel.invokeMethod<bool>('wakeScreen', {'duration': durationMs});
+      await _wakelockChannel.invokeMethod<bool>(
+        AppPlatform.methodWakeScreen,
+        {'duration': durationMs},
+      );
     } catch (e) {
       debugPrint('[Permissions] wakeScreenOnPush greška: $e');
     }

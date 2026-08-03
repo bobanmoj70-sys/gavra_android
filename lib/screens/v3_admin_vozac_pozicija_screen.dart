@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/app_platform.dart';
 import '../l10n/app_translations.dart';
 import '../models/v3_vozac.dart';
 import '../services/v3/v3_vozac_service.dart';
@@ -205,7 +206,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.gavra013.gavra_android',
+                  userAgentPackageName: AppPlatform.mapUserAgentPackageName,
                 ),
                 MarkerLayer(
                   markers: [

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'services/v2_config_service.dart'; // Centralizovani kredencijali
+import 'config/app_config_service.dart';
 import 'services/v3/v3_app_settings_state.dart';
 import 'utils/v3_belgrade_time.dart';
 import 'utils/v3_dan_helper.dart';
@@ -22,7 +22,7 @@ void initDanHelperGlobals() {
 /// Koristi se u:
 /// - permission_service.dart - za prikaz dijaloga za dozvole
 /// - notification_navigation_service.dart - za navigaciju iz notifikacija
-/// - v2_local_notification_service.dart - za pristup context-u u background-u
+/// - notification services - za pristup context-u u background-u
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// Globalna instanca Supabase klijenta
@@ -263,10 +263,8 @@ List<String> getRasporedVremena(String grad, String sezona, {String? day}) {
   return <String>[];
 }
 
-/// Globalna instanca Config Service
-/// Centralizovano upravljanje svim kredencijalima i konfiguracijom
-/// Koristi se u celoj aplikaciji za pristup kredencijalima
-final V2ConfigService configService = V2ConfigService();
+/// Globalna instanca Config Service — .env kredencijali (Android + iOS)
+final AppConfigService configService = AppConfigService();
 
 enum V3StartupPhase {
   booting,
@@ -277,17 +275,16 @@ enum V3StartupPhase {
 
 final ValueNotifier<V3StartupPhase> startupPhaseNotifier = ValueNotifier<V3StartupPhase>(V3StartupPhase.booting);
 
-/// UPDATE INFO - informacije o obaveznom update-u
-/// null = nema obaveznog update-a, ili još nije provereno
-class V2UpdateInfo {
+/// Forced update / maintenance banner payload
+class AppUpdateInfo {
   final String latestVersion;
   final String storeUrl;
-  final bool isForced; // true = korisnik mora da ažurira (u forced-only toku očekivano true)
+  final bool isForced;
   final bool isMaintenance;
   final String maintenanceTitle;
   final String maintenanceMessage;
 
-  const V2UpdateInfo({
+  const AppUpdateInfo({
     required this.latestVersion,
     required this.storeUrl,
     required this.isForced,
@@ -298,7 +295,7 @@ class V2UpdateInfo {
 }
 
 /// Notifier koji se puni nakon provere verzije samo kada postoji obavezni update
-final ValueNotifier<V2UpdateInfo?> updateInfoNotifier = ValueNotifier<V2UpdateInfo?>(null);
+final ValueNotifier<AppUpdateInfo?> updateInfoNotifier = ValueNotifier<AppUpdateInfo?>(null);
 
 /// APP SETTINGS ACTIVE WEEK START NOTIFIER - runtime izvor istine iz `v3_app_settings`.
 /// Sadrži početak (Ponedeljak) operativne sedmice isključivo iz baze.

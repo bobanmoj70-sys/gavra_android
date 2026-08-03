@@ -2,6 +2,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../config/app_platform.dart';
+
 class V3DeviceIdentity {
   final String? androidDeviceId;
   final String? androidBuildId;
@@ -24,7 +26,7 @@ class V3OsDeviceIdService {
   V3OsDeviceIdService._();
 
   static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
-  static const MethodChannel _pushTokenChannel = MethodChannel('com.gavra013.gavra_android/push_token');
+  static const MethodChannel _pushTokenChannel = MethodChannel(AppPlatform.pushTokenChannel);
 
   static String? _clean(String? value) {
     final safe = (value ?? '').trim();
@@ -34,7 +36,7 @@ class V3OsDeviceIdService {
   static Future<String?> _getAndroidIdFromChannel() async {
     for (var attempt = 1; attempt <= 3; attempt++) {
       try {
-        final androidId = await _pushTokenChannel.invokeMethod<String>('getAndroidId');
+        final androidId = await _pushTokenChannel.invokeMethod<String>(AppPlatform.methodGetAndroidId);
         final safeId = _clean(androidId);
         if (safeId != null) {
           debugPrint('[V3OsDeviceIdService] Android ID from channel (attempt=$attempt)');

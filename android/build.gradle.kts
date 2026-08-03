@@ -17,7 +17,8 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     project.layout.buildDirectory.value(newBuildDir.dir(project.name))
 
-    if (project.name != "gradle") {
+    // Flutter template: plugins evaluate after :app (skip self / gradle)
+    if (project.name != "gradle" && project.name != "app") {
         project.evaluationDependsOn(":app")
     }
 

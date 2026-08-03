@@ -13,14 +13,17 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 /**
- * Android native bridges only (iOS uses plugins / system APIs):
- * - wakeScreen (push)
- * - isGmsAvailable / getAndroidId (device identity + FCM gate)
+ * Android-only native bridges. Channel names must match AppPlatform in Dart
+ * (`lib/config/app_platform.dart`). iOS uses plugins / system APIs only.
  *
- * FCM path is Dart-only (firebase_messaging) — same as iOS.
+ * - wakelock: wakeScreen / releaseWakeLock
+ * - push_token: isGmsAvailable / getAndroidId
+ *
+ * FCM is Dart-only (firebase_messaging) on both platforms.
  */
 class MainActivity : FlutterFragmentActivity() {
     private companion object {
+        // Keep in sync with lib/config/app_platform.dart
         const val WAKELOCK_CHANNEL = "com.gavra013.gavra_android/wakelock"
         const val PUSH_TOKEN_CHANNEL = "com.gavra013.gavra_android/push_token"
         const val TAG = "GavraMainActivity"

@@ -127,7 +127,7 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
 }
 
 class _MaintenanceDialog extends StatefulWidget {
-  final V2UpdateInfo info;
+  final AppUpdateInfo info;
   const _MaintenanceDialog({required this.info});
 
   @override
@@ -267,7 +267,7 @@ class _MaintenanceDialogState extends State<_MaintenanceDialog> with SingleTicke
 
 /// Fullscreen modal koji blokira celu aplikaciju pri obaveznom updatu.
 class _ForceUpdateDialog extends StatefulWidget {
-  final V2UpdateInfo info;
+  final AppUpdateInfo info;
   const _ForceUpdateDialog({required this.info});
 
   @override

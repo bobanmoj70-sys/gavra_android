@@ -1316,10 +1316,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 3),
-                          // ── Red 1: Datum | Dan (V2 digitalni prikaz) ──
+                          // ── Red 1: Datum | Dan ──
                           _buildDigitalDateDisplay(context, vozac),
                           const SizedBox(height: 6),
-                          // ── Red 2: Kompaktni gumbi (V2 stil h=30) ──
+                          // ── Red 2: Kompaktni gumbi ──
                           Row(
                             children: [
                               // STATUS: Tracking (samo auto-start, nema ručnog dugmeta)
@@ -1588,7 +1588,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     );
   }
 
-  // ── V2 stil: digitalni datum prikaz ──
+  // ── Digitalni datum prikaz ──
   Widget _buildDigitalDateDisplay(BuildContext context, dynamic vozac) {
     final selectedDate = _selectedDate;
     final dayName = V3DanHelper.trFullName(_selectedDay).toUpperCase();

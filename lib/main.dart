@@ -1347,8 +1347,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();
-
-    // Dozvole se pozivaju iz V2WelcomeScreen da izbegnu MaterialLocalizations gresku
   }
 
   @override

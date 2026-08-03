@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../config/app_platform.dart';
 import 'v3_device_identity_service.dart';
 
 class V3PushTokenResult {
@@ -24,7 +25,7 @@ class V3PushTokenResult {
 class V3PushTokenProvider {
   V3PushTokenProvider._();
 
-  static const MethodChannel _channel = MethodChannel('com.gavra013.gavra_android/push_token');
+  static const MethodChannel _channel = MethodChannel(AppPlatform.pushTokenChannel);
   static const FlutterSecureStorage _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
@@ -65,7 +66,7 @@ class V3PushTokenProvider {
     // Android without GMS cannot use FCM.
     try {
       final available = await _channel
-          .invokeMethod<bool>('isGmsAvailable')
+          .invokeMethod<bool>(AppPlatform.methodIsGmsAvailable)
           .timeout(const Duration(seconds: 2), onTimeout: () => false);
       if (available != true) {
         debugPrint('[PushTokenProvider] GMS unavailable — skip FCM token.');
