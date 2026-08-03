@@ -102,6 +102,29 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Timer? _autoStartTimer;
   bool _autoStartInProgress = false;
 
+  /// UI selekcija ≠ tracking sesija. Live ETA/mapa/sort samo kad se poklapaju.
+  bool get _isViewingTrackedTermin {
+    final t = V3VozacLocationTrackingService.instance;
+    if (!t.isRunning) return false;
+    final selectedV = V3BelgradeTime.normalizeToHHmm(_selectedVreme);
+    return _selectedDatumIso == t.activeDatumIso && _selectedGrad == t.activeGrad && selectedV == t.activeVreme;
+  }
+
+  /// Opciono skok na aktivan tracking termin — UI se ne zaključava.
+  void _jumpToTrackingTermin() {
+    final t = V3VozacLocationTrackingService.instance;
+    if (!t.isRunning) return;
+    final parsed = V3BelgradeTime.parseDatum(t.activeDatumIso);
+    if (!mounted) return;
+    setState(() {
+      if (parsed != null) _selectedDate = V3DanHelper.dateOnly(parsed);
+      _selectedGrad = t.activeGrad;
+      _selectedVreme = t.activeVreme;
+      _resetMapSyncState();
+    });
+    _rebuild();
+  }
+
   void _resetMapSyncState() {
     _hasSentRouteToMap = false;
     _mapResyncInFlight = false;
@@ -287,25 +310,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   /// Lanac istine za redosled:
-  /// 1) live tick (`optimizedPutnikIds`) — GPS+OSRM sa poslednjeg 20s tick-a
-  /// 2) `v3_eta_results.optimized_order` — poslednji uspešan compute-eta (isti izvor)
-  /// 3) slot `optimized_order` — samo pre navigacije (auto-prepare, nije live GPS)
+  /// 1) live tick (`optimizedPutnikIds`) — samo dok gledaš tracking termin
+  /// 2) `v3_eta_results.optimized_order` — poslednji uspešan compute-eta
+  /// 3) slot `optimized_order` — samo pre navigacije / na drugom terminu
   List<String> _resolveOptimizedOrder() {
     final live = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    if (live.isNotEmpty) return live;
+    // Live order važi isključivo za aktivan tracking termin — ne mešaj u drugi slot.
+    if (_isViewingTrackedTermin && live.isNotEmpty) return live;
 
     final fromEta = _getOsrmOrderFromEtaResults();
     if (fromEta.isNotEmpty) return fromEta;
 
-    // Tokom live navigacije ne koristi cron/slot order (može biti DEFAULT_START).
-    if (_isNavigating) return const [];
+    // Tokom live navigacije na tracking terminu ne koristi cron/slot order.
+    if (_isViewingTrackedTermin) return const [];
     return _getOsrmOrderFromSlot();
   }
 
   void _refreshPutniciOrderFromEtaCache() {
     final osrmOrder = _resolveOptimizedOrder();
     if (osrmOrder.isEmpty) {
-      if (_isNavigating && !_osrmUnavailableShown) {
+      if (_isViewingTrackedTermin && !_osrmUnavailableShown) {
         _osrmUnavailableShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
@@ -332,13 +356,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   List<String> _getOsrmOrderFromEtaResults() {
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isEmpty) return const [];
+    // Redosled iz eta_results samo za putnike trenutno prikazanog termina.
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
       final rowVozac = row['vozac_id']?.toString() ?? '';
       if (rowVozac != vozacId) continue;
       final order = row['optimized_order'];
-      if (order is List && order.isNotEmpty) {
-        return order.whereType<String>().toList();
-      }
+      if (order is! List || order.isEmpty) continue;
+      final asStrings = order.whereType<String>().toList();
+      if (asStrings.isEmpty) continue;
+      final shownIds = _mojiPutnici.map((p) => p.putnik.id).toSet();
+      if (shownIds.isNotEmpty && !asStrings.any(shownIds.contains)) continue;
+      return asStrings;
     }
     return const [];
   }
@@ -367,7 +395,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   /// Jedan GPS+ETA tick (init sa aktivnim trackingom). UI ide preko onEtaTick.
   Future<void> _recomputeEtaFromCurrentPosition() async {
-    if (!_isNavigating) return;
+    // Servis koristi svoju sesiju (ne UI selekciju) — uvek OK.
+    if (!V3VozacLocationTrackingService.instance.isRunning) return;
     final vid = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vid.isEmpty) return;
 
@@ -395,6 +424,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _startTrenutnaDodelaRealtime();
     _etaTickSub = V3VozacLocationTrackingService.instance.onEtaTick.listen((result) {
       if (!mounted || !_isNavigating) return;
+      // Sort/mapa samo kad vozač gleda isti termin kao tracking sesija.
+      if (!_isViewingTrackedTermin) return;
       debugPrint('[ETA_TICK] order=${result.order} etaKeys=${result.etaMap.length}');
       _refreshPutniciOrderFromEtaCache();
       unawaited(_syncMapRouteIfNeeded(reason: 'eta_tick_20s'));
@@ -518,7 +549,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final running = result.isSuccess;
       V3StateUtils.safeSetState(this, () => _isNavigating = running);
       if (running) {
-        V3AppSnackBar.success(context, _tr('statusAktivno'));
+        final label = '${termin.grad} ${termin.vreme}';
+        V3AppSnackBar.success(
+          context,
+          _tr('trackingAktivanZaTermin').replaceAll('%GRAD%', termin.grad).replaceAll('%VREME%', termin.vreme),
+        );
+        debugPrint('[V3VozacScreen] auto-start OK $label (UI ostaje na $_selectedGrad $_selectedVreme)');
       } else {
         V3AppSnackBar.error(context, _tr(result.errorL10nKey ?? 'nemogucIdentifikovatiVozaca'));
       }
@@ -667,10 +703,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       _mojiPutnici = putniciZaPrikaz;
     });
 
-    // Sigurnosna mreža: ako imamo ETA podatke, uvek ponovo primeni redosled.
-    // Sprečava race condition gde realtime event pregazi ispravan redosled
-    // dok je computeEta() poziv još uvek u toku.
-    if (_isNavigating) {
+    // Sigurnosna mreža: ETA redosled samo na tracking terminu.
+    // Drugi termini ostaju slobodni za pregled/akcije.
+    if (_isViewingTrackedTermin) {
       _refreshPutniciOrderFromEtaCache();
       unawaited(_syncPassengersToSlotIfNeeded());
       unawaited(_syncMapRouteIfNeeded(reason: 'realtime_refresh'));
@@ -935,7 +970,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   Future<void> _syncPassengersToSlotIfNeeded() async {
-    if (!_isNavigating) return;
+    // Sync koordinata samo za aktivni tracking termin — ne diraj drugi slot.
+    if (!_isViewingTrackedTermin) return;
     final sig = _passengersSignature();
     if (sig == _lastSyncedPassengersSignature) return;
     _lastSyncedPassengersSignature = sig;
@@ -1058,7 +1094,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   Future<void> _syncMapRouteIfNeeded({required String reason}) async {
-    if (!_isNavigating || !_hasSentRouteToMap || _mapResyncInFlight) return;
+    // HERE resync samo dok gledaš isti termin kao tracking sesija.
+    if (!_isViewingTrackedTermin || !_hasSentRouteToMap || _mapResyncInFlight) return;
 
     final preparedRoute = await _buildHereRouteWaypoints();
     if (preparedRoute == null) return;
@@ -1087,6 +1124,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Future<void> _handleOpenMap() async {
     if (!_isNavigating) {
       if (mounted) V3AppSnackBar.warning(context, _tr('zapocniVoznjuPrviPuta'));
+      return;
+    }
+
+    // Mapa prati tracking sesiju, ne UI pregled drugog termina.
+    if (!_isViewingTrackedTermin) {
+      final t = V3VozacLocationTrackingService.instance;
+      if (mounted) {
+        V3AppSnackBar.warning(
+          context,
+          _tr('mapaSamoZaAktivniTermin').replaceAll('%GRAD%', t.activeGrad).replaceAll('%VREME%', t.activeVreme),
+        );
+      }
       return;
     }
 
@@ -1330,10 +1379,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                               Expanded(
                                 flex: 2,
                                 child: V3VozacLocationTrackingService.instance.isRunning
-                                    ? _buildPulsingAktivnoBtn(
-                                        context: context,
-                                        label: _tr('statusAktivno'),
-                                        height: appBarButtonHeight,
+                                    ? GestureDetector(
+                                        onTap: _isViewingTrackedTermin ? null : _jumpToTrackingTermin,
+                                        child: _buildPulsingAktivnoBtn(
+                                          context: context,
+                                          label: _tr('statusAktivno'),
+                                          height: appBarButtonHeight,
+                                        ),
                                       )
                                     : _buildAppBarBtn(
                                         context: context,
@@ -1515,6 +1567,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return redniCounter;
     }).toList(growable: false);
 
+    final showTrackingBanner = V3VozacLocationTrackingService.instance.isRunning && !_isViewingTrackedTermin;
+    final tTrack = V3VozacLocationTrackingService.instance;
+
     return Column(
       children: [
         const V3UpdateBanner(),
@@ -1539,6 +1594,59 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                     const Padding(
                       padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
                       child: V3NeradniDaniBanner(),
+                    ),
+                  if (showTrackingBanner)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _jumpToTrackingTermin,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.75)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.gps_fixed, color: Colors.greenAccent, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _tr('trackingAktivanZaTermin')
+                                            .replaceAll('%GRAD%', tTrack.activeGrad)
+                                            .replaceAll('%VREME%', tTrack.activeVreme),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _tr('trackingPrikaziTermin'),
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.85),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right, color: Colors.white70),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(12, 6, 12, 0),

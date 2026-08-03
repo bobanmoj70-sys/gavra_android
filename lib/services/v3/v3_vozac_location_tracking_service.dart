@@ -84,6 +84,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   bool get isRunning => _isRunning;
   List<String> get optimizedPutnikIds => List.unmodifiable(_optimizedPutnikIds);
 
+  /// Aktivna tracking sesija (prazno ako ne radi). Nezavisno od UI selekcije termina.
+  String get activeDatumIso => _isRunning ? _datumIso : '';
+  String get activeGrad => _isRunning ? _grad : '';
+  String get activeVreme => _isRunning ? _vreme : '';
+
   Stream<({Map<String, int> etaMap, List<String> order})> get onEtaTick => _etaTickController.stream;
   Stream<bool> get onRunningChanged => _runningController.stream;
 

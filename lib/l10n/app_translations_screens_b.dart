@@ -1147,6 +1147,28 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
     'statusAktivno': {'sr': 'AKTIVNO', 'en': 'ACTIVE', 'ru': 'АКТИВНО', 'de': 'AKTIV', 'zh': '运行中'},
     'statusCeka': {'sr': 'ČEKAM', 'en': 'WAITING', 'ru': 'ОЖИДАНИЕ', 'de': 'WARTET', 'zh': '等待中'},
+    'trackingAktivanZaTermin': {
+      'sr': 'Tracking aktivan: %GRAD% %VREME%',
+      'en': 'Tracking active: %GRAD% %VREME%',
+      'ru': 'Трекинг активен: %GRAD% %VREME%',
+      'de': 'Tracking aktiv: %GRAD% %VREME%',
+      'zh': '跟踪进行中：%GRAD% %VREME%',
+    },
+    'trackingPrikaziTermin': {
+      'sr': 'Prikaži aktivni termin',
+      'en': 'Show active trip',
+      'ru': 'Показать активный рейс',
+      'de': 'Aktiven Termin anzeigen',
+      'zh': '显示进行中的班次',
+    },
+    'mapaSamoZaAktivniTermin': {
+      'sr': 'Mapa je za aktivni tracking termin (%GRAD% %VREME%). Prebaci se na taj termin ili dodirni baner.',
+      'en': 'Map is for the active tracking trip (%GRAD% %VREME%). Switch to that trip or tap the banner.',
+      'ru': 'Карта для активного трекинга (%GRAD% %VREME%). Перейдите на этот рейс или нажмите баннер.',
+      'de':
+          'Karte gilt für den aktiven Tracking-Termin (%GRAD% %VREME%). Wechseln Sie dorthin oder tippen Sie auf das Banner.',
+      'zh': '地图仅适用于进行中的跟踪班次（%GRAD% %VREME%）。请切换到该班次或点横幅。',
+    },
     'mapaDugme': {'sr': 'MAPA', 'en': 'MAP', 'ru': 'КАРТА', 'de': 'KARTE', 'zh': '地图'},
     'rutaBiceDostupna': {
       'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.',
