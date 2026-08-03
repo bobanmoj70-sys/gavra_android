@@ -1,17 +1,19 @@
 import java.util.Properties
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // Flutter plugin after Android + Kotlin
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
 
-// 🔐 PRODUCTION KEYSTORE CONFIGURATION
+// Single JVM target for Java + Kotlin
+val jvmVersion = JavaVersion.VERSION_17
+
+// key.properties under android/; storeFile relative to that root
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -32,58 +34,42 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = jvmVersion
+        targetCompatibility = jvmVersion
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = jvmVersion.toString()
     }
-    // 🔐 PRODUCTION SIGNING CONFIGURATION
+
     signingConfigs {
         create("release") {
-            if (keystoreProperties.containsKey("keyAlias")) {
-                keyAlias = keystoreProperties["keyAlias"] as String
+            val alias = keystoreProperties["keyAlias"] as String?
+            val storePath = keystoreProperties["storeFile"] as String?
+            if (!alias.isNullOrBlank() && !storePath.isNullOrBlank()) {
+                keyAlias = alias
                 keyPassword = keystoreProperties["keyPassword"] as String
-                // Robust path handling for both Local and CI
-                val storePath = keystoreProperties["storeFile"] as String
-                storeFile = if (file(storePath).exists()) {
-                    file(storePath)
-                } else {
-                    // Fallback to searching in app directory if not found at root path
-                    file("app/$storePath")
-                }
                 storePassword = keystoreProperties["storePassword"] as String
+                val store = rootProject.file(storePath)
+                if (!store.isFile) {
+                    throw GradleException(
+                        "Release keystore not found: ${store.absolutePath}\n" +
+                            "Fix storeFile in android/key.properties.",
+                    )
+                }
+                storeFile = store
             }
         }
     }
 
-    // ✅ Validate expected release keystore when running release-related tasks
-    val isReleaseTask = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
-    if (isReleaseTask && keystoreProperties.containsKey("storeFile")) {
-        val storePath = keystoreProperties["storeFile"] as String
-        val resolvedFile = if (file(storePath).exists()) file(storePath) else file("app/$storePath")
-        
-        if (!resolvedFile.exists()) {
-            throw GradleException(
-                "Missing or invalid release keystore at '${resolvedFile.absolutePath}'.\n" +
-                "Check key.properties or CI secrets."
-            )
-        }
-    }
-
     buildTypes {
-        named("release") {
-            // R8 code shrinking/obfuscation + resource shrinking
-            // With AGP 9.0+, isShrinkResources enables optimized resource shrinking
-            // (android.r8.optimizedResourceShrinking=true in gradle.properties)
+        release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-                // Default optimize rules (required by AGP 9; proguard-android.txt disallowed)
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
             signingConfig = signingConfigs.getByName("release")
         }
@@ -92,22 +78,8 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-
-    // Google Play Services (GMS availability check in MainActivity)
+    // GMS check in MainActivity (FCM gate)
     implementation("com.google.android.gms:play-services-base:18.5.0")
-    // Firebase Messaging comes transitively via firebase_messaging Flutter plugin
-
-    // 🚀 Google Play Core - NEW MODULAR LIBRARIES (Android 14+ compatible)
-    implementation("com.google.android.play:integrity:1.6.0")
-    implementation("com.google.android.play:app-update:2.1.0") {
-        because("Replaces deprecated play:core for in-app updates")
-    }
-    implementation("com.google.android.play:review:2.0.2") {
-        because("Replaces deprecated play:core for in-app reviews")
-    }
-
-    // ⏰ WorkManager — restart background tracking servisa ako ga OS ubije
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }
 
 flutter {

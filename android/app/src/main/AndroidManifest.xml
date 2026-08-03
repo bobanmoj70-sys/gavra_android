@@ -119,7 +119,7 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
 
-      <!-- Deep link intent filter for Supabase email confirmation -->
+      <!-- Supabase auth deep link -->
       <intent-filter android:autoVerify="false">
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
@@ -127,7 +127,7 @@
         <data android:scheme="https" android:host="gjtabtwudbrmfeyjiicu.supabase.co" />
       </intent-filter>
 
-      <!-- Custom scheme for app -->
+      <!-- App custom scheme -->
       <intent-filter>
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
@@ -136,10 +136,9 @@
       </intent-filter>
     </activity>
 
-    <!-- FCM: only Flutter firebase_messaging service (merged from plugin).
-         Custom GavraFcmService removed — single Dart path for Android + iOS. -->
+    <!-- FCM via firebase_messaging plugin (Dart path shared with iOS) -->
 
-    <!-- 🛰️ Background location tracking service -->
+    <!-- Background location (driver tracking) -->
     <service
       android:name="id.flutter.flutter_background_service.BackgroundService"
       android:foregroundServiceType="location"
