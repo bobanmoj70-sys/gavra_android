@@ -335,30 +335,22 @@ enum V3LocationPrereqResult {
 
 /// `ok` samo ako je GPS uključen i dozvola **Always** (Android + iOS).
 ///
-/// WhenInUse nije dovoljno za background ETA. Login već traži dozvole;
-/// ovde gate + jedan upgrade pokušaj ako je još whileInUse.
+/// WhenInUse nije dovoljno za background ETA.
+/// Request UI je isključivo u [V3RolePermissionService] (permission_handler) —
+/// ovde samo gate (check), bez drugog request dijaloga.
 Future<V3LocationPrereqResult> v3CheckLocationPrerequisites() async {
   if (!await Geolocator.isLocationServiceEnabled()) {
     debugPrint('[v3CheckLocationPrerequisites] GPS isključen');
     return V3LocationPrereqResult.gpsDisabled;
   }
 
-  var permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-  }
+  final permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) {
     return V3LocationPrereqResult.denied;
   }
   if (permission == LocationPermission.deniedForever) {
     return V3LocationPrereqResult.deniedForever;
   }
-
-  // whileInUse → Always (isti upgrade path na iOS i Android).
-  if (permission == LocationPermission.whileInUse) {
-    permission = await Geolocator.requestPermission();
-  }
-
   if (permission != LocationPermission.always) {
     debugPrint('[v3CheckLocationPrerequisites] treba Always, ima: $permission');
     return V3LocationPrereqResult.alwaysRequired;

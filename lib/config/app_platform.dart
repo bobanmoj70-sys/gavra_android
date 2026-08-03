@@ -17,7 +17,7 @@ class AppPlatform {
   /// iOS PRODUCT_BUNDLE_IDENTIFIER (App Store).
   static const String iosBundleId = 'com.gavra013.gavra013ios';
 
-  /// Custom URL scheme (Android intent-filter; add CFBundleURLTypes on iOS if needed).
+  /// Custom URL scheme (Android intent-filter + iOS CFBundleURLTypes).
   static const String urlScheme = 'gavra';
 
   /// OSM / flutter_map User-Agent — use the running platform's store id.

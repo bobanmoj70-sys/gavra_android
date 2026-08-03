@@ -8,7 +8,7 @@ import android.util.Log
 import android.view.WindowManager
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
-import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -21,7 +21,7 @@ import io.flutter.plugin.common.MethodChannel
  *
  * FCM is Dart-only (firebase_messaging) on both platforms.
  */
-class MainActivity : FlutterFragmentActivity() {
+class MainActivity : FlutterActivity() {
     private companion object {
         // Keep in sync with lib/config/app_platform.dart
         const val WAKELOCK_CHANNEL = "com.gavra013.gavra_android/wakelock"

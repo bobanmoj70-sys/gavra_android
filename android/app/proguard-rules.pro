@@ -12,12 +12,11 @@
 -dontwarn com.google.firebase.**
 -dontwarn com.google.android.gms.**
 
+# Plugins actually used (see pubspec.yaml)
 -keep class com.baseflow.geolocator.** { *; }
 -keep class com.baseflow.permissionhandler.** { *; }
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
 -keep class id.flutter.flutter_background_service.** { *; }
--keep class androidx.biometric.** { *; }
--keep class io.flutter.plugins.localauth.** { *; }
 
 -keepclassmembers enum * {
     public static **[] values();
