@@ -333,12 +333,10 @@ enum V3LocationPrereqResult {
   alwaysRequired,
 }
 
-/// `ok` samo ako je GPS uključen i dozvola **Always**.
+/// `ok` samo ako je GPS uključen i dozvola **Always** (Android + iOS).
 ///
-/// WhenInUse nije dovoljno: Android FGS location i iOS background location
-/// zahtevaju Always da bi ETA tickovi nastavili dok je app u pozadini.
-/// Dozvole se traže pri login-u (`V3RolePermissionService`); ovde samo gate.
-/// Ako je status whileInUse, jednom pokušavamo upgrade na Always.
+/// WhenInUse nije dovoljno za background ETA. Login već traži dozvole;
+/// ovde gate + jedan upgrade pokušaj ako je još whileInUse.
 Future<V3LocationPrereqResult> v3CheckLocationPrerequisites() async {
   if (!await Geolocator.isLocationServiceEnabled()) {
     debugPrint('[v3CheckLocationPrerequisites] GPS isključen');
@@ -350,22 +348,19 @@ Future<V3LocationPrereqResult> v3CheckLocationPrerequisites() async {
     permission = await Geolocator.requestPermission();
   }
   if (permission == LocationPermission.denied) {
-    debugPrint('[v3CheckLocationPrerequisites] dozvola: $permission');
     return V3LocationPrereqResult.denied;
   }
   if (permission == LocationPermission.deniedForever) {
-    debugPrint('[v3CheckLocationPrerequisites] dozvola: $permission');
     return V3LocationPrereqResult.deniedForever;
   }
 
-  // whileInUse → pokušaj Always (iOS upgrade dijalog / Android background).
+  // whileInUse → Always (isti upgrade path na iOS i Android).
   if (permission == LocationPermission.whileInUse) {
-    debugPrint('[v3CheckLocationPrerequisites] whileInUse — tražim Always');
     permission = await Geolocator.requestPermission();
   }
 
   if (permission != LocationPermission.always) {
-    debugPrint('[v3CheckLocationPrerequisites] treba Always, trenutno: $permission');
+    debugPrint('[v3CheckLocationPrerequisites] treba Always, ima: $permission');
     return V3LocationPrereqResult.alwaysRequired;
   }
 

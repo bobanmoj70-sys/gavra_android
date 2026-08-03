@@ -483,19 +483,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _autoStartInProgress = true;
     try {
       debugPrint('[V3VozacScreen] auto-start → ${termin.grad} ${termin.vreme}');
-      await V3VozacLocationTrackingService.instance.start(
+      final result = await V3VozacLocationTrackingService.instance.start(
         vozacId: vozacId,
         datumIso: termin.datumIso,
         grad: termin.grad,
         vreme: termin.vreme,
       );
       if (!mounted) return;
-      final running = V3VozacLocationTrackingService.instance.isRunning;
+      final running = result.isSuccess;
       V3StateUtils.safeSetState(this, () => _isNavigating = running);
       if (running) {
         V3AppSnackBar.success(context, _tr('statusAktivno'));
       } else {
-        V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+        V3AppSnackBar.error(context, _tr(result.errorL10nKey ?? 'nemogucIdentifikovatiVozaca'));
       }
     } finally {
       _autoStartInProgress = false;

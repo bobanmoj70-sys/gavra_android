@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../l10n/app_translations.dart';
@@ -14,21 +13,12 @@ import '../v3_locale_manager.dart';
 class V3RolePermissionService {
   V3RolePermissionService._();
 
-  static const FlutterSecureStorage _storage = FlutterSecureStorage();
-
-  static const String _pushPromptedKey = 'v3_perm_push_prompted_v2';
-  static const String _locationPromptedKey = 'v3_perm_location_prompted_v1';
-
   static const MethodChannel _wakelockChannel = MethodChannel('com.gavra013.gavra_android/wakelock');
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Javni API
-  // ─────────────────────────────────────────────────────────────────────
-
+  /// Vozač: push + lokacija (WhenInUse → Always) + Android battery exemption.
+  /// Isti redosled na Android i iOS. Ponavlja se pri svakom loginu dok Always nije granted.
   static Future<void> ensureDriverPermissionsOnLogin(BuildContext context) async {
     await _requestCommonPermissions();
-    // GPS/lokacija + battery optimization SAMO za vozača — mora biti odobreno
-    // UNAPRED (pri loginu) da bi tracking mogao da krene čim vozač otvori app.
     await _requestDriverLocationPermissions(context);
   }
 
@@ -36,58 +26,35 @@ class V3RolePermissionService {
     await _requestCommonPermissions();
   }
 
-  /// Zajedničke dozvole za SVE korisnike (vozači + putnici).
   static Future<void> _requestCommonPermissions() async {
-    await _requestPushOnce(_pushPromptedKey);
-    // NotificationListenerService se ne koristi — uklonjeno da se ne bi
-    // zbunjivali korisnici sa nepotrebnim Settings ekranom.
+    await _requestPushOnce();
   }
 
-  /// Poziva se pretežno iz FCM / Firebase push handlera
-  /// da probudi ekran na dolaznu notifikaciju (8 sekundi).
+  /// Android: budi ekran na dolazni push.
   static Future<void> wakeScreenOnPush({int durationMs = 8000}) async {
     if (!Platform.isAndroid) return;
     try {
-      await _wakelockChannel.invokeMethod<bool>(
-        'wakeScreen',
-        {'duration': durationMs},
-      );
+      await _wakelockChannel.invokeMethod<bool>('wakeScreen', {'duration': durationMs});
     } catch (e) {
       debugPrint('[Permissions] wakeScreenOnPush greška: $e');
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Privatne metode
-  // ─────────────────────────────────────────────────────────────────────
-
-  static Future<void> _requestPushOnce(String key) async {
-    // Na iOS-u dozvole imaju stanja koja direktno možemo proveravati (i tražiti iznova ako nije određeno).
-    // Za one koji su već "denied" (odbijeni), moramo im izbaciti sistemski upit ili obavestiti.
+  static Future<void> _requestPushOnce() async {
     if (Platform.isIOS) {
       try {
         var settings = await FirebaseMessaging.instance.getNotificationSettings();
-
-        if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        if (settings.authorizationStatus == AuthorizationStatus.notDetermined ||
+            settings.authorizationStatus == AuthorizationStatus.denied) {
           settings = await FirebaseMessaging.instance.requestPermission(
             alert: true,
             badge: true,
             sound: true,
           );
-          debugPrint('[Permissions][iOS] Push tražen, status: ${settings.authorizationStatus}');
-        } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
-          debugPrint('[Permissions][iOS] Dozvola odbijena. Možemo baciti popup ka settingsima.');
-          // Ovde možemo naknadno otvoriti podešavanja aplikacije, a za sad radimo request permission bez provisiona
-          settings = await FirebaseMessaging.instance.requestPermission(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-        } else {
-          debugPrint('[Permissions][iOS] Push dozvola već postoji: ${settings.authorizationStatus}');
         }
+        debugPrint('[Permissions][iOS] Push: ${settings.authorizationStatus}');
       } catch (e) {
-        debugPrint('[Permissions][iOS] Push dozvola greška: $e');
+        debugPrint('[Permissions][iOS] Push greška: $e');
       }
       return;
     }
@@ -98,74 +65,66 @@ class V3RolePermissionService {
         await Permission.notification.request();
       }
     } catch (e) {
-      debugPrint('[Permissions] Push dozvola greška: $e');
+      debugPrint('[Permissions] Push greška: $e');
     }
   }
 
-  /// Traži dozvolu za lokaciju (fine/coarse) JEDNOM po instalaciji, za oba
-  /// OS-a (Android + iOS), a izuzeće od battery optimization samo na
-  /// Androidu (iOS nema ekvivalentan koncept). Ovo je preduslov da GPS
-  /// tracking uopšte može da čita poziciju dok vozač koristi app, uključujući
-  /// i period dok je app u pozadini nakon što je tracking pokrenut iz
-  /// foreground-a. Dozvole MORAJU biti odobrene unapred (ovde, pri loginu,
-  /// dok app ima aktivni foreground UI) jer OS ne dozvoljava dijalog u
-  /// pozadini.
-  ///
-  /// Location permission is requested only for the DRIVER role.
-  /// Passengers do not request or use location/background-location access.
+  /// Android + iOS: WhenInUse pa Always (redosled obavezan na obe platforme).
+  /// Disclosure pre request-a (store policy). Bez "jednom" flaga — ponavlja dok nema Always.
   static Future<void> _requestDriverLocationPermissions(BuildContext context) async {
-    final alreadyPrompted = await _storage.read(key: _locationPromptedKey) == 'true';
-    if (alreadyPrompted) return;
-
-    // Ako korisnik već ima sve potrebne dozvole, nema potrebe ponovo
-    // prikazivati disclosure (npr. nakon reinstalacije ili restore-a).
-    final locationStatus = await Permission.locationWhenInUse.status;
-    final alwaysStatus = await Permission.locationAlways.status;
-    final batteryStatus =
-        Platform.isAndroid ? await Permission.ignoreBatteryOptimizations.status : PermissionStatus.granted;
-    if (locationStatus.isGranted && alwaysStatus.isGranted && batteryStatus.isGranted) {
-      await _storage.write(key: _locationPromptedKey, value: 'true');
-      return;
-    }
-
-    // Store guidelines require prominent disclosure BEFORE requesting
-    // bilo koja osetljiva dozvola, posebno BACKGROUND_LOCATION.
-    final accepted = await _showLocationDisclosure(context);
-    if (!accepted) {
-      debugPrint('[Permissions] Vozač odbio prominent disclosure — lokacija se ne traži.');
-      return;
-    }
-
-    // Beležimo tek nakon prihvatanja, tako da korisnik koji slučajno odbije
-    // disclosure može ponovo da ga vidi pri sledećem login-u.
-    await _storage.write(key: _locationPromptedKey, value: 'true');
+    if (!context.mounted) return;
 
     try {
-      if (!locationStatus.isGranted) {
-        await Permission.locationWhenInUse.request();
+      var whenInUse = await Permission.locationWhenInUse.status;
+      var always = await Permission.locationAlways.status;
+
+      if (whenInUse.isGranted && always.isGranted) {
+        await _requestAndroidBatteryExemptionIfNeeded();
+        return;
       }
 
-      // "Always" dozvola je neophodna za background location tracking kako na
-      // iOS-u tako i na Android-u (manifest već deklariše ACCESS_BACKGROUND_LOCATION).
-      // Redosled je bitan: locationWhenInUse MORA biti odobren pre nego što se
-      // može tražiti locationAlways.
-      if (!alwaysStatus.isGranted) {
-        await Permission.locationAlways.request();
+      if (!context.mounted) return;
+      final accepted = await _showLocationDisclosure(context);
+      if (!accepted || !context.mounted) {
+        debugPrint('[Permissions] Vozač odbio disclosure — lokacija se ne traži.');
+        return;
       }
 
-      if (Platform.isAndroid && !batteryStatus.isGranted) {
-        await Permission.ignoreBatteryOptimizations.request();
+      // 1) WhenInUse (iOS/Android) — Always request bez ovoga ne radi.
+      if (!whenInUse.isGranted) {
+        whenInUse = await Permission.locationWhenInUse.request();
+      }
+      if (!whenInUse.isGranted) {
+        debugPrint('[Permissions] WhenInUse nije odobren: $whenInUse');
+        return;
       }
 
-      debugPrint('[Permissions] Vozač GPS/battery dozvole obrađene.');
+      // 2) Always — background tracking / FGS location na obe platforme.
+      always = await Permission.locationAlways.status;
+      if (!always.isGranted) {
+        always = await Permission.locationAlways.request();
+      }
+      debugPrint('[Permissions] Always: $always');
+
+      await _requestAndroidBatteryExemptionIfNeeded();
     } catch (e) {
-      debugPrint('[Permissions] Vozač GPS/battery dozvola greška: $e');
+      debugPrint('[Permissions] Vozač GPS greška: $e');
     }
   }
 
-  /// Prikazuje "prominent disclosure" dijalog koji objašnjava zašto aplikacija
-  /// prikuplja lokaciju u pozadini. Vraća `true` ako korisnik pristane da nastavi
-  /// sa zahtevom za dozvolu.
+  /// Samo Android — iOS nema ekvivalent.
+  static Future<void> _requestAndroidBatteryExemptionIfNeeded() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final battery = await Permission.ignoreBatteryOptimizations.status;
+      if (!battery.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    } catch (e) {
+      debugPrint('[Permissions] Battery greška: $e');
+    }
+  }
+
   static Future<bool> _showLocationDisclosure(BuildContext context) async {
     final code = V3LocaleManager().currentLocale.languageCode;
     final t = AppTranslations.ns('locationDisclosure');
