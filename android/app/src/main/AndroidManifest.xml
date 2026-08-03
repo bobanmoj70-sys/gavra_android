@@ -1,53 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:tools="http://schemas.android.com/tools">
 
-  <!-- Strip sensitive permissions plugins may merge (app does not use them). -->
-  <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
+  <!--
+    Ukloni permisije koje plugini merge-uju a app ih ne koristi:
+    - open_filex: storage/media (otvara samo app-generated PDF iz temp/docs)
+    - flutter_background_service: RECEIVE_BOOT_COMPLETED (autoStartOnBoot: false)
+  -->
+  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
-  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:node="remove" />
-  <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" tools:node="remove" />
-  <uses-permission android:name="android.permission.CALL_PHONE" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_CALL_LOG" tools:node="remove" />
-  <uses-permission android:name="android.permission.WRITE_CALL_LOG" tools:node="remove" />
-  <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" tools:node="remove" />
-  <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" tools:node="remove" />
-  <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
-  <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
-  <uses-permission android:name="android.permission.RECEIVE_MMS" tools:node="remove" />
-  <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" tools:node="remove" />
-  <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
-  <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
-  <uses-permission android:name="android.permission.GET_ACCOUNTS" tools:node="remove" />
-  <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
-  <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
-  <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" tools:node="remove" />
-  <uses-permission android:name="android.permission.BLUETOOTH" tools:node="remove" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" tools:node="remove" />
-  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" tools:node="remove" />
-  <uses-permission android:name="android.permission.BLUETOOTH_SCAN" tools:node="remove" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" tools:node="remove" />
-  <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" tools:node="remove" />
-  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
-  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove" />
-  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
-  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
-  <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
-  <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" tools:node="remove" />
-  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:node="remove" />
-  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:node="remove" />
-  <uses-permission android:name="android.permission.USE_FINGERPRINT" tools:node="remove" />
-  <uses-permission android:name="android.permission.USE_BIOMETRIC" tools:node="remove" />
-  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
 
-  <!-- Declared permissions actually used -->
+  <!-- Stvarno korišćene permisije -->
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -58,7 +23,6 @@
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
-  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
   <application
     android:label="Gavra 013"
@@ -111,6 +75,11 @@
       android:foregroundServiceType="location"
       android:exported="false"
       tools:replace="android:exported" />
+
+    <!-- autoStartOnBoot: false -->
+    <receiver
+      android:name="id.flutter.flutter_background_service.BootReceiver"
+      tools:node="remove" />
   </application>
 
   <queries>
@@ -133,10 +102,6 @@
     </intent>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
-      <data android:scheme="http"/>
-    </intent>
-    <intent>
-      <action android:name="android.intent.action.VIEW"/>
       <data android:scheme="market"/>
     </intent>
     <intent>
@@ -145,11 +110,11 @@
     </intent>
     <intent>
       <action android:name="android.intent.action.SENDTO"/>
-      <data android:scheme="smsto"/>
+      <data android:scheme="sms"/>
     </intent>
     <intent>
       <action android:name="android.intent.action.SENDTO"/>
-      <data android:scheme="sms"/>
+      <data android:scheme="smsto"/>
     </intent>
   </queries>
 </manifest>
