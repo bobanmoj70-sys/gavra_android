@@ -98,6 +98,7 @@ Future<void> onStart(ServiceInstance service) async {
 
       final allDone = await v3AllPassengersCompleted(
         client: client!,
+        vozacId: vozacId!,
         datumIso: datumIso!,
         grad: grad!,
         vreme: vreme!,
@@ -216,6 +217,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
     final allDone = await v3AllPassengersCompleted(
       client: client,
+      vozacId: id,
       datumIso: datum,
       grad: g,
       vreme: v,

@@ -10,8 +10,9 @@ import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
-/// Hard stop: polazak + ovoliko (T+55).
-const Duration v3TrackingMaxDuration = Duration(minutes: 55);
+/// Hard stop: polazak + ovoliko (T+40).
+/// Primer BC 07:00 → tracking 06:45–07:40.
+const Duration v3TrackingMaxDuration = Duration(minutes: 40);
 
 /// Auto-start koliko pre polaska (T-15). Uskladiti sa `v3-auto-prepare-termins`.
 const Duration v3AutoStartLeadTime = Duration(minutes: 15);
@@ -126,7 +127,7 @@ DateTime? v3PolazakDateTime({required String datumIso, required String vreme}) {
   );
 }
 
-/// Hard-stop: raniji od (polazak+55) i (start+15+55).
+/// Hard-stop: raniji od (polazak+40) i (start+15+40).
 bool v3TrackingTimedOut({DateTime? startedAt, DateTime? polazakAt}) {
   DateTime? deadline;
   if (polazakAt != null) {
@@ -275,14 +276,17 @@ Future<void> v3ClearEtaForVozac({
   } catch (_) {}
 }
 
-/// `true` samo ako slot postoji i svi putnici u njemu su pokupljeni/otkazani.
+/// `true` samo ako ovaj vozač nema više aktivnih putnika na terminu (pokupljeni/otkazani).
+/// Multi-driver: ne čeka tuđe putnike na istom fizičkom slotu.
 Future<bool> v3AllPassengersCompleted({
   required SupabaseClient client,
+  required String vozacId,
   required String datumIso,
   required String grad,
   required String vreme,
 }) async {
-  if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
+  final id = vozacId.trim();
+  if (id.isEmpty || datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
 
   // Main: cache iz master managera. BG isolate → null → DB fallback.
   try {
@@ -290,6 +294,7 @@ Future<bool> v3AllPassengersCompleted({
       datumIso: datumIso,
       grad: grad,
       vreme: vreme,
+      vozacId: id,
     );
     if (cached != null) return cached;
   } catch (_) {}
@@ -311,11 +316,15 @@ Future<bool> v3AllPassengersCompleted({
     }
     if (activeSlot == null) return false;
 
-    final dodelaRows = await client.from('v3_trenutna_dodela').select('termin_id').eq('slot_id', activeSlot['id']);
+    final dodelaRows = await client
+        .from('v3_trenutna_dodela')
+        .select('termin_id')
+        .eq('slot_id', activeSlot['id'])
+        .eq('vozac_v3_auth_id', id);
 
     final slotTerminIds = (dodelaRows as List<dynamic>?)
         ?.map((r) => (r as Map<String, dynamic>)['termin_id']?.toString())
-        .where((id) => id != null && id.isNotEmpty)
+        .where((tid) => tid != null && tid.isNotEmpty)
         .toSet();
 
     if (slotTerminIds == null || slotTerminIds.isEmpty) return false;

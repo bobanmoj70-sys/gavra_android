@@ -44,7 +44,7 @@ extension V3TrackingStartResultX on V3TrackingStartResult {
 ///
 /// Start: V3VozacScreen auto-start (T-15). Zahteva GPS + **Always**.
 /// Tick (20s): live GPS → `v3_vozac_location` → `v3-compute-eta`.
-/// Stop: polazak+55, svi putnici gotovi, ili ručni stop.
+/// Stop: polazak+40, svi putnici gotovi, ili ručni stop.
 ///
 /// Platforme (dok traje vožnja):
 /// - **Android FG** — main ticker
@@ -451,6 +451,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       await _runTick();
       final allDone = await v3AllPassengersCompleted(
         client: Supabase.instance.client,
+        vozacId: _vozacId,
         datumIso: _datumIso,
         grad: _grad,
         vreme: _vreme,
@@ -505,6 +506,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       try {
         final allDone = await v3AllPassengersCompleted(
           client: Supabase.instance.client,
+          vozacId: _vozacId,
           datumIso: _datumIso,
           grad: _grad,
           vreme: _vreme,

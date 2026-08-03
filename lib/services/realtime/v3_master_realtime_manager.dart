@@ -848,12 +848,16 @@ class V3MasterRealtimeManager {
   }
 
   /// `true`/`false` iz cache-a; `null` ako nema dovoljno podataka (BG isolate / prazan cache).
+  /// Samo putnici ovog vozača na slotu (multi-driver safe).
   bool? tryAllPassengersCompleted({
     required String datumIso,
     required String grad,
     required String vreme,
+    required String vozacId,
   }) {
     if (datumIso.isEmpty || grad.isEmpty || vreme.isEmpty) return false;
+    final wantVozac = vozacId.trim();
+    if (wantVozac.isEmpty) return false;
     if (trenutnaDodelaSlotCache.isEmpty) return null;
 
     final wantGrad = grad.trim().toUpperCase();
@@ -880,6 +884,7 @@ class V3MasterRealtimeManager {
     final terminIds = <String>{};
     for (final row in trenutnaDodelaCache.values) {
       if (row['slot_id']?.toString() != slotId) continue;
+      if ((row['vozac_v3_auth_id']?.toString() ?? '').trim() != wantVozac) continue;
       final tid = row['termin_id']?.toString();
       if (tid != null && tid.isNotEmpty) terminIds.add(tid);
     }

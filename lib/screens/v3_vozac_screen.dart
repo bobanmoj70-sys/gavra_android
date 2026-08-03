@@ -433,6 +433,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _runningSub = V3VozacLocationTrackingService.instance.onRunningChanged.listen((running) {
       if (!mounted) return;
       V3StateUtils.safeSetState(this, () => _isNavigating = running);
+      // Posle stop-a (timeout / svi gotovi) odmah zakazi sledeci termin.
+      if (!running) unawaited(_scheduleAutoStart());
     });
     unawaited(_initData());
   }
@@ -1221,7 +1223,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return false;
   }
 
-  /// Najbliži termin danas u prozoru T-15 … T+55 (nezavisno od UI selektora).
+  /// Najbliži termin danas u prozoru T-15 … T+40 (nezavisno od UI selektora).
   ({String datumIso, String grad, String vreme, DateTime polazak})? _findAutoStartTermin() {
     final now = V3BelgradeTime.now();
     final todayIso = V3DanHelper.toIsoDate(now);
