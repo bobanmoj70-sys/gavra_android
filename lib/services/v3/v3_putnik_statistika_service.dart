@@ -897,6 +897,11 @@ class V3PutnikStatistikaService {
       final a = poDanu[dan]!;
       final sortedOtkazivanja = List<V3PutnikOtkazivanjeStavka>.from(a.otkazivanja)
         ..sort((x, y) {
+          final xa = x.otkazanoAt;
+          final ya = y.otkazanoAt;
+          if (xa != null && ya != null) return xa.compareTo(ya);
+          if (xa != null) return -1;
+          if (ya != null) return 1;
           final xv = x.vreme ?? '';
           final yv = y.vreme ?? '';
           return xv.compareTo(yv);

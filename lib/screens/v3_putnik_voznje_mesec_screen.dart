@@ -392,13 +392,31 @@ class _DnevnaStavkaRow extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        if (o.vreme != null)
+                        if (_formatOtkazanoAt(o.otkazanoAt) != null)
+                          Text(
+                            _formatOtkazanoAt(o.otkazanoAt)!,
+                            style: TextStyle(
+                              color: Colors.redAccent.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        else if (o.vreme != null)
                           Text(
                             o.vreme!,
                             style: TextStyle(
                               color: Colors.redAccent.withValues(alpha: 0.85),
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        if (o.otkazanoAt != null && o.vreme != null && o.vreme!.isNotEmpty)
+                          Text(
+                            '${_VoznjeMesecTr.tr('vreme')}: ${o.vreme}',
+                            style: TextStyle(
+                              color: Colors.redAccent.withValues(alpha: 0.65),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         Text(
@@ -426,5 +444,13 @@ class _DnevnaStavkaRow extends StatelessWidget {
     if (broj == 1) return _VoznjeMesecTr.tr('voznja');
     if (broj >= 2 && broj <= 4) return _VoznjeMesecTr.tr('voznje');
     return _VoznjeMesecTr.tr('voznji');
+  }
+
+  /// Tačno vreme akcije otkazivanja (iz otkazane_voznje_json.otkazano_at).
+  String? _formatOtkazanoAt(DateTime? dt) {
+    if (dt == null) return null;
+    final h = dt.hour.toString().padLeft(2, '0');
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }
