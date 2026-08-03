@@ -205,7 +205,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.gavra013.app',
+                  userAgentPackageName: 'com.gavra013.gavra_android',
                 ),
                 MarkerLayer(
                   markers: [

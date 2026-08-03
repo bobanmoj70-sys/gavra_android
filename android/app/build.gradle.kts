@@ -5,7 +5,7 @@ import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
@@ -21,7 +21,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.gavra013.gavra_android"
     compileSdk = 36
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.gavra013.gavra_android"
@@ -93,9 +93,9 @@ android {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    // Google Play Services + Firebase Cloud Messaging (GMS devices)
+    // Google Play Services (GMS availability check in MainActivity)
     implementation("com.google.android.gms:play-services-base:18.5.0")
-    implementation("com.google.firebase:firebase-messaging:24.1.1")
+    // Firebase Messaging comes transitively via firebase_messaging Flutter plugin
 
     // 🚀 Google Play Core - NEW MODULAR LIBRARIES (Android 14+ compatible)
     implementation("com.google.android.play:integrity:1.6.0")

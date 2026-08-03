@@ -160,20 +160,6 @@
 -optimizations !code/simplification/string
 
 # ===============================================
-# HUAWEI HMS & AGCONNECT (2026-01-05)
-# ===============================================
--keep class com.huawei.hms.** { *; }
--keep class com.huawei.agconnect.** { *; }
--keep class com.huawei.hianalytics.** { *; }
--keep class com.huawei.updatesdk.** { *; }
--keep class com.huawei.hmf.** { *; }
--dontwarn com.huawei.**
-
-# Huawei Push Kit
--keep class com.huawei.hms.push.** { *; }
--keep public class * extends com.huawei.hms.push.HmsMessageService { *; }
-
-# ===============================================
 # FREEZED & JSON SERIALIZATION (2026-01-05)
 # ===============================================
 -keep class * implements com.google.gson.TypeAdapterFactory { *; }
@@ -186,16 +172,6 @@
 # Keep Freezed generated classes
 -keep class **.*Freezed* { *; }
 -keep class **.*_$* { *; }
-
-# ===============================================
-# GRAPHQL (2026-01-05)
-# ===============================================
--keep class com.apollographql.** { *; }
--dontwarn com.apollographql.**
-
-# GraphQL Flutter
--keep class graphql.** { *; }
--dontwarn graphql.**
 
 # ===============================================
 # BIOMETRIC / LOCAL AUTH (2026-01-05)

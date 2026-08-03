@@ -20,6 +20,7 @@ class V3PushTokenResult {
   });
 }
 
+/// Single FCM token source for Android + iOS via [FirebaseMessaging.getToken].
 class V3PushTokenProvider {
   V3PushTokenProvider._();
 
@@ -57,94 +58,85 @@ class V3PushTokenProvider {
 
   static Future<V3PushTokenResult?> _tryGetFcmToken() async {
     if (Platform.isIOS) {
-      return _tryGetFcmTokenIos();
+      return _fetchFcmToken(isIos: true);
     }
-
     if (!Platform.isAndroid) return null;
 
-    for (var attempt = 1; attempt <= 2; attempt++) {
-      try {
-        final available = await _channel
-            .invokeMethod<bool>('isGmsAvailable')
-            .timeout(const Duration(seconds: 2), onTimeout: () => false);
-        if (available != true) return null;
-
-        final token = await _channel
-            .invokeMethod<String>('getFcmToken')
-            .timeout(const Duration(seconds: 4), onTimeout: () => null);
-        final safeToken = (token ?? '').trim();
-        if (safeToken.isNotEmpty) {
-          await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
-          return V3PushTokenResult(token: safeToken);
-        }
-      } catch (e) {
-        debugPrint('[PushTokenProvider] Android FCM token unavailable (attempt=$attempt): $e');
+    // Android without GMS cannot use FCM.
+    try {
+      final available = await _channel
+          .invokeMethod<bool>('isGmsAvailable')
+          .timeout(const Duration(seconds: 2), onTimeout: () => false);
+      if (available != true) {
+        debugPrint('[PushTokenProvider] GMS unavailable — skip FCM token.');
+        return _fallbackToken();
       }
-
-      if (attempt < 2) {
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-      }
+    } catch (e) {
+      debugPrint('[PushTokenProvider] isGmsAvailable failed: $e');
     }
 
-    // Isti fallback kao na iOS-u: ako native poziv ne uspe, koristimo
-    // poslednji poznati FCM token iz secure storage-a.
-    final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
-    if (fallbackToken.isNotEmpty) {
-      debugPrint('[PushTokenProvider] Android using last known FCM token fallback.');
-      return V3PushTokenResult(token: fallbackToken);
-    }
-
-    return null;
+    return _fetchFcmToken(isIos: false);
   }
 
-  static Future<V3PushTokenResult?> _tryGetFcmTokenIos() async {
+  static Future<V3PushTokenResult?> _fetchFcmToken({required bool isIos}) async {
     try {
       await _ensureFirebaseInitialized();
-
       final messaging = FirebaseMessaging.instance;
+
       try {
         await messaging.setAutoInitEnabled(true);
-        // Tražimo dozvolu direktno, u slučaju da već nije dodeljena kroz role permissions.
-        var settings = await messaging.getNotificationSettings();
-        if (settings.authorizationStatus == AuthorizationStatus.notDetermined ||
-            settings.authorizationStatus == AuthorizationStatus.denied) {
-          await messaging.requestPermission(
-            alert: true,
-            badge: true,
-            sound: true,
-            provisional: false, // Bitno: tražimo punu dozvolu kako bi Apple generisao validan token ako već nije.
-          );
-        }
       } catch (_) {}
 
-      // APNs token je best-effort samo za lokalni debug/log — ne blokiramo
-      // (Firebase getToken() interno čeka APNs kada je to potrebno).
-      final apnsToken = await messaging.getAPNSToken().timeout(const Duration(seconds: 2), onTimeout: () => null);
-      final safeApnsToken = (apnsToken ?? '').trim();
-      if (safeApnsToken.isNotEmpty) {
-        await _writeTokenSafely(_lastApnsTokenStorageKey, safeApnsToken);
+      String? apnsToken;
+      if (isIos) {
+        try {
+          var settings = await messaging.getNotificationSettings();
+          if (settings.authorizationStatus == AuthorizationStatus.notDetermined ||
+              settings.authorizationStatus == AuthorizationStatus.denied) {
+            await messaging.requestPermission(
+              alert: true,
+              badge: true,
+              sound: true,
+              provisional: false,
+            );
+          }
+        } catch (_) {}
+
+        final rawApns = await messaging.getAPNSToken().timeout(
+              const Duration(seconds: 2),
+              onTimeout: () => null,
+            );
+        final safeApns = (rawApns ?? '').trim();
+        if (safeApns.isNotEmpty) {
+          await _writeTokenSafely(_lastApnsTokenStorageKey, safeApns);
+          apnsToken = safeApns;
+        }
       }
 
-      // Na svežem instalu APNs registracija ume da potraje, zato dajemo
-      // getToken() dovoljno vremena (15s) umesto kratkog timeout-a.
-      final token = await messaging.getToken().timeout(const Duration(seconds: 15), onTimeout: () => null);
+      final timeout = isIos ? const Duration(seconds: 15) : const Duration(seconds: 8);
+      final token = await messaging.getToken().timeout(timeout, onTimeout: () => null);
       final safeToken = (token ?? '').trim();
       if (safeToken.isNotEmpty) {
         await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
-        return V3PushTokenResult(token: safeToken, apnsToken: safeApnsToken);
+        return V3PushTokenResult(token: safeToken, apnsToken: apnsToken);
       }
 
-      final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
-      if (fallbackToken.isNotEmpty) {
-        debugPrint('[PushTokenProvider] iOS using last known FCM token fallback.');
-        return V3PushTokenResult(token: fallbackToken, apnsToken: safeApnsToken);
-      }
-
-      return null;
+      return _fallbackToken(isIos: isIos);
     } catch (e) {
-      debugPrint('[PushTokenProvider] iOS FCM token unavailable: $e');
-      return null;
+      debugPrint('[PushTokenProvider] FCM token unavailable (${isIos ? 'iOS' : 'Android'}): $e');
+      return _fallbackToken(isIos: isIos);
     }
+  }
+
+  static Future<V3PushTokenResult?> _fallbackToken({bool isIos = false}) async {
+    final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
+    if (fallbackToken.isEmpty) return null;
+    debugPrint('[PushTokenProvider] Using last known FCM token fallback.');
+    final apns = isIos ? (await _storage.read(key: _lastApnsTokenStorageKey) ?? '').trim() : '';
+    return V3PushTokenResult(
+      token: fallbackToken,
+      apnsToken: apns.isEmpty ? null : apns,
+    );
   }
 
   static Future<void> _writeTokenSafely(String key, String value) async {

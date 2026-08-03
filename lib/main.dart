@@ -38,13 +38,11 @@ bool _localNotificationsInitialized = false;
 bool _notificationLaunchHandled = false;
 Future<void>? _localNotificationsInitInFlight;
 Future<void>? _supabaseInitInFlight;
-Future<void>? _fcmChannelInitInFlight;
-Future<void>? _iosFcmHandlersInitInFlight;
+Future<void>? _fcmHandlersInitInFlight;
 String _lastSyncedPushToken = '';
 DateTime? _lastLocaleResumeSyncAt;
 bool _pushTokenConfirmed = false;
-bool _fcmChannelInitialized = false;
-bool _iosFcmHandlersInitialized = false;
+bool _fcmHandlersInitialized = false;
 final Map<String, DateTime> _canceledStatusPushSeenAt = <String, DateTime>{};
 const Duration _canceledStatusPushDedupWindow = Duration(seconds: 20);
 
@@ -161,7 +159,7 @@ Future<void> _ensureLocalNotificationsInitialized() async {
 
   final initFuture = () async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@drawable/ic_notification');
 
     final List<DarwinNotificationCategory> darwinNotificationCategories = <DarwinNotificationCategory>[
       DarwinNotificationCategory(
@@ -514,14 +512,8 @@ Future<void> _doStartupTasks() async {
 
   // Sve ostalo pokreni istovremeno (paralelno)
   _startBackgroundTask(
-    label: 'FCM channel init',
-    task: _initFcmChannel,
-    timeout: const Duration(seconds: 6),
-    retries: 1,
-  );
-  _startBackgroundTask(
     label: 'FCM handlers init',
-    task: _initIosFcmHandlers,
+    task: _initFcmHandlers,
     timeout: const Duration(seconds: 8),
     retries: 1,
   );
@@ -543,16 +535,6 @@ Future<bool> _ensureFirebaseInitialized() async {
     debugPrint('⚠️ [main] Firebase init nije uspeo: $e');
     return Firebase.apps.isNotEmpty;
   }
-}
-
-Map<String, dynamic> _toStringDynamicMap(Object? raw) {
-  if (raw is! Map) return <String, dynamic>{};
-  return raw.map((k, v) => MapEntry(k.toString(), v));
-}
-
-Map<String, String> _toStringStringMap(Object? raw) {
-  if (raw is! Map) return <String, String>{};
-  return raw.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''));
 }
 
 Map<String, String> _messageDataToStringMap(Map<String, dynamic> raw) {
@@ -796,12 +778,103 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   DartPluginRegistrant.ensureInitialized();
   WidgetsFlutterBinding.ensureInitialized();
   await _ensureFirebaseInitialized();
+  await _handleIncomingFcmMessage(message, source: 'background');
+}
 
+/// Jedan FCM izvor istine za Android + iOS (firebase_messaging).
+///
+/// Tok:
+///  - onBackgroundMessage (main pre runApp) → background/killed data-only push
+///  - onMessage → foreground lokalna notifikacija (+ alternativa actions)
+///  - onMessageOpenedApp / getInitialMessage → tap na system FCM notifikaciju
+///  - flutter_local_notifications onNotificationTap → tap/action na lokalnu notif
+///
+/// Native GavraFcmService / MethodChannel FCM put više ne postoji.
+Future<void> _initFcmHandlers() async {
+  if (_fcmHandlersInitialized) return;
+
+  final inFlight = _fcmHandlersInitInFlight;
+  if (inFlight != null) {
+    await inFlight;
+    return;
+  }
+
+  final initFuture = () async {
+    final firebaseReady = await _ensureFirebaseInitialized();
+    if (!firebaseReady) {
+      debugPrint('⚠️ [FCM] Preskačem handlers: Firebase nije spreman.');
+      return;
+    }
+
+    final messaging = FirebaseMessaging.instance;
+
+    // iOS: ne prikazuj OS banner u foregroundu — app prikazuje lokalnu notif.
+    if (Platform.isIOS) {
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: false,
+        badge: true,
+        sound: false,
+      );
+    }
+
+    // onBackgroundMessage je registrovan u main() pre runApp() — jednom.
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      await _handleIncomingFcmMessage(message, source: 'foreground');
+    });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      final type = message.data['type']?.toString() ?? '';
+      final data = _messageDataToStringMap(message.data);
+      debugPrint('[FCM] onMessageOpenedApp type=$type data=$data');
+      unawaited(
+        _handleFcmLaunch(type, data).catchError((Object e) => debugPrint('⚠️ [FCM] onMessageOpenedApp greška: $e')),
+      );
+    });
+
+    final initialMessage = await messaging.getInitialMessage();
+    if (initialMessage != null) {
+      final type = initialMessage.data['type']?.toString() ?? '';
+      final data = _messageDataToStringMap(initialMessage.data);
+      debugPrint('[FCM] getInitialMessage type=$type data=$data');
+      unawaited(
+        _handleFcmLaunch(type, data).catchError((Object e) => debugPrint('⚠️ [FCM] getInitialMessage greška: $e')),
+      );
+    }
+
+    messaging.onTokenRefresh.listen((token) {
+      if (token.trim().isNotEmpty) {
+        debugPrint('[FCM] Token refresh primljen.');
+        unawaited(_syncRefreshedPushToken(token));
+      }
+    });
+
+    _fcmHandlersInitialized = true;
+    debugPrint('✅ [FCM] Unified Firebase Messaging handlers (${Platform.operatingSystem})');
+  }();
+
+  _fcmHandlersInitInFlight = initFuture;
+  try {
+    await initFuture;
+  } finally {
+    _fcmHandlersInitInFlight = null;
+  }
+}
+
+/// Zajednička obrada dolazne FCM poruke (foreground ili background isolate).
+Future<void> _handleIncomingFcmMessage(
+  RemoteMessage message, {
+  required String source,
+}) async {
   final type = message.data['type']?.toString() ?? '';
   final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
   final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
   final data = _messageDataToStringMap(message.data);
-  debugPrint('[FCM][BG] background message type=$type id=${message.messageId}');
+
+  debugPrint('[FCM][$source] type=$type title=$title id=${message.messageId}');
+
+  if (source == 'foreground') {
+    unawaited(V3RolePermissionService.wakeScreenOnPush());
+  }
 
   if (type == 'v3_alternativa') {
     await _showAlternativaFromData(
@@ -812,225 +885,43 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
-  // Za sve ostale tipove: ako nema notification payload-a (data-only push),
-  // background handler mora sam da prikaze lokalnu notifikaciju.
-  if (title.isNotEmpty || body.isNotEmpty) {
-    await _ensureLocalNotificationsInitialized();
-    final androidDetails = AndroidNotificationDetails(
-      'gavra_push_v2',
-      'Gavra obaveštenja',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      styleInformation: BigTextStyleInformation(
-        body,
-        contentTitle: title,
-        summaryText: 'Gavra',
-      ),
+  if (title.isEmpty && body.isEmpty) return;
+
+  if (source == 'foreground') {
+    await _showForegroundPushNotification(
+      title: title,
+      body: body,
+      payload: type,
+      data: data,
     );
-    await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
+    return;
+  }
+
+  // background / killed — data-only push mora da prikaže lokalnu notifikaciju
+  await _ensureLocalNotificationsInitialized();
+  final androidDetails = AndroidNotificationDetails(
+    'gavra_push_v2',
+    'Gavra obaveštenja',
+    importance: Importance.max,
+    priority: Priority.high,
+    playSound: true,
+    enableVibration: true,
+    styleInformation: BigTextStyleInformation(
       body,
-      NotificationDetails(
-        android: androidDetails,
-        iOS: const DarwinNotificationDetails(),
-      ),
-      payload: _encodeTapPayload(type, data),
-    );
-  }
-}
-
-Future<void> _initIosFcmHandlers() async {
-  if (_iosFcmHandlersInitialized) return;
-
-  final inFlight = _iosFcmHandlersInitInFlight;
-  if (inFlight != null) {
-    await inFlight;
-    return;
-  }
-
-  final initFuture = () async {
-    if (!Platform.isIOS) {
-      debugPrint('ℹ️ [FCM][iOS] Preskačem iOS FCM handlere na ne-iOS platformi.');
-      return;
-    }
-
-    final firebaseReady = await _ensureFirebaseInitialized();
-    if (!firebaseReady) {
-      debugPrint('⚠️ [FCM][iOS] Preskačem FCM handlers: Firebase nije spreman.');
-      return;
-    }
-
-    final messaging = FirebaseMessaging.instance;
-
-    // alert: false — iOS NE prikazuje automatski banner u foregroundu.
-    // onMessage handler ispod sam prikazuje lokalnu notifikaciju da izbegnemo duplikat.
-    await messaging.setForegroundNotificationPresentationOptions(
-      alert: false,
-      badge: true,
-      sound: false,
-    );
-
-    // onBackgroundMessage je registrovan u main() pre runApp() — ne sme se
-    // registrovati dva puta.
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      final type = message.data['type']?.toString() ?? '';
-      final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
-      final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
-      final data = _messageDataToStringMap(message.data);
-
-      debugPrint('[FCM][iOS] onMessage type=$type title=$title');
-      unawaited(V3RolePermissionService.wakeScreenOnPush());
-
-      // Uvek prikaži lokalnu notifikaciju dok je app u foregroundu.
-      // Na Androidu FCM ne prikazuje notification automatski — app mora sama.
-      // Prethodni uslov `if (message.notification == null)` preskakao je sve
-      // push-ove koji imaju notification payload (npr. putnik_eta_start).
-      await _showForegroundPushNotification(
-        title: title,
-        body: body,
-        payload: type,
-        data: data,
-      );
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      final type = message.data['type']?.toString() ?? '';
-      final data = _messageDataToStringMap(message.data);
-      debugPrint('[FCM][iOS] onMessageOpenedApp type=$type data=$data');
-      unawaited(
-        _handleFcmLaunch(type, data)
-            .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] onMessageOpenedApp launch handler greška: $e')),
-      );
-    });
-
-    final initialMessage = await messaging.getInitialMessage();
-    if (initialMessage != null) {
-      final type = initialMessage.data['type']?.toString() ?? '';
-      final data = _messageDataToStringMap(initialMessage.data);
-      debugPrint('[FCM][iOS] getInitialMessage type=$type data=$data');
-      unawaited(
-        _handleFcmLaunch(type, data)
-            .catchError((Object e) => debugPrint('⚠️ [FCM][iOS] getInitialMessage launch handler greška: $e')),
-      );
-    }
-
-    messaging.onTokenRefresh.listen((token) {
-      if (token.trim().isNotEmpty) {
-        debugPrint('[FCM][iOS] Token refresh primljen.');
-        unawaited(_syncRefreshedPushToken(token));
-      }
-    });
-
-    _iosFcmHandlersInitialized = true;
-    debugPrint('✅ [FCM][iOS] Firebase Messaging handlers konfigurisani');
-  }();
-
-  _iosFcmHandlersInitInFlight = initFuture;
-  try {
-    await initFuture;
-  } finally {
-    _iosFcmHandlersInitInFlight = null;
-  }
-}
-
-/// Sluša FCM poruke prosleđene od GavraFcmService (Kotlin) via MethodChannel.
-/// Hvata:
-///  - onMessage     → prikazuje lokalnu notifikaciju + budi ekran
-///  - onTokenRefresh → sync-uje novi FCM token sa Supabase
-Future<void> _initFcmChannel() async {
-  if (!Platform.isAndroid) return;
-  if (_fcmChannelInitialized) return;
-
-  final inFlight = _fcmChannelInitInFlight;
-  if (inFlight != null) {
-    await inFlight;
-    return;
-  }
-
-  final initFuture = () async {
-    const channel = MethodChannel('com.gavra013.gavra_android/fcm');
-    channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'onMessage':
-          final args = _toStringDynamicMap(call.arguments);
-          if (args.isEmpty) {
-            debugPrint('[FCM] onMessage ignorisan: neispravan arguments.');
-            return;
-          }
-          final title = args['title']?.toString() ?? '';
-          final body = args['body']?.toString() ?? '';
-          final type = args['type']?.toString() ?? '';
-          final rawData = args['data'];
-          final data =
-              rawData is Map ? rawData.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')) : <String, String>{};
-          debugPrint('[FCM] onMessage type=$type title=$title');
-
-          // Budi ekran
-          unawaited(V3RolePermissionService.wakeScreenOnPush());
-
-          if (type == 'v3_alternativa') {
-            await _showAlternativaFromData(
-              data,
-              title: title,
-              body: body,
-            );
-            return;
-          }
-
-          // Prikaži lokalnu notifikaciju (foreground)
-          if (title.isNotEmpty || body.isNotEmpty) {
-            await _showForegroundPushNotification(
-              title: title,
-              body: body,
-              payload: type,
-              data: data,
-            );
-          }
-          return;
-
-        case 'onTokenRefresh':
-          final args = _toStringDynamicMap(call.arguments);
-          final token = args['token']?.toString().trim() ?? '';
-          if (token.isNotEmpty) {
-            debugPrint('[FCM] Token refresh primljen.');
-            unawaited(_syncRefreshedPushToken(token));
-          }
-          return;
-
-        case 'onLaunchMessage':
-          // Korisnik je tapnuo FCM notifikaciju dok je app bila killed/background.
-          // `arguments` je Map<String, String> sa svim FCM data key-value parovima.
-          final launchData = _toStringStringMap(call.arguments);
-          if (launchData.isEmpty) {
-            debugPrint('[FCM] onLaunchMessage ignorisan: neispravni arguments.');
-            return;
-          }
-          final launchType = launchData['type'] ?? '';
-          debugPrint('[FCM] onLaunchMessage type=$launchType data=$launchData');
-          unawaited(
-            _handleFcmLaunch(launchType, launchData)
-                .catchError((Object e) => debugPrint('⚠️ [FCM] onLaunchMessage launch handler greška: $e')),
-          );
-          return;
-
-        default:
-          debugPrint('[FCM] Nepoznata MethodChannel metoda: ${call.method}');
-          return;
-      }
-    });
-    _fcmChannelInitialized = true;
-    debugPrint('✅ [FCM] MethodChannel handler registrovan');
-  }();
-
-  _fcmChannelInitInFlight = initFuture;
-  try {
-    await initFuture;
-  } finally {
-    _fcmChannelInitInFlight = null;
-  }
+      contentTitle: title,
+      summaryText: 'Gavra',
+    ),
+  );
+  await flutterLocalNotificationsPlugin.show(
+    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    title,
+    body,
+    NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(),
+    ),
+    payload: _encodeTapPayload(type, data),
+  );
 }
 
 /// Rutira na pravi ekran kada korisnik tapne FCM notifikaciju dok je app bila killed/background.
@@ -1056,11 +947,6 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
 
   switch (type) {
     case 'v3_alternativa':
-      final launchMarker = (data['google.message_id'] ?? '').trim();
-      if (Platform.isAndroid && launchMarker.startsWith('gavra_alt_')) {
-        debugPrint('[FCM launch] Android alternativa tap detektovan — preskačem ponovno prikazivanje notifikacije.');
-        return;
-      }
       await _showAlternativaFromData(data);
       return;
 

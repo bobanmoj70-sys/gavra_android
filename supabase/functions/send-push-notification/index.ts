@@ -293,22 +293,20 @@ async function sendFcm(
     const projectId = cachedFcmToken?.projectId;
     if (!projectId) throw new Error('FCM project_id unavailable after auth');
 
-    // Na Androidu NE šaljemo `notification` polje — GavraFcmService
-    // sam prikazuje notifikaciju iz `data` polja. iOS koristi apns.payload.aps.alert.
-    const androidData: Record<string, string> = { ...data };
-    if (!dataOnly) {
-      if (title) androidData.title = title;
-      if (body) androidData.body = body;
-    }
+    // Jedan data payload za Android + iOS Dart handlere.
+    // - Nema android `notification` bloka → app gradi lokalnu notif (actions, dedup).
+    // - title/body uvek u data (i kad je dataOnly), da background/alternativa imaju tekst.
+    // - iOS: alert samo kad NIJE dataOnly; dataOnly = content-available + data.
+    const messageData: Record<string, string> = { ...data };
+    if (title) messageData.title = title;
+    if (body) messageData.body = body;
 
     const message: Record<string, unknown> = {
       token,
-      // top-level data ide na sve platforme (type, event_id, itd.)
-      data,
+      data: messageData,
       android: {
         priority: 'high',
-        // android.data se merge-uje sa top-level data
-        data: androidData,
+        data: messageData,
       },
       apns: {
         headers: { 'apns-priority': '10' },
@@ -413,7 +411,7 @@ Deno.serve(async (req) => {
 
     const pushType = String(data.type ?? '').trim();
     if (pushType === 'v3_alternativa') {
-      // v3_alternativa: klikabilna akciona notifikacija se gradi ručno na Android strani.
+      // v3_alternativa: data-only na obe platforme — app gradi action notifikaciju.
       dataOnly = true;
     }
 
