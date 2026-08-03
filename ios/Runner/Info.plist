@@ -51,27 +51,25 @@
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>here-route</string>
-		<string>here.directions</string>
-		<string>here-location</string>
+		<string>comgooglemaps</string>
 		<string>tel</string>
 		<string>sms</string>
-		<string>mailto</string>
 	</array>
 	<!-- Location: drivers during active ride (when-in-use + always for background tracking) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikacija koristi lokaciju vozača tokom aktivne vožnje radi praćenja i prikaza putnicima.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Aplikacija koristi lokaciju vozača i kada aplikacija nije u prvom planu tokom aktivne vožnje, radi praćenja rute i prikaza putnicima.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Aplikacija koristi lokaciju vozača u pozadini tokom aktivne vožnje radi praćenja rute i prikaza putnicima.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 		<string>location</string>
+		<string>fetch</string>
 	</array>
+	<!-- flutter_background_service iOS BGAppRefreshTask (onIosBackground fallback) -->
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.gavra013.gavra013ios.gps_sync</string>
+		<string>dev.flutter.background.refresh</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

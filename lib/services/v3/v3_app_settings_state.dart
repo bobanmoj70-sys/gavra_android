@@ -8,15 +8,14 @@ class V3AppSettingsState {
   final ValueNotifier<DateTime?> activeWeekEnd = ValueNotifier<DateTime?>(null);
 
   /// Runtime-only HERE WeGo install listing URLs from `v3_app_settings`
-  /// (not hardcoded in binary).
+  /// (driver nav install prompt; not hardcoded in binary).
   String? hereWegoInstallUrlAndroid;
   String? hereWegoInstallUrlIos;
 
-  /// Runtime-only maps URL templates from `v3_app_settings`.
-  /// Placeholders: `{lat}` `{lng}`.
+  /// Passenger maps app deep-link templates from `v3_app_settings`.
+  /// Placeholders: `{lat}` `{lng}`. No web fallback in app.
   String? mapsAppUrlTemplateAndroid;
   String? mapsAppUrlTemplateIos;
-  String? mapsWebUrlTemplate;
 
   DateTime? get activeWeekStartValue => activeWeekStart.value;
   DateTime? get activeWeekEndValue => activeWeekEnd.value;
@@ -49,11 +48,6 @@ class V3AppSettingsState {
     mapsAppUrlTemplateIos = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
   }
 
-  void setMapsWebUrlTemplate(String? value) {
-    final trimmed = value?.trim();
-    mapsWebUrlTemplate = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
-  }
-
   /// Platform-specific install URL for HERE WeGo (from remote config).
   String? hereWegoInstallUrlForCurrentPlatform({required bool isIos, required bool isAndroid}) {
     if (isIos) return hereWegoInstallUrlIos;
@@ -61,7 +55,7 @@ class V3AppSettingsState {
     return null;
   }
 
-  /// Maps app deep-link template for current platform (remote only).
+  /// Passenger maps app deep-link template for current platform (remote only).
   String? mapsAppUrlTemplateForCurrentPlatform({required bool isIos, required bool isAndroid}) {
     if (isIos) return mapsAppUrlTemplateIos;
     if (isAndroid) return mapsAppUrlTemplateAndroid;
@@ -77,7 +71,7 @@ class V3AppSettingsState {
     return Uri.tryParse(raw);
   }
 
-  /// Build maps app deep link from remote config for current platform.
+  /// Build passenger maps app deep link from remote config for current platform.
   Uri? buildMapsAppUri({
     required double latitude,
     required double longitude,
@@ -86,15 +80,6 @@ class V3AppSettingsState {
   }) {
     return buildUriFromTemplate(
       mapsAppUrlTemplateForCurrentPlatform(isIos: isIos, isAndroid: isAndroid),
-      latitude: latitude,
-      longitude: longitude,
-    );
-  }
-
-  /// Build maps web URL from remote template (`{lat}` / `{lng}`).
-  Uri? buildMapsWebUri({required double latitude, required double longitude}) {
-    return buildUriFromTemplate(
-      mapsWebUrlTemplate,
       latitude: latitude,
       longitude: longitude,
     );

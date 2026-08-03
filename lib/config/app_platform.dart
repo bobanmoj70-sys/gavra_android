@@ -29,7 +29,6 @@ class AppPlatform {
   static const String pushTokenChannel = 'com.gavra013.gavra_android/push_token';
 
   static const String methodWakeScreen = 'wakeScreen';
-  static const String methodReleaseWakeLock = 'releaseWakeLock';
   static const String methodIsGmsAvailable = 'isGmsAvailable';
   static const String methodGetAndroidId = 'getAndroidId';
 }

@@ -90,19 +90,7 @@ class V3PushTokenProvider {
 
       String? apnsToken;
       if (isIos) {
-        try {
-          var settings = await messaging.getNotificationSettings();
-          if (settings.authorizationStatus == AuthorizationStatus.notDetermined ||
-              settings.authorizationStatus == AuthorizationStatus.denied) {
-            await messaging.requestPermission(
-              alert: true,
-              badge: true,
-              sound: true,
-              provisional: false,
-            );
-          }
-        } catch (_) {}
-
+        // Permission UI is owned by V3RolePermissionService — here only token fetch.
         final rawApns = await messaging.getAPNSToken().timeout(
               const Duration(seconds: 2),
               onTimeout: () => null,

@@ -20,15 +20,11 @@ class V3RolePermissionService {
   /// Vozač: push + lokacija (WhenInUse → Always).
   /// Isti redosled na Android i iOS. Ponavlja se pri svakom loginu dok Always nije granted.
   static Future<void> ensureDriverPermissionsOnLogin(BuildContext context) async {
-    await _requestCommonPermissions(context);
+    await _requestPushOnce(context);
     await _requestDriverLocationPermissions(context);
   }
 
   static Future<void> ensurePassengerPermissionsOnLogin(BuildContext context) async {
-    await _requestCommonPermissions(context);
-  }
-
-  static Future<void> _requestCommonPermissions(BuildContext context) async {
     await _requestPushOnce(context);
   }
 

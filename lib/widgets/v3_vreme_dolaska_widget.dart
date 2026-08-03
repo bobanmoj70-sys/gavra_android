@@ -283,10 +283,8 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
       return;
     }
 
-    final settings = V3AppSettingsState.instance;
-
-    // 1) Google Maps app deep link from Supabase.
-    final appUri = settings.buildMapsAppUri(
+    // Putnik: samo maps app template iz Supabase (nema web/fallback).
+    final appUri = V3AppSettingsState.instance.buildMapsAppUri(
       latitude: coords.lat,
       longitude: coords.lng,
       isIos: Platform.isIOS,
@@ -298,24 +296,8 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           final ok = await launchUrl(appUri, mode: LaunchMode.externalApplication);
           if (ok) return;
         } else {
-          // iOS canLaunchUrl can be false for custom schemes; still try launch.
+          // iOS canLaunchUrl može lagati za custom scheme — i dalje pokušaj launch.
           final ok = await launchUrl(appUri, mode: LaunchMode.externalApplication);
-          if (ok) return;
-        }
-      } catch (_) {
-        // fall through to web
-      }
-    }
-
-    // 2) Web fallback from Supabase (maps_web_url_template).
-    final webUri = settings.buildMapsWebUri(
-      latitude: coords.lat,
-      longitude: coords.lng,
-    );
-    if (webUri != null) {
-      try {
-        if (await canLaunchUrl(webUri)) {
-          final ok = await launchUrl(webUri, mode: LaunchMode.externalApplication);
           if (ok) return;
         }
       } catch (_) {

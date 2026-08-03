@@ -13,12 +13,12 @@
     <!-- Collected Data Types -->
     <key>NSPrivacyCollectedDataTypes</key>
     <array>
-        <!-- Location Data - for weather display -->
+        <!-- Precise location — driver background/foreground tracking during active rides -->
         <dict>
             <key>NSPrivacyCollectedDataType</key>
             <string>NSPrivacyCollectedDataTypePreciseLocation</string>
             <key>NSPrivacyCollectedDataTypeLinked</key>
-            <false/>
+            <true/>
             <key>NSPrivacyCollectedDataTypeTracking</key>
             <false/>
             <key>NSPrivacyCollectedDataTypePurposes</key>
@@ -26,12 +26,12 @@
                 <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
             </array>
         </dict>
-        <!-- Contact Info - for passenger phone selection -->
+        <!-- Phone number — closed auth / passenger-driver identity -->
         <dict>
             <key>NSPrivacyCollectedDataType</key>
             <string>NSPrivacyCollectedDataTypePhoneNumber</string>
             <key>NSPrivacyCollectedDataTypeLinked</key>
-            <false/>
+            <true/>
             <key>NSPrivacyCollectedDataTypeTracking</key>
             <false/>
             <key>NSPrivacyCollectedDataTypePurposes</key>

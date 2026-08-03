@@ -171,11 +171,6 @@ class V3MasterRealtimeManager {
         row['maps_app_url_template_ios']?.toString(),
       );
     }
-    if (row.containsKey('maps_web_url_template')) {
-      V3AppSettingsState.instance.setMapsWebUrlTemplate(
-        row['maps_web_url_template']?.toString(),
-      );
-    }
 
     unawaited(
       V3AppUpdateService.refreshUpdateInfo(appSettingsRow: row)

@@ -7,13 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'v3_app_settings_state.dart';
 import 'v3_route_models.dart';
 
-/// Rezultat pokušaja otvaranja HERE WeGo navigacije.
+/// Rezultat pokušaja otvaranja HERE WeGo navigacije (samo vozač).
 ///
-/// Politika (iOS + Android, uniformno):
-/// - HERE WeGo je jedina podržana map/nav app
-/// - Ako je instalirana → otvori rutu
-/// - Ako nije → obavesti korisnika; opciono otvori install URL iz remote config-a
-/// - Nema Apple Maps / Google Maps fallback
+/// Politika:
+/// - Vozač: isključivo HERE WeGo (multi-stop / pin putnika)
+/// - Putnik: zaseban put — maps app template iz Supabase (nije ovaj servis)
+/// - Nema fallback na druge map app-ove
 enum V3HereWeGoLaunchResult {
   opened,
   notInstalled,
@@ -21,9 +20,8 @@ enum V3HereWeGoLaunchResult {
   failed,
 }
 
-/// Centralni launcher za GPS navigaciju putnika / multi-stop rute.
+/// Centralni launcher za vozačku GPS navigaciju (HERE WeGo only).
 ///
-/// Samo HERE WeGo. Nema fallback na druge mape.
 /// Install URL-ovi dolaze isključivo iz `v3_app_settings` (runtime),
 /// nisu hardkodovani u binaru (Guideline 2.3.10).
 class V3NavigationAppLauncherService {
