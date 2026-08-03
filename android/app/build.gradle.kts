@@ -23,8 +23,8 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.gavra013.gavra_android"
     compileSdk = 36
-    // 28.2.13676358 on this machine is incomplete (missing source.properties)
-    ndkVersion = "27.0.12077973"
+    // Match Flutter plugins (highest required NDK; backward compatible)
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "com.gavra013.gavra_android"

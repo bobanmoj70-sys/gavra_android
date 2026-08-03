@@ -14,6 +14,9 @@ val newBuildDir: Directory =
     rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
 
+// Match app compileSdk so older Flutter plugins pass CheckAarMetadata
+val forcedCompileSdk = 36
+
 subprojects {
     project.layout.buildDirectory.value(newBuildDir.dir(project.name))
 
@@ -22,24 +25,42 @@ subprojects {
         project.evaluationDependsOn(":app")
     }
 
-    // Older Flutter plugins without namespace
+    // Older Flutter plugins: namespace + compileSdk (many still default to 31)
     pluginManager.withPlugin("com.android.library") {
-        val androidLibrary = extensions.findByType(LibraryExtension::class.java) ?: return@withPlugin
-        if (androidLibrary.namespace != null) return@withPlugin
+        extensions.configure<LibraryExtension>("android") {
+            compileSdk = forcedCompileSdk
 
-        val manifestFile = file("src/main/AndroidManifest.xml")
-        val fromManifest =
-            if (manifestFile.exists()) {
-                Regex("""package\s*=\s*"([^"]+)"""")
-                    .find(manifestFile.readText())
-                    ?.groupValues
-                    ?.getOrNull(1)
-            } else {
-                null
+            if (namespace == null) {
+                val manifestFile = file("src/main/AndroidManifest.xml")
+                val fromManifest =
+                    if (manifestFile.exists()) {
+                        Regex("""package\s*=\s*"([^"]+)"""")
+                            .find(manifestFile.readText())
+                            ?.groupValues
+                            ?.getOrNull(1)
+                    } else {
+                        null
+                    }
+
+                namespace = fromManifest
+                    ?: "${project.group.toString().ifBlank { "dev.flutter" }}.${project.name.replace('-', '_')}"
             }
+        }
+    }
 
-        androidLibrary.namespace = fromManifest
-            ?: "${project.group.toString().ifBlank { "dev.flutter" }}.${project.name.replace('-', '_')}"
+    // Override plugin defaults applied during evaluation.
+    // evaluationDependsOn(":app") can leave some projects already evaluated.
+    val forcePluginCompileSdk = {
+        extensions.findByType(LibraryExtension::class.java)?.apply {
+            if (compileSdk == null || compileSdk!! < forcedCompileSdk) {
+                compileSdk = forcedCompileSdk
+            }
+        }
+    }
+    if (state.executed) {
+        forcePluginCompileSdk()
+    } else {
+        afterEvaluate { forcePluginCompileSdk() }
     }
 
     if (project.name == "android_intent_plus") {
