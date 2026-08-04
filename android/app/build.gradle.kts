@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.io.File
 import java.io.FileInputStream
 import org.gradle.api.GradleException
 
@@ -47,16 +48,22 @@ android {
     signingConfigs {
         create("release") {
             val alias = keystoreProperties["keyAlias"] as String?
-            val storePath = keystoreProperties["storeFile"] as String?
+            val storePath = (keystoreProperties["storeFile"] as String?)?.trim()
             if (!alias.isNullOrBlank() && !storePath.isNullOrBlank()) {
                 keyAlias = alias
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storePassword = keystoreProperties["storePassword"] as String
-                val store = rootProject.file(storePath)
+                // Absolute path, or relative to android/ (same dir as key.properties).
+                val store = if (File(storePath).isAbsolute) {
+                    File(storePath)
+                } else {
+                    keystorePropertiesFile.parentFile.resolve(storePath)
+                }
                 if (!store.isFile) {
                     throw GradleException(
                         "Release keystore not found: ${store.absolutePath}\n" +
-                            "Fix storeFile in android/key.properties.",
+                            "storeFile='$storePath' (resolved from android/key.properties).\n" +
+                            "Fix storeFile in android/key.properties or restore the keystore file.",
                     )
                 }
                 storeFile = store
