@@ -200,8 +200,9 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                     for (final vozac in prikazaniVozaci)
                       Marker(
                         point: _pozicije[vozac.id]!,
+                        // Široko zbog imena; visina = label + pin, bez praznog prostora ispod.
                         width: 140,
-                        height: 64,
+                        height: 58,
                         alignment: Alignment.bottomCenter,
                         child: _VozacMarker(
                           boja: V3CardColorPolicy.vozacColorOr(vozac.boja),
@@ -226,7 +227,8 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   }
 }
 
-/// Marker na mapi: pin u boji vozača + balončić sa imenom iznad njega.
+/// Marker na mapi: balončić sa imenom + pin.
+/// Sadržaj je na dnu kutije (`MainAxisAlignment.end`) da vrh pina = GPS tačka.
 class _VozacMarker extends StatelessWidget {
   const _VozacMarker({required this.boja, required this.ime});
 
@@ -236,7 +238,9 @@ class _VozacMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisSize: MainAxisSize.max,
+      mainAxisAlignment: MainAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -252,9 +256,11 @@ class _VozacMarker extends StatelessWidget {
             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
         ),
-        Icon(Icons.location_on, color: boja, size: 36),
+        // Material `location_on` ima ~2–3px praznog ispod vrha igle u glyph-u.
+        Icon(Icons.location_on, color: boja, size: 36, opticalSize: 36),
       ],
     );
   }
