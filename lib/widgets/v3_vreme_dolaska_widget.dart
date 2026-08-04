@@ -105,7 +105,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   int _buildEtaMinutes(int etaSeconds) {
     if (etaSeconds <= 0) return 0;
-    return (etaSeconds / 60).ceil();
+    return (etaSeconds / 60).round();
   }
 
   DateTime? _parseDepartureDateTime(Map<String, dynamic> row) {
