@@ -101,8 +101,14 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // NOTE: intentionally NOT using getDefaultProguardFile("proguard-android-optimize.txt").
+            // AGP 9.0.0 has a bug where the task that extracts that default file into
+            // build/intermediates/default_proguard_files/... doesn't always run before
+            // :app:minifyReleaseWithR8 consumes it on a clean CI checkout, causing:
+            //   "Supplied proguard configuration does not exist: .../proguard-android-optimize.txt-9.0.0"
+            // Using our own checked-in copy avoids that extraction task entirely.
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                file("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
             signingConfig = signingConfigs.getByName("release")
