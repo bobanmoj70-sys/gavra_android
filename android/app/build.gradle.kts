@@ -107,6 +107,15 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+
+    lint {
+        // "lintVitalAnalyzeRelease" (the release-build lint check baked into `assembleRelease`)
+        // crashes with a Metaspace OutOfMemoryError analyzing plugin sources (e.g.
+        // shared_preferences_android's SharedPreferencesPlugin.kt) under AGP 9's K2/UAST lint.
+        // Disable the automatic release "lint vital" pass; run `./gradlew lint` manually instead.
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 dependencies {
