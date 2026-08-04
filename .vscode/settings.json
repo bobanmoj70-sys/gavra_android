@@ -2,10 +2,39 @@
   "files.encoding": "utf8",
   "files.autoGuessEncoding": false,
   "files.eol": "\n",
+  // 🚀 PERFORMANCE OPTIMIZACIJA (iz vscode_optimization.json)
+  "files.maxMemoryForLargeFilesMB": 512,
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 5000,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "search.maxResults": 2000,
+  "search.smartCase": true,
+  "search.useIgnoreFiles": true,
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": false,
+  "editor.codeLens": false,
+  "editor.hover.delay": 1000,
+  "editor.suggest.localityBonus": true,
+  "editor.acceptSuggestionOnEnter": "smart",
+  "editor.quickSuggestions": {
+    "other": false,
+    "comments": false,
+    "strings": false
+  },
+  "git.decorations.enabled": false,
+  "git.enableSmartCommit": false,
+  "git.autofetch": false,
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  "update.enableWindowsBackgroundUpdates": false,
+  "workbench.startupEditor": "none",
+  "workbench.enableExperiments": false,
+  "workbench.settings.enableNaturalLanguageSearch": false,
   // 🚫 SUPABASE CLI И DENO КОНФИГУРАЦИЈА УКЛОЊЕНА
   // Ове setting-е не користимо јер радимо са Supabase Cloud преко REST API
   // Уместо локалног CLI-ја користимо:
-  // 1. Web Dashboard (https://supabase.com/dashboard)  
+  // 1. Web Dashboard (https://supabase.com/dashboard)
   // 2. Flutter app директно
   // 3. test_supabase.ps1 скрипт
   // Dart & Flutter auto-fix settings
@@ -14,6 +43,10 @@
   "dart.insertArgumentPlaceholders": false,
   "dart.previewFlutterUiGuides": false,
   "dart.openDevTools": "never",
+  "dart.analyzeAngularTemplates": false,
+  "dart.closingLabels": false,
+  "dart.flutterCreateAndroidLanguage": "kotlin",
+  "dart.flutterCreateIOSLanguage": "swift",
   // Auto-fix on save
   "editor.formatOnSave": true,
   "editor.formatOnType": true,
@@ -50,7 +83,7 @@
   // Користи Web Dashboard уместо database GUI tools
   // WakaTime Configuration - API key removed for security
   // Add your personal WakaTime API key here locally
-  // 🗑️ СКРИВЕНИ НЕПОТРЕБНИ SIDEBAR TABOVI
+  // 🗑️ СКРИВЕНИ НЕПОТРЕБНИ SIDEBAR TABОВИ
   "workbench.activityBar.iconClickBehavior": "toggle",
   "workbench.sideBar.location": "left",
   // Скривамо Remote Explorer јер се не користи за локални Flutter развој
@@ -60,7 +93,7 @@
   "testing.automaticallyOpenPeekView": "never",
   "testing.openTesting": "neverOpen",
   // Скривамо Flutter Property tab јер Flutter DevTools Inspector је бољи
-  // Duplirane funkcionalnosti, Flutter DevTools је стандард за widget debugging
+  // Duplиране функционалности, Flutter DevTools је стандард за widget debugging
   "dart.flutterOutline": false,
   // Скривамо SQLTools tab јер се не користи са Supabase Cloud
   // IPv6 проблем блокира директне PostgreSQL конекције, користимо REST API
@@ -200,13 +233,15 @@
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
+    "**/.git/**": true,
     "**/node_modules/**": true,
     "**/android/**": true,
     "**/ios/**": true,
     "**/build/**": true,
     "**/.dart_tool/**": true,
     "**/coverage/**": true,
-    "**/test/**": true
+    "**/test/**": true,
+    "**/flutter/bin/cache/**": true
   },
   "search.exclude": {
     "**/android/**": true,
@@ -214,7 +249,8 @@
     "**/build/**": true,
     "**/.dart_tool/**": true,
     "**/coverage/**": true,
-    "**/test/**": true
+    "**/test/**": true,
+    "**/node_modules/**": true
   },
   "dart.analysisExcludedFolders": [
     "android",

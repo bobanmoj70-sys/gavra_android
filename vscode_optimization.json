@@ -1,0 +1,52 @@
+{
+    // 🚀 OPTIMIZACIJA VS CODE ZA SLAB HARDWARE
+    // Memory & Performance
+    "files.maxMemoryForLargeFilesMB": 512,
+    "search.maxResults": 2000,
+    "search.smartCase": true,
+    "search.useRipgrep": true,
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/build/**": true,
+        "**/.git/**": true,
+        "**/android/build/**": true,
+        "**/ios/build/**": true,
+        "**/flutter/bin/cache/**": true
+    },
+    // Editor optimizations
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": false,
+    "editor.codeLens": false,
+    "editor.hover.delay": 1000,
+    "editor.suggest.localityBonus": true,
+    "editor.acceptSuggestionOnEnter": "smart",
+    "editor.quickSuggestions": {
+        "other": false,
+        "comments": false,
+        "strings": false
+    },
+    // Disable heavy features
+    "git.decorations.enabled": false,
+    "git.enableSmartCommit": false,
+    "git.autofetch": false,
+    "extensions.autoCheckUpdates": false,
+    "extensions.autoUpdate": false,
+    "update.enableWindowsBackgroundUpdates": false,
+    // File handling
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 5000,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    // Workbench
+    "workbench.startupEditor": "none",
+    "workbench.enableExperiments": false,
+    "workbench.settings.enableNaturalLanguageSearch": false,
+    "workbench.iconTheme": null,
+    // Dart/Flutter specific
+    "dart.analyzeAngularTemplates": false,
+    "dart.closingLabels": false,
+    "dart.flutterOutline": false,
+    "dart.previewFlutterUiGuides": false,
+    "dart.flutterCreateAndroidLanguage": "kotlin",
+    "dart.flutterCreateIOSLanguage": "swift"
+}
