@@ -124,6 +124,23 @@ dependencies {
     implementation("com.google.android.gms:play-services-base:18.5.0")
 }
 
+// 16 KB page size fix: transitive androidx.datastore libs pulled in by Firebase/
+// Play Services (e.g. libdatastore_shared_counter.so) were prebuilt with an
+// older NDK that isn't 16 KB-page aligned. Force resolution to the latest
+// stable datastore release (1.2.1+), which Google has rebuilt with a 16 KB
+// page-aligned NDK toolchain, without needing to bump Firebase/Play Services
+// BoM versions.
+configurations.all {
+    resolutionStrategy {
+        force(
+            "androidx.datastore:datastore-core:1.2.1",
+            "androidx.datastore:datastore-preferences:1.2.1",
+            "androidx.datastore:datastore-preferences-core:1.2.1",
+            "androidx.datastore:datastore:1.2.1",
+        )
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

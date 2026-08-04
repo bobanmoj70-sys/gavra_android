@@ -2,10 +2,12 @@ package com.gavra013.gavra_android
 
 import android.content.Context
 import android.os.Build
+import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import io.flutter.embedding.android.FlutterActivity
@@ -30,6 +32,19 @@ class MainActivity : FlutterActivity() {
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
+
+    // Android 15 (SDK 35) prikazuje aplikaciju edge-to-edge po difoltu.
+    // FlutterActivity nasledjuje android.app.Activity (ne ComponentActivity),
+    // pa androidx.activity.enableEdgeToEdge() ekstenzija ovde ne kompajlira.
+    // WindowCompat.setDecorFitsSystemWindows(window, false) daje isti efekat
+    // (edge-to-edge prikaz) i radi na svakoj Activity/Window, ukljucujuci
+    // starije Android verzije (backward-compatible), isto kao Flutter-ova
+    // SystemUiMode.edgeToEdge u main.dart - samo primenjeno ranije, pre nego
+    // sto Flutter stigne da postavi svoj UI mod (sprecava "skok" native teme).
+    override fun onCreate(savedInstanceState: Bundle?) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        super.onCreate(savedInstanceState)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
