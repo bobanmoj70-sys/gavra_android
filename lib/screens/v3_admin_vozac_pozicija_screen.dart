@@ -43,6 +43,9 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   final Map<String, ll.LatLng> _pozicije = {};
   final Map<String, DateTime> _lastUpdates = {};
 
+  /// km/h; null = GPS nije poslao validan speed.
+  final Map<String, double?> _brzine = {};
+
   StreamSubscription<int>? _locationSub;
   final MapController _mapController = MapController();
   bool _mapReady = false;
@@ -68,6 +71,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
     final cache = V3MasterRealtimeManager.instance.vozacLocationCache;
     final newPozicije = <String, ll.LatLng>{};
     final newUpdates = <String, DateTime>{};
+    final newBrzine = <String, double?>{};
 
     for (final entry in cache.entries) {
       final row = entry.value;
@@ -78,6 +82,8 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
       newPozicije[vozacId] = ll.LatLng(lat, lng);
       final parsed = DateTime.tryParse(row['updated_at']?.toString() ?? '');
       newUpdates[vozacId] = parsed?.toLocal() ?? DateTime.now();
+      final speedRaw = row['speed_kmh'];
+      newBrzine[vozacId] = speedRaw is num ? speedRaw.toDouble() : null;
     }
 
     setState(() {
@@ -87,6 +93,9 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
       _lastUpdates
         ..clear()
         ..addAll(newUpdates);
+      _brzine
+        ..clear()
+        ..addAll(newBrzine);
       // Ako se lista vozača popuni kasnije iz auth cache-a.
       if (_vozaci.isEmpty) {
         _vozaci = V3VozacService.getAllVozaci();
@@ -121,6 +130,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
   Widget build(BuildContext context) {
     final prikazaniVozaci = _prikazaniVozaci;
     final brojAktivnih = _pozicije.length;
+    final selectedSpeed = _selectedVozacId != null ? _brzine[_selectedVozacId] : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -169,6 +179,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                         ? _VozacPozTr.tr('cekaSePozicija')
                         : _selectedVozacId != null && _lastUpdates[_selectedVozacId] != null
                             ? '${_VozacPozTr.tr('azurirano')}: ${_formatTime(_lastUpdates[_selectedVozacId]!)}'
+                                '${selectedSpeed != null ? ' · ${_formatSpeed(selectedSpeed)}' : ''}'
                             : '${_VozacPozTr.tr('aktivnihVozaca')}: $brojAktivnih',
                     style: const TextStyle(fontSize: 12),
                     maxLines: 2,
@@ -200,13 +211,13 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                     for (final vozac in prikazaniVozaci)
                       Marker(
                         point: _pozicije[vozac.id]!,
-                        // Široko zbog imena; visina = label + pin, bez praznog prostora ispod.
                         width: 140,
-                        height: 58,
+                        height: 72,
                         alignment: Alignment.bottomCenter,
                         child: _VozacMarker(
                           boja: V3CardColorPolicy.vozacColorOr(vozac.boja),
                           ime: vozac.imePrezime,
+                          brzinaLabel: _formatSpeed(_brzine[vozac.id]),
                         ),
                       ),
                   ],
@@ -225,15 +236,26 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
     final s = dt.second.toString().padLeft(2, '0');
     return '$h:$m:$s';
   }
+
+  /// null → "—"; inače zaokruženo "42 km/h".
+  String _formatSpeed(double? kmh) {
+    if (kmh == null) return '— ${_VozacPozTr.tr('kmh')}';
+    return '${kmh.round()} ${_VozacPozTr.tr('kmh')}';
+  }
 }
 
-/// Marker na mapi: balončić sa imenom + pin.
+/// Marker na mapi: balončić sa imenom + brzinom + pin.
 /// Sadržaj je na dnu kutije (`MainAxisAlignment.end`) da vrh pina = GPS tačka.
 class _VozacMarker extends StatelessWidget {
-  const _VozacMarker({required this.boja, required this.ime});
+  const _VozacMarker({
+    required this.boja,
+    required this.ime,
+    required this.brzinaLabel,
+  });
 
   final Color boja;
   final String ime;
+  final String brzinaLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -251,12 +273,24 @@ class _VozacMarker extends StatelessWidget {
               BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
             ],
           ),
-          child: Text(
-            ime,
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                ime,
+                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+              Text(
+                brzinaLabel,
+                style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         // Material `location_on` ima ~2–3px praznog ispod vrha igle u glyph-u.

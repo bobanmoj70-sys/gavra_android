@@ -501,6 +501,20 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Aktive Fahrer',
       'zh': '活跃司机数',
     },
+    'brzina': {
+      'sr': 'Brzina',
+      'en': 'Speed',
+      'ru': 'Скорость',
+      'de': 'Geschwindigkeit',
+      'zh': '速度',
+    },
+    'kmh': {
+      'sr': 'km/h',
+      'en': 'km/h',
+      'ru': 'км/ч',
+      'de': 'km/h',
+      'zh': 'km/h',
+    },
   },
   'adreseScreen': {
     'naslov': {'sr': '📍 Adrese', 'en': '📍 Addresses', 'ru': '📍 Адреса', 'de': '📍 Adressen', 'zh': '📍 地址'},

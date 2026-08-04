@@ -816,6 +816,7 @@ class V3MasterRealtimeManager {
     required String vozacId,
     required double lat,
     required double lng,
+    double? speedKmh,
     String? updatedAtIso,
   }) {
     final id = vozacId.trim();
@@ -825,6 +826,7 @@ class V3MasterRealtimeManager {
       'vozac_id': id,
       'lat': lat,
       'lng': lng,
+      if (speedKmh != null) 'speed_kmh': speedKmh,
       'updated_at': updatedAtIso ?? V3BelgradeTime.nowIsoUtc(),
     });
   }

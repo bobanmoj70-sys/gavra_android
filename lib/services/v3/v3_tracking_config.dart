@@ -240,6 +240,8 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
     vozacId: vozacId,
     lat: position.latitude,
     lng: position.longitude,
+    // Geolocator: m/s; negativno = invalid.
+    speedKmh: position.speed >= 0 ? position.speed * 3.6 : null,
     logTag: logTag,
   );
 
@@ -388,6 +390,7 @@ Future<void> v3UpdateVozacLocation({
   required String vozacId,
   required double lat,
   required double lng,
+  double? speedKmh,
   String logTag = '[v3UpdateVozacLocation]',
 }) async {
   if (vozacId.isEmpty) {
@@ -395,10 +398,13 @@ Future<void> v3UpdateVozacLocation({
   }
 
   final updatedAt = V3BelgradeTime.nowIsoUtc();
+  // Zaokruži na 1 decimalu radi čitljivog UI-a; null ostaje null.
+  final speed = speedKmh == null ? null : double.parse(speedKmh.clamp(0, 300).toStringAsFixed(1));
   await client.from('v3_vozac_location').upsert(<String, dynamic>{
     'vozac_id': vozacId,
     'lat': lat,
     'lng': lng,
+    'speed_kmh': speed,
     'updated_at': updatedAt,
   });
   try {
@@ -406,8 +412,9 @@ Future<void> v3UpdateVozacLocation({
       vozacId: vozacId,
       lat: lat,
       lng: lng,
+      speedKmh: speed,
       updatedAtIso: updatedAt,
     );
   } catch (_) {}
-  debugPrint('$logTag lokacija $lat, $lng vozac=$vozacId');
+  debugPrint('$logTag lokacija $lat, $lng speed=$speed km/h vozac=$vozacId');
 }
