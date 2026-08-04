@@ -31,3 +31,11 @@
 
 -dontwarn com.google.crypto.tink.**
 -dontwarn org.joda.time.**
+
+# androidx.window optional extension/sidecar APIs (foldable support) — not bundled, safe to ignore
+-dontwarn androidx.window.extensions.**
+-dontwarn androidx.window.sidecar.**
+
+# Play Core Split Install / Deferred Components — not used by this app (no dynamic feature modules)
+-dontwarn com.google.android.play.core.**
+-keep class io.flutter.embedding.engine.deferredcomponents.** { *; }
