@@ -301,11 +301,15 @@ ValueNotifier<DateTime?> get appSettingsActiveWeekStartNotifier => V3AppSettings
 /// Sadrži kraj operativne sedmice isključivo iz baze.
 ValueNotifier<DateTime?> get appSettingsActiveWeekEndNotifier => V3AppSettingsState.instance.activeWeekEnd;
 
-/// ETA STALE THRESHOLD - nakon koliko sekundi se ETA smatra zastarelom
-/// Koristi se u:
-/// - V3VremeDolaskaWidget - za prikaz "sledeća vožnja" umesto zastarelog ETA
-/// - v3-compute-eta edge funkciji - za brisanje zastarelih redova
-const Duration etaStaleThreshold = Duration(seconds: 130);
+/// Koliko dugo se poslednji ETA red čuva u bazi kada vozač prestane da šalje
+/// tickove (npr. ugasio app). Putnik i dalje vidi poslednju poznatu ETA.
+/// Uskladiti sa tracking prozorom T-15..T+40 (55 min) i
+/// ETA_RETENTION_SECONDS u v3-compute-eta edge funkciji.
+///
+/// NAPOMENA: putnički UI (V3VremeDolaskaWidget) NE koristi starost computed_at
+/// za sakrivanje ETA — prikazuje poslednju ETA dok traje tracking prozor
+/// termina i dok putnik nije pokupljen/otkazan.
+const Duration etaRetentionDuration = Duration(minutes: 55);
 
 /// PRIVREMENI TEST FLAG - kada je true, klik na "Start" NEĆE poslati push
 /// notifikaciju putnicima da je vozač krenuo. Koristi se za lično testiranje

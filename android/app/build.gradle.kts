@@ -5,6 +5,7 @@ import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     // Flutter plugin after Android + Kotlin
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
@@ -143,7 +144,7 @@ configurations.all {
 
 kotlin {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

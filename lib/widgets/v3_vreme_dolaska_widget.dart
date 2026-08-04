@@ -4,10 +4,10 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../globals.dart';
 import '../l10n/app_translations.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_app_settings_state.dart';
+import '../services/v3/v3_tracking_config.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
@@ -89,18 +89,26 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return null;
   }
 
-  ({int? etaSeconds, bool isStale, String? vozacId, String? terminId}) _readEtaState(Map<String, dynamic>? row) {
+  /// Tracking prozor za prikaz ETA: T-15 .. T+40 (isto kao vozački tracking).
+  bool _isInEtaTrackingWindow(DateTime departure, DateTime now) {
+    final windowStart = departure.subtract(v3AutoStartLeadTime);
+    final windowEnd = departure.add(v3TrackingMaxDuration);
+    return !now.isBefore(windowStart) && now.isBefore(windowEnd);
+  }
+
+  /// Poslednja poznata ETA — ne zastareva po computed_at starosti.
+  /// Ostaje aktivna dok vozač ne pošalje novu, ili do kraja tracking prozora /
+  /// pokupljen/otkazan (filtrira se u [_findNextPutnikRide]).
+  ({int? etaSeconds, String? vozacId, String? terminId}) _readEtaState(Map<String, dynamic>? row) {
     if (row == null) {
-      return (etaSeconds: null, isStale: false, vozacId: null, terminId: null);
+      return (etaSeconds: null, vozacId: null, terminId: null);
     }
 
     final eta = (row[_colEtaSeconds] as num?)?.toInt();
-    final computedAt = _parseComputedAt(row[_colComputedAt]);
-    final stale = computedAt == null || V3BelgradeTime.now().difference(computedAt) > etaStaleThreshold;
     final vozacId = row[_colVozacId]?.toString();
     final terminId = row['termin_id']?.toString();
 
-    return (etaSeconds: eta, isStale: stale, vozacId: vozacId, terminId: terminId);
+    return (etaSeconds: eta, vozacId: vozacId, terminId: terminId);
   }
 
   int _buildEtaMinutes(int etaSeconds) {
@@ -164,13 +172,11 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
       final departure = _parseDepartureDateTime(row);
       if (departure == null) continue;
-      final terminId = row['id']?.toString();
-      final etaRow = terminId != null ? _findEtaRow(terminId, putnikId) : null;
-      final etaState = _readEtaState(etaRow);
-      final hasFreshEta = etaState.etaSeconds != null && !etaState.isStale;
-      if (departure.isBefore(now) && !hasFreshEta) continue;
-      if (departure.isBefore(now.subtract(const Duration(minutes: 60)))) continue;
+      // Van tracking prozora posle T+40 — vožnja više nije relevantna za ETA/prikaz.
+      if (!now.isBefore(departure.add(v3TrackingMaxDuration))) continue;
       String? vozacId;
+
+      final terminId = row['id']?.toString();
 
       // Prvo proveri individualnu dodelu u v3_trenutna_dodela
       if (terminId != null) {
@@ -334,6 +340,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           'v3_trenutna_dodela'
         ]),
         builder: (context, _) {
+          final now = V3BelgradeTime.now();
           final nextRide = _findNextPutnikRide();
           final nextTerminId = nextRide?.row['id']?.toString();
           final assignedVozacId = nextRide?.vozacId;
@@ -341,18 +348,20 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           final row = nextTerminId != null ? _findEtaRow(nextTerminId, putnikId) : null;
           final etaState = _readEtaState(row);
           final eta = etaState.etaSeconds;
-          final isStale = etaState.isStale;
           final etaVozacId = etaState.vozacId;
           final etaTerminId = etaState.terminId;
 
-          final hasFreshEta = eta != null &&
-              !isStale &&
+          // Poslednja ETA ostaje aktivna u tracking prozoru (T-15..T+40) dok
+          // vozač ne pošalje novu — ne nestaje posle 130s ako je app ugašen.
+          final inTrackingWindow = nextRide != null && _isInEtaTrackingWindow(nextRide.departure, now);
+          final hasActiveEta = eta != null &&
+              inTrackingWindow &&
               etaTerminId != null &&
               nextTerminId != null &&
               etaTerminId == nextTerminId &&
               // Ako znamo dodele, ne prikazuj ETA od drugog vozača.
               (assignedVozacId == null || etaVozacId == null || assignedVozacId == etaVozacId);
-          final minutes = hasFreshEta ? _buildEtaMinutes(eta) : null;
+          final minutes = hasActiveEta ? _buildEtaMinutes(eta) : null;
           final nextRideLabel =
               nextRide == null ? _tr('nemaZakazaneVoznje') : _formatNextRide(nextRide.departure, nextRide.grad);
           final waitingAddress = nextRide == null ? null : _resolveWaitingAddressForRide(nextRide.row);
@@ -365,7 +374,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                if (hasFreshEta)
+                if (hasActiveEta)
                   Column(
                     children: [
                       Text(
@@ -451,7 +460,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
                       ],
                     ],
                   ),
-                if (hasFreshEta && etaVozacId != null) ...[
+                if (hasActiveEta && etaVozacId != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     '${_tr('vozac')}: ${V3MasterRealtimeManager.instance.vozaciCache[etaVozacId]?['ime_prezime'] ?? etaVozacId}',

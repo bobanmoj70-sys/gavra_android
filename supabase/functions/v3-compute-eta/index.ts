@@ -3,12 +3,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
-/// ETA STALE THRESHOLD - nakon koliko sekundi se ETA smatra zastarelom
-/// Mora biti sinhronizovano sa etaStaleThreshold u lib/globals.dart
-const ETA_STALE_THRESHOLD_SECONDS = 130;
+/// Koliko dugo se poslednji ETA red čuva u bazi kada vozač prestane da šalje
+/// tickove (npr. ugasio app). Putnik i dalje vidi poslednju poznatu ETA.
+/// Uskladiti sa tracking prozorom T-15..T+40 (55 min) i
+/// etaRetentionDuration u lib/globals.dart.
+const ETA_RETENTION_SECONDS = (15 + 40) * 60; // 3300
 
 /// Maksimalna starost lokacije vozača pre nego što se smatra zastarelom
-/// za live ETA/optimizaciju. Tracking tick šalje lokaciju svakih 20s.
+/// za NOVI live ETA/optimizaciju. Tracking tick šalje lokaciju svakih 20s.
+/// Ne briše postojeće ETA redove — samo sprečava računanje iz starog GPS-a.
 const DRIVER_LOCATION_MAX_AGE_MS = 130 * 1000;
 
 /// OSRM retry konfiguracija
@@ -191,9 +194,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1. Obriši zastarele ETA redove globalno
-    const staleThreshold = new Date(Date.now() - ETA_STALE_THRESHOLD_SECONDS * 1000).toISOString();
-    await client.from("v3_eta_results").delete().lt("computed_at", staleThreshold);
+    // 1. Obriši ETA redove starije od celog tracking prozora (55 min).
+    // Poslednja ETA ostaje dostupna putniku i kad vozač ugasi app.
+    const retentionThreshold = new Date(Date.now() - ETA_RETENTION_SECONDS * 1000).toISOString();
+    await client.from("v3_eta_results").delete().lt("computed_at", retentionThreshold);
 
     // 2. Dohvati aktivan slot za grad + datum + vreme (fizički ključ, NE po vozaču)
     //    → jer override vozač (assignPutnikOverride) vozi termin čiji je slot
