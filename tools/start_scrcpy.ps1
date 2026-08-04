@@ -107,23 +107,25 @@ function Find-Scrcpy {
 }
 
 function Get-AdbDevices([string]$adb) {
-    & $adb devices 2>$null | Where-Object { $_ -match '^\S+\s+(device|offline|unauthorized)' } | ForEach-Object {
-        if ($_ -match '^(\S+)\s+(\S+)') {
+    $lines = @(& $adb devices 2>$null)
+    foreach ($line in $lines) {
+        if ($line -match '^(\S+)\s+(device|offline|unauthorized)\s*') {
             [pscustomobject]@{ Serial = $Matches[1]; State = $Matches[2] }
         }
     }
 }
 
 function Test-DeviceOnline([string]$adb, [string]$serial) {
-    $d = Get-AdbDevices $adb | Where-Object { $_.Serial -eq $serial -and $_.State -eq 'device' }
-    return $null -ne $d
+    $d = @(Get-AdbDevices $adb | Where-Object { $_.Serial -eq $serial -and $_.State -eq 'device' })
+    return $d.Count -gt 0
 }
 
 function Get-DeviceWifiIp([string]$adb, [string]$serial) {
-    $route = & $adb -s $serial shell ip route 2>$null
+    # Out-String: -match on arrays filters instead of setting $Matches -> "Cannot index into a null array"
+    $route = (& $adb -s $serial shell ip route 2>$null | Out-String)
     if ($route -match 'src\s+(\d+\.\d+\.\d+\.\d+)') { return $Matches[1] }
 
-    $wlan = & $adb -s $serial shell ip -f inet addr show wlan0 2>$null
+    $wlan = (& $adb -s $serial shell ip -f inet addr show wlan0 2>$null | Out-String)
     if ($wlan -match 'inet\s+(\d+\.\d+\.\d+\.\d+)') { return $Matches[1] }
 
     $prop = (& $adb -s $serial shell getprop dhcp.wlan0.ipaddress 2>$null | Out-String).Trim()
@@ -165,9 +167,9 @@ function Connect-Wireless([string]$adb, [string]$usbSerial) {
 
 function Resolve-TargetSerial([string]$adb) {
     # 1) Vec postoji wireless sesija za ovaj telefon?
-    $wireless = Get-AdbDevices $adb | Where-Object {
+    $wireless = @(Get-AdbDevices $adb | Where-Object {
         $_.State -eq 'device' -and $_.Serial -match '^\d+\.\d+\.\d+\.\d+:\d+$'
-    }
+    })
     foreach ($w in $wireless) {
         $sn = (& $adb -s $w.Serial shell getprop ro.serialno 2>$null | Out-String).Trim()
         if ($sn -eq $DeviceSerial -or [string]::IsNullOrWhiteSpace($sn)) {
@@ -196,9 +198,9 @@ function Resolve-TargetSerial([string]$adb) {
     }
 
     # 3) Nema USB - bilo koji wireless device
-    $anyWl = Get-AdbDevices $adb | Where-Object {
+    $anyWl = @(Get-AdbDevices $adb | Where-Object {
         $_.State -eq 'device' -and $_.Serial -match '^\d+\.\d+\.\d+\.\d+:\d+$'
-    } | Select-Object -First 1
+    }) | Select-Object -First 1
     if ($anyWl) {
         Write-Ok "Koristim wireless: $($anyWl.Serial)"
         return $anyWl.Serial
@@ -302,7 +304,7 @@ try {
             break
         }
 
-        Write-Info "Cekam $RetrySeconds s pa ponovo pokrecem (telefon/USB/Wi-Fi)..."
+        Write-Info "Cekam $RetrySeconds s pa ponovo pokrecam (telefon/USB/Wi-Fi)..."
         Start-Sleep -Seconds $RetrySeconds
     }
 }
