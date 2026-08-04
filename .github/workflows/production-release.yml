@@ -189,7 +189,7 @@ jobs:
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=release-keystore.jks
+          storeFile=app/release-keystore.jks
           EOF
 
           decode_required_base64 "ANDROID_GOOGLE_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"

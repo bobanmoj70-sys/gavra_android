@@ -33,6 +33,7 @@ AuthKey_*.p8
 APPSTORE_ISSUER_ID.txt
 
 # Android build outputs
+*.hprof
 android/app/*.apk
 android/app/*.ap_
 android/app/build/
