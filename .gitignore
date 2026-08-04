@@ -19,6 +19,7 @@ build/
 google-play-mcp/.env
 appstore-mcp/.env
 supabase-mcp/.env
+supabase-official-mcp/.env
 
 # 🔐 SECRETS - NIKADA NE COMMIT-OVATI
 *.b64
@@ -127,7 +128,7 @@ tail_debug.txt
 tail_debug_vozac.txt
 temp_screenshots/
 
-# Distribution artifacts (keep release notes in distribution/whatsnew)  
+# Distribution artifacts (keep release notes in distribution/whatsnew)
 distribution/Racun_*.pdf
 distribution/Racun_*.txt
 
