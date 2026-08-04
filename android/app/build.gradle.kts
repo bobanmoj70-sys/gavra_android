@@ -5,7 +5,6 @@ import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     // Flutter plugin after Android + Kotlin
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
@@ -84,10 +83,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = jvmVersion.toString()
-    }
-
     signingConfigs {
         create("release") {
             val alias = (keystoreProperties["keyAlias"] as String?)?.trim()
@@ -118,6 +113,12 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // GMS check in MainActivity (FCM gate)
     implementation("com.google.android.gms:play-services-base:18.5.0")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }
 
 flutter {
