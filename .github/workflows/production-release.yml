@@ -160,6 +160,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p android/app/src/main/assets
+          mkdir -p android/app
 
           trim_ws() {
             printf "%s" "$1" | tr -d '\r\n\t '
@@ -188,18 +189,22 @@ jobs:
             fi
           }
 
+          # Always place keystore next to the app module (matches local layout).
           KEYSTORE_OUT="android/app/release-keystore.jks"
           decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "$KEYSTORE_OUT"
 
-          # Absolute path avoids relative rootProject resolution issues on CI.
-          KEYSTORE_ABS="$(cd "$(dirname "$KEYSTORE_OUT")" && pwd)/$(basename "$KEYSTORE_OUT")"
+          if [ ! -f "$KEYSTORE_OUT" ]; then
+            echo "Keystore missing after decode: $KEYSTORE_OUT"
+            exit 1
+          fi
 
-          # Write key.properties with printf (no heredoc indentation pitfalls).
+          # storeFile is relative to android/ (directory of key.properties).
+          # This is the same convention as local: storeFile=app/gavra-release-key-production.keystore
           printf '%s\n' \
             "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
             "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" \
             "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" \
-            "storeFile=${KEYSTORE_ABS}" \
+            "storeFile=app/release-keystore.jks" \
             > android/key.properties
 
           if [ ! -s android/key.properties ]; then
@@ -207,9 +212,17 @@ jobs:
             exit 1
           fi
 
-          echo "Keystore ready: ${KEYSTORE_ABS} ($(wc -c < "$KEYSTORE_ABS") bytes)"
+          echo "Keystore ready: $KEYSTORE_OUT ($(wc -c < "$KEYSTORE_OUT") bytes)"
+          ls -la android/app/release-keystore.jks android/key.properties
           echo "key.properties (redacted):"
           sed -E 's/(Password)=.*/\1=***/' android/key.properties
+
+          # Fail early if alias/password do not match the keystore.
+          keytool -list \
+            -keystore "$KEYSTORE_OUT" \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            >/dev/null
 
           decode_required_base64 "ANDROID_GOOGLE_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
 

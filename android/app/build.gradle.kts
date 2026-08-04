@@ -14,11 +14,54 @@ plugins {
 // Single JVM target for Java + Kotlin
 val jvmVersion = JavaVersion.VERSION_17
 
-// key.properties under android/; storeFile relative to that root
+// key.properties under android/; storeFile is absolute or relative to android/
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+/**
+ * Resolve release keystore from key.properties storeFile.
+ * Tries several locations because CI and local historically used different paths:
+ * - absolute path
+ * - relative to android/ (key.properties dir)
+ * - relative to android/app/
+ * - filename-only under android/app/
+ */
+fun resolveReleaseKeystore(storePath: String): File {
+    val androidDir = keystorePropertiesFile.parentFile
+        ?: rootProject.projectDir
+    val raw = File(storePath.trim())
+    val name = raw.name
+    val candidates = linkedSetOf<File>()
+
+    if (raw.isAbsolute) {
+        candidates += raw
+    } else {
+        candidates += androidDir.resolve(storePath)
+        candidates += androidDir.resolve("app").resolve(storePath)
+        candidates += androidDir.resolve(name)
+        candidates += androidDir.resolve("app").resolve(name)
+        // :app projectDir-relative (android/app/)
+        candidates += file(storePath)
+        candidates += file(name)
+    }
+
+    // Well-known names used by CI / local
+    candidates += androidDir.resolve("app/release-keystore.jks")
+    candidates += androidDir.resolve("app/gavra-release-key-production.keystore")
+    candidates += androidDir.resolve("release-keystore.jks")
+
+    return candidates.firstOrNull { it.isFile }
+        ?: throw GradleException(
+            buildString {
+                appendLine("Release keystore not found for storeFile='$storePath'")
+                appendLine("Tried:")
+                candidates.forEach { appendLine("  - ${it.absolutePath}") }
+                appendLine("Fix storeFile in android/key.properties or restore the keystore on CI.")
+            },
+        )
 }
 
 android {
@@ -47,26 +90,13 @@ android {
 
     signingConfigs {
         create("release") {
-            val alias = keystoreProperties["keyAlias"] as String?
+            val alias = (keystoreProperties["keyAlias"] as String?)?.trim()
             val storePath = (keystoreProperties["storeFile"] as String?)?.trim()
             if (!alias.isNullOrBlank() && !storePath.isNullOrBlank()) {
                 keyAlias = alias
                 keyPassword = keystoreProperties["keyPassword"] as String
                 storePassword = keystoreProperties["storePassword"] as String
-                // Absolute path, or relative to android/ (same dir as key.properties).
-                val store = if (File(storePath).isAbsolute) {
-                    File(storePath)
-                } else {
-                    keystorePropertiesFile.parentFile.resolve(storePath)
-                }
-                if (!store.isFile) {
-                    throw GradleException(
-                        "Release keystore not found: ${store.absolutePath}\n" +
-                            "storeFile='$storePath' (resolved from android/key.properties).\n" +
-                            "Fix storeFile in android/key.properties or restore the keystore file.",
-                    )
-                }
-                storeFile = store
+                storeFile = resolveReleaseKeystore(storePath)
             }
         }
     }
