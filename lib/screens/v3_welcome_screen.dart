@@ -228,6 +228,32 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
     );
   }
 
+  /// Jedino mesto: Always GPS (vozač) + ulaz u app (Home ili VozacScreen).
+  ///
+  /// Ako Always nije odobren — nema navigacije (ostaje welcome).
+  Future<bool> _enterDriverApp(V3Vozac vozac) async {
+    if (!mounted) return false;
+
+    // Bez timeout-a: OS dijalog za lokaciju mora da sačeka korisnika (Android + iOS).
+    final allowed = await V3RolePermissionService.ensureDriverPermissionsOnLogin(context);
+    if (!allowed || !mounted) {
+      debugPrint('[V3WelcomeScreen] vozač blokiran — Always lokacija nije odobrena');
+      return false;
+    }
+
+    unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
+    unawaited(V3AppUpdateService.refreshUpdateInfo()
+        .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
+
+    // Admin/dispečer → Home; običan vozač → VozacScreen.
+    if (V3AdminService.canAccessHome(vozac)) {
+      _safePushReplacement(const V3HomeScreen());
+    } else {
+      _safePushReplacement(const V3VozacScreen());
+    }
+    return true;
+  }
+
   Future<bool> _tryAutoLoginVozac() async {
     try {
       await V3ClosedAuthService.restoreVozacFromManualSmsSession();
@@ -245,19 +271,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await _stopAudio();
       if (!mounted) return false;
 
-      await V3RolePermissionService.ensureDriverPermissionsOnLogin(context);
-      unawaited(_writePushTokenOnLogin(v3AuthId: restoredVozac.id, isVozac: true));
-      unawaited(V3AppUpdateService.refreshUpdateInfo()
-          .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
-
-      // Admin/dispečer idu na Home (operativna tabla; admin dodatno vidi
-      // Admin dugme). Obični vozač ide direktno na svoj vozački ekran.
-      if (V3AdminService.canAccessHome(restoredVozac)) {
-        _safePushReplacement(const V3HomeScreen());
-      } else {
-        _safePushReplacement(const V3VozacScreen());
-      }
-      return true;
+      return _enterDriverApp(restoredVozac);
     } catch (e) {
       debugPrint('[V3WelcomeScreen] auto-login vozac error: $e');
       return false;
@@ -467,18 +481,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
           authId: vozac.id,
         ).timeout(_startupTimeout, onTimeout: () => Future.value());
         await V3ClosedAuthService.clearManualSmsPutnikPhone().timeout(_startupTimeout, onTimeout: () => null);
-        // Bez timeout-a: OS dijalog za lokaciju mora da sačeka korisnika (Android + iOS).
-        await V3RolePermissionService.ensureDriverPermissionsOnLogin(context);
-        unawaited(_writePushTokenOnLogin(v3AuthId: vozac.id, isVozac: true));
-        unawaited(V3AppUpdateService.refreshUpdateInfo()
-            .catchError((Object e) => debugPrint('⚠️ [WelcomeScreen] refreshUpdateInfo error: $e')));
-        // Admin/dispečer idu na Home (operativna tabla; admin dodatno vidi
-        // Admin dugme). Obični vozač ide direktno na svoj vozački ekran.
-        if (V3AdminService.canAccessHome(vozac)) {
-          _safePushReplacement(const V3HomeScreen());
-        } else {
-          _safePushReplacement(const V3VozacScreen());
-        }
+        await _enterDriverApp(vozac);
         return;
       }
 

@@ -1,9 +1,10 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../config/app_platform.dart';
@@ -17,11 +18,22 @@ class V3RolePermissionService {
 
   static const MethodChannel _wakelockChannel = MethodChannel(AppPlatform.wakelockChannel);
 
-  /// Vozač: push + lokacija (WhenInUse → Always).
-  /// Isti redosled na Android i iOS. Ponavlja se pri svakom loginu dok Always nije granted.
-  static Future<void> ensureDriverPermissionsOnLogin(BuildContext context) async {
+  /// true samo ako je OS dozvola Always granted.
+  static Future<bool> isDriverAlwaysLocationGranted() async {
+    try {
+      return (await Permission.locationAlways.status).isGranted;
+    } catch (e) {
+      debugPrint('[Permissions] isDriverAlwaysLocationGranted greška: $e');
+      return false;
+    }
+  }
+
+  /// Vozač: push + **obavezna** Always lokacija.
+  /// Vraća true samo ako je Always odobren — inače vozač NE sme u app.
+  static Future<bool> ensureDriverPermissionsOnLogin(BuildContext context) async {
     await _requestPushOnce(context);
-    await _requestDriverLocationPermissions(context);
+    if (!context.mounted) return false;
+    return enforceDriverAlwaysLocation(context);
   }
 
   static Future<void> ensurePassengerPermissionsOnLogin(BuildContext context) async {
@@ -76,78 +88,87 @@ class V3RolePermissionService {
     }
   }
 
-  /// Android + iOS: WhenInUse pa Always (redosled obavezan na obe platforme).
+  /// Hard gate (firma): Always lokacija ili nema posla u app-u.
   ///
-  /// Na Android 10+ / Huawei / Xiaomi sistemski dijalog često NUDI samo
-  /// „While in use“ — Always se bira u Permission manager / App settings.
-  /// Zato posle WhenInUse vodimo vozača eksplicitno u podešavanja.
-  static Future<void> _requestDriverLocationPermissions(BuildContext context) async {
-    if (!context.mounted) return;
+  /// Nema "kasnije" / skip. Samo Settings ili odustajanje (return false).
+  /// WhenInUse → Always (redosled obavezan na Android + iOS).
+  static Future<bool> enforceDriverAlwaysLocation(BuildContext context) async {
+    if (!context.mounted) return false;
 
     try {
-      var whenInUse = await Permission.locationWhenInUse.status;
-      var always = await Permission.locationAlways.status;
-
-      if (whenInUse.isGranted && always.isGranted) {
-        return;
+      if (await isDriverAlwaysLocationGranted()) {
+        final gpsOn = await Geolocator.isLocationServiceEnabled();
+        if (gpsOn) return true;
       }
 
-      if (!context.mounted) return;
-      final accepted = await _showLocationDisclosure(context);
-      if (!accepted || !context.mounted) {
-        debugPrint('[Permissions] Vozač odbio disclosure — lokacija se ne traži.');
-        return;
-      }
-
-      // 1) WhenInUse — obavezno pre Always na obe platforme.
-      if (!whenInUse.isGranted) {
-        whenInUse = await Permission.locationWhenInUse.request();
-      }
-      if (!whenInUse.isGranted) {
-        debugPrint('[Permissions] WhenInUse nije odobren: $whenInUse');
-        if (!context.mounted) return;
-        final opened = await _showWhenInUseLocationGuide(context);
-        if (!opened) return;
-        await _openAppSettingsAndWaitForResume();
-        whenInUse = await Permission.locationWhenInUse.status;
-        if (!whenInUse.isGranted) {
-          debugPrint('[Permissions] WhenInUse i posle Settings nije odobren');
-          return;
+      // Disclosure — prihvat uslova rada ili izlaz.
+      if (!await isDriverAlwaysLocationGranted()) {
+        if (!context.mounted) return false;
+        final accepted = await _showLocationDisclosureMandatory(context);
+        if (!accepted || !context.mounted) {
+          debugPrint('[Permissions] Vozač odbio uslov Always — blokada app-a');
+          return false;
         }
       }
 
-      // 2) Always — background tracking / FGS.
-      always = await Permission.locationAlways.status;
-      if (always.isGranted) {
-        debugPrint('[Permissions] Always već odobren');
-        return;
+      // GPS servis mora biti uključen.
+      while (context.mounted && !await Geolocator.isLocationServiceEnabled()) {
+        final open = await _showMandatoryDialog(
+          context,
+          titleKey: 'gpsOffTitle',
+          messageKey: 'gpsOffMessage',
+        );
+        if (!open) return false;
+        await Geolocator.openLocationSettings();
+        await _waitForResume();
+      }
+      if (!context.mounted) return false;
+
+      // 1) WhenInUse
+      var whenInUse = await Permission.locationWhenInUse.status;
+      if (!whenInUse.isGranted) {
+        whenInUse = await Permission.locationWhenInUse.request();
+      }
+      while (context.mounted && !whenInUse.isGranted) {
+        final open = await _showMandatoryDialog(
+          context,
+          titleKey: 'whenInUseTitle',
+          messageKey: 'whenInUseMessage',
+        );
+        if (!open) return false;
+        await _openAppSettingsAndWaitForResume();
+        whenInUse = await Permission.locationWhenInUse.status;
+      }
+      if (!context.mounted) return false;
+
+      // 2) Always — OS request pa Settings petlja dok ne prođe.
+      var always = await Permission.locationAlways.status;
+      if (!always.isGranted) {
+        always = await Permission.locationAlways.request();
+        debugPrint('[Permissions] Always posle request: $always');
       }
 
-      // Pokušaj OS request (stock Android 11+ otvara location permission page;
-      // Huawei često prikaže dijalog BEZ Always opcije).
-      always = await Permission.locationAlways.request();
-      debugPrint('[Permissions] Always posle request: $always');
-
-      if (always.isGranted) {
-        return;
-      }
-
-      // 3) OEM stvarnost: vodič + App Settings (Always se bira tamo, ne u dijalogu).
-      if (!context.mounted) return;
-      final opened = await _showAlwaysLocationGuide(context);
-      if (opened) {
-        // Ne zovi ponovo locationAlways.request() — na Huawei/Xiaomi opet
-        // izađe dijalog samo sa „While in use“. App Settings ima pravu opciju.
+      while (context.mounted && !always.isGranted) {
+        final open = await _showMandatoryDialog(
+          context,
+          titleKey: 'alwaysTitle',
+          messageKey: 'alwaysMessage',
+        );
+        if (!open) return false;
+        // Ne zovi ponovo locationAlways.request() — OEM često nudi samo While in use.
         await _openAppSettingsAndWaitForResume();
         always = await Permission.locationAlways.status;
         debugPrint('[Permissions] Always posle Settings: $always');
       }
 
-      if (!always.isGranted) {
-        debugPrint('[Permissions] Always NIJE odobren — tracking neće moći u pozadini');
+      final ok = context.mounted && always.isGranted;
+      if (!ok) {
+        debugPrint('[Permissions] Always NIJE odobren — app blokiran za vozača');
       }
+      return ok;
     } catch (e) {
-      debugPrint('[Permissions] Vozač GPS greška: $e');
+      debugPrint('[Permissions] enforceDriverAlwaysLocation greška: $e');
+      return false;
     }
   }
 
@@ -163,7 +184,8 @@ class V3RolePermissionService {
     return t[key]?[code] ?? t[key]?['sr'] ?? key;
   }
 
-  static Future<bool> _showLocationDisclosure(BuildContext context) async {
+  /// Uslov rada: Dozvoli ili Odustajem (nema skip u app).
+  static Future<bool> _showLocationDisclosureMandatory(BuildContext context) async {
     final result = await V3DialogHelper.showBasicDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -174,7 +196,7 @@ class V3RolePermissionService {
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, false),
-          text: _trLocation('dontAllow'),
+          text: _trLocation('refuseWork'),
           foregroundColor: Colors.grey,
         ),
         V3ButtonUtils.textButton(
@@ -184,23 +206,26 @@ class V3RolePermissionService {
         ),
       ],
     );
-
     return result ?? false;
   }
 
-  /// WhenInUse odbijen — vodi u Settings (Android + iOS).
-  static Future<bool> _showWhenInUseLocationGuide(BuildContext context) async {
+  /// true = otvori settings, false = odustajem od posla.
+  static Future<bool> _showMandatoryDialog(
+    BuildContext context, {
+    required String titleKey,
+    required String messageKey,
+  }) async {
     final result = await V3DialogHelper.showBasicDialog<bool>(
       context: context,
       barrierDismissible: false,
-      title: _trLocation('whenInUseTitle'),
-      content: _trLocation('whenInUseMessage'),
+      title: _trLocation(titleKey),
+      content: _trLocation(messageKey),
       titleIcon: Icons.location_off,
       titleIconColor: Colors.amber,
       actions: [
         V3ButtonUtils.textButton(
           onPressed: () => Navigator.pop(context, false),
-          text: _trLocation('notNow'),
+          text: _trLocation('refuseWork'),
           foregroundColor: Colors.grey,
         ),
         V3ButtonUtils.textButton(
@@ -210,34 +235,6 @@ class V3RolePermissionService {
         ),
       ],
     );
-
-    return result ?? false;
-  }
-
-  /// Objašnjava da Always mora ručno u Settings (Huawei / Android 11+).
-  /// Vraća true ako vozač želi da otvori podešavanja.
-  static Future<bool> _showAlwaysLocationGuide(BuildContext context) async {
-    final result = await V3DialogHelper.showBasicDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      title: _trLocation('alwaysTitle'),
-      content: _trLocation('alwaysMessage'),
-      titleIcon: Icons.settings_suggest,
-      titleIconColor: Colors.amber,
-      actions: [
-        V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, false),
-          text: _trLocation('notNow'),
-          foregroundColor: Colors.grey,
-        ),
-        V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, true),
-          text: _trLocation('openSettings'),
-          foregroundColor: Colors.amber,
-        ),
-      ],
-    );
-
     return result ?? false;
   }
 
@@ -268,8 +265,7 @@ class V3RolePermissionService {
     }
   }
 
-  /// Otvori App Settings i sačekaj povratak u app (ili timeout).
-  static Future<void> _openAppSettingsAndWaitForResume() async {
+  static Future<void> _waitForResume() async {
     final completer = Completer<void>();
     late final AppLifecycleListener listener;
     var sawPaused = false;
@@ -288,36 +284,34 @@ class V3RolePermissionService {
     );
 
     try {
-      final ok = await openAppSettings();
-      debugPrint('[Permissions] openAppSettings=$ok');
-      if (!ok) {
-        if (!completer.isCompleted) completer.complete();
-        return;
-      }
       await completer.future.timeout(
         const Duration(minutes: 3),
         onTimeout: () {
-          debugPrint('[Permissions] Settings wait timeout');
+          debugPrint('[Permissions] resume wait timeout');
         },
       );
-    } catch (e) {
-      debugPrint('[Permissions] openAppSettings greška: $e');
     } finally {
       listener.dispose();
       if (!completer.isCompleted) completer.complete();
     }
   }
 
-  /// Javni helper: kad auto-start padne jer nema Always — vodi u Settings.
+  /// Otvori App Settings i sačekaj povratak u app (ili timeout).
+  static Future<void> _openAppSettingsAndWaitForResume() async {
+    try {
+      final ok = await openAppSettings();
+      debugPrint('[Permissions] openAppSettings=$ok');
+      if (!ok) return;
+      await _waitForResume();
+    } catch (e) {
+      debugPrint('[Permissions] openAppSettings greška: $e');
+    }
+  }
+
+  /// Javni helper: kad auto-start padne jer nema Always — vodi u Settings petlju.
   static Future<bool> promptAlwaysLocationIfNeeded(BuildContext context) async {
     if (!context.mounted) return false;
-    final always = await Permission.locationAlways.status;
-    if (always.isGranted) return true;
-
-    final opened = await _showAlwaysLocationGuide(context);
-    if (!opened) return false;
-
-    await _openAppSettingsAndWaitForResume();
-    return (await Permission.locationAlways.status).isGranted;
+    if (await isDriverAlwaysLocationGranted()) return true;
+    return enforceDriverAlwaysLocation(context);
   }
 }
