@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../config/gavra_branding.dart';
 import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
@@ -232,7 +233,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(26),
             child: Image.asset(
-              'assets/logo_transparent.png',
+              GavraBranding.iconAsset,
               fit: BoxFit.contain,
             ),
           ),

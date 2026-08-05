@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../config/gavra_branding.dart';
 import '../../utils/v3_app_snack_bar.dart';
 import '../../utils/v3_belgrade_time.dart';
 import 'repositories/v3_racun_repository.dart';
@@ -53,7 +54,7 @@ class V3RacunService {
     await _ensureFonts();
     if (_logoImage == null) {
       try {
-        final imgData = await rootBundle.load('assets/logo_transparent.png');
+        final imgData = await rootBundle.load(GavraBranding.iconAsset);
         _logoImage = pw.MemoryImage(imgData.buffer.asUint8List());
       } catch (_) {}
     }

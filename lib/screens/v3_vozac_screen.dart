@@ -326,18 +326,27 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return _getOsrmOrderFromSlot();
   }
 
-  void _refreshPutniciOrderFromEtaCache() {
+  void _refreshPutniciOrderFromEtaCache({
+    bool afterEtaTick = false,
+    List<String> tickOrder = const [],
+  }) {
     final osrmOrder = _resolveOptimizedOrder();
     if (osrmOrder.isEmpty) {
-      if (_isViewingTrackedTermin && !_osrmUnavailableShown) {
+      // Prazan redosled pre prvog ticka / tokom učitavanja nije greška —
+      // snack samo kad je tick završen a i dalje nema reda (stvarno stanje).
+      if (afterEtaTick && tickOrder.isEmpty && _isViewingTrackedTermin && !_osrmUnavailableShown) {
         _osrmUnavailableShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            V3AppSnackBar.warning(
-              context,
-              'OSRM trenutno nije dostupan — redosled kartica neće biti promenjen.',
-            );
+          if (!mounted) return;
+          // Ponovo proveri — tick može stići u međuvremenu.
+          if (_resolveOptimizedOrder().isNotEmpty) {
+            _osrmUnavailableShown = false;
+            return;
           }
+          V3AppSnackBar.warning(
+            context,
+            'OSRM trenutno nije dostupan — redosled kartica neće biti promenjen.',
+          );
         });
       }
       return;
@@ -446,7 +455,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       // Sort/mapa samo kad vozač gleda isti termin kao tracking sesija.
       if (!_isViewingTrackedTermin) return;
       debugPrint('[ETA_TICK] order=${result.order} etaKeys=${result.etaMap.length}');
-      _refreshPutniciOrderFromEtaCache();
+      _refreshPutniciOrderFromEtaCache(
+        afterEtaTick: true,
+        tickOrder: result.order,
+      );
       unawaited(_syncMapRouteIfNeeded(reason: 'eta_tick_20s'));
     });
     _runningSub = V3VozacLocationTrackingService.instance.onRunningChanged.listen((running) {

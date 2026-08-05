@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../config/gavra_branding.dart';
 import '../l10n/app_translations.dart';
 import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
@@ -587,7 +588,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                     );
                                   },
                                   child: Image.asset(
-                                    'assets/logo_transparent.png',
+                                    GavraBranding.iconAsset,
                                     height: V3ContainerUtils.responsiveHeight(context, 180),
                                     fit: BoxFit.contain,
                                   ),
