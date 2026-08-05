@@ -163,17 +163,32 @@ class V3TrenutnaDodelaSlotService {
     final vozac = vozacId.trim();
     if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
 
-    final payload = <String, dynamic>{
-      colDatum: datum,
-      colGrad: gradNorm,
-      colVreme: vremeNorm,
-      colVozacId: vozac,
-      if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
-    };
+    final existing = await supabase
+        .from(tableName)
+        .select('id')
+        .eq(colDatum, datum)
+        .eq(colGrad, gradNorm)
+        .eq(colVreme, vremeNorm)
+        .maybeSingle();
+
+    if (existing != null) {
+      final id = existing['id']?.toString();
+      // Multi-driver: ne prepisuj vozac_v3_auth_id na deljenom slotu.
+      if ((updatedBy ?? '').trim().isNotEmpty && id != null && id.isNotEmpty) {
+        await supabase.from(tableName).update({colUpdatedBy: updatedBy!.trim()}).eq('id', id);
+      }
+      return id;
+    }
 
     final result = await supabase
         .from(tableName)
-        .upsert(payload, onConflict: '$colDatum,$colGrad,$colVreme')
+        .insert(<String, dynamic>{
+          colDatum: datum,
+          colGrad: gradNorm,
+          colVreme: vremeNorm,
+          colVozacId: vozac,
+          if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
+        })
         .select('id')
         .single();
     return result['id']?.toString();
@@ -188,18 +203,17 @@ class V3TrenutnaDodelaSlotService {
     final datum = _normalizeDatumIso(datumIso);
     final gradNorm = _normalizeGrad(grad);
     final vremeNorm = _normalizeVreme(vreme);
-    final vozac = vozacId.trim();
-    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
+    if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty) return null;
 
+    // Slot je po (datum,grad,vreme) — vozacId se ne koristi (multi-driver shared).
     final rows = await supabase
         .from(tableName)
         .select('id')
         .eq(colDatum, datum)
         .eq(colGrad, gradNorm)
         .eq(colVreme, vremeNorm)
-        .eq(colVozacId, vozac)
         .limit(1);
-    if ((rows as List).isEmpty) return null;
+    if (rows.isEmpty) return null;
     return rows.first['id']?.toString();
   }
 

@@ -310,9 +310,3 @@ ValueNotifier<DateTime?> get appSettingsActiveWeekEndNotifier => V3AppSettingsSt
 /// za sakrivanje ETA — prikazuje poslednju ETA dok traje tracking prozor
 /// termina i dok putnik nije pokupljen/otkazan.
 const Duration etaRetentionDuration = Duration(minutes: 55);
-
-/// PRIVREMENI TEST FLAG - kada je true, klik na "Start" NEĆE poslati push
-/// notifikaciju putnicima da je vozač krenuo. Koristi se za lično testiranje
-/// OSRM/ETA logike bez lažnog obaveštavanja putnika.
-/// VAŽNO: Vrati na `false` pre puštanja u produkciju!
-const bool kDisableDriverStartPushForTesting = false;

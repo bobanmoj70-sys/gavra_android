@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
       // po fizičkom ključu slota.
       const { data: existingSlots, error: slotError } = await client
         .from("v3_trenutna_dodela_slot")
-        .select("id, vozac_v3_auth_id, auto_prepared_at, auto_notified_at")
+        .select("id, vozac_v3_auth_id, auto_prepared_at, auto_notified_at, optimized_order")
         .eq("datum", datumIso)
         .eq("grad", grad)
         .eq("vreme", vreme);
@@ -232,19 +232,22 @@ Deno.serve(async (req) => {
 
       let slotId: string;
       let autoPreparedAt: string | null = null;
-      let autoNotifiedAt: string | null = null;
+      let existingOptimizedOrder: string[] = [];
 
       if (existingSlots && existingSlots.length > 0) {
         const existing = existingSlots[0];
         slotId = existing.id;
         autoPreparedAt = existing.auto_prepared_at;
-        autoNotifiedAt = existing.auto_notified_at;
+        if (Array.isArray(existing.optimized_order)) {
+          existingOptimizedOrder = existing.optimized_order
+            .map((id: unknown) => String(id ?? "").trim())
+            .filter((id: string) => id.length > 0);
+        }
 
         if (existing.vozac_v3_auth_id && existing.vozac_v3_auth_id !== vozacId) {
-          console.warn(
-            `[v3-auto-prepare-termins] Slot ${key} already owned by vozac=${existing.vozac_v3_auth_id}, ` +
-              `but termin group has vozac=${vozacId} (putnik override?). Merging passengers into shared slot ` +
-              `without changing slot owner.`,
+          console.log(
+            `[v3-auto-prepare-termins] Shared slot ${key}: slot row vozac=${existing.vozac_v3_auth_id}, ` +
+              `this group vozac=${vozacId} — individual dodela holds real assignment; not overwriting slot owner.`,
           );
         }
       } else {
@@ -260,7 +263,7 @@ Deno.serve(async (req) => {
             },
             { onConflict: "datum,grad,vreme", ignoreDuplicates: false },
           )
-          .select("id, auto_prepared_at, auto_notified_at")
+          .select("id, auto_prepared_at, optimized_order")
           .single();
 
         if (insertError || !newSlot) {
@@ -269,13 +272,17 @@ Deno.serve(async (req) => {
         }
         slotId = newSlot.id;
         autoPreparedAt = newSlot.auto_prepared_at ?? null;
-        autoNotifiedAt = newSlot.auto_notified_at ?? null;
+        if (Array.isArray(newSlot.optimized_order)) {
+          existingOptimizedOrder = newSlot.optimized_order
+            .map((id: unknown) => String(id ?? "").trim())
+            .filter((id: string) => id.length > 0);
+        }
       }
 
       // Ensure individual dodela exists and is linked to slot
       for (const t of slotTermins) {
         const { data: existingDodela } = await client
-          .from("v3_trenutna_dela")
+          .from("v3_trenutna_dodela")
           .select("termin_id, vozac_v3_auth_id")
           .eq("termin_id", t.id)
           .maybeSingle();
@@ -501,12 +508,34 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Merge optimized_order: zadrži putnike drugih vozača, zameni samo svoje.
+      // Slot je zajednički; individualna dodela drži ko je čiji.
+      // Svež read pred write (dva vozača mogu pripremati isti slot u istom minutu).
+      let baseOrder = existingOptimizedOrder;
+      try {
+        const { data: freshSlot } = await client
+          .from("v3_trenutna_dodela_slot")
+          .select("optimized_order")
+          .eq("id", slotId)
+          .maybeSingle();
+        if (Array.isArray(freshSlot?.optimized_order)) {
+          baseOrder = freshSlot.optimized_order
+            .map((id: unknown) => String(id ?? "").trim())
+            .filter((id: string) => id.length > 0);
+        }
+      } catch (_) {
+        /* koristi existingOptimizedOrder */
+      }
+      const myPutnikSet = new Set(passengers.map((p) => p.putnik_id));
+      const othersOrder = baseOrder.filter((id) => !myPutnikSet.has(id));
+      const mergedOrder = [...othersOrder, ...optimizedOrder];
+
       // Update slot optimized_order and mark prepared
       const nowIso = new Date().toISOString();
       const { error: updateError } = await client
         .from("v3_trenutna_dodela_slot")
         .update({
-          optimized_order: optimizedOrder,
+          optimized_order: mergedOrder,
           auto_prepared_at: autoPreparedAt ?? nowIso,
         })
         .eq("id", slotId);
@@ -517,15 +546,13 @@ Deno.serve(async (req) => {
       }
 
       preparedCount++;
-      console.log(`[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers`);
+      console.log(
+        `[v3-auto-prepare-termins] Slot ${key} prepared with ${passengers.length} passengers ` +
+          `(order mine=${optimizedOrder.length} merged=${mergedOrder.length})`,
+      );
 
-      // NAPOMENA: vozač se VIŠE NE obaveštava ovde push-om da pokrene app.
-      // Auto-start trackinga se dešava isključivo u foreground-u iz
-      // V3VozacScreen-a (timer na T-15min pre polaska). Putnici se
-      // obaveštavaju DB trigger-om `trg_v3_notify_passengers_on_tracking_start`
-      // (vidi `20260730_notify_passengers_on_real_tracking_start.sql`) koji
-      // se aktivira TEK kada `v3_trenutna_dodela_slot.tracking_started_at`
-      // bude stvarno upisan iz `activateSlotWithRetry` (real tracking start).
+      // Putnici se obaveštavaju iz activateSlotWithRetry → RPC
+      // v3_notify_passengers_driver_started (po individualnoj dodeli / vozaču).
     }
 
     return json(200, {

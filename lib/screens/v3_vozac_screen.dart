@@ -388,20 +388,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     final cache = V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache;
     debugPrint('[OSRM_SLOT] efektivniVozacId=$vozacId cacheRows=${cache.length}');
-    if (vozacId.isEmpty) return const [];
+    // Slot je zajednički (datum,grad,vreme) — NE filtriraj po slot.vozac_v3_auth_id.
+    // Redosled filtriraj na putnike ovog vozača (individualna dodela → _mojiPutnici).
+    final myIds = _mojiPutnici.map((p) => p.putnik.id).where((id) => id.isNotEmpty).toSet();
+
     for (final row in cache.values) {
-      final rowVozac = row['vozac_v3_auth_id']?.toString() ?? '';
       final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       final rowVreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString());
       final order = row['optimized_order'];
       final hasOrder = order is List && order.isNotEmpty;
-      debugPrint('[OSRM_SLOT]   row vozac=$rowVozac datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasOrder=$hasOrder');
-      if (rowVozac != vozacId) continue;
-      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
-      if (order is List && order.isNotEmpty) {
-        return order.whereType<String>().toList();
+      debugPrint('[OSRM_SLOT]   datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasOrder=$hasOrder');
+      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) {
+        continue;
       }
+      if (order is! List || order.isEmpty) continue;
+      final all = order.whereType<String>().where((s) => s.isNotEmpty).toList();
+      if (all.isEmpty) continue;
+      if (myIds.isEmpty) return all;
+      final mine = all.where(myIds.contains).toList();
+      return mine.isNotEmpty ? mine : all;
     }
     return const [];
   }
