@@ -4,10 +4,13 @@
     <!-- Black background -->
     <item android:drawable="@android:color/black" />
 
-    <!-- App logo in center -->
+    <!-- App logo in center.
+         Must be a real bitmap PNG/WebP — not @mipmap/ic_launcher, which on
+         API 26+ resolves to adaptive-icon XML and crashes:
+         "<bitmap> requires a valid 'src' attribute". -->
     <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/ic_launcher" />
+            android:src="@drawable/ic_launcher_foreground" />
     </item>
 </layer-list>
