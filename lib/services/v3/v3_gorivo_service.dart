@@ -48,6 +48,11 @@ class V3GorivoService {
     return V3PumpaRezervoar.fromJson(cache.values.first);
   }
 
+  /// Trenutni dug prema dobavljaču goriva (RSD). 0 ako nema reda.
+  static double getDugIznos() {
+    return getStanjeSync()?.dugIznos ?? 0;
+  }
+
   /// Stream koji emituje svaki put kad se gorivo promijeni
   static Stream<V3PumpaStanje?> streamStanje() {
     return V3MasterRealtimeManager.instance.v3StreamFromRevisions(
@@ -88,6 +93,75 @@ class V3GorivoService {
       return true;
     } catch (e) {
       debugPrint('[V3GorivoService] updateRezervoar failed for id $id: $e');
+      return false;
+    }
+  }
+
+  /// Dopuna cisterne: litraža + opciono povećanje duga + opciono nova cena/L.
+  ///
+  /// [dugDodatoRsd] — koliko se DODAJE na postojeći ukupan dug (npr. litri × cena).
+  /// null/0 = dug se ne dira (npr. cena još nije poznata).
+  /// [cenaPoLitru] — ako je > 0, čuva se kao referentna cena za sledeće dopune.
+  static Future<bool> dopuniRezervoar({
+    required String id,
+    required double novoLitara,
+    double? dugDodatoRsd,
+    double? cenaPoLitru,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'trenutno_stanje_litri': novoLitara,
+      };
+      final dodato = dugDodatoRsd ?? 0;
+      if (dodato > 0) {
+        final trenutniDug = getStanjeSync()?.dugIznos ?? 0;
+        payload['dug_iznos'] = trenutniDug + dodato;
+      }
+      if (cenaPoLitru != null && cenaPoLitru > 0) {
+        payload['cena_po_litru'] = cenaPoLitru;
+      }
+      final row = await _repo.updateByIdReturning(id, payload);
+      _upsertCache(row);
+      return true;
+    } catch (e) {
+      debugPrint('[V3GorivoService] dopuniRezervoar failed for id $id: $e');
+      return false;
+    }
+  }
+
+  /// Povećava dug za gorivo (npr. kad se kasnije sazna tačan iznos nabavke).
+  static Future<bool> povecajDug(double iznos) async {
+    if (iznos <= 0) return true;
+    final stanje = getStanjeSync();
+    if (stanje == null || stanje.id.isEmpty) {
+      debugPrint('[V3GorivoService] povecajDug: nema reda za gorivo');
+      return false;
+    }
+    return _setDugIznos(stanje.id, stanje.dugIznos + iznos);
+  }
+
+  /// Umanjuje dug za gorivo pri uplati / trošku iz Finansija (kao kredit.uplati).
+  /// Ne ide ispod 0.
+  static Future<bool> smanjiDug(double iznos) async {
+    if (iznos <= 0) return true;
+    final stanje = getStanjeSync();
+    if (stanje == null || stanje.id.isEmpty) {
+      debugPrint('[V3GorivoService] smanjiDug: nema reda za gorivo');
+      return false;
+    }
+    final novo = stanje.dugIznos - iznos;
+    return _setDugIznos(stanje.id, novo < 0 ? 0.0 : novo);
+  }
+
+  static Future<bool> _setDugIznos(String id, double dugIznos) async {
+    try {
+      final row = await _repo.updateByIdReturning(id, {
+        'dug_iznos': dugIznos < 0 ? 0.0 : dugIznos,
+      });
+      _upsertCache(row);
+      return true;
+    } catch (e) {
+      debugPrint('[V3GorivoService] _setDugIznos error: $e');
       return false;
     }
   }

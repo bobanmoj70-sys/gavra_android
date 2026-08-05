@@ -8,6 +8,7 @@ import '../models/v3_kredit.dart';
 import '../screens/v3_krediti_screen.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
+import '../services/v3/v3_gorivo_service.dart';
 import '../services/v3/v3_kredit_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
@@ -46,6 +47,7 @@ class V3FinansijeScreen extends StatefulWidget {
 class _V3IzvestajData {
   final double potrazivanjaIznos;
   final double kreditiIznos;
+  final double gorivoDugIznos;
   final double prihodDanas;
   final double trosakDanas;
   final int voznjiDanas;
@@ -66,6 +68,7 @@ class _V3IzvestajData {
   const _V3IzvestajData({
     required this.potrazivanjaIznos,
     required this.kreditiIznos,
+    required this.gorivoDugIznos,
     required this.prihodDanas,
     required this.trosakDanas,
     required this.voznjiDanas,
@@ -200,6 +203,7 @@ _V3IzvestajData _buildIzvestaj() {
 
   // Krediti / lična dugovanja
   final kreditiIznos = V3KreditService.getUkupnoPreostalo();
+  final gorivoDugIznos = V3GorivoService.getDugIznos();
 
   // Period stringovi
   final danPeriod = V3DanHelper.formatDanMesec(danas);
@@ -208,6 +212,7 @@ _V3IzvestajData _buildIzvestaj() {
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
     kreditiIznos: kreditiIznos,
+    gorivoDugIznos: gorivoDugIznos,
     prihodDanas: prihodDan,
     trosakDanas: trosakDan,
     voznjiDanas: voznjiDan,
@@ -252,7 +257,7 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
       stream: V3MasterRealtimeManager.instance
-          .tablesRevisionStream(const ['v3_finansije', 'v3_krediti', 'v3_auth', 'v3_app_settings']),
+          .tablesRevisionStream(const ['v3_finansije', 'v3_krediti', 'v3_gorivo', 'v3_auth', 'v3_app_settings']),
       builder: (context, _) {
         final iz = _buildIzvestaj();
         return Scaffold(
@@ -275,6 +280,8 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                     _buildPotrazivanjaCard(iz.potrazivanjaIznos),
                     const SizedBox(height: 16),
                     _buildKreditiCard(iz.kreditiIznos),
+                    const SizedBox(height: 16),
+                    _buildGorivoDugCard(iz.gorivoDugIznos),
                     const SizedBox(height: 16),
                     _buildPeriodCard(
                       icon: '📅',
@@ -425,6 +432,45 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGorivoDugCard(double iznos) {
+    return V3ContainerUtils.gradientContainer(
+      gradient: LinearGradient(
+        colors: [Colors.red.shade800, Colors.red.shade600],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 5))],
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Row(
+        children: [
+          V3ContainerUtils.iconContainer(
+            width: 52,
+            height: V3ContainerUtils.responsiveHeight(context, 52),
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            borderRadiusGeometry: BorderRadius.circular(14),
+            child: const Center(child: Text('⛽', style: TextStyle(fontSize: 26))),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_FinTr.tr('dugZaGorivo'),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 2),
+                Text(_FinTr.tr('neizmireniDugoviZaGorivo'),
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
+              ],
+            ),
+          ),
+          Text(_fmtIznos(iznos),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        ],
       ),
     );
   }
@@ -687,6 +733,22 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
           continue;
         }
 
+        if (s.$1 == 'gorivo') {
+          // Uplata za gorivo: evidentira rashod i umanjuje dug na v3_gorivo
+          // (ako dug još nije upisan, samo se beleži trošak — dug može kasnije).
+          futures.add(V3FinansijeService.addTrosak(V3Trosak(
+            id: '',
+            naziv: s.$3,
+            kategorija: s.$1,
+            iznos: val,
+            isplataIz: 'pazar',
+            mesec: now.month,
+            godina: now.year,
+          )));
+          futures.add(V3GorivoService.smanjiDug(val));
+          continue;
+        }
+
         futures.add(V3FinansijeService.addTrosak(V3Trosak(
           id: '',
           naziv: s.$3,
@@ -753,6 +815,16 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                                 '${_FinTr.tr('trenutno')} ${V3FormatUtils.formatBroj((widget.poKat[_katLabel(s.$1)] ?? 0).round())}',
                                 style:
                                     TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                              ),
+                            if (s.$1 == 'gorivo' && V3GorivoService.getDugIznos() > 0)
+                              Text(
+                                '${_FinTr.tr('dugZaGorivo')}: ${_fmtIznos(V3GorivoService.getDugIznos())}',
+                                style: TextStyle(fontSize: 11, color: Colors.red.shade400, fontWeight: FontWeight.bold),
+                              ),
+                            if (s.$1 == 'gorivo')
+                              Text(
+                                _FinTr.tr('gorivoUplataHint'),
+                                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                               ),
                           ],
                         ),

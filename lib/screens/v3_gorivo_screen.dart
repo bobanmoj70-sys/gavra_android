@@ -4,10 +4,10 @@ import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart'
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:gavra_android/theme.dart';
 
+import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_format_utils.dart';
-import '../l10n/app_translations.dart';
 
 class _GorTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('gorivoScreen');
@@ -48,8 +48,34 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
     final trenutno = stanje?.trenutnoStanje ?? rezervoar?.trenutnoLitara ?? 0;
     final kapacitet = stanje?.kapacitetLitri ?? rezervoar?.kapacitetMax ?? 0;
+    final cenaPoLitruInit = stanje?.cenaPoLitru ?? 0;
+    final trenutniDug = stanje?.dugIznos ?? 0;
     final dodatoCtrl = TextEditingController();
+    final cenaCtrl = TextEditingController(
+      text: cenaPoLitruInit > 0 ? cenaPoLitruInit.toStringAsFixed(2) : '',
+    );
+    final dugCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    // Kad korisnik ručno menja dug, prestajemo da ga prepisujemo iz litri × cena.
+    var dugRucno = false;
+
+    double _roundMoney(double v) => (v * 100).roundToDouble() / 100;
+
+    void syncDugFromLitriCena(void Function(void Function()) setModal) {
+      if (dugRucno) return;
+      final litri = _toDoubleOrNull(dodatoCtrl.text);
+      final cena = _toDoubleOrNull(cenaCtrl.text);
+      if (litri != null && litri > 0 && cena != null && cena > 0) {
+        final iznos = _roundMoney(litri * cena);
+        setModal(() {
+          dugCtrl.text = iznos.toStringAsFixed(2);
+        });
+      } else if (!dugRucno) {
+        setModal(() {
+          if (dugCtrl.text.isNotEmpty) dugCtrl.clear();
+        });
+      }
+    }
 
     await showModalBottomSheet<void>(
       context: context,
@@ -64,120 +90,226 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
             border: Border.all(color: Theme.of(context).glassBorder),
             child: SafeArea(
               top: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Form(
-                  key: formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _GorTr.tr('dodajGorivo'),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_GorTr.tr('trenutnoKapacitet')}: ${V3FormatUtils.formatGorivo(trenutno)} L / ${_GorTr.tr('kapacitet')} ${V3FormatUtils.formatGorivo(kapacitet)} L',
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                      const SizedBox(height: 12),
-                      _fuelField(controller: dodatoCtrl, label: _GorTr.tr('kolikoLitaraJeDopunjeno')),
-                      const SizedBox(height: 12),
-                      Row(
+              child: StatefulBuilder(
+                builder: (context, setModal) {
+                  final litriPreview = _toDoubleOrNull(dodatoCtrl.text);
+                  final cenaPreview = _toDoubleOrNull(cenaCtrl.text);
+                  final racunPreview =
+                      (litriPreview != null && litriPreview > 0 && cenaPreview != null && cenaPreview > 0)
+                          ? _roundMoney(litriPreview * cenaPreview)
+                          : null;
+                  final dugUnos = _toDoubleOrNull(dugCtrl.text);
+                  final dugPosle = trenutniDug + (dugUnos != null && dugUnos > 0 ? dugUnos : 0);
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    child: Form(
+                      key: formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _isDodavanjeGoriva ? null : () => Navigator.of(context).pop(),
-                              child: Text(_GorTr.tr('otkazi')),
+                          Text(
+                            _GorTr.tr('dodajGorivo'),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_GorTr.tr('trenutnoKapacitet')}: ${V3FormatUtils.formatGorivo(trenutno)} L / ${_GorTr.tr('kapacitet')} ${V3FormatUtils.formatGorivo(kapacitet)} L',
+                            style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_GorTr.tr('trenutniDug')}: ${trenutniDug.toStringAsFixed(2)} RSD',
+                            style: TextStyle(
+                              color: trenutniDug > 0 ? Colors.orangeAccent : Colors.white54,
+                              fontSize: 12,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isDodavanjeGoriva
-                                  ? null
-                                  : () async {
-                                      if (formKey.currentState?.validate() != true) return;
-
-                                      final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
-                                      if (dodato <= 0) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(_GorTr.tr('unesiPozitivanBrojLitara'))),
-                                        );
-                                        return;
-                                      }
-
-                                      final novoStanje = trenutno + dodato;
-                                      if (novoStanje > kapacitet) {
-                                        final potvrda = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor: const Color(0xFF1D1D1D),
-                                            title: Text(_GorTr.tr('prekoracenjeKapaciteta'),
-                                                style: const TextStyle(color: Colors.white)),
-                                            content: Text(
-                                              _GorTr.tr('novoStanjeQPremasujeKapacitet')
-                                                  .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
-                                                  .replaceAll('%KAP%', V3FormatUtils.formatGorivo(kapacitet)),
-                                              style: const TextStyle(color: Colors.white70),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context, false),
-                                                child: Text(_GorTr.tr('ne')),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () => Navigator.pop(context, true),
-                                                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                                                child: Text(_GorTr.tr('da')),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (potvrda != true) return;
-                                      }
-
-                                      setState(() => _isDodavanjeGoriva = true);
-                                      final success = await V3GorivoService.updateRezervoar(id, novoStanje);
-                                      if (!mounted) return;
-
-                                      setState(() => _isDodavanjeGoriva = false);
-                                      Navigator.of(context).pop();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            success
-                                                ? _GorTr.tr('gorivoDodatoNovoStanje')
-                                                    .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
-                                                : _GorTr.tr('greskaPriDodavanjuGoriva'),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                              ),
-                              child: _isDodavanjeGoriva
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : Text(_GorTr.tr('dodaj')),
+                          const SizedBox(height: 12),
+                          _fuelField(
+                            controller: dodatoCtrl,
+                            label: _GorTr.tr('kolikoLitaraJeDopunjeno'),
+                            onChanged: (_) => syncDugFromLitriCena(setModal),
+                          ),
+                          _fuelField(
+                            controller: cenaCtrl,
+                            label: _GorTr.tr('cenaPoLitruOvaIsporuka'),
+                            requiredField: false,
+                            onChanged: (_) => syncDugFromLitriCena(setModal),
+                          ),
+                          Text(
+                            _GorTr.tr('cenaPoLitruDopunaHint'),
+                            style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          if (racunPreview != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _GorTr.tr('racunLitriPutaCena')
+                                  .replaceAll('%L%', V3FormatUtils.formatGorivo(litriPreview!))
+                                  .replaceAll('%CENA%', cenaPreview!.toStringAsFixed(2))
+                                  .replaceAll('%IZNOS%', racunPreview.toStringAsFixed(2)),
+                              style: const TextStyle(
+                                  color: Colors.lightGreenAccent, fontSize: 13, fontWeight: FontWeight.w600),
                             ),
+                          ],
+                          const SizedBox(height: 8),
+                          _fuelField(
+                            controller: dugCtrl,
+                            label: _GorTr.tr('iznosDugaOvaIsporuka'),
+                            requiredField: false,
+                            onChanged: (_) {
+                              dugRucno = dugCtrl.text.trim().isNotEmpty;
+                              setModal(() {});
+                            },
+                          ),
+                          Text(
+                            _GorTr.tr('iznosDugaHint'),
+                            style: const TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          if (dugUnos != null && dugUnos > 0) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              _GorTr.tr('dugPosleDopune')
+                                  .replaceAll('%STARI%', trenutniDug.toStringAsFixed(2))
+                                  .replaceAll('%DODATO%', dugUnos.toStringAsFixed(2))
+                                  .replaceAll('%NOVI%', dugPosle.toStringAsFixed(2)),
+                              style: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: _isDodavanjeGoriva ? null : () => Navigator.of(context).pop(),
+                                  child: Text(_GorTr.tr('otkazi')),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _isDodavanjeGoriva
+                                      ? null
+                                      : () async {
+                                          if (formKey.currentState?.validate() != true) return;
+
+                                          final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
+                                          if (dodato <= 0) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text(_GorTr.tr('unesiPozitivanBrojLitara'))),
+                                            );
+                                            return;
+                                          }
+
+                                          final cenaText = cenaCtrl.text.trim();
+                                          double? cenaUnos;
+                                          if (cenaText.isNotEmpty) {
+                                            cenaUnos = _toDoubleOrNull(cenaText);
+                                            if (cenaUnos == null || cenaUnos < 0) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text(_GorTr.tr('unesiIspravnuCenu'))),
+                                              );
+                                              return;
+                                            }
+                                          }
+
+                                          final dugText = dugCtrl.text.trim();
+                                          double? dugDodato;
+                                          if (dugText.isNotEmpty) {
+                                            dugDodato = _toDoubleOrNull(dugText);
+                                            if (dugDodato == null || dugDodato < 0) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text(_GorTr.tr('unesiIspravanIznosDuga'))),
+                                              );
+                                              return;
+                                            }
+                                          } else if (cenaUnos != null && cenaUnos > 0) {
+                                            // Automatski: litri × cena
+                                            dugDodato = _roundMoney(dodato * cenaUnos);
+                                          }
+
+                                          final novoStanje = trenutno + dodato;
+                                          if (novoStanje > kapacitet) {
+                                            final potvrda = await showDialog<bool>(
+                                              context: context,
+                                              builder: (_) => AlertDialog(
+                                                backgroundColor: const Color(0xFF1D1D1D),
+                                                title: Text(_GorTr.tr('prekoracenjeKapaciteta'),
+                                                    style: const TextStyle(color: Colors.white)),
+                                                content: Text(
+                                                  _GorTr.tr('novoStanjeQPremasujeKapacitet')
+                                                      .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
+                                                      .replaceAll('%KAP%', V3FormatUtils.formatGorivo(kapacitet)),
+                                                  style: const TextStyle(color: Colors.white70),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context, false),
+                                                    child: Text(_GorTr.tr('ne')),
+                                                  ),
+                                                  ElevatedButton(
+                                                    onPressed: () => Navigator.pop(context, true),
+                                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                                                    child: Text(_GorTr.tr('da')),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (potvrda != true) return;
+                                          }
+
+                                          setState(() => _isDodavanjeGoriva = true);
+                                          final success = await V3GorivoService.dopuniRezervoar(
+                                            id: id,
+                                            novoLitara: novoStanje,
+                                            dugDodatoRsd: dugDodato,
+                                            cenaPoLitru: cenaUnos,
+                                          );
+                                          if (!mounted) return;
+
+                                          setState(() => _isDodavanjeGoriva = false);
+                                          Navigator.of(context).pop();
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                success
+                                                    ? _GorTr.tr('gorivoDodatoNovoStanje')
+                                                        .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
+                                                    : _GorTr.tr('greskaPriDodavanjuGoriva'),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: _isDodavanjeGoriva
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : Text(_GorTr.tr('dodaj')),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
         );
       },
     );
+
+    dodatoCtrl.dispose();
+    cenaCtrl.dispose();
+    dugCtrl.dispose();
   }
 
   Future<void> _openEditFuelDataSheet({required V3PumpaRezervoar? rezervoar, required V3PumpaStanje? stanje}) async {
@@ -329,7 +461,11 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     );
   }
 
-  Widget _fuelField({required TextEditingController controller, required String label}) {
+  Widget _fuelField(
+      {required TextEditingController controller,
+      required String label,
+      bool requiredField = true,
+      ValueChanged<String>? onChanged}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextFormField(
@@ -341,11 +477,13 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
           labelStyle: const TextStyle(color: Colors.white70),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
+        onChanged: onChanged,
         validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return _GorTr.tr('obaveznoPolje');
+          final text = value?.trim() ?? '';
+          if (text.isEmpty) {
+            return requiredField ? _GorTr.tr('obaveznoPolje') : null;
           }
-          if (_toDoubleOrNull(value) == null) {
+          if (_toDoubleOrNull(text) == null) {
             return _GorTr.tr('unesiBroj');
           }
           return null;
