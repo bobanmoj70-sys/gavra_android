@@ -95,7 +95,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _hasSentRouteToMap = false;
   bool _mapResyncInFlight = false;
   String _lastSentRouteSignature = '';
-  bool _osrmUnavailableShown = false;
   bool _etaReoptimizeInFlight = false;
 
   /// Tajmer za automatsko pokretanje trackinga tačno na T-15min pre polaska.
@@ -331,27 +330,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     List<String> tickOrder = const [],
   }) {
     final osrmOrder = _resolveOptimizedOrder();
-    if (osrmOrder.isEmpty) {
-      // Prazan redosled pre prvog ticka / tokom učitavanja nije greška —
-      // snack samo kad je tick završen a i dalje nema reda (stvarno stanje).
-      if (afterEtaTick && tickOrder.isEmpty && _isViewingTrackedTermin && !_osrmUnavailableShown) {
-        _osrmUnavailableShown = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          // Ponovo proveri — tick može stići u međuvremenu.
-          if (_resolveOptimizedOrder().isNotEmpty) {
-            _osrmUnavailableShown = false;
-            return;
-          }
-          V3AppSnackBar.warning(
-            context,
-            'OSRM trenutno nije dostupan — redosled kartica neće biti promenjen.',
-          );
-        });
-      }
-      return;
-    }
-    _osrmUnavailableShown = false;
+    if (osrmOrder.isEmpty) return;
     if (_mojiPutnici.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
     if (mounted) {

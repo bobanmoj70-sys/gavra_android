@@ -112,21 +112,48 @@ async function resolveDriverLocation(
   return { lat, lng, source: "table" };
 }
 
-/// Fetch sa eksponencijalnim backoff retry-om
+/// Fetch sa eksponencijalnim backoff retry-om.
+/// HTTP/1.1 only: Deno default (HTTP/2 ALPN) često pada na Tailscale Funnel sa
+/// "tls handshake eof" iz Supabase edge runtime-a.
+let osrmHttpClient: ReturnType<typeof Deno.createHttpClient> | null = null;
+function getOsrmHttpClient(): ReturnType<typeof Deno.createHttpClient> | undefined {
+  try {
+    if (!osrmHttpClient) {
+      osrmHttpClient = Deno.createHttpClient({ http2: false });
+    }
+    return osrmHttpClient;
+  } catch {
+    return undefined;
+  }
+}
+
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
   const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
-  const headers: Record<string, string> = apiKey ? { "X-API-Key": apiKey } : {};
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "User-Agent": "gavra-v3-compute-eta/1.0",
+    ...(apiKey ? { "X-API-Key": apiKey } : {}),
+  };
+  const client = getOsrmHttpClient();
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, { headers, signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS) });
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS),
+        ...(client ? { client } : {}),
+      });
       if (response.ok) return response;
       // 4xx greske su trajne (los zahtev) - nema smisla retrijovati, vrati odmah.
       if (response.status >= 400 && response.status < 500) return response;
       lastError = new Error(`HTTP ${response.status}`);
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
+      console.warn(
+        `[v3-compute-eta] osrm fetch attempt=${attempt + 1}/${maxRetries + 1} err=${lastError.message}`,
+      );
     }
 
     if (attempt < maxRetries) {

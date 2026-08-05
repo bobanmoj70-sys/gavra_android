@@ -118,10 +118,26 @@ function toBelgradeHHmm(date: Date): string {
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
   let lastError: Error | null = null;
   const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
-  const headers: Record<string, string> = apiKey ? { "X-API-Key": apiKey } : {};
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "User-Agent": "gavra-v3-auto-prepare/1.0",
+    ...(apiKey ? { "X-API-Key": apiKey } : {}),
+  };
+  // HTTP/1.1 only — Deno HTTP/2 ALPN + Tailscale Funnel = tls handshake eof
+  let httpClient: ReturnType<typeof Deno.createHttpClient> | undefined;
+  try {
+    httpClient = Deno.createHttpClient({ http2: false });
+  } catch {
+    httpClient = undefined;
+  }
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, { headers, signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS) });
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS),
+        ...(httpClient ? { client: httpClient } : {}),
+      });
       if (response.ok) return response;
       // 4xx greske su trajne (los zahtev) - nema smisla retrijovati, vrati odmah.
       if (response.status >= 400 && response.status < 500) return response;
