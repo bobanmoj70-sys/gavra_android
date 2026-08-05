@@ -187,6 +187,9 @@ class V3SelfReschedulingTicker {
 }
 
 /// Parsira odgovor edge funkcije `v3-compute-eta`.
+///
+/// Jednostavno: ok=true → etaMap (putnik_id → sekunde) + optimized_order.
+/// ok=false / prazno → prazan rezultat (pozivalac zadržava prethodni order).
 ({Map<String, int> etaMap, List<String> order}) v3ParseEtaResponse(dynamic data) {
   final etaMap = <String, int>{};
   final order = <String>[];
@@ -198,9 +201,9 @@ class V3SelfReschedulingTicker {
   if (etaList is List) {
     for (final item in etaList) {
       if (item is! Map) continue;
-      final pid = item['putnik_id']?.toString();
+      final pid = item['putnik_id']?.toString().trim() ?? '';
       final sec = (item['eta_seconds'] as num?)?.toInt();
-      if (pid != null && pid.isNotEmpty && sec != null) {
+      if (pid.isNotEmpty && sec != null) {
         etaMap[pid] = sec;
       }
     }
@@ -209,7 +212,8 @@ class V3SelfReschedulingTicker {
   final optimizedOrder = data['optimized_order'];
   if (optimizedOrder is List) {
     for (final pid in optimizedOrder) {
-      if (pid is String && pid.isNotEmpty) order.add(pid);
+      final s = pid?.toString().trim() ?? '';
+      if (s.isNotEmpty) order.add(s);
     }
   }
 
@@ -219,8 +223,8 @@ class V3SelfReschedulingTicker {
 /// Jedan tick: live GPS fix + upsert `v3_vozac_location` + `v3-compute-eta`.
 ///
 /// Uvek se izvršava u celini — nema distance/speed/idle uslova koji bi
-/// preskočili ETA. Trenutna GPS lokacija je jedini ulaz za optimizaciju;
-/// edge funkcija čita isključivo iz `v3_vozac_location` (ne iz payload lat/lng).
+/// preskočili ETA. Trenutna GPS lokacija ide u tabelu i u payload edge funkcije
+/// (payload je preferiran izvor da se izbegne race/clock na updated_at).
 /// Koriste ga i foreground servis i background isolate.
 Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
   required SupabaseClient client,
@@ -245,11 +249,13 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
     logTag: logTag,
   );
 
-  // Lokacija ide u v3_vozac_location; edge ne prima lat/lng — čita iz tabele.
+  // lat/lng u payload-u: edge preferira ovo nad čitanjem tabele (isti tick).
   final requestBody = <String, dynamic>{
     'vozac_id': vozacId,
     'grad': grad,
     'vreme': vreme,
+    'lat': position.latitude,
+    'lng': position.longitude,
     if (datumIso.isNotEmpty) 'datum_iso': datumIso,
   };
   debugPrint('$logTag computeEta request: $requestBody');
@@ -258,24 +264,14 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
       await client.functions.invoke('v3-compute-eta', body: requestBody).timeout(v3ComputeEtaNetworkTimeout);
   debugPrint('$logTag computeEta response: ${response.data}');
 
-  return v3ParseEtaResponse(response.data);
-}
-
-Future<void> v3ClearEtaForVozac({
-  required SupabaseClient client,
-  required String vozacId,
-}) async {
-  final normalized = vozacId.trim();
-  if (normalized.isEmpty) return;
-  try {
-    await client.from('v3_eta_results').delete().eq('vozac_id', normalized);
-  } catch (e) {
-    debugPrint('[v3ClearEtaForVozac] error: $e');
+  final parsed = v3ParseEtaResponse(response.data);
+  if (parsed.etaMap.isEmpty) {
+    final data = response.data;
+    final reason = data is Map ? data['reason']?.toString() : null;
+    final ok = data is Map ? data['ok'] : null;
+    debugPrint('$logTag computeEta empty etaMap ok=$ok reason=$reason');
   }
-  // Main isolate: odmah očisti UI cache. BG isolate nema bootstrap — no-op.
-  try {
-    V3MasterRealtimeManager.instance.clearEtaResultsForVozac(normalized);
-  } catch (_) {}
+  return parsed;
 }
 
 /// `true` samo ako ovaj vozač nema više aktivnih putnika na terminu (pokupljeni/otkazani).

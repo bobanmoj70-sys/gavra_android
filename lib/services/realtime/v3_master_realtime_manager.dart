@@ -831,24 +831,6 @@ class V3MasterRealtimeManager {
     });
   }
 
-  /// Briše ETA redove vozača iz cache-a (posle DB delete na stop).
-  void clearEtaResultsForVozac(String vozacId) {
-    final id = vozacId.trim();
-    if (id.isEmpty) return;
-    _registerCacheStoreIfNeeded();
-    final toRemove = <String>[];
-    for (final entry in etaResultsCache.entries) {
-      if (entry.value['vozac_id']?.toString() == id) {
-        toRemove.add(entry.key);
-      }
-    }
-    if (toRemove.isEmpty) return;
-    for (final key in toRemove) {
-      _cacheStore.remove('v3_eta_results', key);
-    }
-    _scheduleEmit(tables: {'v3_eta_results'});
-  }
-
   /// `true`/`false` iz cache-a; `null` ako nema dovoljno podataka (BG isolate / prazan cache).
   /// Samo putnici ovog vozača na slotu (multi-driver safe).
   bool? tryAllPassengersCompleted({

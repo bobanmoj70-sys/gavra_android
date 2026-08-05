@@ -275,24 +275,42 @@ Deno.serve(async (req) => {
       // Ensure individual dodela exists and is linked to slot
       for (const t of slotTermins) {
         const { data: existingDodela } = await client
-          .from("v3_trenutna_dodela")
-          .select("id")
+          .from("v3_trenutna_dela")
+          .select("termin_id, vozac_v3_auth_id")
           .eq("termin_id", t.id)
           .maybeSingle();
 
         if (existingDodela) {
-          await client
+          // Zadrži override vozača ako je već drugačiji od default slot vozača
+          // (assignPutnikOverride). Inače uskladi slot_id + default vozac.
+          // PK je termin_id — tabela nema kolonu `id`.
+          const existingVozac = String(existingDodela.vozac_v3_auth_id ?? "").trim();
+          const patch: Record<string, unknown> = { slot_id: slotId };
+          if (!existingVozac || existingVozac === vozacId) {
+            patch.vozac_v3_auth_id = vozacId;
+          }
+          const { error: linkError } = await client
             .from("v3_trenutna_dodela")
-            .update({ slot_id: slotId })
-            .eq("id", existingDodela.id);
+            .update(patch)
+            .eq("termin_id", t.id);
+          if (linkError) {
+            console.error(
+              `[v3-auto-prepare-termins] dodela link error termin=${t.id}: ${linkError.message}`,
+            );
+          }
         } else {
-          await client.from("v3_trenutna_dodela").insert({
+          const { error: insertDodelaError } = await client.from("v3_trenutna_dodela").insert({
             termin_id: t.id,
             putnik_v3_auth_id: t.created_by,
             vozac_v3_auth_id: vozacId,
             slot_id: slotId,
             updated_by: vozacId,
           });
+          if (insertDodelaError) {
+            console.error(
+              `[v3-auto-prepare-termins] dodela insert error termin=${t.id}: ${insertDodelaError.message}`,
+            );
+          }
         }
       }
 

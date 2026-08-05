@@ -19,7 +19,6 @@ build/
 google-play-mcp/.env
 appstore-mcp/.env
 supabase-mcp/.env
-supabase-official-mcp/.env
 
 # 🔐 SECRETS - NIKADA NE COMMIT-OVATI
 *.b64

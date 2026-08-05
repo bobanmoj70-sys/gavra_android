@@ -352,23 +352,36 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  /// Poslednji redosled upisan od `v3-compute-eta` (GPS tick), ne od auto-prepare.
+  /// Poslednji redosled iz v3_eta_results za ovog vozača + prikazane putnike.
   List<String> _getOsrmOrderFromEtaResults() {
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isEmpty) return const [];
-    // Redosled iz eta_results samo za putnike trenutno prikazanog termina.
+
+    final shownIds = _mojiPutnici.map((p) => p.putnik.id).toSet();
+    List<String>? bestOrder;
+    DateTime? bestAt;
+
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
-      final rowVozac = row['vozac_id']?.toString() ?? '';
-      if (rowVozac != vozacId) continue;
+      if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
       final order = row['optimized_order'];
       if (order is! List || order.isEmpty) continue;
       final asStrings = order.whereType<String>().toList();
       if (asStrings.isEmpty) continue;
-      final shownIds = _mojiPutnici.map((p) => p.putnik.id).toSet();
       if (shownIds.isNotEmpty && !asStrings.any(shownIds.contains)) continue;
-      return asStrings;
+
+      final raw = row['computed_at'];
+      DateTime? at;
+      if (raw is DateTime) {
+        at = raw;
+      } else if (raw is String) {
+        at = V3BelgradeTime.parseTs(raw);
+      }
+      if (bestOrder == null || (at != null && (bestAt == null || at.isAfter(bestAt)))) {
+        bestOrder = asStrings;
+        bestAt = at;
+      }
     }
-    return const [];
+    return bestOrder ?? const [];
   }
 
   List<String> _getOsrmOrderFromSlot() {

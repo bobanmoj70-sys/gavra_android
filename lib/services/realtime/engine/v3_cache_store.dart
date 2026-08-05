@@ -23,22 +23,17 @@ class V3CacheStore {
 
   String? _resolveCacheKey(String table, Map<String, dynamic> row) {
     if (table == 'v3_eta_results') {
-      final putnikId = row['putnik_id']?.toString();
-      if (putnikId == null || putnikId.isEmpty) return null;
-
-      // Prioritet: slot_id — usklađeno sa UNIQUE(slot_id, putnik_id) constraint-om
-      // u bazi (isti termin_id/putnik_id par može postojati u više slotova).
-      final slotId = row['slot_id']?.toString();
-      if (slotId != null && slotId.isNotEmpty) {
-        return 'slot:$slotId:$putnikId';
-      }
-
-      // Fallback za redove bez slot_id (stariji podaci / edge slučajevi).
+      // VOCAB:
+      //   SLOT  = v3_trenutna_dodela_slot / v3_kapacitet_slots (datum+grad+vreme)
+      //   TERMIN = v3_operativna_nedelja red (jedna putnikova vožnja)
+      // ETA cache = uvek termin_id:putnik_id (jedan red po vožnji).
+      // slot_id u bazi ostaje za upsert/brisanje po slotu — NE u cache ključu.
       final terminId = row['termin_id']?.toString();
-      if (terminId != null && terminId.isNotEmpty) {
-        return '$terminId:$putnikId';
+      final putnikId = row['putnik_id']?.toString();
+      if (terminId == null || terminId.isEmpty || putnikId == null || putnikId.isEmpty) {
+        return null;
       }
-      return null;
+      return '$terminId:$putnikId';
     }
     if (table == 'v3_vozac_location') {
       final vozacId = row['vozac_id']?.toString();

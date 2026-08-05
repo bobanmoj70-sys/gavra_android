@@ -9,9 +9,9 @@ const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 /// etaRetentionDuration u lib/globals.dart.
 const ETA_RETENTION_SECONDS = (15 + 40) * 60; // 3300
 
-/// Maksimalna starost lokacije vozača pre nego što se smatra zastarelom
-/// za NOVI live ETA/optimizaciju. Tracking tick šalje lokaciju svakih 20s.
-/// Ne briše postojeće ETA redove — samo sprečava računanje iz starog GPS-a.
+/// Maksimalna starost lokacije vozača u `v3_vozac_location` pre nego što se
+/// smatra zastarelom za NOVI live ETA — samo fallback kada tick NE pošalje
+/// lat/lng u payload-u. Tracking tick šalje lokaciju svakih 20s.
 const DRIVER_LOCATION_MAX_AGE_MS = 130 * 1000;
 
 /// OSRM retry konfiguracija
@@ -26,6 +26,9 @@ type ComputeEtaPayload = {
   grad?: string;
   vreme?: string;
   datum_iso?: string;
+  /** Svež GPS iz istog tick-a (preferiran nad v3_vozac_location). */
+  lat?: number | string;
+  lng?: number | string;
 };
 
 type PassengerEntry = {
@@ -64,13 +67,26 @@ function normalizeDateIso(value: unknown): string {
   return match?.[1] ?? "";
 }
 
-/// Čita poslednju poznatu lokaciju vozača iz `v3_vozac_location` — jedini
-/// izvor istine za trenutnu GPS poziciju. Flutter app upisuje ovu tabelu
-/// svakih 20s; edge funkcija više ne prima lat/lng u payload-u.
-async function readDriverLocation(
+function parseCoord(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/// Preferira lat/lng iz tick payload-a (isti request kao GPS fix).
+/// Fallback: v3_vozac_location ako je dovoljno sveža.
+async function resolveDriverLocation(
   client: ReturnType<typeof createClient>,
   vozacId: string,
-): Promise<{ lat: number; lng: number } | null> {
+  payloadLat: unknown,
+  payloadLng: unknown,
+): Promise<{ lat: number; lng: number; source: "payload" | "table" } | null> {
+  const pLat = parseCoord(payloadLat);
+  const pLng = parseCoord(payloadLng);
+  if (pLat != null && pLng != null) {
+    return { lat: pLat, lng: pLng, source: "payload" };
+  }
+
   const { data: row, error } = await client
     .from("v3_vozac_location")
     .select("lat, lng, updated_at")
@@ -79,16 +95,21 @@ async function readDriverLocation(
 
   if (error || !row) return null;
 
-  const lat = Number(row.lat);
-  const lng = Number(row.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const lat = parseCoord(row.lat);
+  const lng = parseCoord(row.lng);
+  if (lat == null || lng == null) return null;
 
   const tsRaw = row.updated_at;
   const ts = typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
   if (!Number.isFinite(ts)) return null;
-  if (Date.now() - ts > DRIVER_LOCATION_MAX_AGE_MS) return null;
+  if (Date.now() - ts > DRIVER_LOCATION_MAX_AGE_MS) {
+    console.warn(
+      `[v3-compute-eta] driver location stale ageMs=${Date.now() - ts} max=${DRIVER_LOCATION_MAX_AGE_MS}`,
+    );
+    return null;
+  }
 
-  return { lat, lng };
+  return { lat, lng, source: "table" };
 }
 
 /// Fetch sa eksponencijalnim backoff retry-om
@@ -155,6 +176,124 @@ async function buildOsrmFallbackResponse(
   });
 }
 
+/// Dopuni GPS za putnike bez adresa_gps_* iz v3_adrese (kao auto-prepare).
+async function fillMissingPassengerGps(
+  client: ReturnType<typeof createClient>,
+  activeGrad: string,
+  rows: Array<{
+    termin_id: string;
+    putnik_id: string;
+    lat: number | null;
+    lng: number | null;
+  }>,
+): Promise<PassengerEntry[]> {
+  const missing = rows.filter((r) => r.lat == null || r.lng == null);
+  if (missing.length === 0) {
+    return rows
+      .filter((r) => r.lat != null && r.lng != null)
+      .map((r) => ({
+        putnik_id: r.putnik_id,
+        termin_id: r.termin_id,
+        lat: r.lat as number,
+        lng: r.lng as number,
+      }));
+  }
+
+  const terminIds = missing.map((r) => r.termin_id);
+  const { data: opRows } = await client
+    .from("v3_operativna_nedelja")
+    .select("id, created_by, koristi_sekundarnu, adresa_override_id, grad")
+    .in("id", terminIds);
+
+  const opById = new Map((opRows ?? []).map((o: any) => [String(o.id), o]));
+  const putnikIds = [
+    ...new Set(
+      missing
+        .map((r) => r.putnik_id)
+        .filter((id) => id.length > 0),
+    ),
+  ];
+
+  const { data: authRows } = putnikIds.length > 0
+    ? await client
+      .from("v3_auth")
+      .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
+      .in("id", putnikIds)
+    : { data: [] as any[] };
+
+  const authById = new Map((authRows ?? []).map((a: any) => [String(a.id), a]));
+  const adresaIds: string[] = [];
+  const adresaToPassengers = new Map<string, Array<{ termin_id: string; putnik_id: string }>>();
+
+  for (const m of missing) {
+    const op = opById.get(m.termin_id);
+    const auth = authById.get(m.putnik_id);
+    if (!auth) continue;
+
+    const grad = String(op?.grad ?? activeGrad).trim().toUpperCase();
+    const koristiSek = Boolean(op?.koristi_sekundarnu);
+    let adresaId: string | null = op?.adresa_override_id ? String(op.adresa_override_id) : null;
+    if (!adresaId) {
+      if (grad === "BC") {
+        adresaId = koristiSek ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id;
+      } else if (grad === "VS") {
+        adresaId = koristiSek ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id;
+      }
+    }
+    if (!adresaId) continue;
+    adresaId = String(adresaId);
+    adresaIds.push(adresaId);
+    const list = adresaToPassengers.get(adresaId) ?? [];
+    list.push({ termin_id: m.termin_id, putnik_id: m.putnik_id });
+    adresaToPassengers.set(adresaId, list);
+  }
+
+  const gpsByTermin = new Map<string, { lat: number; lng: number }>();
+  if (adresaIds.length > 0) {
+    const { data: adresaRows } = await client
+      .from("v3_adrese")
+      .select("id, gps_lat, gps_lng")
+      .in("id", [...new Set(adresaIds)]);
+
+    for (const a of adresaRows ?? []) {
+      const lat = parseCoord(a.gps_lat);
+      const lng = parseCoord(a.gps_lng);
+      if (lat == null || lng == null) continue;
+      const mapped = adresaToPassengers.get(String(a.id)) ?? [];
+      for (const p of mapped) {
+        gpsByTermin.set(p.termin_id, { lat, lng });
+      }
+    }
+  }
+
+  // Persist resolved GPS back so sledeći tick ne mora ponovo da rešava.
+  for (const [terminId, coords] of gpsByTermin) {
+    await client
+      .from("v3_trenutna_dodela")
+      .update({ adresa_gps_lat: coords.lat, adresa_gps_lng: coords.lng })
+      .eq("termin_id", terminId);
+  }
+
+  const out: PassengerEntry[] = [];
+  for (const r of rows) {
+    let lat = r.lat;
+    let lng = r.lng;
+    if (lat == null || lng == null) {
+      const filled = gpsByTermin.get(r.termin_id);
+      if (!filled) continue;
+      lat = filled.lat;
+      lng = filled.lng;
+    }
+    out.push({
+      putnik_id: r.putnik_id,
+      termin_id: r.termin_id,
+      lat,
+      lng,
+    });
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, reason: "method_not_allowed" });
@@ -180,8 +319,14 @@ Deno.serve(async (req) => {
     const activeVreme = normalizeTime(payload.vreme);
     const activeDatumIso = normalizeDateIso(payload.datum_iso);
 
-    console.log(`[v3-compute-eta] payload received: ${JSON.stringify(payload)}`);
-    console.log(`[v3-compute-eta] parsed: vozacId=${vozacId || "<empty>"} grad=${activeGrad} vreme=${activeVreme} datum_iso=${activeDatumIso}`);
+    console.log(`[v3-compute-eta] payload received: ${JSON.stringify({
+      vozac_id: vozacId ? `${vozacId.slice(0, 8)}…` : "",
+      grad: activeGrad,
+      vreme: activeVreme,
+      datum_iso: activeDatumIso,
+      has_lat: payload.lat != null,
+      has_lng: payload.lng != null,
+    })}`);
 
     if (!vozacId) {
       return json(200, { ok: false, reason: "invalid_payload", detail: "missing vozac_id" });
@@ -199,9 +344,8 @@ Deno.serve(async (req) => {
     const retentionThreshold = new Date(Date.now() - ETA_RETENTION_SECONDS * 1000).toISOString();
     await client.from("v3_eta_results").delete().lt("computed_at", retentionThreshold);
 
-    // 2. Dohvati aktivan slot za grad + datum + vreme (fizički ključ, NE po vozaču)
-    //    → jer override vozač (assignPutnikOverride) vozi termin čiji je slot
-    //    fizički vlasnički vezan za drugog (default) vozača.
+    // 2. Dohvati aktivan SLOT (v3_trenutna_dodela_slot) po grad+datum+vreme.
+    //    Fizički ključ slota — NE po vozaču (override putnik može biti na drugom vozaču).
     const { data: slotRows, error: slotError } = await client
       .from("v3_trenutna_dodela_slot")
       .select("id, vreme, vozac_v3_auth_id")
@@ -212,14 +356,35 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "slot_lookup_error", warning: slotError.message });
     }
 
-    const activeSlot = (slotRows ?? []).find((s: any) => normalizeTime(s.vreme) === activeVreme);
-    if (!activeSlot) {
+    const matchingSlots = (slotRows ?? []).filter((s: any) => normalizeTime(s.vreme) === activeVreme);
+    if (matchingSlots.length === 0) {
+      console.warn(`[v3-compute-eta] no_active_slot grad=${activeGrad} vreme=${activeVreme} datum=${activeDatumIso}`);
       return json(200, { ok: false, reason: "no_active_slot" });
     }
 
-    // 2a. Lokaciju čita isključivo iz v3_vozac_location (jedini izvor istine).
-    const driverLocation = await readDriverLocation(client, vozacId);
+    // Više redova (format time vs text): preferiraj slot sa putnicima ovog vozača.
+    let activeSlot = matchingSlots[0];
+    if (matchingSlots.length > 1) {
+      for (const candidate of matchingSlots) {
+        const { count } = await client
+          .from("v3_trenutna_dodela")
+          .select("id", { count: "exact", head: true })
+          .eq("slot_id", candidate.id)
+          .eq("vozac_v3_auth_id", vozacId);
+        if ((count ?? 0) > 0) {
+          activeSlot = candidate;
+          break;
+        }
+      }
+      console.warn(
+        `[v3-compute-eta] multiple slots for slotKey=${activeGrad} ${activeVreme}: ${matchingSlots.length}, using=${activeSlot.id}`,
+      );
+    }
+
+    // 2a. Lokacija: payload (isti tick) > sveža tabela.
+    const driverLocation = await resolveDriverLocation(client, vozacId, payload.lat, payload.lng);
     if (!driverLocation) {
+      console.warn(`[v3-compute-eta] no_driver_location vozac=${vozacId.slice(0, 8)}`);
       return json(200, { ok: false, reason: "no_driver_location" });
     }
     const driverLat = driverLocation.lat;
@@ -229,6 +394,7 @@ Deno.serve(async (req) => {
 
     // 2.5. Uzmi putnike iz v3_trenutna_dodela za ovaj slot i vozaca.
     // Slot je fizicki zajednicki, ali putnici mogu biti override-ovani na druge vozace.
+    // GPS može biti null dok auto-prepare / UI sync ne stigne — dopunjujemo iz adresa.
     const { data: dodelaRows, error: dodelaError } = await client
       .from("v3_trenutna_dodela")
       .select("termin_id, putnik_v3_auth_id, adresa_gps_lat, adresa_gps_lng")
@@ -239,19 +405,32 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "dodela_lookup_error", warning: dodelaError.message });
     }
 
-    const rawPassengers: PassengerEntry[] = (dodelaRows ?? [])
-      .filter((r: any) =>
-        r?.termin_id && r?.putnik_v3_auth_id &&
-        Number.isFinite(Number(r?.adresa_gps_lat)) && Number.isFinite(Number(r?.adresa_gps_lng))
-      )
+    const dodelaCount = (dodelaRows ?? []).length;
+    const partialRows = (dodelaRows ?? [])
+      .filter((r: any) => r?.termin_id && r?.putnik_v3_auth_id)
       .map((r: any) => ({
-        putnik_id: String(r.putnik_v3_auth_id),
         termin_id: String(r.termin_id),
-        lat: Number(r.adresa_gps_lat),
-        lng: Number(r.adresa_gps_lng),
+        putnik_id: String(r.putnik_v3_auth_id),
+        lat: parseCoord(r.adresa_gps_lat),
+        lng: parseCoord(r.adresa_gps_lng),
       }));
 
+    const rawPassengers = await fillMissingPassengerGps(client, activeGrad, partialRows);
+
+    console.log(
+      `[v3-compute-eta] slot=${String(activeSlot.id).slice(0, 8)} dodela=${dodelaCount} ` +
+        `withGps=${rawPassengers.length} locSource=${driverLocation.source}`,
+    );
+
     if (rawPassengers.length === 0) {
+      // Ne briši postojeću ETA ako dodela postoji ali GPS još nije razrešen —
+      // to je prolazno stanje (T-15 pre auto-prepare / sync).
+      if (dodelaCount > 0) {
+        console.warn(`[v3-compute-eta] passengers_missing_gps count=${dodelaCount}`);
+        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "passengers_missing_gps", {
+          dodela_count: dodelaCount,
+        });
+      }
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
       return json(200, { ok: true, reason: "no_passengers_for_this_vozac", updated: 0 });
     }
@@ -263,7 +442,6 @@ Deno.serve(async (req) => {
       .select("id, pokupljen_at, otkazano_at")
       .in("id", terminIds);
 
-
     if (operativnaError) {
       console.warn(`[v3-compute-eta] operativna status lookup error: ${operativnaError.message}`);
     }
@@ -271,7 +449,7 @@ Deno.serve(async (req) => {
     const completedTerminIds = new Set<string>(
       (operativnaRows ?? [])
         .filter((r: any) => r.pokupljen_at || r.otkazano_at)
-        .map((r: any) => String(r.id))
+        .map((r: any) => String(r.id)),
     );
 
     const remaining = rawPassengers.filter((p) => !completedTerminIds.has(p.termin_id));
@@ -419,10 +597,11 @@ Deno.serve(async (req) => {
     }
 
     if (upsertRows.length === 0) {
-      return json(200, { ok: true, reason: "no_eta_rows", updated: 0 });
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "no_eta_rows");
     }
 
     // 6. Upsert v3_eta_results — koristi slot_id za conflict resolution
+    // optimized_order = putnik_id[] (usklađeno sa Flutter sort po putnik.id)
     const optimizedOrder = upsertRows.map((r) => r.putnik_id);
     const upsertRowsWithOrder = upsertRows.map((r) => ({ ...r, optimized_order: optimizedOrder }));
 
@@ -431,6 +610,7 @@ Deno.serve(async (req) => {
       .upsert(upsertRowsWithOrder, { onConflict: "slot_id,putnik_id" });
 
     if (upsertError) {
+      console.error(`[v3-compute-eta] upsert_error: ${upsertError.message}`);
       return json(200, { ok: false, reason: "upsert_error", warning: upsertError.message });
     }
 

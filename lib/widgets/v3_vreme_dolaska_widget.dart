@@ -45,7 +45,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   static const String _colVozacId = 'vozac_id';
   static const String _colEtaSeconds = 'eta_seconds';
-  static const String _colComputedAt = 'computed_at';
 
   // Prevodi za ETA widget (SR/EN/RU/DE).
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('vremeDolaskaWidget');
@@ -55,38 +54,9 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     return _t[key]?[code] ?? _t[key]?['sr'] ?? key;
   }
 
-  /// Pronalazi ETA red za dati termin+putnik skeniranjem cache-a po vrednostima.
-  /// Neophodno jer je cache ključ za v3_eta_results sada slot_id:putnik_id
-  /// (kada je slot_id dostupan), a ne više uvek termin_id:putnik_id.
-  ///
-  /// Ako cache sadrži više redova za isti termin_id+putnik_id (npr. stari
-  /// fallback ključ termin_id:putnik_id nije obrisan realtime delete-om
-  /// zbog propuštenog eventa, dok postoji i novi slot:slotId:putnik_id),
-  /// UVEK vraćamo red sa najnovijim computed_at — nikad prvi po redosledu
-  /// iteracije Mape, koji je nedeterministički i može biti zastareo.
+  /// Direktni lookup — cache ključ je uvek termin_id:putnik_id.
   Map<String, dynamic>? _findEtaRow(String terminId, String putnikId) {
-    Map<String, dynamic>? best;
-    DateTime? bestComputedAt;
-
-    for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
-      if (row['termin_id']?.toString() != terminId || row['putnik_id']?.toString() != putnikId) {
-        continue;
-      }
-
-      final computedAt = _parseComputedAt(row[_colComputedAt]);
-      if (best == null || (computedAt != null && (bestComputedAt == null || computedAt.isAfter(bestComputedAt)))) {
-        best = row;
-        bestComputedAt = computedAt;
-      }
-    }
-
-    return best;
-  }
-
-  DateTime? _parseComputedAt(dynamic value) {
-    if (value is DateTime) return value;
-    if (value is String) return V3BelgradeTime.parseTs(value);
-    return null;
+    return V3MasterRealtimeManager.instance.etaResultsCache['$terminId:$putnikId'];
   }
 
   /// Tracking prozor za prikaz ETA: T-15 .. T+40 (isto kao vozački tracking).
@@ -94,21 +64,6 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     final windowStart = departure.subtract(v3AutoStartLeadTime);
     final windowEnd = departure.add(v3TrackingMaxDuration);
     return !now.isBefore(windowStart) && now.isBefore(windowEnd);
-  }
-
-  /// Poslednja poznata ETA — ne zastareva po computed_at starosti.
-  /// Ostaje aktivna dok vozač ne pošalje novu, ili do kraja tracking prozora /
-  /// pokupljen/otkazan (filtrira se u [_findNextPutnikRide]).
-  ({int? etaSeconds, String? vozacId, String? terminId}) _readEtaState(Map<String, dynamic>? row) {
-    if (row == null) {
-      return (etaSeconds: null, vozacId: null, terminId: null);
-    }
-
-    final eta = (row[_colEtaSeconds] as num?)?.toInt();
-    final vozacId = row[_colVozacId]?.toString();
-    final terminId = row['termin_id']?.toString();
-
-    return (etaSeconds: eta, vozacId: vozacId, terminId: terminId);
   }
 
   int _buildEtaMinutes(int etaSeconds) {
@@ -345,22 +300,19 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
           final nextTerminId = nextRide?.row['id']?.toString();
           final assignedVozacId = nextRide?.vozacId;
 
+          // Jednostavno: ETA red za ovu vožnju + tracking prozor T-15..T+40.
+          // Sakrij samo ako su i dodela i ETA vozač poznati i razlikuju se.
           final row = nextTerminId != null ? _findEtaRow(nextTerminId, putnikId) : null;
-          final etaState = _readEtaState(row);
-          final eta = etaState.etaSeconds;
-          final etaVozacId = etaState.vozacId;
-          final etaTerminId = etaState.terminId;
+          final eta = row != null ? (row[_colEtaSeconds] as num?)?.toInt() : null;
+          final etaVozacId = row?[_colVozacId]?.toString();
 
-          // Poslednja ETA ostaje aktivna u tracking prozoru (T-15..T+40) dok
-          // vozač ne pošalje novu — ne nestaje posle 130s ako je app ugašen.
           final inTrackingWindow = nextRide != null && _isInEtaTrackingWindow(nextRide.departure, now);
-          final hasActiveEta = eta != null &&
-              inTrackingWindow &&
-              etaTerminId != null &&
-              nextTerminId != null &&
-              etaTerminId == nextTerminId &&
-              // Ako znamo dodele, ne prikazuj ETA od drugog vozača.
-              (assignedVozacId == null || etaVozacId == null || assignedVozacId == etaVozacId);
+          final vozacMismatch = assignedVozacId != null &&
+              etaVozacId != null &&
+              assignedVozacId.isNotEmpty &&
+              etaVozacId.isNotEmpty &&
+              assignedVozacId != etaVozacId;
+          final hasActiveEta = eta != null && inTrackingWindow && !vozacMismatch;
           final minutes = hasActiveEta ? _buildEtaMinutes(eta) : null;
           final nextRideLabel =
               nextRide == null ? _tr('nemaZakazaneVoznje') : _formatNextRide(nextRide.departure, nextRide.grad);

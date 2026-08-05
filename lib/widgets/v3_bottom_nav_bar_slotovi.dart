@@ -249,7 +249,7 @@ class _PolazakRow extends StatelessWidget {
                   final bool selected = selectedGrad == grad && selectedVreme == vreme;
                   final selectedFillColor = _selectedFillColor();
                   final selectedPrimaryColor = _selectedStrokeAndTextColor();
-                  // Boja vozaca za termin (iz raspored cache-a)
+                  // Boja vozaca za slot (iz raspored cache-a)
                   final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
                   final vozacBoje = showVozacBoja ? getVozacColors?.call(grad, vreme) : null;
                   final hasVozac = vozacBorderColor != null || (vozacBoje != null && vozacBoje.isNotEmpty);

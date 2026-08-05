@@ -1155,29 +1155,29 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'zh': '跟踪进行中：%GRAD% %VREME%',
     },
     'trackingPrikaziTermin': {
-      'sr': 'Prikaži aktivni termin',
-      'en': 'Show active trip',
-      'ru': 'Показать активный рейс',
-      'de': 'Aktiven Termin anzeigen',
+      'sr': 'Prikaži aktivni slot',
+      'en': 'Show active slot',
+      'ru': 'Показать активный слот',
+      'de': 'Aktiven Slot anzeigen',
       'zh': '显示进行中的班次',
     },
     'mapaSamoZaAktivniTermin': {
-      'sr': 'Mapa je za aktivni tracking termin (%GRAD% %VREME%). Prebaci se na taj termin ili dodirni baner.',
-      'en': 'Map is for the active tracking trip (%GRAD% %VREME%). Switch to that trip or tap the banner.',
-      'ru': 'Карта для активного трекинга (%GRAD% %VREME%). Перейдите на этот рейс или нажмите баннер.',
+      'sr': 'Mapa je za aktivni tracking slot (%GRAD% %VREME%). Prebaci se na taj slot ili dodirni baner.',
+      'en': 'Map is for the active tracking slot (%GRAD% %VREME%). Switch to that slot or tap the banner.',
+      'ru': 'Карта для активного слота (%GRAD% %VREME%). Перейдите на этот слот или нажмите баннер.',
       'de':
-          'Karte gilt für den aktiven Tracking-Termin (%GRAD% %VREME%). Wechseln Sie dorthin oder tippen Sie auf das Banner.',
+          'Karte gilt für den aktiven Tracking-Slot (%GRAD% %VREME%). Wechseln Sie dorthin oder tippen Sie auf das Banner.',
       'zh': '地图仅适用于进行中的跟踪班次（%GRAD% %VREME%）。请切换到该班次或点横幅。',
     },
     'mapaDugme': {'sr': 'MAPA', 'en': 'MAP', 'ru': 'КАРТА', 'de': 'KARTE', 'zh': '地图'},
     'rutaBiceDostupna': {
-      'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za termin.',
+      'sr': 'Ruta će biti dostupna kada se tracking automatski aktivira. Čekaj push obaveštenje za slot.',
       'en':
-          'The route will be available once tracking activates automatically. Wait for the push notification for the appointment.',
-      'ru': 'Маршрут будет доступен, когда отслеживание активируется автоматически. Ждите push-уведомление о времени.',
+          'The route will be available once tracking activates automatically. Wait for the push notification for the slot.',
+      'ru': 'Маршрут будет доступен, когда отслеживание активируется автоматически. Ждите push-уведомление о слоте.',
       'de':
-          'Die Route ist verfügbar, sobald das Tracking automatisch aktiviert wird. Warten Sie auf die Push-Benachrichtigung für den Termin.',
-      'zh': '跟踪自动启动后即可查看路线。请等待预约的推送通知。',
+          'Die Route ist verfügbar, sobald das Tracking automatisch aktiviert wird. Warten Sie auf die Push-Benachrichtigung für den Slot.',
+      'zh': '跟踪自动启动后即可查看路线。请等待班次推送通知。',
     },
     'ciljGrad': {
       'sr': 'Cilj %GRAD%',

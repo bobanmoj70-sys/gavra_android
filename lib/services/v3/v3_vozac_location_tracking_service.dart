@@ -343,7 +343,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     debugPrint('$_tag stop()');
     try {
       _startInProgress = false;
-      final vozacIdToClean = _vozacId;
       _vozacId = '';
       _datumIso = '';
       _grad = '';
@@ -360,13 +359,8 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       await v3ClearBgTrackingSession();
       await _stopBg();
 
-      if (vozacIdToClean.isNotEmpty) {
-        try {
-          await v3ClearEtaForVozac(client: Supabase.instance.client, vozacId: vozacIdToClean);
-        } catch (e) {
-          debugPrint('$_tag clearEta greška: $e');
-        }
-      }
+      // ETA se NE briše ovde. Poslednji red ostaje putniku do:
+      // T+40 prozora / pokupljen / otkazan / retention 55min (sve u edge-u).
     } finally {
       _stopInProgress = false;
     }
@@ -429,9 +423,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       logTag: _tag,
     );
     _lastTickAt = DateTime.now();
-    _optimizedPutnikIds
-      ..clear()
-      ..addAll(result.order);
+    // Prazan odgovor (OSRM greška / no location) ne briše poslednji dobar redosled.
+    if (result.order.isNotEmpty) {
+      _optimizedPutnikIds
+        ..clear()
+        ..addAll(result.order);
+    }
     if (!_etaTickController.isClosed) {
       _etaTickController.add(result);
     }
