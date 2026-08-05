@@ -68,40 +68,7 @@ class V3GorivoService {
     );
   }
 
-  /// Ažurira trenutno stanje pumpe u bazi
-  static Future<bool> updateStanje(String id, double novoStanje, double noviBrojac) async {
-    try {
-      final row = await _repo.updateByIdReturning(id, {
-        'trenutno_stanje_litri': novoStanje,
-        'brojac_pistolj_litri': noviBrojac,
-      });
-      _upsertCache(row);
-      return true;
-    } catch (e) {
-      debugPrint('[V3GorivoService] updateStanje error: $e');
-      return false;
-    }
-  }
-
-  /// Ažurira trenutni nivo rezervoara u bazi
-  static Future<bool> updateRezervoar(String id, double novoLitara) async {
-    try {
-      final row = await _repo.updateByIdReturning(id, {
-        'trenutno_stanje_litri': novoLitara,
-      });
-      _upsertCache(row);
-      return true;
-    } catch (e) {
-      debugPrint('[V3GorivoService] updateRezervoar failed for id $id: $e');
-      return false;
-    }
-  }
-
-  /// Dopuna cisterne: litraža + opciono povećanje duga + opciono nova cena/L.
-  ///
-  /// [dugDodatoRsd] — koliko se DODAJE na postojeći ukupan dug (npr. litri × cena).
-  /// null/0 = dug se ne dira (npr. cena još nije poznata).
-  /// [cenaPoLitru] — ako je > 0, čuva se kao referentna cena za sledeće dopune.
+  /// Dopuna: trenutno += litri, opciono dug += iznos, opciono nova cena/L.
   static Future<bool> dopuniRezervoar({
     required String id,
     required double novoLitara,
@@ -127,17 +94,6 @@ class V3GorivoService {
       debugPrint('[V3GorivoService] dopuniRezervoar failed for id $id: $e');
       return false;
     }
-  }
-
-  /// Povećava dug za gorivo (npr. kad se kasnije sazna tačan iznos nabavke).
-  static Future<bool> povecajDug(double iznos) async {
-    if (iznos <= 0) return true;
-    final stanje = getStanjeSync();
-    if (stanje == null || stanje.id.isEmpty) {
-      debugPrint('[V3GorivoService] povecajDug: nema reda za gorivo');
-      return false;
-    }
-    return _setDugIznos(stanje.id, stanje.dugIznos + iznos);
   }
 
   /// Umanjuje dug za gorivo pri uplati / trošku iz Finansija (kao kredit.uplati).

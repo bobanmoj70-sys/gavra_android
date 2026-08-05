@@ -229,34 +229,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                           }
 
                                           final novoStanje = trenutno + dodato;
-                                          if (novoStanje > kapacitet) {
-                                            final potvrda = await showDialog<bool>(
-                                              context: context,
-                                              builder: (_) => AlertDialog(
-                                                backgroundColor: const Color(0xFF1D1D1D),
-                                                title: Text(_GorTr.tr('prekoracenjeKapaciteta'),
-                                                    style: const TextStyle(color: Colors.white)),
-                                                content: Text(
-                                                  _GorTr.tr('novoStanjeQPremasujeKapacitet')
-                                                      .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
-                                                      .replaceAll('%KAP%', V3FormatUtils.formatGorivo(kapacitet)),
-                                                  style: const TextStyle(color: Colors.white70),
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () => Navigator.pop(context, false),
-                                                    child: Text(_GorTr.tr('ne')),
-                                                  ),
-                                                  ElevatedButton(
-                                                    onPressed: () => Navigator.pop(context, true),
-                                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                                                    child: Text(_GorTr.tr('da')),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                            if (potvrda != true) return;
-                                          }
 
                                           setState(() => _isDodavanjeGoriva = true);
                                           final success = await V3GorivoService.dopuniRezervoar(
