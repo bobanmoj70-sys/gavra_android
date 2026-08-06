@@ -1579,9 +1579,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return redniCounter;
     }).toList(growable: false);
 
-    final showTrackingBanner = V3VozacLocationTrackingService.instance.isRunning && !_isViewingTrackedTermin;
-    final tTrack = V3VozacLocationTrackingService.instance;
-
     return Column(
       children: [
         const V3UpdateBanner(),
@@ -1606,59 +1603,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                     const Padding(
                       padding: EdgeInsets.fromLTRB(12, 6, 12, 0),
                       child: V3NeradniDaniBanner(),
-                    ),
-                  if (showTrackingBanner)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _jumpToTrackingTermin,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.75)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.gps_fixed, color: Colors.greenAccent, size: 20),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _tr('trackingAktivanZaTermin')
-                                            .replaceAll('%GRAD%', tTrack.activeGrad)
-                                            .replaceAll('%VREME%', tTrack.activeVreme),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _tr('trackingPrikaziTermin'),
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.85),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right, color: Colors.white70),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                     ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(12, 6, 12, 0),

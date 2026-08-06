@@ -238,6 +238,16 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _setRunning(true);
 
       debugPrint('$_tag restore OK $g $v bgRunning=$bgRunning fg=$_isAppInForeground');
+      // Jednom po T-15..T+40 prozoru — RPC je no-op ako je već poslato.
+      await activateSlotWithRetry(
+        client: Supabase.instance.client,
+        vozacId: id,
+        datumIso: datum,
+        grad: g,
+        vreme: v,
+        logTag: _tag,
+        log: debugPrint,
+      );
       await _syncEngines(immediateTick: true);
       return true;
     } catch (e) {
@@ -272,6 +282,16 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     if (_isSameSession(vozacId: id, datumIso: datum, grad: g, vreme: v)) {
       debugPrint('$_tag start: ista sesija već radi');
+      // Garantuj push jednom po prozoru ako prvi put nije prošao.
+      await activateSlotWithRetry(
+        client: Supabase.instance.client,
+        vozacId: id,
+        datumIso: datum,
+        grad: g,
+        vreme: v,
+        logTag: _tag,
+        log: debugPrint,
+      );
       await _syncEngines(immediateTick: true);
       return V3TrackingStartResult.alreadyRunning;
     }
