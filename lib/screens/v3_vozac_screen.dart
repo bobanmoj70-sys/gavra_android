@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -59,7 +58,7 @@ class V3VozacScreen extends StatefulWidget {
   State<V3VozacScreen> createState() => _V3VozacScreenState();
 }
 
-class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserver {
   // Prevodi za vozački ekran (SR/EN/RU/DE).
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('vozacScreen');
 
@@ -416,11 +415,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
   }
 
-  late final AnimationController _pulseController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1600),
-  )..repeat();
-
   @override
   void initState() {
     super.initState();
@@ -460,7 +454,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _runningSub = null;
     _autoStartTimer?.cancel();
     _autoStartTimer = null;
-    _pulseController.dispose();
     super.dispose();
   }
 
@@ -1393,10 +1386,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                                 child: V3VozacLocationTrackingService.instance.isRunning
                                     ? GestureDetector(
                                         onTap: _isViewingTrackedTermin ? null : _jumpToTrackingTermin,
-                                        child: _buildPulsingAktivnoBtn(
+                                        child: _buildAppBarBtn(
                                           context: context,
                                           label: _tr('statusAktivno'),
+                                          color: Colors.greenAccent,
                                           height: appBarButtonHeight,
+                                          onTap: null,
                                         ),
                                       )
                                     : _buildAppBarBtn(
@@ -1724,71 +1719,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           ),
         ),
       ),
-    );
-  }
-
-  // ── Pulsirajuće "Aktivno" dugme sa zelenim gradient prelivom (tracking radi) ──
-  Widget _buildPulsingAktivnoBtn({
-    required BuildContext context,
-    required String label,
-    required double height,
-  }) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final t = _pulseController.value;
-        final sweep = t * 3.0 - 1.0;
-        final pulse = 0.5 + 0.5 * math.sin(t * 2 * math.pi);
-        final glow = 0.35 + 0.25 * pulse;
-
-        return Transform.scale(
-          scale: 1.0 + 0.03 * pulse,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.greenAccent.withValues(alpha: glow * 0.6),
-                  blurRadius: 10 + 6 * pulse,
-                  spreadRadius: 1 + 1.5 * pulse,
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                height: height,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.7)),
-                  gradient: LinearGradient(
-                    begin: Alignment(sweep - 0.6, 0),
-                    end: Alignment(sweep + 0.6, 0),
-                    colors: [
-                      Colors.green.withValues(alpha: 0.25),
-                      Colors.greenAccent.withValues(alpha: 0.55),
-                      Colors.green.withValues(alpha: 0.25),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    label,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.greenAccent.shade100,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(color: Colors.green.withValues(alpha: glow), blurRadius: 4),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
