@@ -107,10 +107,7 @@ android {
             // record Startup/Baseline Profiles without exposing debug info.
             isDebuggable = false
             isProfileable = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            proguardFiles("proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
     }
