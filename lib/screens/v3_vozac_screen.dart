@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../globals.dart';
@@ -38,7 +37,6 @@ import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
 import '../widgets/v3_info_banner.dart';
-import '../widgets/v3_live_clock_text.dart';
 import '../widgets/v3_neradni_dani_banner.dart';
 import '../widgets/v3_putnik_card.dart';
 import '../widgets/v3_update_banner.dart';
@@ -1267,14 +1265,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vozac = V3VozacService.currentVozac;
 
     if (_isLoading) {
-      return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: V3ContainerUtils.backgroundContainer(
-            gradient: V3ThemeManager().currentGradient,
-            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-          ),
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: V3ContainerUtils.backgroundContainer(
+          gradient: V3ThemeManager().currentGradient,
+          child: const Center(child: CircularProgressIndicator(color: Colors.white)),
         ),
       );
     }
@@ -1342,222 +1337,228 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           });
         }
 
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle.light,
-          child: V3ContainerUtils.backgroundContainer(
-            gradient: V3ThemeManager().currentGradient,
-            child: Scaffold(
+        return V3ContainerUtils.backgroundContainer(
+          gradient: V3ThemeManager().currentGradient,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
               backgroundColor: Colors.transparent,
-              appBar: PreferredSize(
-                preferredSize: Size.fromHeight(appBarHeight),
-                child: V3ContainerUtils.styledContainer(
-                  backgroundColor: Theme.of(context).glassContainer,
-                  border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(25),
-                    bottomRight: Radius.circular(25),
-                  ),
-                  padding: EdgeInsets.zero,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            aktivnaSedmica,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            textAlign: TextAlign.center,
+              elevation: 0,
+              toolbarHeight: appBarHeight,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(25),
+                  bottomRight: Radius.circular(25),
+                ),
+              ),
+              flexibleSpace: V3ContainerUtils.styledContainer(
+                backgroundColor: Theme.of(context).glassContainer,
+                border: Border.all(color: Theme.of(context).glassBorder, width: 1.5),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(25),
+                  bottomRight: Radius.circular(25),
+                ),
+                padding: EdgeInsets.zero,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          aktivnaSedmica,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
-                          const SizedBox(height: 3),
-                          // ── Red 1: Datum | Dan ──
-                          _buildDigitalDateDisplay(context, vozac),
-                          const SizedBox(height: 6),
-                          // ── Red 2: Kompaktni gumbi ──
-                          Row(
-                            children: [
-                              // STATUS: Tracking (samo auto-start, nema ručnog dugmeta)
-                              Expanded(
-                                flex: 2,
-                                child: V3VozacLocationTrackingService.instance.isRunning
-                                    ? GestureDetector(
-                                        onTap: _isViewingTrackedTermin ? null : _jumpToTrackingTermin,
-                                        child: _buildAppBarBtn(
-                                          context: context,
-                                          label: _tr('statusAktivno'),
-                                          color: Colors.greenAccent,
-                                          height: appBarButtonHeight,
-                                          onTap: null,
-                                        ),
-                                      )
-                                    : _buildAppBarBtn(
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 3),
+                        // ── Red 1: Datum | Dan ──
+                        _buildDigitalDateDisplay(context, vozac),
+                        const SizedBox(height: 6),
+                        // ── Red 2: Kompaktni gumbi ──
+                        Row(
+                          children: [
+                            // STATUS: Tracking (samo auto-start, nema ručnog dugmeta)
+                            Expanded(
+                              flex: 2,
+                              child: V3VozacLocationTrackingService.instance.isRunning
+                                  ? GestureDetector(
+                                      onTap: _isViewingTrackedTermin ? null : _jumpToTrackingTermin,
+                                      child: _buildAppBarBtn(
                                         context: context,
-                                        label: _tr('statusCeka'),
-                                        color: Colors.grey,
+                                        label: _tr('statusAktivno'),
+                                        color: Colors.greenAccent,
                                         height: appBarButtonHeight,
                                         onTap: null,
                                       ),
-                              ),
-                              const SizedBox(width: 4),
-                              // MAPA — dostupna kada je tracking aktivan
-                              Expanded(
-                                flex: 2,
-                                child: _buildAppBarBtn(
-                                  context: context,
-                                  label: _tr('mapaDugme'),
-                                  color: (!_isNavigating)
-                                      ? Colors.grey // Inaktivno dok tracking nije aktivan
-                                      : Colors.blue,
-                                  height: appBarButtonHeight,
-                                  onTap: () {
-                                    if (!_isNavigating) {
-                                      V3AppSnackBar.warning(context, _tr('rutaBiceDostupna'));
-                                      return;
-                                    }
-                                    _handleOpenMap();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              // Dan picker
-                              Expanded(
-                                flex: 2,
-                                child: _buildDanPickerBtn(context, height: appBarButtonHeight),
-                              ),
-                              const SizedBox(width: 4),
-                              // ⚙️ Popup meni — tema + logout
-                              PopupMenuButton<String>(
-                                onSelected: (val) async {
-                                  if (val == 'tema') {
-                                    await V3ThemeManager().nextTheme();
-                                    V3StateUtils.safeSetState(this, () {});
-                                    if (!mounted) return;
-                                    V3AppSnackBar.info(context, _tr('temaPromenjena'));
-                                  } else if (val == 'jezik') {
-                                    const codes = ['sr', 'en', 'ru', 'de', 'zh'];
-                                    final current = V3LocaleManager().currentLocale.languageCode;
-                                    final idx = codes.indexOf(current);
-                                    final next = codes[(idx + 1) % codes.length];
-                                    await V3LocaleManager().changeLocale(Locale(next));
-                                    V3StateUtils.safeSetState(this, () {});
-                                    if (!mounted) return;
-                                    V3AppSnackBar.info(context, _tr('jezikPromenjen'));
-                                  } else if (val == 'promeni_pin') {
-                                    final vozac = _efektivniVozac;
-                                    final vozacAuthId = (vozac?.id?.toString() ?? '').trim();
-                                    if (vozacAuthId.isEmpty) {
-                                      V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
-                                      return;
-                                    }
-                                    await V3DialogHelper.showDialogBuilder<void>(
+                                    )
+                                  : _buildAppBarBtn(
                                       context: context,
-                                      builder: (ctx) => _ChangePinDialog(v3AuthId: vozacAuthId),
-                                    );
-                                  } else if (val == 'logout') {
-                                    _logout();
+                                      label: _tr('statusCeka'),
+                                      color: Colors.grey,
+                                      height: appBarButtonHeight,
+                                      onTap: null,
+                                    ),
+                            ),
+                            const SizedBox(width: 4),
+                            // MAPA — dostupna kada je tracking aktivan
+                            Expanded(
+                              flex: 2,
+                              child: _buildAppBarBtn(
+                                context: context,
+                                label: _tr('mapaDugme'),
+                                color: (!_isNavigating)
+                                    ? Colors.grey // Inaktivno dok tracking nije aktivan
+                                    : Colors.blue,
+                                height: appBarButtonHeight,
+                                onTap: () {
+                                  if (!_isNavigating) {
+                                    V3AppSnackBar.warning(context, _tr('rutaBiceDostupna'));
+                                    return;
                                   }
+                                  _handleOpenMap();
                                 },
-                                itemBuilder: (_) => [
-                                  PopupMenuItem(
-                                    value: 'tema',
-                                    child: Row(children: [
-                                      const Icon(Icons.palette, color: Colors.purpleAccent),
-                                      const SizedBox(width: 8),
-                                      Text(_tr('promeniTemu')),
-                                    ]),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'jezik',
-                                    child: Row(children: [
-                                      const Icon(Icons.language, color: Colors.lightBlueAccent),
-                                      const SizedBox(width: 8),
-                                      Text(_tr('promeniJezik')),
-                                    ]),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'promeni_pin',
-                                    child: Row(children: [
-                                      const Icon(Icons.lock_reset_outlined, color: Colors.orangeAccent),
-                                      const SizedBox(width: 8),
-                                      Text(_tr('promeniPin')),
-                                    ]),
-                                  ),
-                                  const PopupMenuDivider(),
-                                  PopupMenuItem(
-                                    value: 'logout',
-                                    child: Row(children: [
-                                      const Icon(Icons.logout, color: Colors.red),
-                                      const SizedBox(width: 8),
-                                      Text(_tr('logout')),
-                                    ]),
-                                  ),
-                                ],
-                                padding: EdgeInsets.zero,
-                                child: V3ContainerUtils.iconContainer(
-                                  width: V3ContainerUtils.responsiveHeight(context, 30),
-                                  height: V3ContainerUtils.responsiveHeight(context, 30),
-                                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                                  borderRadiusGeometry: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-                                  alignment: Alignment.center,
-                                  child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
-                                ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                            const SizedBox(width: 4),
+                            // Dan picker
+                            Expanded(
+                              flex: 2,
+                              child: _buildDanPickerBtn(context, height: appBarButtonHeight),
+                            ),
+                            const SizedBox(width: 4),
+                            // ⚙️ Popup meni — tema + logout
+                            PopupMenuButton<String>(
+                              onSelected: (val) async {
+                                if (val == 'tema') {
+                                  await V3ThemeManager().nextTheme();
+                                  V3StateUtils.safeSetState(this, () {});
+                                  if (!mounted) return;
+                                  V3AppSnackBar.info(context, _tr('temaPromenjena'));
+                                } else if (val == 'jezik') {
+                                  const codes = ['sr', 'en', 'ru', 'de', 'zh'];
+                                  final current = V3LocaleManager().currentLocale.languageCode;
+                                  final idx = codes.indexOf(current);
+                                  final next = codes[(idx + 1) % codes.length];
+                                  await V3LocaleManager().changeLocale(Locale(next));
+                                  V3StateUtils.safeSetState(this, () {});
+                                  if (!mounted) return;
+                                  V3AppSnackBar.info(context, _tr('jezikPromenjen'));
+                                } else if (val == 'promeni_pin') {
+                                  final vozac = _efektivniVozac;
+                                  final vozacAuthId = (vozac?.id?.toString() ?? '').trim();
+                                  if (vozacAuthId.isEmpty) {
+                                    V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+                                    return;
+                                  }
+                                  await V3DialogHelper.showDialogBuilder<void>(
+                                    context: context,
+                                    builder: (ctx) => _ChangePinDialog(v3AuthId: vozacAuthId),
+                                  );
+                                } else if (val == 'logout') {
+                                  _logout();
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                PopupMenuItem(
+                                  value: 'tema',
+                                  child: Row(children: [
+                                    const Icon(Icons.palette, color: Colors.purpleAccent),
+                                    const SizedBox(width: 8),
+                                    Text(_tr('promeniTemu')),
+                                  ]),
+                                ),
+                                PopupMenuItem(
+                                  value: 'jezik',
+                                  child: Row(children: [
+                                    const Icon(Icons.language, color: Colors.lightBlueAccent),
+                                    const SizedBox(width: 8),
+                                    Text(_tr('promeniJezik')),
+                                  ]),
+                                ),
+                                PopupMenuItem(
+                                  value: 'promeni_pin',
+                                  child: Row(children: [
+                                    const Icon(Icons.lock_reset_outlined, color: Colors.orangeAccent),
+                                    const SizedBox(width: 8),
+                                    Text(_tr('promeniPin')),
+                                  ]),
+                                ),
+                                const PopupMenuDivider(),
+                                PopupMenuItem(
+                                  value: 'logout',
+                                  child: Row(children: [
+                                    const Icon(Icons.logout, color: Colors.red),
+                                    const SizedBox(width: 8),
+                                    Text(_tr('logout')),
+                                  ]),
+                                ),
+                              ],
+                              padding: EdgeInsets.zero,
+                              child: V3ContainerUtils.iconContainer(
+                                width: V3ContainerUtils.responsiveHeight(context, 30),
+                                height: V3ContainerUtils.responsiveHeight(context, 30),
+                                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                borderRadiusGeometry: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.more_vert, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-              bottomNavigationBar: ValueListenableBuilder<String>(
-                valueListenable: navBarTypeNotifier,
-                builder: (context, navType, _) {
-                  final neradanRazlog = _neradanRazlog;
-                  if (neradanRazlog != null) {
-                    return SafeArea(
-                      child: Container(
-                        margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.20),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
-                        ),
-                        child: Text(
-                          _tr('slotoviZakljucaniZaRazlog')
-                              .replaceAll('%DAN%', V3DanHelper.trFullName(_selectedDay))
-                              .replaceAll('%RAZLOG%', neradanRazlog),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-
-                  int? getKapacitet(String grad, String vreme) {
-                    final datum = V3BelgradeTime.parseDatumOrToday(_selectedDatumIso);
-                    return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
-                  }
-
-                  return V3BottomNavBarSlotovi(
-                    selectedGrad: _selectedGrad,
-                    selectedVreme: _selectedVreme,
-                    onPolazakChanged: _onPolazakChanged,
-                    getPutnikCount: _getPutnikCount,
-                    getKapacitet: getKapacitet,
-                    bcVremena: bcVremenaToShow,
-                    vsVremena: vsVremenaToShow,
-                  );
-                },
-              ),
-              body: _buildBody(),
             ),
+            bottomNavigationBar: ValueListenableBuilder<String>(
+              valueListenable: navBarTypeNotifier,
+              builder: (context, navType, _) {
+                final neradanRazlog = _neradanRazlog;
+                if (neradanRazlog != null) {
+                  return SafeArea(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.20),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.7)),
+                      ),
+                      child: Text(
+                        _tr('slotoviZakljucaniZaRazlog')
+                            .replaceAll('%DAN%', V3DanHelper.trFullName(_selectedDay))
+                            .replaceAll('%RAZLOG%', neradanRazlog),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+
+                int? getKapacitet(String grad, String vreme) {
+                  final datum = V3BelgradeTime.parseDatumOrToday(_selectedDatumIso);
+                  return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
+                }
+
+                return V3BottomNavBarSlotovi(
+                  selectedGrad: _selectedGrad,
+                  selectedVreme: _selectedVreme,
+                  onPolazakChanged: _onPolazakChanged,
+                  getPutnikCount: _getPutnikCount,
+                  getKapacitet: getKapacitet,
+                  bcVremena: bcVremenaToShow,
+                  vsVremena: vsVremenaToShow,
+                );
+              },
+            ),
+            body: _buildBody(),
           ),
         );
       },
@@ -1657,33 +1658,56 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final dayName = V3DanHelper.trFullName(_selectedDay).toUpperCase();
     final dateStr = DateFormat('dd.MM.yy').format(selectedDate);
     final vozacBoja = _getVozacBojaRaw(vozac);
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          dateStr,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: Theme.of(context).colorScheme.onPrimary,
-            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              dateStr,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.onPrimary,
+                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+              ),
+            ),
           ),
         ),
-        Text(
-          dayName,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: vozacBoja,
-            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+        Expanded(
+          child: Align(
+            alignment: Alignment.center,
+            child: Text(
+              dayName,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: vozacBoja,
+                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+              ),
+            ),
           ),
         ),
-        V3LiveClockText(
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: Theme.of(context).colorScheme.onPrimary,
-            shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: StreamBuilder<int>(
+              stream: Stream<int>.periodic(const Duration(seconds: 1), (tick) => tick),
+              initialData: 0,
+              builder: (context, snapshot) {
+                final timeStr = DateFormat('HH:mm:ss').format(V3BelgradeTime.now());
+                return Text(
+                  timeStr,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ],

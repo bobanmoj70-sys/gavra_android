@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../globals.dart';
 import '../l10n/app_translations.dart';
@@ -1112,7 +1113,29 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
   Widget _buildScaffold(BuildContext context) {
     final vozac = V3VozacService.currentVozac;
     final ime = vozac?.imePrezime ?? 'Admin';
+    final topColor = _themeManager.currentGradient.colors.first;
+    final useDarkIcons = topColor.computeLuminance() > 0.5;
+
+    final systemOverlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: useDarkIcons ? Brightness.dark : Brightness.light,
+      statusBarBrightness: useDarkIcons ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    );
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
+      appBar: PreferredSize(
+        preferredSize: Size.zero,
+        child: AppBar(
+          toolbarHeight: 0,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          systemOverlayStyle: systemOverlayStyle,
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(gradient: _themeManager.currentGradient),
         child: SafeArea(

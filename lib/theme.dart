@@ -381,7 +381,11 @@ final ThemeData tripleBlueFashionTheme = ThemeData(
     elevation: 0,
     backgroundColor: const Color(0xFF021B79), // Originalna tamna Electric Blue boja
     foregroundColor: Colors.white,
-    systemOverlayStyle: SystemUiOverlayStyle.light,
+    systemOverlayStyle: const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
     titleTextStyle: SerbianTextStyle.create(
       fontSize: 20,
       fontWeight: FontWeight.w600,
@@ -405,7 +409,11 @@ final ThemeData darkSteelGreyTheme = ThemeData(
     elevation: 0,
     backgroundColor: const Color(0xFF2C2C2C), // Tamno siva
     foregroundColor: Colors.white,
-    systemOverlayStyle: SystemUiOverlayStyle.light,
+    systemOverlayStyle: const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
     titleTextStyle: SerbianTextStyle.create(
       fontSize: 20,
       fontWeight: FontWeight.w600,
@@ -429,7 +437,11 @@ final ThemeData passionateRoseTheme = ThemeData(
     elevation: 0,
     backgroundColor: const Color(0xFF8B0000), // Dark Red
     foregroundColor: Colors.white,
-    systemOverlayStyle: SystemUiOverlayStyle.light,
+    systemOverlayStyle: const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
     titleTextStyle: SerbianTextStyle.create(
       fontSize: 20,
       fontWeight: FontWeight.w600,
@@ -453,7 +465,11 @@ final ThemeData darkPinkTheme = ThemeData(
     elevation: 0,
     backgroundColor: const Color(0xFF8B2F6B), // Deep pink
     foregroundColor: Colors.white,
-    systemOverlayStyle: SystemUiOverlayStyle.light,
+    systemOverlayStyle: const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+    ),
     titleTextStyle: SerbianTextStyle.create(
       fontSize: 20,
       fontWeight: FontWeight.w600,

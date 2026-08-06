@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../globals.dart';
 import '../l10n/app_translations.dart';
@@ -949,6 +950,21 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
           gradient: V3ThemeManager().currentGradient,
           child: Scaffold(
             backgroundColor: Colors.transparent,
+            appBar: PreferredSize(
+              preferredSize: Size.zero,
+              child: AppBar(
+                toolbarHeight: 0,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                systemOverlayStyle: const SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.light,
+                  statusBarBrightness: Brightness.dark,
+                  systemNavigationBarColor: Colors.transparent,
+                  systemNavigationBarIconBrightness: Brightness.light,
+                ),
+              ),
+            ),
             body: SafeArea(
               child: Stack(
                 children: [

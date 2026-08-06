@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../config/gavra_branding.dart';
@@ -530,6 +531,21 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         return Scaffold(
           backgroundColor: Colors.transparent,
           resizeToAvoidBottomInset: true,
+          appBar: PreferredSize(
+            preferredSize: Size.zero,
+            child: AppBar(
+              toolbarHeight: 0,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              systemOverlayStyle: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
+                systemNavigationBarColor: Colors.transparent,
+                systemNavigationBarIconBrightness: Brightness.light,
+              ),
+            ),
+          ),
           body: V3ContainerUtils.backgroundContainer(
             gradient: V3ThemeManager().currentGradient,
             child: SafeArea(

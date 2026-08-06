@@ -321,6 +321,7 @@ void _installGlobalErrorHandlers() {
 void main() async {
   debugPrint('🚀 [main] 1. START');
   WidgetsFlutterBinding.ensureInitialized();
+
   _installGlobalErrorHandlers();
   debugPrint('🚀 [main] 2. WidgetsFlutterBinding DONE');
   initDanHelperGlobals();
@@ -1385,9 +1386,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   _resolveSupportedLocale(locale, supportedLocales) ?? V3LocaleManager.supportedLocales.first,
               locale: locale,
               theme: themeData,
-              builder: (context, child) => SafeArea(
-                minimum: MediaQuery.of(context).padding,
-                child: V3PazarListener(child: child ?? const SizedBox.shrink()),
+              builder: (context, child) => V3PazarListener(
+                child: child ?? const SizedBox.shrink(),
               ),
               home: const V3WelcomeScreen(),
             );
