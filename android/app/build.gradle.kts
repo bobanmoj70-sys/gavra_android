@@ -99,8 +99,14 @@ android {
 
     buildTypes {
         release {
+            // R8: code shrinking + obfuscation + optimization.
             isMinifyEnabled = true
+            // Resource shrinking (works together with R8 code shrinking).
             isShrinkResources = true
+            // Release build must not be debuggable; keep profileable so we can
+            // record Startup/Baseline Profiles without exposing debug info.
+            isDebuggable = false
+            isProfileable = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

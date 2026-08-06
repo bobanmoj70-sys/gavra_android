@@ -6,7 +6,6 @@ import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -493,13 +492,11 @@ Future<void> _initializeBackgroundTrackingService() async {
 
 /// Pozadinske inicijalizacije koje ne smeju da blokiraju UI
 Future<void> _doStartupTasks() async {
-  // Wakelock i edge-to-edge UI
+  // Wakelock i orijentacija
   try {
     WakelockPlus.enable();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   } catch (e) {
-    debugPrint('⚠️ [main] Wakelock/SystemChrome greška: $e');
+    debugPrint('⚠️ [main] Wakelock greška: $e');
   }
 
   // Locale - UTF-8 podrska za dijakritiku
@@ -1388,7 +1385,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   _resolveSupportedLocale(locale, supportedLocales) ?? V3LocaleManager.supportedLocales.first,
               locale: locale,
               theme: themeData,
-              builder: (context, child) => V3PazarListener(child: child ?? const SizedBox.shrink()),
+              builder: (context, child) => SafeArea(
+                minimum: MediaQuery.of(context).padding,
+                child: V3PazarListener(child: child ?? const SizedBox.shrink()),
+              ),
               home: const V3WelcomeScreen(),
             );
           },

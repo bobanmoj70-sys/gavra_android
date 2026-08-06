@@ -1,6 +1,6 @@
 Add-Type -AssemblyName System.Drawing
 
-$src = "C:\Users\Bojan\gavra_android\appstore_screenshots"
+$src = $PSScriptRoot
 $iphoneDir = Join-Path $src "iphone_6.9"
 $ipadDir = Join-Path $src "ipad_13"
 

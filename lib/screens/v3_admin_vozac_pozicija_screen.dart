@@ -212,7 +212,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                       Marker(
                         point: _pozicije[vozac.id]!,
                         width: 140,
-                        height: 72,
+                        height: 78,
                         alignment: Alignment.bottomCenter,
                         child: _VozacMarker(
                           boja: V3CardColorPolicy.vozacColorOr(vozac.boja),
@@ -265,7 +265,7 @@ class _VozacMarker extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(
             color: boja,
             borderRadius: BorderRadius.circular(8),
@@ -278,14 +278,24 @@ class _VozacMarker extends StatelessWidget {
             children: [
               Text(
                 ime,
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  height: 1.1,
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
               ),
               Text(
                 brzinaLabel,
-                style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10,
+                  height: 1.1,
+                  fontWeight: FontWeight.w500,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -294,7 +304,7 @@ class _VozacMarker extends StatelessWidget {
           ),
         ),
         // Material `location_on` ima ~2–3px praznog ispod vrha igle u glyph-u.
-        Icon(Icons.location_on, color: boja, size: 36, opticalSize: 36),
+        Icon(Icons.location_on, color: boja, size: 34, opticalSize: 34),
       ],
     );
   }

@@ -30,6 +30,11 @@ subprojects {
         extensions.configure<LibraryExtension>("android") {
             compileSdk = forcedCompileSdk
 
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+
             if (namespace == null) {
                 val manifestFile = file("src/main/AndroidManifest.xml")
                 val fromManifest =

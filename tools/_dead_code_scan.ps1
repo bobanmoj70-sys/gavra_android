@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
-$libRoot = "c:\Users\Bojan\gavra_android\lib"
-$projectRoot = "c:\Users\Bojan\gavra_android"
-$outFile = "c:\Users\Bojan\gavra_android\tools\_dead_code_report.txt"
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$libRoot = Join-Path $projectRoot "lib"
+$outFile = Join-Path $PSScriptRoot "_dead_code_report.txt"
 
 $allFiles = Get-ChildItem -Path $libRoot -Recurse -Filter "*.dart"
 $fileMap = @{}

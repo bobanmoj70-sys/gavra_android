@@ -1,6 +1,6 @@
 ﻿Add-Type -AssemblyName System.Drawing
-$srcDir = "C:\Users\Bojan\Desktop\production final\ios\slike"
-$outDir = "C:\Users\Bojan\gavra_android\appstore_screenshots\iphone_upload"
+$srcDir = Join-Path $PSScriptRoot "..\..\Desktop\production final\ios\slike"
+$outDir = Join-Path $PSScriptRoot "iphone_upload"
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 $w = 1284; $h = 2778
 Get-ChildItem -Path $srcDir -File | Sort-Object Name | ForEach-Object {

@@ -24,7 +24,6 @@ dependencies:
   url_launcher: ^6.1.0
   logger: ^2.6.0
   audioplayers: ^6.5.0
-  flutter_typeahead: ^5.2.0
   async: ^2.11.0
   collection: ^1.19.0
   path_provider: ^2.1.5
@@ -40,7 +39,7 @@ dependencies:
 
   shimmer: ^3.0.0
   device_info_plus: ^11.3.0
-  android_intent_plus: ^5.1.0
+  android_intent_plus: ^6.1.0
   # flutter_sms uklonjen: SMS ide preko `url_launcher` (`sms:` intent)
   # sms_advanced: ^1.0.1 # Alternativa sa automatskim slanjem - isto ima namespace problem
   # Vraćam se na URL launcher pristup - jedini koji radi
