@@ -32,17 +32,19 @@ finally {
   $bmp.Dispose()
 }
 
-$aliases = @(
+# Remove legacy aliases if present (single source of truth only)
+$legacy = @(
   'assets\ic_launcher_512.png',
   'assets\logo_original.png',
-  'assets\logo_transparent.png'
+  'assets\logo_transparent.png',
+  'assets\logo_gavra.jpg'
 )
-foreach ($rel in $aliases) {
-  $dest = Join-Path $Root $rel
-  $dir = Split-Path $dest -Parent
-  if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-  Copy-Item -Force $Master $dest
-  Write-Host "Synced alias: $rel"
+foreach ($rel in $legacy) {
+  $p = Join-Path $Root $rel
+  if (Test-Path $p) {
+    Remove-Item -Force $p
+    Write-Host "Removed legacy: $rel"
+  }
 }
 
 Write-Host "Running flutter_launcher_icons..."
@@ -50,6 +52,11 @@ Write-Host "Running flutter_launcher_icons..."
 if ($LASTEXITCODE -ne 0) {
   throw "flutter_launcher_icons failed with exit $LASTEXITCODE"
 }
+
+# Splash / launch_background needs a real PNG bitmap (not adaptive XML)
+$splashFg = Join-Path $Root 'android\app\src\main\res\drawable\ic_launcher_foreground.png'
+Copy-Item -Force $Master $splashFg
+Write-Host "Synced splash bitmap: android/app/src/main/res/drawable/ic_launcher_foreground.png"
 
 $densities = @('mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi')
 foreach ($d in $densities) {
@@ -77,5 +84,5 @@ if (Test-Path $check) {
 }
 
 Write-Host ""
-Write-Host "Done. Source of truth remains: assets/branding/gavra_icon.png"
+Write-Host "Done. Source of truth: assets/branding/gavra_icon.png"
 Write-Host "Reinstall the app on device to refresh launcher cache."

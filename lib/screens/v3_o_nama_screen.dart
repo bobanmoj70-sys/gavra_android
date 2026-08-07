@@ -242,7 +242,7 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
         const Text(
           'Gavra 013',
           style: TextStyle(
-            color: Colors.white,
+            color: GavraBranding.letter,
             fontSize: 32,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,

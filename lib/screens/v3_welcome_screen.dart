@@ -577,37 +577,10 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                 }
                               },
                               child: RepaintBoundary(
-                                child: AnimatedBuilder(
-                                  animation: _pulseController,
-                                  builder: (context, child) {
-                                    return ShaderMask(
-                                      shaderCallback: (bounds) {
-                                        return LinearGradient(
-                                          begin: Alignment(
-                                            -1.5 + 3 * _pulseController.value,
-                                            0,
-                                          ),
-                                          end: Alignment(
-                                            -0.5 + 3 * _pulseController.value,
-                                            0,
-                                          ),
-                                          colors: [
-                                            Colors.white.withValues(alpha: 0.6),
-                                            Colors.white,
-                                            Colors.white.withValues(alpha: 0.6),
-                                          ],
-                                          stops: const [0.0, 0.5, 1.0],
-                                        ).createShader(bounds);
-                                      },
-                                      blendMode: BlendMode.srcATop,
-                                      child: child,
-                                    );
-                                  },
-                                  child: Image.asset(
-                                    GavraBranding.iconAsset,
-                                    height: V3ContainerUtils.responsiveHeight(context, 180),
-                                    fit: BoxFit.contain,
-                                  ),
+                                child: Image.asset(
+                                  GavraBranding.iconAsset,
+                                  height: V3ContainerUtils.responsiveHeight(context, 180),
+                                  fit: BoxFit.contain,
                                 ),
                               ),
                             ),

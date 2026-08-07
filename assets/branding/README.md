@@ -4,40 +4,37 @@
 
 | Fajl | Opis |
 |------|------|
-| **`gavra_icon.png`** | **JEDINI IZVOR ISTINE** — crna pozadina + plava slova GAVRA 013 (512×512) |
+| **`gavra_icon.png`** | **JEDINI IZVOR ISTINE** — crna pozadina + cyan/plava slova GAVRA (512×512) |
+
+**Boje:**
+- pozadina: `#000000`
+- slova: `#60C8F8`
 
 Sve launcher ikone (Android/iOS), splash i in-app logo **moraju** poticati od ovog fajla.
 
 ## Pravila
 
-1. **NE BRIŠI** `gavra_icon.png` pri cleanup-u workspace-a.
-2. **NE MENJAJ** Android `mipmap/*`, iOS `AppIcon`, niti legacy `assets/logo_*.png` ručno.
-3. Posle izmene mastera pokreni:
+1. **NE BRIŠI** `gavra_icon.png`.
+2. **NE MENJAJ** Android `mipmap/*` / iOS `AppIcon` ručno.
+3. **NE DODAVAJ** legacy `assets/logo_*.png` / `ic_launcher_512.png` — obrisani.
+4. U kodu samo `GavraBranding` (`lib/config/gavra_branding.dart`).
+5. Posle izmene mastera:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync_branding_icons.ps1
 ```
 
 Skripta:
-- proverava da master postoji i da ima crnu pozadinu
-- kopira master u legacy putanje (kompatibilnost)
-- regeneriše Android + iOS launcher ikone preko `flutter_launcher_icons`
-- poravnava `ic_launcher_round` sa punom crnom pozadinom
+- validira crnu pozadinu + plava slova
+- briše legacy alias fajlove ako se vrate
+- regeneriše Android + iOS launchere
+- kopira master u splash `drawable/ic_launcher_foreground.png`
+- poravnava `ic_launcher_round`
 
 ## U kodu
 
-Koristi isključivo:
-
 ```dart
-GavraBranding.iconAsset  // → assets/branding/gavra_icon.png
+GavraBranding.iconAsset   // assets/branding/gavra_icon.png
+GavraBranding.background  // #000000
+GavraBranding.letter      // #60C8F8
 ```
-
-(`lib/config/gavra_branding.dart`)
-
-## Legacy aliasi (generisani — ne editovati)
-
-Ovi fajlovi se **overwrite**-uju skriptom iz mastera:
-
-- `assets/ic_launcher_512.png`
-- `assets/logo_original.png`
-- `assets/logo_transparent.png`
