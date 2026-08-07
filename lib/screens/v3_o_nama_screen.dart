@@ -232,9 +232,9 @@ class _V3ONamaScreenState extends State<V3ONamaScreen> {
           ],
           child: ClipRRect(
             borderRadius: BorderRadius.circular(26),
-            child: Image.asset(
-              GavraBranding.iconAsset,
+            child: const GavraBrandIcon(
               fit: BoxFit.contain,
+              borderRadius: 26,
             ),
           ),
         ),

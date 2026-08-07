@@ -577,8 +577,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                 }
                               },
                               child: RepaintBoundary(
-                                child: Image.asset(
-                                  GavraBranding.iconAsset,
+                                child: GavraBrandIcon(
                                   height: V3ContainerUtils.responsiveHeight(context, 180),
                                   fit: BoxFit.contain,
                                 ),
