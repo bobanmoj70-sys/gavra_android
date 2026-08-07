@@ -1820,79 +1820,201 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1A2035),
-      title: Text(_trProfileDialog('izmeniProfil'),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      content: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-        child: Form(
+    final theme = Theme.of(context);
+    final gradient = theme.backgroundGradient;
+    const inputFill = Color(0x33FFFFFF);
+    const inputBorder = Color(0x4DFFFFFF);
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(gradient: gradient),
+          constraints: BoxConstraints(
+            maxWidth: 420,
+            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              V3InputUtils.textField(
-                controller: _ime,
-                label: _trProfileDialog('imePrezime'),
-                icon: Icons.person_outline,
-                keyboardType: TextInputType.name,
-              ),
-              const SizedBox(height: 12),
-              V3InputUtils.textField(
-                controller: _tel1,
-                label: _trProfileDialog('telefon1'),
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 12),
-              V3InputUtils.textField(
-                controller: _tel2,
-                label: _trProfileDialog('telefon2'),
-                icon: Icons.phone_iphone_outlined,
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
+              // ── Header ──
+              Container(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _saving
-                      ? null
-                      : () async {
-                          final authId = widget.putnikData['id']?.toString().trim() ?? '';
-                          if (authId.isEmpty) return;
-                          await V3DialogHelper.showDialogBuilder<void>(
-                            context: context,
-                            builder: (ctx) => _ChangePinDialog(v3AuthId: authId),
-                          );
-                        },
-                  icon: const Icon(Icons.lock_reset_outlined, color: Colors.white),
-                  label: Text(_trProfileDialog('promeniPin'), style: const TextStyle(color: Colors.white)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white54),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: const Icon(Icons.edit_outlined, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _trProfileDialog('izmeniProfilTitle'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            _trProfileDialog('azurirajImeTel'),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // ── Content ──
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      V3InputUtils.textField(
+                        controller: _ime,
+                        label: _trProfileDialog('imePrezime'),
+                        icon: Icons.person_outline,
+                        keyboardType: TextInputType.name,
+                        fillColor: inputFill,
+                        borderColor: inputBorder,
+                        focusedBorderColor: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _tel1,
+                        label: _trProfileDialog('telefon1'),
+                        icon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        fillColor: inputFill,
+                        borderColor: inputBorder,
+                        focusedBorderColor: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      V3InputUtils.textField(
+                        controller: _tel2,
+                        label: _trProfileDialog('telefon2'),
+                        icon: Icons.phone_iphone_outlined,
+                        keyboardType: TextInputType.phone,
+                        fillColor: inputFill,
+                        borderColor: inputBorder,
+                        focusedBorderColor: Colors.white,
+                      ),
+                      const SizedBox(height: 16),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: _saving
+                              ? null
+                              : () async {
+                                  final authId = widget.putnikData['id']?.toString().trim() ?? '';
+                                  if (authId.isEmpty) return;
+                                  await V3DialogHelper.showDialogBuilder<void>(
+                                    context: context,
+                                    builder: (ctx) => _ChangePinDialog(v3AuthId: authId),
+                                  );
+                                },
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.lock_reset_outlined,
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _trProfileDialog('promeniPin'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.95),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: Colors.white.withValues(alpha: 0.55),
+                                    size: 22,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: V3ButtonUtils.outlinedButton(
-                      onPressed: _saving ? null : () => Navigator.pop(context),
-                      text: _trProfileDialog('otkazi'),
-                      borderColor: Colors.white54,
-                      foregroundColor: Colors.white70,
+              // ── Actions ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: V3ButtonUtils.outlinedButton(
+                        onPressed: _saving ? null : () => Navigator.pop(context),
+                        text: _trProfileDialog('otkazi'),
+                        borderColor: Colors.white54,
+                        foregroundColor: Colors.white70,
+                        fontSize: 14,
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: V3ButtonUtils.primaryButton(
-                      onPressed: _saving ? null : _sacuvaj,
-                      text: _trProfileDialog('sacuvaj'),
-                      icon: Icons.check,
-                      isLoading: _saving,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: V3ButtonUtils.primaryButton(
+                        onPressed: _saving ? null : _sacuvaj,
+                        text: _trProfileDialog('sacuvaj'),
+                        icon: Icons.check_rounded,
+                        isLoading: _saving,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -2057,32 +2179,54 @@ class _ChangePinDialogState extends State<_ChangePinDialog> {
                       ),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
-                        Text(_error!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
+                          ),
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       ],
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: V3ButtonUtils.outlinedButton(
-                              onPressed: _saving ? null : () => Navigator.of(context, rootNavigator: true).pop(),
-                              text: _trProfileDialog('otkazi'),
-                              borderColor: Colors.white54,
-                              foregroundColor: Colors.white70,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: V3ButtonUtils.primaryButton(
-                              onPressed: _saving ? null : _sacuvaj,
-                              text: _trProfileDialog('sacuvaj'),
-                              icon: Icons.check,
-                              isLoading: _saving,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.12))),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: V3ButtonUtils.outlinedButton(
+                        onPressed: _saving ? null : () => Navigator.of(context, rootNavigator: true).pop(),
+                        text: _trProfileDialog('otkazi'),
+                        borderColor: Colors.white54,
+                        foregroundColor: Colors.white70,
+                        fontSize: 14,
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: V3ButtonUtils.primaryButton(
+                        onPressed: _saving ? null : _sacuvaj,
+                        text: _trProfileDialog('sacuvaj'),
+                        icon: Icons.check_rounded,
+                        isLoading: _saving,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
