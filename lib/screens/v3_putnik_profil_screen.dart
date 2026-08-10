@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../globals.dart';
 import '../l10n/app_translations.dart';
+import '../models/v3_adresa.dart';
 import '../models/v3_putnik.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_adresa_service.dart';
@@ -27,6 +28,7 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
+import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../utils/v3_stream_utils.dart';
@@ -1774,7 +1776,22 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
     text: widget.putnikData['telefon_2']?.toString() ?? '',
   );
 
+  // Stalne adrese putnika (ne override / ne za jednu vožnju).
+  V3Adresa? _adresaBc1;
+  V3Adresa? _adresaBc2;
+  V3Adresa? _adresaVs1;
+  V3Adresa? _adresaVs2;
+
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _adresaBc1 = V3AdresaService.getAdresaById(widget.putnikData['adresa_bc_id']?.toString());
+    _adresaBc2 = V3AdresaService.getAdresaById(widget.putnikData['adresa_bc_id_2']?.toString());
+    _adresaVs1 = V3AdresaService.getAdresaById(widget.putnikData['adresa_vs_id']?.toString());
+    _adresaVs2 = V3AdresaService.getAdresaById(widget.putnikData['adresa_vs_id_2']?.toString());
+  }
 
   @override
   void dispose() {
@@ -1782,6 +1799,101 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
     _tel1.dispose();
     _tel2.dispose();
     super.dispose();
+  }
+
+  V3Adresa? _matchFromList(List<V3Adresa> list, V3Adresa? current) {
+    if (current == null) return null;
+    for (final a in list) {
+      if (a.id == current.id) return a;
+    }
+    return current;
+  }
+
+  Widget _adresaDropdown({
+    required String label,
+    required String grad,
+    required V3Adresa? value,
+    required ValueChanged<V3Adresa?> onChanged,
+    required bool allowClear,
+  }) {
+    final adrese = V3AdresaService.getAdreseZaGrad(grad);
+    final resolved = _matchFromList(adrese, value);
+    const adresaInputFill = Color(0x33FFFFFF);
+    const adresaInputBorder = Color(0x4DFFFFFF);
+    const adresaLabelColor = Color(0xB3FFFFFF);
+
+    return DropdownButtonFormField<V3Adresa>(
+      value: resolved,
+      isExpanded: true,
+      dropdownColor: Colors.black.withValues(alpha: 0.85),
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: adresaLabelColor),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: adresaInputBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.white, width: 1.5),
+        ),
+        isDense: true,
+        filled: true,
+        fillColor: adresaInputFill,
+        prefixIcon: Icon(
+          grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
+          size: 18,
+          color: grad == 'BC' ? Colors.blueAccent : Colors.orangeAccent,
+        ),
+        suffixIcon: allowClear && resolved != null
+            ? IconButton(
+                icon: const Icon(Icons.clear, size: 18, color: adresaLabelColor),
+                onPressed: _saving ? null : () => onChanged(null),
+              )
+            : null,
+      ),
+      hint: Text(
+        _trProfileDialog('nijeOdabrano'),
+        style: const TextStyle(fontSize: 13, color: adresaLabelColor),
+      ),
+      items: adrese
+          .map(
+            (a) => DropdownMenuItem<V3Adresa>(
+              value: a,
+              child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
+            ),
+          )
+          .toList(),
+      onChanged: _saving ? null : onChanged,
+    );
+  }
+
+  Widget _adresaSectionHeader({
+    required String title,
+    required Color accent,
+    required IconData icon,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: accent),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: accent),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _sacuvaj() async {
@@ -1793,13 +1905,21 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
       V3AppSnackBar.error(context, _trProfileDialog('imeNeSmeBitiPrazno'));
       return;
     }
+    if (_adresaBc1 == null || _adresaVs1 == null) {
+      V3AppSnackBar.error(context, _trProfileDialog('obavezneAdrese'));
+      return;
+    }
 
     V3StateUtils.safeSetState(this, () => _saving = true);
     try {
       final updated = Map<String, dynamic>.from(widget.putnikData)
         ..['ime_prezime'] = imeVal
         ..['telefon_1'] = tel1Val
-        ..['telefon_2'] = tel2Val;
+        ..['telefon_2'] = tel2Val
+        ..['adresa_bc_id'] = _adresaBc1?.id
+        ..['adresa_bc_id_2'] = _adresaBc2?.id
+        ..['adresa_vs_id'] = _adresaVs1?.id
+        ..['adresa_vs_id_2'] = _adresaVs2?.id;
 
       final putnik = V3Putnik.fromJson(updated);
       await V3PutnikService.addUpdatePutnik(
@@ -1925,6 +2045,50 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                         fillColor: inputFill,
                         borderColor: inputBorder,
                         focusedBorderColor: Colors.white,
+                      ),
+                      const SizedBox(height: 16),
+                      _adresaSectionHeader(
+                        title: _trProfileDialog('adreseBc'),
+                        accent: Colors.lightBlueAccent,
+                        icon: Icons.location_city,
+                      ),
+                      const SizedBox(height: 8),
+                      _adresaDropdown(
+                        label: _trProfileDialog('bcAdresa1'),
+                        grad: 'BC',
+                        value: _adresaBc1,
+                        allowClear: false,
+                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc1 = v),
+                      ),
+                      const SizedBox(height: 8),
+                      _adresaDropdown(
+                        label: _trProfileDialog('bcAdresa2'),
+                        grad: 'BC',
+                        value: _adresaBc2,
+                        allowClear: true,
+                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaBc2 = v),
+                      ),
+                      const SizedBox(height: 14),
+                      _adresaSectionHeader(
+                        title: _trProfileDialog('adreseVs'),
+                        accent: Colors.orangeAccent,
+                        icon: Icons.location_on,
+                      ),
+                      const SizedBox(height: 8),
+                      _adresaDropdown(
+                        label: _trProfileDialog('vsAdresa1'),
+                        grad: 'VS',
+                        value: _adresaVs1,
+                        allowClear: false,
+                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs1 = v),
+                      ),
+                      const SizedBox(height: 8),
+                      _adresaDropdown(
+                        label: _trProfileDialog('vsAdresa2'),
+                        grad: 'VS',
+                        value: _adresaVs2,
+                        allowClear: true,
+                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _adresaVs2 = v),
                       ),
                       const SizedBox(height: 16),
                       Material(
