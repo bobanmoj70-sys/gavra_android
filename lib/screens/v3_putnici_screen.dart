@@ -197,33 +197,13 @@ class _V3PutniciScreenState extends State<V3PutniciScreen> {
           child: Column(
             children: [
               // ── Search bar ──────────────────────────────────────────────
-              V3ContainerUtils.styledContainer(
-                margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-                backgroundColor: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 3))
-                ],
-                child: ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: V3TextUtils.putniciSearchController,
-                  builder: (context, val, _) => TextField(
-                    controller: V3TextUtils.putniciSearchController,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      hintText: _PutTr.tr('pretraziPutnike'),
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      suffixIcon: val.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, color: Colors.grey),
-                              onPressed: () => V3TextUtils.clearController('putnici_search'),
-                            )
-                          : null,
-                    ),
-                  ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+                child: V3InputUtils.searchField(
+                  controller: V3TextUtils.putniciSearchController,
+                  hint: _PutTr.tr('pretraziPutnike'),
+                  textCapitalization: TextCapitalization.words,
+                  onClear: () => V3TextUtils.clearController('putnici_search'),
                 ),
               ),
               // ── List ──────────────────────────────────────────────────
@@ -814,46 +794,33 @@ class _PutnikDialogState extends State<_PutnikDialog> {
     required ValueChanged<V3Adresa?> onChanged,
   }) {
     final adrese = V3AdresaService.getAdreseZaGrad(grad);
-    const adresaInputFill = Color(0x33FFFFFF); // white 20%
-    const adresaInputBorder = Color(0x4DFFFFFF); // white 30%
-    const adresaLabelColor = Color(0xB3FFFFFF); // white 70%
     return DropdownButtonFormField<V3Adresa>(
       value: value,
       isExpanded: true,
-      dropdownColor: Colors.black.withValues(alpha: 0.75),
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: adresaLabelColor),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: adresaInputBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white, width: 1.5),
-        ),
-        isDense: true,
-        filled: true,
-        fillColor: adresaInputFill,
-        prefixIcon: Icon(
-          grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
-          size: 18,
-          color: grad == 'BC' ? Colors.blueAccent : Colors.orangeAccent,
-        ),
+      dropdownColor: V3InputStyle.dropdownMenu,
+      style: V3InputUtils.fieldTextStyle,
+      decoration: V3InputUtils.dropdownDecoration(
+        label: label,
+        icon: grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
+        prefixIconColor: grad == 'BC' ? const Color(0xFF2563EB) : const Color(0xFFEA580C),
         suffixIcon: value != null
             ? IconButton(
-                icon: const Icon(Icons.clear, size: 18, color: adresaLabelColor),
+                icon: const Icon(Icons.clear, size: 18, color: V3InputStyle.label),
                 onPressed: () => onChanged(null),
               )
             : null,
       ),
-      hint: Text(_PutTr.tr('nijeOdabrano'), style: const TextStyle(fontSize: 13, color: adresaLabelColor)),
+      hint: Text(
+        _PutTr.tr('nijeOdabrano'),
+        style: const TextStyle(fontSize: 13, color: V3InputStyle.label),
+      ),
       items: [
         ...adrese.map((a) => DropdownMenuItem(
               value: a,
-              child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
+              child: V3SafeText.userAddress(
+                a.naziv,
+                style: const TextStyle(fontSize: 13, color: V3InputStyle.text),
+              ),
             )),
       ],
       onChanged: onChanged,
@@ -874,9 +841,6 @@ class _PutnikDialogState extends State<_PutnikDialog> {
     if (_adresaVs2 != null) _adresaVs2 = adreseVS.firstWhere((a) => a.id == _adresaVs2!.id, orElse: () => _adresaVs2!);
 
     final gradient = theme.backgroundGradient;
-    const inputFill = Color(0x33FFFFFF); // white 20%
-    const inputBorder = Color(0x4DFFFFFF); // white 30%
-    const labelColor = Color(0xB3FFFFFF); // white 70%
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -956,27 +920,11 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                       // Tip
                       DropdownButtonFormField<String>(
                         value: _tip,
-                        dropdownColor: Colors.black.withValues(alpha: 0.75),
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: _PutTr.tr('tipPutnika'),
-                          labelStyle: const TextStyle(color: labelColor),
-                          isDense: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: inputBorder),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: inputBorder),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.white),
-                          ),
-                          filled: true,
-                          fillColor: inputFill,
-                          prefixIcon: const Icon(Icons.category_outlined, color: labelColor),
+                        dropdownColor: V3InputStyle.dropdownMenu,
+                        style: V3InputUtils.fieldTextStyle,
+                        decoration: V3InputUtils.dropdownDecoration(
+                          label: _PutTr.tr('tipPutnika'),
+                          icon: Icons.category_outlined,
                         ),
                         items: [
                           DropdownMenuItem(value: 'radnik', child: Text(_PutTr.tr('radnik'))),
@@ -991,25 +939,17 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         },
                       ),
                       const SizedBox(height: 10),
-                      // Ime
                       V3InputUtils.textField(
                         controller: _ime,
                         label: _PutTr.tr('imePrezime'),
                         icon: Icons.person,
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
                       ),
                       const SizedBox(height: 10),
-                      // Telefoni
                       V3InputUtils.formField(
                         controller: _tel1,
                         label: _PutTr.tr('telefon1'),
                         icon: Icons.phone,
                         keyboardType: TextInputType.phone,
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
                         validator: (v) => V3InputUtils.phoneValidator(v, isRequired: true),
                       ),
                       const SizedBox(height: 10),
@@ -1018,13 +958,9 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                         label: _PutTr.tr('telefon2'),
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
                         validator: (v) => V3InputUtils.phoneValidator(v, isRequired: false),
                       ),
                       const SizedBox(height: 10),
-                      // Cena (samo za putnike, ne za vozače)
                       if (_tip != 'vozac')
                         V3InputUtils.formField(
                           controller: _cenaDan,
@@ -1034,35 +970,15 @@ class _PutnikDialogState extends State<_PutnikDialog> {
                           icon: Icons.numbers,
                           keyboardType: TextInputType.number,
                           suffixText: 'din',
-                          fillColor: inputFill,
-                          borderColor: inputBorder,
-                          focusedBorderColor: Colors.white,
                         ),
-                      // Uloga (samo za vozače)
                       if (_tip == 'vozac')
                         DropdownButtonFormField<String>(
                           value: _ulogaVozaca,
-                          dropdownColor: Colors.black.withValues(alpha: 0.75),
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Uloga',
-                            labelStyle: const TextStyle(color: labelColor),
-                            isDense: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: inputBorder),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: inputBorder),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.white),
-                            ),
-                            filled: true,
-                            fillColor: inputFill,
-                            prefixIcon: const Icon(Icons.admin_panel_settings_outlined, color: labelColor),
+                          dropdownColor: V3InputStyle.dropdownMenu,
+                          style: V3InputUtils.fieldTextStyle,
+                          decoration: V3InputUtils.dropdownDecoration(
+                            label: 'Uloga',
+                            icon: Icons.admin_panel_settings_outlined,
                           ),
                           items: V3AdminService.allRoles
                               .map((r) => DropdownMenuItem<String>(value: r, child: Text(r)))

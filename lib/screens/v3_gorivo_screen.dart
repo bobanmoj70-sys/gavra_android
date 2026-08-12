@@ -10,6 +10,7 @@ import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_format_utils.dart';
+import '../utils/v3_input_utils.dart';
 
 class _GorTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('gorivoScreen');
@@ -628,34 +629,12 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
+      child: V3InputUtils.formField(
         controller: controller,
+        label: label,
+        icon: prefixIcon ?? Icons.numbers,
         keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: false),
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
-          prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: Colors.white38, size: 20) : null,
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: _accent, width: 1.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Colors.redAccent),
-          ),
-        ),
+        showPaste: false,
         onChanged: onChanged,
         validator: (value) {
           final text = value?.trim() ?? '';
@@ -953,9 +932,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
           height: 54,
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: onPressed == null
-                  ? [colors[0].withValues(alpha: 0.4), colors[1].withValues(alpha: 0.35)]
-                  : colors,
+              colors:
+                  onPressed == null ? [colors[0].withValues(alpha: 0.4), colors[1].withValues(alpha: 0.35)] : colors,
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -1336,9 +1314,7 @@ class _FuelGaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _FuelGaugePainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.color != color ||
-        oldDelegate.trackColor != trackColor;
+    return oldDelegate.progress != progress || oldDelegate.color != color || oldDelegate.trackColor != trackColor;
   }
 }
 

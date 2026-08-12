@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import 'v3_button_utils.dart';
-import '../l10n/app_translations.dart';
+import 'v3_input_utils.dart';
 
 /// 🎖️💥 V3DIALOGHELPER - CENTRALIZOVANI DIALOG DUPLIKATE ELIMINATOR! 💥🎖️
 /// Konsoliduje sve showDialog, showModalBottomSheet, showConfirmDialog duplikate
@@ -544,17 +545,10 @@ class V3DialogHelper {
             controller: controller,
             keyboardType: keyboardType,
             maxLines: maxLines,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+            style: V3InputUtils.fieldTextStyle,
+            cursorColor: V3InputStyle.focused,
+            decoration: V3InputUtils.decoration(hint: hintText).copyWith(
               errorText: errorText,
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.amber),
-              ),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-              ),
             ),
             onChanged: (value) {
               if (validator != null) {

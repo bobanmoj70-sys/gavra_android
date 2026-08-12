@@ -4,16 +4,17 @@ import 'package:gavra_android/services/v3/v3_adresa_service.dart';
 import 'package:gavra_android/services/v3_locale_manager.dart';
 import 'package:gavra_android/theme.dart';
 
+import '../l10n/app_translations.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_string_utils.dart';
 import '../utils/v3_text_utils.dart';
-import '../l10n/app_translations.dart';
 
-// Deljeni prevodi za ekran adresa (SR/EN/RU/DE).
+// Deljeni prevodi za ekran adresa (SR/EN/RU).
 class _AdrTr {
   _AdrTr._();
 
@@ -196,38 +197,14 @@ class _AdreseFilterPanelState extends State<_AdreseFilterPanel> {
               ),
               const SizedBox(height: 12),
               // SEARCH
-              TextField(
+              V3InputUtils.searchField(
                 controller: V3TextUtils.adreseSearchController,
-                decoration: InputDecoration(
-                  hintText: _AdrTr.tr('pretraziAdrese'),
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white70),
-                          onPressed: () {
-                            V3TextUtils.clearController('adrese_search');
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.black.withValues(alpha: 0.3),
-                ),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                hint: _AdrTr.tr('pretraziAdrese'),
                 onChanged: (v) => setState(() => _searchQuery = v),
+                onClear: () {
+                  V3TextUtils.clearController('adrese_search');
+                  setState(() => _searchQuery = '');
+                },
               ),
               const SizedBox(height: 12),
               // FILTER CHIPS
@@ -391,11 +368,21 @@ class _AdresaDialogState extends State<_AdresaDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: _naziv, decoration: InputDecoration(labelText: _AdrTr.tr('nazivAdrese'))),
+            V3InputUtils.textField(
+              controller: _naziv,
+              label: _AdrTr.tr('nazivAdrese'),
+              icon: Icons.place_outlined,
+              showPaste: false,
+            ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _selectedGrad,
-              decoration: InputDecoration(labelText: _AdrTr.tr('grad')),
+              dropdownColor: V3InputStyle.dropdownMenu,
+              style: V3InputUtils.fieldTextStyle,
+              decoration: V3InputUtils.dropdownDecoration(
+                label: _AdrTr.tr('grad'),
+                icon: Icons.map_outlined,
+              ),
               items: [
                 DropdownMenuItem(value: 'BC', child: Text(_AdrTr.tr('belaCrkvaPuno'))),
                 DropdownMenuItem(value: 'VS', child: Text(_AdrTr.tr('vrsacDijakritik'))),

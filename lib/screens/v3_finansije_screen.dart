@@ -846,10 +846,11 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                       child: DropdownButtonFormField<String>(
                         initialValue: _selectedKreditId,
                         isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: _FinTr.tr('kojiKreditSeOtplacuje'),
-                          isDense: true,
-                          border: const OutlineInputBorder(),
+                        dropdownColor: V3InputStyle.dropdownMenu,
+                        style: V3InputUtils.fieldTextStyle,
+                        decoration: V3InputUtils.dropdownDecoration(
+                          label: _FinTr.tr('kojiKreditSeOtplacuje'),
+                          icon: Icons.account_balance_wallet_outlined,
                         ),
                         items: _krediti
                             .map((k) => DropdownMenuItem(

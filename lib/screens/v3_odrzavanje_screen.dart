@@ -785,16 +785,13 @@ class _ServisSheetState extends State<_ServisSheet> {
                     if (picked != null) setState(() => _datum = picked);
                   },
                   child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: _OdrTr.tr('datum'),
-                      labelStyle: const TextStyle(color: Colors.white60),
-                      border: const OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                      prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
+                    decoration: V3InputUtils.decoration(
+                      label: _OdrTr.tr('datum'),
+                      icon: Icons.calendar_today,
                     ),
                     child: Text(
                       _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : _OdrTr.tr('izaberiDatum'),
-                      style: const TextStyle(color: Colors.white),
+                      style: V3InputUtils.fieldTextStyle,
                     ),
                   ),
                 ),
@@ -967,16 +964,13 @@ class _GumeSheetState extends State<_GumeSheet> {
                     if (picked != null) setState(() => _datum = picked);
                   },
                   child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: _OdrTr.tr('datumZamene'),
-                      labelStyle: const TextStyle(color: Colors.white60),
-                      border: const OutlineInputBorder(),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                      prefixIcon: const Icon(Icons.calendar_today, color: Colors.white60),
+                    decoration: V3InputUtils.decoration(
+                      label: _OdrTr.tr('datumZamene'),
+                      icon: Icons.calendar_today,
                     ),
                     child: Text(
                       _datum != null ? '${_datum!.day}.${_datum!.month}.${_datum!.year}' : _OdrTr.tr('izaberiDatum'),
-                      style: const TextStyle(color: Colors.white),
+                      style: V3InputUtils.fieldTextStyle,
                     ),
                   ),
                 ),

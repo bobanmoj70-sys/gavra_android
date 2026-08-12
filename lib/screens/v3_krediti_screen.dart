@@ -752,36 +752,22 @@ class _KreditDialogState extends State<_KreditDialog> {
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: _KredTr.tr('krajKreditaOpciono'),
-                    labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white30),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
-                    ),
+                  decoration: V3InputUtils.decoration(
+                    label: _KredTr.tr('krajKreditaOpciono'),
                     suffixIcon: _krajKredita != null
                         ? IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.white54, size: 20),
+                            icon: const Icon(Icons.clear, color: V3InputStyle.icon, size: 20),
                             onPressed: () => V3StateUtils.safeSetState(this, () => _krajKredita = null),
                           )
-                        : const Icon(Icons.calendar_today, color: Colors.amber, size: 20),
+                        : const Icon(Icons.calendar_today, color: V3InputStyle.icon, size: 20),
                   ),
                   child: Text(
                     _krajKredita != null
                         ? '${_krajKredita!.day.toString().padLeft(2, '0')}.${_krajKredita!.month.toString().padLeft(2, '0')}.${_krajKredita!.year}'
                         : _KredTr.tr('izaberiDatum'),
                     style: TextStyle(
-                      color: _krajKredita != null ? Colors.white : Colors.white54,
+                      color: _krajKredita != null ? V3InputStyle.text : V3InputStyle.label,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

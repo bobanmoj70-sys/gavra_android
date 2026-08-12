@@ -11,6 +11,7 @@ import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
+import '../utils/v3_input_utils.dart';
 
 Map<String, Map<String, String>> get _placanjeT => AppTranslations.ns('placanjeDialogHelper');
 
@@ -230,22 +231,12 @@ class V3PlacanjeDialogHelper {
                                 ],
                               ),
                             ),
-                          TextField(
+                          V3InputUtils.numberField(
                             controller: _iznosController,
-                            decoration: InputDecoration(
-                              labelText: _placanjeTr('iznosRsd'),
-                              labelStyle: const TextStyle(color: Colors.white70),
-                              suffixText: 'RSD',
-                              suffixStyle: TextStyle(color: Colors.white70),
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white38),
-                              ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white),
-                              ),
-                            ),
-                            style: const TextStyle(color: Colors.white),
+                            label: _placanjeTr('iznosRsd'),
+                            suffixText: 'RSD',
                             keyboardType: TextInputType.number,
+                            icon: Icons.payments_outlined,
                           ),
                           const SizedBox(height: 18),
                           Row(
@@ -255,25 +246,17 @@ class V3PlacanjeDialogHelper {
                                   isExpanded: true,
                                   dropdownStyleData: DropdownStyleData(
                                     decoration: BoxDecoration(
-                                      gradient: Theme.of(context).backgroundGradient,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                      color: V3InputStyle.dropdownMenu,
+                                      borderRadius: BorderRadius.circular(V3InputStyle.radius),
+                                      border: Border.all(color: V3InputStyle.border),
                                     ),
                                   ),
-                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  style: V3InputUtils.fieldTextStyle,
                                   iconStyleData: const IconStyleData(
-                                    iconEnabledColor: Colors.white,
+                                    iconEnabledColor: V3InputStyle.icon,
                                   ),
-                                  decoration: InputDecoration(
-                                    contentPadding: EdgeInsets.zero,
-                                    labelText: _placanjeTr('mesec'),
-                                    labelStyle: const TextStyle(color: Colors.white70),
-                                    enabledBorder: const UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.white38),
-                                    ),
-                                    focusedBorder: const UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.white),
-                                    ),
+                                  decoration: V3InputUtils.dropdownDecoration(
+                                    label: _placanjeTr('mesec'),
                                   ),
                                   value: _selectedMonth,
                                   items: List.generate(12, (i) => i + 1).map((m) {
@@ -303,25 +286,17 @@ class V3PlacanjeDialogHelper {
                                   isExpanded: true,
                                   dropdownStyleData: DropdownStyleData(
                                     decoration: BoxDecoration(
-                                      gradient: Theme.of(context).backgroundGradient,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                      color: V3InputStyle.dropdownMenu,
+                                      borderRadius: BorderRadius.circular(V3InputStyle.radius),
+                                      border: Border.all(color: V3InputStyle.border),
                                     ),
                                   ),
-                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  style: V3InputUtils.fieldTextStyle,
                                   iconStyleData: const IconStyleData(
-                                    iconEnabledColor: Colors.white,
+                                    iconEnabledColor: V3InputStyle.icon,
                                   ),
-                                  decoration: InputDecoration(
-                                    contentPadding: EdgeInsets.zero,
-                                    labelText: _placanjeTr('godina'),
-                                    labelStyle: const TextStyle(color: Colors.white70),
-                                    enabledBorder: const UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.white38),
-                                    ),
-                                    focusedBorder: const UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.white),
-                                    ),
+                                  decoration: V3InputUtils.dropdownDecoration(
+                                    label: _placanjeTr('godina'),
                                   ),
                                   value: _selectedYear,
                                   items: years.map((y) {
@@ -329,7 +304,7 @@ class V3PlacanjeDialogHelper {
                                       value: y,
                                       child: Text(
                                         '$y.',
-                                        style: const TextStyle(color: Colors.white),
+                                        style: V3InputUtils.fieldTextStyle,
                                       ),
                                     );
                                   }).toList(),

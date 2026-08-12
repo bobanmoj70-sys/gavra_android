@@ -11,6 +11,7 @@ import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_card_color_policy.dart';
+import '../utils/v3_input_utils.dart';
 
 // Deljeni prevodi za ekran pozicije vozača (SR/EN/RU/DE/ZH).
 class _VozacPozTr {
@@ -144,9 +145,10 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
             padding: const EdgeInsets.all(12),
             child: DropdownButtonFormField<String>(
               value: _selectedVozacId,
-              decoration: InputDecoration(
-                labelText: _VozacPozTr.tr('izaberiVozaca'),
-                border: const OutlineInputBorder(),
+              dropdownColor: V3InputStyle.dropdownMenu,
+              style: V3InputUtils.fieldTextStyle,
+              decoration: V3InputUtils.dropdownDecoration(
+                label: _VozacPozTr.tr('izaberiVozaca'),
               ),
               items: [
                 DropdownMenuItem<String>(

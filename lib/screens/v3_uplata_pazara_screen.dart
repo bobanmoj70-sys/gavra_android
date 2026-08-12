@@ -181,19 +181,16 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                   // Vozac dropdown
                   DropdownButtonFormField<V3Vozac>(
                     value: _selectedVozac,
-                    dropdownColor: const Color(0xFF2A2A2A),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: _UplTr.tr('vozac'),
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.08),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    dropdownColor: V3InputStyle.dropdownMenu,
+                    style: V3InputUtils.fieldTextStyle,
+                    decoration: V3InputUtils.dropdownDecoration(
+                      label: _UplTr.tr('vozac'),
+                      icon: Icons.person_outline,
                     ),
                     items: _vozaci.map((v) {
                       return DropdownMenuItem(
                         value: v,
-                        child: Text(v.imePrezime, style: const TextStyle(color: Colors.white)),
+                        child: Text(v.imePrezime, style: V3InputUtils.fieldTextStyle),
                       );
                     }).toList(),
                     onChanged: (v) {
@@ -208,16 +205,13 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                   InkWell(
                     onTap: _pickDate,
                     child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: _UplTr.tr('datum'),
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.08),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      decoration: V3InputUtils.dropdownDecoration(
+                        label: _UplTr.tr('datum'),
+                        icon: Icons.calendar_today_outlined,
                       ),
                       child: Text(
                         V3DanHelper.formatDatumPuni(_selectedDate),
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style: V3InputUtils.fieldTextStyle.copyWith(fontSize: 16),
                       ),
                     ),
                   ),

@@ -9,6 +9,7 @@ import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_belgrade_time.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 
@@ -31,6 +32,13 @@ class V3DugoviScreen extends StatefulWidget {
 class _V3DugoviScreenState extends State<V3DugoviScreen> {
   String _filter = '';
   final Set<String> _processingDugIds = <String>{};
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,23 +93,10 @@ class _V3DugoviScreenState extends State<V3DugoviScreen> {
                   // ─── Search box ───
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                      ),
-                      child: TextField(
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: _DugTr.tr('pretraziPutnike'),
-                          hintStyle: const TextStyle(color: Colors.white54),
-                          prefixIcon: const Icon(Icons.search, color: Colors.white54),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        ),
-                        onChanged: (v) => V3StateUtils.safeSetState(this, () => _filter = v),
-                      ),
+                    child: V3InputUtils.searchField(
+                      controller: _searchCtrl,
+                      hint: _DugTr.tr('pretraziPutnike'),
+                      onChanged: (v) => V3StateUtils.safeSetState(this, () => _filter = v),
                     ),
                   ),
                   const SizedBox(height: 8),

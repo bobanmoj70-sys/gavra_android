@@ -1818,51 +1818,35 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
   }) {
     final adrese = V3AdresaService.getAdreseZaGrad(grad);
     final resolved = _matchFromList(adrese, value);
-    const adresaInputFill = Color(0x33FFFFFF);
-    const adresaInputBorder = Color(0x4DFFFFFF);
-    const adresaLabelColor = Color(0xB3FFFFFF);
 
     return DropdownButtonFormField<V3Adresa>(
       value: resolved,
       isExpanded: true,
-      dropdownColor: Colors.black.withValues(alpha: 0.85),
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: adresaLabelColor),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: adresaInputBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white, width: 1.5),
-        ),
-        isDense: true,
-        filled: true,
-        fillColor: adresaInputFill,
-        prefixIcon: Icon(
-          grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
-          size: 18,
-          color: grad == 'BC' ? Colors.blueAccent : Colors.orangeAccent,
-        ),
+      dropdownColor: V3InputStyle.dropdownMenu,
+      style: V3InputUtils.fieldTextStyle,
+      decoration: V3InputUtils.dropdownDecoration(
+        label: label,
+        icon: grad == 'BC' ? Icons.location_city_outlined : Icons.location_on_outlined,
+        prefixIconColor: grad == 'BC' ? const Color(0xFF2563EB) : const Color(0xFFEA580C),
         suffixIcon: allowClear && resolved != null
             ? IconButton(
-                icon: const Icon(Icons.clear, size: 18, color: adresaLabelColor),
+                icon: const Icon(Icons.clear, size: 18, color: V3InputStyle.label),
                 onPressed: _saving ? null : () => onChanged(null),
               )
             : null,
       ),
       hint: Text(
         _trProfileDialog('nijeOdabrano'),
-        style: const TextStyle(fontSize: 13, color: adresaLabelColor),
+        style: const TextStyle(fontSize: 13, color: V3InputStyle.label),
       ),
       items: adrese
           .map(
             (a) => DropdownMenuItem<V3Adresa>(
               value: a,
-              child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
+              child: V3SafeText.userAddress(
+                a.naziv,
+                style: const TextStyle(fontSize: 13, color: V3InputStyle.text),
+              ),
             ),
           )
           .toList(),
@@ -1942,8 +1926,6 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final gradient = theme.backgroundGradient;
-    const inputFill = Color(0x33FFFFFF);
-    const inputBorder = Color(0x4DFFFFFF);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -2022,9 +2004,6 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                         label: _trProfileDialog('imePrezime'),
                         icon: Icons.person_outline,
                         keyboardType: TextInputType.name,
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
                       ),
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
@@ -2032,9 +2011,6 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                         label: _trProfileDialog('telefon1'),
                         icon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
                       ),
                       const SizedBox(height: 12),
                       V3InputUtils.textField(
@@ -2042,9 +2018,6 @@ class _EditProfilDialogState extends State<_EditProfilDialog> {
                         label: _trProfileDialog('telefon2'),
                         icon: Icons.phone_iphone_outlined,
                         keyboardType: TextInputType.phone,
-                        fillColor: inputFill,
-                        borderColor: inputBorder,
-                        focusedBorderColor: Colors.white,
                       ),
                       const SizedBox(height: 16),
                       _adresaSectionHeader(

@@ -845,37 +845,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           text: _isBackendReady ? _tr('unesitePhone') : _tr('povezivanje'),
         ),
         const SizedBox(height: 24),
-        TextField(
+        V3InputUtils.textField(
           controller: _phoneController,
+          label: _tr('brojTelefona'),
+          hint: _tr('phoneHint'),
+          icon: Icons.phone,
           keyboardType: TextInputType.phone,
           enabled: !_isLoading,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: _tr('brojTelefona'),
-            hintText: _tr('phoneHint'),
-            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.1),
-            prefixIcon: const Icon(Icons.phone, color: Colors.amber),
-            suffixIcon: IconButton(
-              tooltip: _tr('nalepi'),
-              icon: const Icon(Icons.content_paste_rounded, color: Colors.amber),
-              onPressed: _isLoading ? null : () => V3InputUtils.pasteFromClipboardIntoController(_phoneController),
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white30),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.white30),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.amber, width: 2),
-            ),
-          ),
           onSubmitted: (_) {
             if (_canSubmitPhoneStep) _sendSms();
           },
@@ -928,80 +904,31 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         ),
         const SizedBox(height: 24),
         if (showIdentityFields) ...[
-          TextField(
+          V3InputUtils.textField(
             controller: _imeController,
+            label: _tr('ime'),
+            icon: Icons.badge_outlined,
             enabled: !_isLoading,
             textCapitalization: TextCapitalization.words,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: _tr('ime'),
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.badge_outlined, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
-              ),
-            ),
+            showPaste: false,
           ),
           const SizedBox(height: 12),
-          TextField(
+          V3InputUtils.textField(
             controller: _prezimeController,
+            label: _tr('prezime'),
+            icon: Icons.account_circle_outlined,
             enabled: !_isLoading,
             textCapitalization: TextCapitalization.words,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: _tr('prezime'),
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.account_circle_outlined, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
-              ),
-            ),
+            showPaste: false,
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: _selectedTip,
-            dropdownColor: const Color(0xFF1E1E1E),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: _tr('kategorija'),
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.category_outlined, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
-              ),
+            dropdownColor: V3InputStyle.dropdownMenu,
+            style: V3InputUtils.fieldTextStyle,
+            decoration: V3InputUtils.dropdownDecoration(
+              label: _tr('kategorija'),
+              icon: Icons.category_outlined,
             ),
             items: [
               DropdownMenuItem(value: '', child: Text(_tr('izaberiteKategoriju'))),
@@ -1020,153 +947,83 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           const SizedBox(height: 12),
         ],
         if (showBcDropdown) ...[
-          V3ContainerUtils.gradientContainer(
-            gradient: Theme.of(context).backgroundGradient,
-            borderRadius: BorderRadius.circular(12),
-            child: DropdownButtonFormField<V3Adresa>(
-              value: _selectedBcAdresa,
-              isExpanded: true,
-              dropdownColor: const Color(0xFF1E1E1E),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: _tr('adresaBc'),
-                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-                filled: true,
-                fillColor: Colors.transparent,
-                prefixIcon: const Icon(Icons.location_city_outlined, color: Colors.amber),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.amber, width: 2),
-                ),
-              ),
-              items: adreseBc
-                  .map((a) => DropdownMenuItem<V3Adresa>(
-                        value: a,
-                        child: Text(a.naziv),
-                      ))
-                  .toList(),
-              onChanged: _isLoading
-                  ? null
-                  : (value) {
-                      setState(() => _selectedBcAdresa = value);
-                    },
+          DropdownButtonFormField<V3Adresa>(
+            value: _selectedBcAdresa,
+            isExpanded: true,
+            dropdownColor: V3InputStyle.dropdownMenu,
+            style: V3InputUtils.fieldTextStyle,
+            decoration: V3InputUtils.dropdownDecoration(
+              label: _tr('adresaBc'),
+              icon: Icons.location_city_outlined,
+              prefixIconColor: const Color(0xFF2563EB),
             ),
+            items: adreseBc
+                .map((a) => DropdownMenuItem<V3Adresa>(
+                      value: a,
+                      child: Text(a.naziv),
+                    ))
+                .toList(),
+            onChanged: _isLoading
+                ? null
+                : (value) {
+                    setState(() => _selectedBcAdresa = value);
+                  },
           ),
           const SizedBox(height: 12),
         ],
         if (showVsDropdown) ...[
-          V3ContainerUtils.gradientContainer(
-            gradient: Theme.of(context).backgroundGradient,
-            borderRadius: BorderRadius.circular(12),
-            child: DropdownButtonFormField<V3Adresa>(
-              value: _selectedVsAdresa,
-              isExpanded: true,
-              dropdownColor: const Color(0xFF1E1E1E),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: _tr('adresaVs'),
-                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-                filled: true,
-                fillColor: Colors.transparent,
-                prefixIcon: const Icon(Icons.location_on_outlined, color: Colors.amber),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.amber, width: 2),
-                ),
-              ),
-              items: adreseVs
-                  .map((a) => DropdownMenuItem<V3Adresa>(
-                        value: a,
-                        child: Text(a.naziv),
-                      ))
-                  .toList(),
-              onChanged: _isLoading
-                  ? null
-                  : (value) {
-                      setState(() => _selectedVsAdresa = value);
-                    },
+          DropdownButtonFormField<V3Adresa>(
+            value: _selectedVsAdresa,
+            isExpanded: true,
+            dropdownColor: V3InputStyle.dropdownMenu,
+            style: V3InputUtils.fieldTextStyle,
+            decoration: V3InputUtils.dropdownDecoration(
+              label: _tr('adresaVs'),
+              icon: Icons.location_on_outlined,
+              prefixIconColor: const Color(0xFFEA580C),
             ),
+            items: adreseVs
+                .map((a) => DropdownMenuItem<V3Adresa>(
+                      value: a,
+                      child: Text(a.naziv),
+                    ))
+                .toList(),
+            onChanged: _isLoading
+                ? null
+                : (value) {
+                    setState(() => _selectedVsAdresa = value);
+                  },
           ),
           const SizedBox(height: 12),
         ],
         if (_requirePin) ...[
-          TextField(
+          V3InputUtils.textField(
             controller: _pinController,
+            label: _devicePinVerificationOnly ? _tr('unesitePin') : _tr('noviPin'),
+            icon: Icons.lock_outline,
             enabled: !_isLoading,
             obscureText: true,
             keyboardType: TextInputType.number,
+            showPaste: false,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
               LengthLimitingTextInputFormatter(6),
             ],
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: _devicePinVerificationOnly ? _tr('unesitePin') : _tr('noviPin'),
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
-              prefixIcon: const Icon(Icons.lock_outline, color: Colors.amber),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.white30),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Colors.amber, width: 2),
-              ),
-            ),
           ),
           const SizedBox(height: 12),
           if (!_devicePinVerificationOnly) ...[
-            TextField(
+            V3InputUtils.textField(
               controller: _pinConfirmController,
+              label: _tr('ponoviPin'),
+              icon: Icons.lock_reset_outlined,
               enabled: !_isLoading,
               obscureText: true,
               keyboardType: TextInputType.number,
+              showPaste: false,
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(6),
               ],
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: _tr('ponoviPin'),
-                labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.1),
-                prefixIcon: const Icon(Icons.lock_reset_outlined, color: Colors.amber),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.white30),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.amber, width: 2),
-                ),
-              ),
             ),
             const SizedBox(height: 12),
           ],

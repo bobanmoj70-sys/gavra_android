@@ -455,33 +455,28 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           // Dropdown putnika
                           DropdownButtonFormField2<V3Putnik>(
                             isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: _tr('izaberiPutnika'),
-                              prefixIcon: const Icon(Icons.person_search),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              filled: true,
-                              fillColor: Colors.white,
+                            decoration: V3InputUtils.dropdownDecoration(
+                              label: _tr('izaberiPutnika'),
+                              icon: Icons.person_search,
                             ),
                             dropdownStyleData: DropdownStyleData(
                               maxHeight: V3ContainerUtils.responsiveHeight(ctx, 280),
-                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(V3InputStyle.radius),
+                                color: V3InputStyle.dropdownMenu,
+                              ),
                             ),
                             dropdownSearchData: DropdownSearchData(
                               searchController: V3TextUtils.homeSearchController,
                               searchInnerWidgetHeight: V3ContainerUtils.responsiveHeight(ctx, 50),
-                              searchInnerWidget: V3ContainerUtils.iconContainer(
+                              searchInnerWidget: SizedBox(
                                 height: V3ContainerUtils.responsiveHeight(ctx, 50),
-                                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                                child: TextFormField(
-                                  controller: V3TextUtils.homeSearchController,
-                                  expands: true,
-                                  maxLines: null,
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    hintText: _tr('pretrazi'),
-                                    prefixIcon: const Icon(Icons.search, size: 20),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                                  child: V3InputUtils.searchField(
+                                    controller: V3TextUtils.homeSearchController,
+                                    hint: _tr('pretrazi'),
+                                    expands: true,
                                   ),
                                 ),
                               ),
@@ -785,14 +780,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 // Jedinica mjere
                 DropdownButtonFormField<String>(
                   value: jedMera,
-                  dropdownColor: const Color(0xFF1A2035),
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: _tr('jedinicaMere'),
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    enabledBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white30),
-                    ),
+                  dropdownColor: V3InputStyle.dropdownMenu,
+                  style: V3InputUtils.fieldTextStyle,
+                  decoration: V3InputUtils.dropdownDecoration(
+                    label: _tr('jedinicaMere'),
+                    icon: Icons.straighten_outlined,
                   ),
                   items: [
                     DropdownMenuItem(value: 'usluga', child: Text(_tr('jmUsluga'))),
@@ -1704,32 +1696,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
 
               // ── PUTNIK ──
               _sectionLabel(_tr('sekcijaPutnik')),
-              TextField(
+              V3InputUtils.searchField(
                 controller: pretragaCtrl,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                hint: _tr('pretrazi'),
                 onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: _tr('pretrazi'),
-                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 18),
-                  suffixIcon: pretragaCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white38, size: 16),
-                          onPressed: () => setState(() => pretragaCtrl.clear()),
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: sectionBg,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: borderColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Colors.green),
-                  ),
-                ),
               ),
               const SizedBox(height: 6),
               Container(

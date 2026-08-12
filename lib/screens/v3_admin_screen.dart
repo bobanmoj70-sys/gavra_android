@@ -14,6 +14,7 @@ import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_dialog_helper.dart';
+import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_status_policy.dart';
@@ -181,23 +182,20 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                             setModalState(() => dateCtrl.text = iso);
                           }
                         },
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: _tr('datum'),
-                          hintText: _tr('izaberiDatum'),
-                          prefixIcon: const Icon(Icons.calendar_today, color: Colors.white70),
-                          labelStyle: const TextStyle(color: Colors.white70),
+                        style: V3InputUtils.fieldTextStyle,
+                        cursorColor: V3InputStyle.focused,
+                        decoration: V3InputUtils.decoration(
+                          label: _tr('datum'),
+                          hint: _tr('izaberiDatum'),
+                          icon: Icons.calendar_today,
                         ),
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         value: scope,
-                        dropdownColor: Theme.of(context).colorScheme.primary,
-                        decoration: InputDecoration(
-                          labelText: _tr('scope'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                        ),
-                        style: const TextStyle(color: Colors.white),
+                        dropdownColor: V3InputStyle.dropdownMenu,
+                        decoration: V3InputUtils.dropdownDecoration(label: _tr('scope')),
+                        style: V3InputUtils.fieldTextStyle,
                         items: [
                           DropdownMenuItem(value: 'all', child: Text(_tr('sviAll'))),
                           const DropdownMenuItem(value: 'bc', child: Text('BC')),
@@ -206,14 +204,10 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onChanged: (val) => setModalState(() => scope = val ?? 'all'),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: reasonCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: _tr('razlog'),
-                          hintText: _tr('drzavniPraznik'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                        ),
+                        label: _tr('razlog'),
+                        hint: _tr('drzavniPraznik'),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -422,21 +416,21 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           initialValue: bcInputs[day] ?? '',
-                          style: const TextStyle(color: Colors.white),
+                          style: V3InputUtils.fieldTextStyle,
+                          cursorColor: V3InputStyle.focused,
                           onChanged: (value) => bcInputs[day] = value,
-                          decoration: InputDecoration(
-                            labelText: 'BC custom - ${V3DanHelper.trFullName(day)}',
-                            labelStyle: const TextStyle(color: Colors.white70),
+                          decoration: V3InputUtils.decoration(
+                            label: 'BC custom - ${V3DanHelper.trFullName(day)}',
                           ),
                         ),
                         const SizedBox(height: 8),
                         TextFormField(
                           initialValue: vsInputs[day] ?? '',
-                          style: const TextStyle(color: Colors.white),
+                          style: V3InputUtils.fieldTextStyle,
+                          cursorColor: V3InputStyle.focused,
                           onChanged: (value) => vsInputs[day] = value,
-                          decoration: InputDecoration(
-                            labelText: 'VS custom - ${V3DanHelper.trFullName(day)}',
-                            labelStyle: const TextStyle(color: Colors.white70),
+                          decoration: V3InputUtils.decoration(
+                            label: 'VS custom - ${V3DanHelper.trFullName(day)}',
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -564,29 +558,19 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         onChanged: (val) => setModalState(() => enabled = val),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: titleCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: _tr('naslov'),
-                          hintText: _tr('obavestenje'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.title, color: Colors.white70),
-                        ),
+                        label: _tr('naslov'),
+                        hint: _tr('obavestenje'),
+                        icon: Icons.title,
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: messageCtrl,
-                        minLines: 3,
+                        label: _tr('poruka'),
+                        hint: _tr('unesiTekstObavestenja'),
+                        icon: Icons.message_outlined,
                         maxLines: 6,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: _tr('poruka'),
-                          hintText: _tr('unesiTekstObavestenja'),
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          prefixIcon: const Icon(Icons.message_outlined, color: Colors.white70),
-                          alignLabelWithHint: true,
-                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(_tr('bojaBanera'), style: const TextStyle(color: Colors.white70, fontSize: 12)),
@@ -791,24 +775,24 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TextField(
+                      V3InputUtils.textField(
                         controller: latestAndroidCtrl,
-                        decoration: InputDecoration(labelText: _tr('androidLatest')),
+                        label: _tr('androidLatest'),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: minAndroidCtrl,
-                        decoration: InputDecoration(labelText: _tr('androidMin')),
+                        label: _tr('androidMin'),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: latestIosCtrl,
-                        decoration: InputDecoration(labelText: _tr('iosLatest')),
+                        label: _tr('iosLatest'),
                       ),
                       const SizedBox(height: 8),
-                      TextField(
+                      V3InputUtils.textField(
                         controller: minIosCtrl,
-                        decoration: InputDecoration(labelText: _tr('iosMin')),
+                        label: _tr('iosMin'),
                       ),
                       const SizedBox(height: 8),
                       SwitchListTile(
