@@ -455,6 +455,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                           // Dropdown putnika
                           DropdownButtonFormField2<V3Putnik>(
                             isExpanded: true,
+                            style: V3InputUtils.fieldTextStyle,
                             decoration: V3InputUtils.dropdownDecoration(
                               label: _tr('izaberiPutnika'),
                               icon: Icons.person_search,
@@ -486,7 +487,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             items: aktivniPutnici
                                 .map((p) => DropdownMenuItem(
                                       value: p,
-                                      child: V3SafeText.userName(p.imePrezime),
+                                      child: V3SafeText.userName(
+                                        p.imePrezime,
+                                        style: V3InputUtils.fieldTextStyle,
+                                      ),
                                     ))
                                 .toList(),
                             onChanged: (p) => setS(() {
@@ -647,28 +651,32 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     // "default" opcija — bez override
     items.add(DropdownMenuItem<V3Adresa?>(
       value: null,
-      child: Text(_tr('passengerAddressPlaceholder'), style: const TextStyle(fontSize: 13, color: Colors.grey)),
+      child: Text(_tr('passengerAddressPlaceholder'),
+          style: const TextStyle(fontSize: 13, color: V3InputStyle.label)),
     ));
 
     if (adresa1 != null) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: adresa1,
         child: Text('★ ${adresa1.naziv}',
-            overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: V3InputStyle.text)),
       ));
     }
     if (adresa2 != null) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: adresa2,
         child: Text('★ ${adresa2.naziv}',
-            overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: V3InputStyle.text)),
       ));
     }
 
     for (final a in ostale) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: a,
-        child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13)),
+        child: V3SafeText.userAddress(a.naziv,
+            style: const TextStyle(fontSize: 13, color: V3InputStyle.text)),
       ));
     }
 
@@ -687,7 +695,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 value: selected,
                 isExpanded: true,
                 isDense: true,
-                hint: Text(_tr('adresaOpciono'), style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                dropdownColor: V3InputStyle.dropdownMenu,
+                style: V3InputUtils.fieldTextStyle.copyWith(fontSize: 13),
+                iconEnabledColor: V3InputStyle.icon,
+                hint: Text(_tr('adresaOpciono'), style: const TextStyle(fontSize: 13, color: V3InputStyle.label)),
                 items: items,
                 onChanged: onChanged,
               ),
@@ -1200,10 +1211,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                             dropdownStyleData: DropdownStyleData(
                                               width: 170,
                                               maxHeight: 320,
+                                              // Čvrsta tamna pozadina — gradijent ima svetle stopove gde beli tekst gubi kontrast
                                               decoration: BoxDecoration(
-                                                gradient: Theme.of(context).backgroundGradient,
+                                                color: const Color(0xFF1A1A2E),
                                                 borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                                                border: Border.all(color: Colors.white24, width: 0.8),
                                               ),
                                               elevation: 8,
                                             ),
@@ -1216,8 +1228,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                                                       child: Center(
                                                         child: Text(
                                                           _trDan(d),
-                                                          style: TextStyle(
-                                                            color: Theme.of(context).colorScheme.onPrimary,
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
                                                             fontWeight: FontWeight.w700,
                                                           ),
                                                           maxLines: 1,
@@ -1832,10 +1844,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
                       );
-                      if (d != null) setState(() => datumIzdavanja = d);
+                      if ( d != null) setState(() => datumIzdavanja = d);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
                         color: sectionBg,
                         borderRadius: BorderRadius.circular(8),

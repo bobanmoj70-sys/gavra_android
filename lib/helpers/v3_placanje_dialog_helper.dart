@@ -120,8 +120,9 @@ class V3PlacanjeDialogHelper {
               return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
             }
 
+            // Beli meni (V3InputStyle.dropdownMenu) — bela boja bi bila nečitljiva
             if (uplaceno <= 0) {
-              return (color: Colors.white, weight: FontWeight.w500);
+              return (color: V3InputStyle.text, weight: FontWeight.w500);
             }
 
             return (color: const Color(0xFF00C853), weight: FontWeight.w700);
