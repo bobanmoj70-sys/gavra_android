@@ -149,7 +149,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   }
 
   void _autoSelectNajblizeVreme() {
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final nowMin = now.hour * 60 + now.minute;
     final svi = _sviPolasci;
     if (svi.isEmpty) {
@@ -209,7 +209,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         uniqueSlots.values.any((slot) => slot['grad'] == _selectedGrad && slot['vreme'] == currentNorm);
     if (currentExists) return;
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final nowMin = now.hour * 60 + now.minute;
     final slots = uniqueSlots.values.toList();
     slots.sort((a, b) {
@@ -877,7 +877,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         }),
         getCount: _getPutnikCount,
         getKapacitet: (grad, vreme) {
-          final datum = DateTime.tryParse(_selectedDatumIso) ?? DateTime.now();
+          final datum = V3BelgradeTime.parseDatumOrToday(_selectedDatumIso);
           return V3OperativnaNedeljaService.getKapacitetVozila(grad, vreme, datum);
         },
       );

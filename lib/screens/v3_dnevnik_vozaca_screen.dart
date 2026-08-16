@@ -199,7 +199,7 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
     for (int i = 0; i < _naplate.length; i++) {
       final n = _naplate[i];
       final datum = V3BelgradeTime.parseTs(n['naplatio_at']?.toString()) ??
-          V3BelgradeTime.parseTs(n['uplata_datum']?.toString()) ??
+          V3BelgradeTime.parseDatum(n['uplata_datum']) ??
           V3BelgradeTime.parseTs(n['updated_at']?.toString()) ??
           V3BelgradeTime.now();
       final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
@@ -391,12 +391,12 @@ class _V3DnevnikVozacaScreenState extends State<V3DnevnikVozacaScreen> {
                     _pdfCell(
                         V3DanHelper.formatVreme(
                             (V3BelgradeTime.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
-                                    V3BelgradeTime.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
+                                    V3BelgradeTime.parseDatum(_naplate[i]['uplata_datum']) ??
                                     V3BelgradeTime.parseTs(_naplate[i]['updated_at']?.toString()) ??
                                     V3BelgradeTime.now())
                                 .hour,
                             (V3BelgradeTime.parseTs(_naplate[i]['naplatio_at']?.toString()) ??
-                                    V3BelgradeTime.parseTs(_naplate[i]['uplata_datum']?.toString()) ??
+                                    V3BelgradeTime.parseDatum(_naplate[i]['uplata_datum']) ??
                                     V3BelgradeTime.parseTs(_naplate[i]['updated_at']?.toString()) ??
                                     V3BelgradeTime.now())
                                 .minute),
@@ -736,7 +736,7 @@ class _PokupioCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pokupljenAt = V3BelgradeTime.parseTs(p['pokupljen_at']?.toString());
-    final datum = pokupljenAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? V3BelgradeTime.now();
+    final datum = pokupljenAt ?? V3BelgradeTime.parseDatum(p['datum']) ?? V3BelgradeTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final putnikId = p['putnik_v3_auth_id']?.toString() ?? '';
     final rm = V3MasterRealtimeManager.instance;
@@ -778,7 +778,7 @@ class _OtkazaoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final otkazanoAt = V3BelgradeTime.parseTs(p['otkazano_at']?.toString());
-    final datum = otkazanoAt ?? V3BelgradeTime.parseTs(p['datum']?.toString()) ?? V3BelgradeTime.now();
+    final datum = otkazanoAt ?? V3BelgradeTime.parseDatum(p['datum']) ?? V3BelgradeTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);
     final grad = (p['grad']?.toString() ?? '').trim().toUpperCase();
     final polazakAt = p['vreme']?.toString() ?? '';
@@ -828,7 +828,7 @@ class _NaplataCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final datum = V3BelgradeTime.parseTs(n['naplatio_at']?.toString()) ??
-        V3BelgradeTime.parseTs(n['uplata_datum']?.toString()) ??
+        V3BelgradeTime.parseDatum(n['uplata_datum']) ??
         V3BelgradeTime.parseTs(n['updated_at']?.toString()) ??
         V3BelgradeTime.now();
     final vreme = V3DanHelper.formatVreme(datum.hour, datum.minute);

@@ -86,25 +86,34 @@ class V3BelgradeTime {
 
   // ─── Parsiranje iz baze ─────────────────────────────────────────
 
-  /// Parsira timestamptz string iz baze → `Europe/Belgrade` DateTime.
+  static final RegExp _dateOnlyRe = RegExp(r'^\d{4}-\d{2}-\d{2}');
+
+  /// Timestamptz → Beograd. Čist `yyyy-MM-dd` ide na [parseDatum] (bez TZ pomaka).
   static DateTime? parseTs(String? s) {
     if (s == null || s.trim().isEmpty) return null;
-    final parsed = DateTime.tryParse(s.trim());
+    final raw = s.trim();
+    if (raw.length == 10 && _dateOnlyRe.hasMatch(raw)) return parseDatum(raw);
+    final parsed = DateTime.tryParse(raw);
     return parsed == null ? null : fromUtc(parsed);
   }
 
-  /// Parsira timestamptz string iz baze → `Europe/Belgrade` DateTime,
-  /// ili trenutno vreme ako parsiranje ne uspe.
   static DateTime parseTsOrNow(String? s) => parseTs(s) ?? now();
 
-  /// Parsira date string iz baze → DateTime (bez timezone konverzije).
-  static DateTime? parseDatum(String? s) {
-    if (s == null || s.trim().isEmpty) return null;
-    return DateTime.tryParse(s.trim());
+  /// DATE kolona → kalendarski dan (Beograd posao). Bez zone telefona.
+  static DateTime? parseDatum(Object? value) {
+    if (value == null) return null;
+    if (value is DateTime) return DateTime(value.year, value.month, value.day);
+
+    final iso = parseIsoDatePart(value.toString());
+    if (!_dateOnlyRe.hasMatch(iso)) return null;
+    final y = int.tryParse(iso.substring(0, 4));
+    final m = int.tryParse(iso.substring(5, 7));
+    final d = int.tryParse(iso.substring(8, 10));
+    if (y == null || m == null || d == null) return null;
+    return DateTime(y, m, d);
   }
 
-  /// Parsira date string iz baze → DateTime, ili danas ako parsiranje ne uspe.
-  static DateTime parseDatumOrToday(String? s) => parseDatum(s) ?? today();
+  static DateTime parseDatumOrToday(Object? value) => parseDatum(value) ?? today();
 
   // ─── Normalizacija vremena ──────────────────────────────────────
 

@@ -3,8 +3,8 @@ import '../services/v3_locale_manager.dart';
 import 'v3_belgrade_time.dart';
 import 'v3_string_utils.dart';
 
-/// Helper za konverziju DateTime u naziv/kraticu dana i naziva u datume.
-/// Sve operacije sa datumom/vremenom delegiraju na [V3BelgradeTime].
+/// Dani + sedmica zakazivanja. Vreme uvek preko [V3BelgradeTime] (Beograd).
+/// Zakazivanje = samo pon–pet.
 class V3DanHelper {
   V3DanHelper._();
 
@@ -21,9 +21,6 @@ class V3DanHelper {
     'nedelja': 'nedelja',
   };
 
-  /// Prevodi kanonski (srpski) puni naziv dana (npr. 'Ponedeljak') na trenutno
-  /// izabrani jezik aplikacije, za prikaz u UI-ju. Interna logika/baza i dalje
-  /// koriste kanonski srpski naziv — ova metoda menja samo prikaz.
   static String trFullName(String danPuni) {
     final key = _translationKeys[danPuni.trim().toLowerCase()];
     if (key == null) return danPuni;
@@ -31,9 +28,6 @@ class V3DanHelper {
     return _t[key]?[code] ?? _t[key]?['sr'] ?? danPuni;
   }
 
-  /// Prevedena skraćenica dana (npr. 'Pon'/'Mon') za kompaktan prikaz u UI-ju
-  /// (chip-ovi, dugmad). Za CJK jezike vraća pun prevedeni naziv (nema smisleno
-  /// skraćivanje na 3 karaktera).
   static String trAbbr(String danPuni) {
     final translated = trFullName(danPuni);
     final code = V3LocaleManager().currentLocale.languageCode;
@@ -46,6 +40,9 @@ class V3DanHelper {
   static const _abbrs = ['pon', 'uto', 'sre', 'cet', 'pet', 'sub', 'ned'];
   static const _labels = ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'];
 
+  static const List<String> workdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
+  static const List<String> workdayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
+
   static int _indexForFullDayName(String danPuni) {
     final normalized = V3StringUtils.forSearch(danPuni);
     for (var i = 0; i < _names.length; i++) {
@@ -54,187 +51,114 @@ class V3DanHelper {
     return -1;
   }
 
-  static int _indexForDayAbbr(String danAbbr) {
-    final normalized = V3StringUtils.forSearch(danAbbr);
-    if (normalized.startsWith('pon')) return 0;
-    if (normalized.startsWith('uto')) return 1;
-    if (normalized.startsWith('sre')) return 2;
-    if (normalized.startsWith('cet')) return 3;
-    if (normalized.startsWith('pet')) return 4;
-    if (normalized.startsWith('sub')) return 5;
-    if (normalized.startsWith('ned')) return 6;
+  /// 0–4 = pon–pet, inače -1 (vikend nije radni dan).
+  static int _workdayIndexFromAbbr(String danAbbr) {
+    final n = V3StringUtils.forSearch(danAbbr);
+    if (n.startsWith('pon')) return 0;
+    if (n.startsWith('uto')) return 1;
+    if (n.startsWith('sre')) return 2;
+    if (n.startsWith('cet')) return 3;
+    if (n.startsWith('pet')) return 4;
     return -1;
   }
 
-  // ─── DateTime → naziv ───────────────────────────────────────────
-
-  /// Puni naziv dana (npr. 'Ponedeljak').
   static String fullName(DateTime datum) => _names[datum.weekday - 1];
-
-  /// Kratki UI label (npr. 'Pon').
   static String label(DateTime datum) => _labels[datum.weekday - 1];
 
-  // ─── Lista dana za UI (dropdown/chip) ───────────────────────────
-
-  /// Radni dani (ponedeljak–petak) — puni nazivi.
-  static const List<String> workdayNames = ['Ponedeljak', 'Utorak', 'Sreda', 'Cetvrtak', 'Petak'];
-
-  /// Radni dani (ponedeljak–petak) — kratice.
-  static const List<String> workdayAbbrs = ['pon', 'uto', 'sre', 'cet', 'pet'];
-
-  // ─── Inicijalizacija tekućeg dana ───────────────────────────────
-
-  /// Danas kao puni naziv RADNOG dana.
-  /// - Ako je danas ponedeljak–petak: vraća današnji radni dan.
-  /// - Ako je vikend: vraća ponedeljak operativne sedmice zakazivanja.
   static String defaultWorkdayFullName({DateTime? now}) {
-    final current = now ?? V3BelgradeTime.now();
-    final base = dateOnly(current);
+    final base = dateOnly(now ?? V3BelgradeTime.now());
     if (base.weekday >= DateTime.monday && base.weekday <= DateTime.friday) {
       return fullName(base);
     }
-    return fullName(schedulingWeekRange(now: current).start);
+    return 'Ponedeljak';
   }
 
-  /// Podrazumevani datum radnog dana.
-  /// - Ako je danas ponedeljak–petak: vraća današnji datum.
-  /// - Ako je vikend: vraća ponedeljak operativne sedmice zakazivanja.
   static DateTime defaultWorkdayDate({DateTime? now}) {
-    final current = now ?? V3BelgradeTime.now();
-    final base = dateOnly(current);
+    final base = dateOnly(now ?? V3BelgradeTime.now());
     if (base.weekday >= DateTime.monday && base.weekday <= DateTime.friday) {
       return base;
     }
-    return schedulingWeekRange(now: current).start;
+    return schedulingWeekAnchor(now: now);
   }
 
-  /// Normalizuje puni naziv dana na radni dan.
-  /// Vraća prazan string za vikend/invalid.
   static String normalizeToWorkdayFull(String dayFullName) {
     final index = _indexForFullDayName(dayFullName);
     if (index >= 0 && index <= 4) return _names[index];
     return '';
   }
 
-  /// Kratica radnog dana iz punog naziva dana.
-  /// Vraća prazan string za vikend/invalid.
   static String workdayAbbrFromFullName(String dayFullName) {
     final index = _indexForFullDayName(dayFullName);
     if (index >= 0 && index <= 4) return _abbrs[index];
     return '';
   }
 
-  // ─── Operativna sedmica za zakazivanje ─────────────────────────
+  static String fullNameFromWorkdayAbbr(String danAbbr) {
+    final index = _workdayIndexFromAbbr(danAbbr);
+    return index < 0 ? '' : _names[index];
+  }
 
-  /// Funkcija koja dobavlja globalni override za početak operativne sedmice (kako je podešeno u bazi).
-  /// Koristimo callback da izbegnemo kružne importe sa globals.dart.
+  /// Ponedeljak aktivne sedmice iz baze (ili tekući pon, Beograd).
   static DateTime? Function()? getGlobalOperativnaNedeljaStart;
-  static DateTime? Function()? getGlobalOperativnaNedeljaEnd;
 
-  /// Anchor datum za operativnu sedmicu zakazivanja.
-  /// Preferira app settings vrednost iz baze; ako još nije stigla,
-  /// privremeno koristi tekuću kalendarsku sedmicu kao fallback.
   static DateTime schedulingWeekAnchor({DateTime? now}) {
-    final overrideStart = getGlobalOperativnaNedeljaStart?.call();
-    if (overrideStart != null) {
-      return dateOnly(overrideStart);
-    }
-
-    final current = dateOnly(now ?? V3BelgradeTime.now());
-    return current.subtract(Duration(days: current.weekday - DateTime.monday));
+    final fromDb = getGlobalOperativnaNedeljaStart?.call();
+    final d = dateOnly(fromDb ?? now ?? V3BelgradeTime.now());
+    return d.subtract(Duration(days: d.weekday - DateTime.monday));
   }
 
-  /// Početak i kraj operativne sedmice zakazivanja.
-  /// Preferira app settings vrednosti iz baze; ako još nisu stigle,
-  /// koristi tekuću kalendarsku sedmicu (ponedeljak-nedelja).
+  /// Pon–pet aktivne sedmice.
   static ({DateTime start, DateTime end}) schedulingWeekRange({DateTime? now}) {
-    final overrideStart = getGlobalOperativnaNedeljaStart?.call();
-    final start =
-        overrideStart != null ? dateOnly(overrideStart) : schedulingWeekAnchor(now: now ?? V3BelgradeTime.now());
-    final overrideEnd = getGlobalOperativnaNedeljaEnd?.call();
-    final end = (overrideEnd != null && !dateOnly(overrideEnd).isBefore(start))
-        ? dateOnly(overrideEnd)
-        : start.add(const Duration(days: 6));
-    return (start: start, end: end);
+    final start = schedulingWeekAnchor(now: now);
+    return (start: start, end: start.add(const Duration(days: 4)));
   }
 
-  /// Sledeći trenutak kada se otvara zakazivanje za novu sedmicu (subota 03:00).
-  /// Računa se u `Europe/Belgrade` zoni.
+  /// Subota 03:00 Beograd — otvaranje nove sedmice.
   static DateTime nextSchedulingUnlock({DateTime? now}) {
     final current = now ?? V3BelgradeTime.now();
     final base = dateOnly(current);
     final saturday = base.add(Duration(days: DateTime.saturday - base.weekday));
-    final unlockThisWeek = V3BelgradeTime.dateTime(saturday.year, saturday.month, saturday.day, 3, 0);
-    if (current.isBefore(unlockThisWeek)) return unlockThisWeek;
-    final nextSaturday = saturday.add(const Duration(days: 7));
-    return V3BelgradeTime.dateTime(nextSaturday.year, nextSaturday.month, nextSaturday.day, 3, 0);
+    final unlock = V3BelgradeTime.dateTime(saturday.year, saturday.month, saturday.day, 3, 0);
+    if (current.isBefore(unlock)) return unlock;
+    final next = saturday.add(const Duration(days: 7));
+    return V3BelgradeTime.dateTime(next.year, next.month, next.day, 3, 0);
   }
 
-  /// Da li je datum unutar operativne sedmice zakazivanja.
   static bool isInSchedulingWeek(DateTime datum, {DateTime? now}) {
+    return isInSchedulingWorkweek(datum, now: now);
+  }
+
+  static bool isInSchedulingWorkweek(DateTime datum, {DateTime? now}) {
     final target = dateOnly(datum);
+    if (target.weekday < DateTime.monday || target.weekday > DateTime.friday) return false;
     final range = schedulingWeekRange(now: now);
     return !target.isBefore(range.start) && !target.isAfter(range.end);
   }
 
-  /// Da li je datum unutar aktivne RADNE sedmice zakazivanja (ponedeljak–petak).
-  static bool isInSchedulingWorkweek(DateTime datum, {DateTime? now}) {
-    if (!isInSchedulingWeek(datum, now: now)) return false;
-    final target = dateOnly(datum);
-    return target.weekday >= DateTime.monday && target.weekday <= DateTime.friday;
-  }
-
-  // ─── naziv/kratica → ISO datum (RAČUNANJE PO SEDMICI) ────────
-
-  /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
-  /// Ne gura automatski u sledeću sedmicu ako je dan već prošao.
   static String datumIsoZaDanPuniUTekucojSedmici(String danPuni, {DateTime? anchor}) {
-    final targetIndex = _indexForFullDayName(danPuni);
-    if (targetIndex == -1) return '';
-    final range = schedulingWeekRange(now: anchor ?? V3BelgradeTime.now());
-    final targetDate = range.start.add(Duration(days: targetIndex));
-    return toIsoDate(targetDate);
+    final i = _indexForFullDayName(danPuni);
+    if (i < 0 || i > 4) return '';
+    return toIsoDate(schedulingWeekAnchor(now: anchor).add(Duration(days: i)));
   }
 
-  /// DateTime za izabrani dan u TEKUĆOJ sedmici.
-  /// Sedmica se računa od [anchor] datuma (ili danas ako nije prosleđen).
   static DateTime datumZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
-    final targetIndex = _indexForDayAbbr(danAbbr);
-    final range = schedulingWeekRange(now: anchor ?? V3BelgradeTime.now());
-    if (targetIndex == -1) {
-      throw ArgumentError.value(danAbbr, 'danAbbr', 'Nevažeća kratica dana');
+    final i = _workdayIndexFromAbbr(danAbbr);
+    if (i < 0) {
+      throw ArgumentError.value(danAbbr, 'danAbbr', 'Samo pon-pet');
     }
-    return range.start.add(Duration(days: targetIndex));
+    return schedulingWeekAnchor(now: anchor).add(Duration(days: i));
   }
 
-  /// ISO datum (yyyy-MM-dd) za izabrani dan u TEKUĆOJ sedmici.
   static String datumIsoZaDanAbbrUTekucojSedmici(String danAbbr, {DateTime? anchor}) {
     return toIsoDate(datumZaDanAbbrUTekucojSedmici(danAbbr, anchor: anchor));
   }
 
-  /// Formatira vreme iz sati/minuta u "HH:mm" — delegira na jedini izvor istine.
   static String formatVreme(int sati, int minuti) => V3BelgradeTime.formatVreme(sati, minuti);
-
-  // ─── parsanje/formatiranje ───────────────────────────────────
-
-  /// ISO datum string iz DateTime — delegira na jedini izvor istine.
   static String toIsoDate(DateTime datum) => V3BelgradeTime.toIsoDate(datum);
-
-  /// Današnji ISO datum (yyyy-MM-dd) u Belgrade zoni — delegira na jedini izvor istine.
   static String todayIso() => V3BelgradeTime.todayIso();
-
-  /// Formatira datum u DD.MM.YY format — delegira na jedini izvor istine.
   static String formatDanMesec(DateTime datum) => V3BelgradeTime.formatDanMesec(datum);
-
-  /// Formatira datetime u DD.MM. HH:MM format (kratko) — delegira na jedini izvor istine.
   static String formatDatumVremeKratko(DateTime dt) => V3BelgradeTime.formatDatumVremeKratko(dt);
-
-  /// Formatira datum u DD.MM.YYYY format (puni) — delegira na jedini izvor istine.
   static String formatDatumPuni(DateTime datum) => V3BelgradeTime.formatDatumPuni(datum);
-
-  /// Kreira DateTime samo sa datumom (bez vremena) — delegira na jedini izvor istine.
   static DateTime dateOnly(DateTime datum) => V3BelgradeTime.dateOnly(datum);
-
-  /// Generira DateTime sa datumom (god, mes, dan) i vremenom na 00:00:00 — delegira na jedini izvor istine.
   static DateTime dateOnlyFrom(int godina, int mesec, int dan) => V3BelgradeTime.dateOnlyFrom(godina, mesec, dan);
 }

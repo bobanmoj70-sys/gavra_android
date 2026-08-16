@@ -131,22 +131,19 @@ class V3MasterRealtimeManager {
     }
 
     if (row.containsKey('active_week_start')) {
-      final awsParsed = _tryParseDateTime(row['active_week_start']);
+      // DATE kolona — parseDatum (kalendar), nikad parseTs / zona telefona.
+      final awsParsed = V3BelgradeTime.parseDatum(row['active_week_start']);
       if (awsParsed != null) {
-        V3AppSettingsState.instance.setActiveWeekStart(
-          DateTime(awsParsed.year, awsParsed.month, awsParsed.day),
-        );
+        V3AppSettingsState.instance.setActiveWeekStart(awsParsed);
       } else {
         debugPrint('[V3MasterRealtimeManager] active_week_start je nevažeći, zadržavam postojeću vrednost.');
       }
     }
 
     if (row.containsKey('active_week_end')) {
-      final aweParsed = _tryParseDateTime(row['active_week_end']);
+      final aweParsed = V3BelgradeTime.parseDatum(row['active_week_end']);
       if (aweParsed != null) {
-        V3AppSettingsState.instance.setActiveWeekEnd(
-          DateTime(aweParsed.year, aweParsed.month, aweParsed.day),
-        );
+        V3AppSettingsState.instance.setActiveWeekEnd(aweParsed);
       } else {
         debugPrint('[V3MasterRealtimeManager] active_week_end je nevažeći, zadržavam postojeću vrednost.');
       }
@@ -183,10 +180,6 @@ class V3MasterRealtimeManager {
 
   Future<void>? _initInFlight;
   bool _isInitialized = false;
-
-  DateTime? _tryParseDateTime(dynamic value) => V3CacheStore.parseDateTime(value);
-
-  // Alias maintained for readability; delegates to shared CacheStore utility.
 
   void _scheduleEmit({Set<String>? tables, bool immediate = false}) => _eventBus.scheduleEmit(
         tables: tables,

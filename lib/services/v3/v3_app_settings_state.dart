@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../utils/v3_belgrade_time.dart';
+
 class V3AppSettingsState {
   V3AppSettingsState._();
   static final V3AppSettingsState instance = V3AppSettingsState._();
@@ -20,12 +22,13 @@ class V3AppSettingsState {
   DateTime? get activeWeekStartValue => activeWeekStart.value;
   DateTime? get activeWeekEndValue => activeWeekEnd.value;
 
+  /// Samo kalendarski dan (Beograd poslovna logika). Nikad TZ instant uređaja.
   void setActiveWeekStart(DateTime? value) {
-    activeWeekStart.value = value;
+    activeWeekStart.value = value == null ? null : V3BelgradeTime.dateOnly(value);
   }
 
   void setActiveWeekEnd(DateTime? value) {
-    activeWeekEnd.value = value;
+    activeWeekEnd.value = value == null ? null : V3BelgradeTime.dateOnly(value);
   }
 
   void setHereWegoInstallUrlAndroid(String? value) {

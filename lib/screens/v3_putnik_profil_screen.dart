@@ -218,8 +218,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         for (final zahtev in zahtevRows) {
           final status = V3StatusPolicy.normalizeStatus(zahtev['status']?.toString());
           final priority = V3StatusPolicy.displayPriority(status: status, pokupljen: false);
-          final zahtevTs = DateTime.tryParse(zahtev['updated_at']?.toString() ?? '') ??
-              DateTime.tryParse(zahtev['created_at']?.toString() ?? '') ??
+          final zahtevTs = V3BelgradeTime.parseTs(zahtev['updated_at']?.toString()) ??
+              V3BelgradeTime.parseTs(zahtev['created_at']?.toString()) ??
               DateTime.fromMillisecondsSinceEpoch(0);
 
           final trazeniVreme = _normalizeValidTime(zahtev['trazeni_polazak_at']?.toString()) ??
@@ -756,18 +756,11 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     return '${_trDanFullName(V3DanHelper.fullName(allowedDate))}, $dateLabel';
   }
 
-  /// Helper za konverziju kratice dana u puni naziv koristeći V3DanHelper.
+  /// Helper za konverziju kratice dana u puni naziv (fiksno pon–pet).
+  /// Ne računa iz datuma — labela ne sme da "skoči" na Nedelju zbog TZ.
   String _getDanLabel(String danAbbr) {
-    try {
-      final datum = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
-        danAbbr,
-        anchor: V3DanHelper.schedulingWeekAnchor(),
-      );
-      return _trDanFullName(V3DanHelper.fullName(datum));
-    } catch (e) {
-      // Fallback ako kratica nije validna
-      return danAbbr;
-    }
+    final name = V3DanHelper.fullNameFromWorkdayAbbr(danAbbr);
+    return name.isEmpty ? danAbbr : _trDanFullName(name);
   }
 
   Widget _buildLanguageFlag() {

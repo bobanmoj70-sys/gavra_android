@@ -39,7 +39,7 @@ class V3Zahtev {
     return V3Zahtev(
       id: json['id'] as String? ?? '',
       putnikId: putnikId,
-      datum: V3BelgradeTime.parseDatum(json['datum']?.toString()) ?? V3BelgradeTime.now(),
+      datum: V3BelgradeTime.parseDatum(json['datum']) ?? V3BelgradeTime.today(),
       grad: json['grad'] as String? ?? '',
       trazeniPolazakAt: json['trazeni_polazak_at'] as String? ?? '',
       status: json['status'] as String? ?? 'obrada',

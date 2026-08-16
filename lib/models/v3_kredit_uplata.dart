@@ -17,7 +17,7 @@ class V3KreditUplata {
   factory V3KreditUplata.fromJson(Map<String, dynamic> json) {
     return V3KreditUplata(
       uplataId: json['uplata_id']?.toString() ?? '',
-      datum: V3BelgradeTime.parseTs(json['datum']?.toString()) ?? V3BelgradeTime.now(),
+      datum: V3BelgradeTime.parseDatum(json['datum']) ?? V3BelgradeTime.today(),
       iznos: (json['iznos'] as num?)?.toDouble() ?? 0.0,
       napomena: json['napomena']?.toString(),
     );

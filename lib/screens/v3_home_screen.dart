@@ -230,7 +230,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     );
     if (hasCurrentSelection) return;
 
-    final now = DateTime.now();
+    final now = V3BelgradeTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
     final validSlots = uniqueSlots.values.toList();
     validSlots.sort((a, b) {

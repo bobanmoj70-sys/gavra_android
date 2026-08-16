@@ -396,7 +396,7 @@ class V3PutnikStatistikaService {
     int? mesec,
     DateTime? now,
   }) {
-    final ref = now ?? DateTime.now();
+    final ref = now ?? V3BelgradeTime.now();
     final safePutnikId = putnikId.trim();
 
     if (safePutnikId.isEmpty) {
@@ -468,8 +468,8 @@ class V3PutnikStatistikaService {
       case V3ObracunPeriod.tekuciMesec:
         return 'Tekući mesec';
       case V3ObracunPeriod.izabraniMesec:
-        final safeMesec = mesec ?? DateTime.now().month;
-        final safeGodina = godina ?? DateTime.now().year;
+        final safeMesec = mesec ?? V3BelgradeTime.now().month;
+        final safeGodina = godina ?? V3BelgradeTime.now().year;
         return '${V3BelgradeTime.mesecNaziv(safeMesec)} $safeGodina';
       case V3ObracunPeriod.ukupno:
         return 'Ukupno';
@@ -510,7 +510,7 @@ class V3PutnikStatistikaService {
         if (item is! Map) continue;
         final datumStr = item['datum']?.toString();
         if (datumStr == null || datumStr.isEmpty) continue;
-        final datum = V3BelgradeTime.parseTs(datumStr) ?? V3BelgradeTime.parseDatum(datumStr);
+        final datum = V3BelgradeTime.parseDatum(datumStr);
         if (datum == null) continue;
         if (datum.year == godina && datum.month == mesec) {
           count++;
@@ -581,7 +581,7 @@ class V3PutnikStatistikaService {
     String putnikId, {
     DateTime? now,
   }) {
-    final ref = now ?? DateTime.now();
+    final ref = now ?? V3BelgradeTime.now();
     return getZaMesec(
       putnikId: putnikId,
       godina: ref.year,
@@ -670,7 +670,7 @@ class V3PutnikStatistikaService {
   }) {
     if (putnikId.isEmpty) return 0;
 
-    final ref = now ?? DateTime.now();
+    final ref = now ?? V3BelgradeTime.now();
     return getUkupanDugDoMeseca(
       putnikId: putnikId,
       godina: ref.year,
@@ -805,8 +805,7 @@ class V3PutnikStatistikaService {
     final nenaplacenePoDanu = <DateTime, int>{};
     for (final stavka in nenaplacene) {
       final dt = stavka['_datum_parsed'] as DateTime? ??
-          V3BelgradeTime.parseTs(stavka['datum']?.toString()) ??
-          V3BelgradeTime.parseDatum(stavka['datum']?.toString());
+          V3BelgradeTime.parseDatum(stavka['datum']);
       if (dt == null) continue;
       final dan = DateTime(dt.year, dt.month, dt.day);
       nenaplacenePoDanu[dan] = (nenaplacenePoDanu[dan] ?? 0) + 1;
@@ -814,8 +813,7 @@ class V3PutnikStatistikaService {
 
     for (final v in voznje) {
       final dt = v['_datum_parsed'] as DateTime? ??
-          V3BelgradeTime.parseTs(v['datum']?.toString()) ??
-          V3BelgradeTime.parseDatum(v['datum']?.toString());
+          V3BelgradeTime.parseDatum(v['datum']);
       if (dt == null) continue;
 
       final dan = DateTime(dt.year, dt.month, dt.day);

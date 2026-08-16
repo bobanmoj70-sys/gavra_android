@@ -504,7 +504,7 @@ class V3RacunService {
       final parsed = int.tryParse(parts[1].trim());
       if (parsed != null) return parsed;
     }
-    return DateTime.now().year;
+    return V3BelgradeTime.now().year;
   }
 
   static Future<int> getCurrentGodinaRacuna() async {

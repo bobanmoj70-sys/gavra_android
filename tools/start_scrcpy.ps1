@@ -282,13 +282,12 @@ try {
             Prepare-Device $adb $target
 
             Write-Ok "Pokrecem scrcpy na $target ..."
-            Write-Host '  --stay-awake --turn-screen-off --show-touches' -ForegroundColor DarkGray
+            Write-Host '  --stay-awake --show-touches' -ForegroundColor DarkGray
             Write-Host ''
 
             & $scrcpy `
                 --serial $target `
                 --stay-awake `
-                --turn-screen-off `
                 --show-touches `
                 --window-title "Gavra Test - $DeviceName"
 

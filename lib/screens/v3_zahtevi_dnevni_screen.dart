@@ -66,7 +66,7 @@ class _V3ZahteviDnevniScreenState extends State<V3ZahteviDnevniScreen> {
           if (!isDnevni) return false;
 
           final datumRaw = r['datum']?.toString();
-          final datum = datumRaw != null ? DateTime.tryParse(datumRaw) : null;
+          final datum = V3BelgradeTime.parseDatum(datumRaw);
           if (datum == null) return false;
           if (!V3DanHelper.isInSchedulingWeek(datum)) return false;
 

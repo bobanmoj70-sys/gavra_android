@@ -10,7 +10,6 @@ export 'utils/v3_dan_helper.dart';
 
 void initDanHelperGlobals() {
   V3DanHelper.getGlobalOperativnaNedeljaStart = () => V3AppSettingsState.instance.activeWeekStartValue;
-  V3DanHelper.getGlobalOperativnaNedeljaEnd = () => V3AppSettingsState.instance.activeWeekEndValue;
 }
 
 /// Globalne varijable za Gavra Android

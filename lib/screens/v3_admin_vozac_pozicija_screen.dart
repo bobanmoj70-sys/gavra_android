@@ -10,6 +10,7 @@ import '../models/v3_vozac.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
+import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_card_color_policy.dart';
 import '../utils/v3_input_utils.dart';
 
@@ -81,8 +82,8 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
       final lng = (row['lng'] as num?)?.toDouble();
       if (vozacId.isEmpty || lat == null || lng == null) continue;
       newPozicije[vozacId] = ll.LatLng(lat, lng);
-      final parsed = DateTime.tryParse(row['updated_at']?.toString() ?? '');
-      newUpdates[vozacId] = parsed?.toLocal() ?? DateTime.now();
+      final parsed = V3BelgradeTime.parseTs(row['updated_at']?.toString());
+      newUpdates[vozacId] = parsed ?? V3BelgradeTime.now();
       final speedRaw = row['speed_kmh'];
       newBrzine[vozacId] = speedRaw is num ? speedRaw.toDouble() : null;
     }

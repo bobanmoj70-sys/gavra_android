@@ -232,89 +232,126 @@ class V3PlacanjeDialogHelper {
                                 ],
                               ),
                             ),
+                          // Labele iznad polja (ne floating na ivici — inače pola teksta ide preko tamne pozadine).
+                          Text(
+                            _placanjeTr('iznosRsd'),
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.78),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
                           V3InputUtils.numberField(
                             controller: _iznosController,
-                            label: _placanjeTr('iznosRsd'),
+                            hint: '0',
                             suffixText: 'RSD',
                             keyboardType: TextInputType.number,
                             icon: Icons.payments_outlined,
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 16),
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: DropdownButtonFormField2<int>(
-                                  isExpanded: true,
-                                  dropdownStyleData: DropdownStyleData(
-                                    decoration: BoxDecoration(
-                                      color: V3InputStyle.dropdownMenu,
-                                      borderRadius: BorderRadius.circular(V3InputStyle.radius),
-                                      border: Border.all(color: V3InputStyle.border),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      _placanjeTr('mesec'),
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.78),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                  style: V3InputUtils.fieldTextStyle,
-                                  iconStyleData: const IconStyleData(
-                                    iconEnabledColor: V3InputStyle.icon,
-                                  ),
-                                  decoration: V3InputUtils.dropdownDecoration(
-                                    label: _placanjeTr('mesec'),
-                                  ),
-                                  value: _selectedMonth,
-                                  items: List.generate(12, (i) => i + 1).map((m) {
-                                    final mesecStyle = _mesecStyle(m);
-                                    return DropdownMenuItem(
-                                      value: m,
-                                      child: Text(
-                                        V3BelgradeTime.mesecNaziv(m),
-                                        style: TextStyle(
-                                          color: mesecStyle.color,
-                                          fontWeight: mesecStyle.weight,
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField2<int>(
+                                      isExpanded: true,
+                                      dropdownStyleData: DropdownStyleData(
+                                        decoration: BoxDecoration(
+                                          color: V3InputStyle.dropdownMenu,
+                                          borderRadius: BorderRadius.circular(V3InputStyle.radius),
+                                          border: Border.all(color: V3InputStyle.border),
                                         ),
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (v) => setState(() {
-                                    _selectedMonth = v!;
-                                    if (_autoIznosEnabled) {
-                                      _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                                    }
-                                  }),
+                                      style: V3InputUtils.fieldTextStyle,
+                                      iconStyleData: const IconStyleData(
+                                        iconEnabledColor: V3InputStyle.icon,
+                                      ),
+                                      decoration: V3InputUtils.dropdownDecoration(),
+                                      value: _selectedMonth,
+                                      items: List.generate(12, (i) => i + 1).map((m) {
+                                        final mesecStyle = _mesecStyle(m);
+                                        return DropdownMenuItem(
+                                          value: m,
+                                          child: Text(
+                                            V3BelgradeTime.mesecNaziv(m),
+                                            style: TextStyle(
+                                              color: mesecStyle.color,
+                                              fontWeight: mesecStyle.weight,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (v) => setState(() {
+                                        _selectedMonth = v!;
+                                        if (_autoIznosEnabled) {
+                                          _setIznosController(
+                                              _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                        }
+                                      }),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: DropdownButtonFormField2<int>(
-                                  isExpanded: true,
-                                  dropdownStyleData: DropdownStyleData(
-                                    decoration: BoxDecoration(
-                                      color: V3InputStyle.dropdownMenu,
-                                      borderRadius: BorderRadius.circular(V3InputStyle.radius),
-                                      border: Border.all(color: V3InputStyle.border),
-                                    ),
-                                  ),
-                                  style: V3InputUtils.fieldTextStyle,
-                                  iconStyleData: const IconStyleData(
-                                    iconEnabledColor: V3InputStyle.icon,
-                                  ),
-                                  decoration: V3InputUtils.dropdownDecoration(
-                                    label: _placanjeTr('godina'),
-                                  ),
-                                  value: _selectedYear,
-                                  items: years.map((y) {
-                                    return DropdownMenuItem(
-                                      value: y,
-                                      child: Text(
-                                        '$y.',
-                                        style: V3InputUtils.fieldTextStyle,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      _placanjeTr('godina'),
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.78),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (v) => setState(() {
-                                    _selectedYear = v!;
-                                    if (_autoIznosEnabled) {
-                                      _setIznosController(_predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                                    }
-                                  }),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField2<int>(
+                                      isExpanded: true,
+                                      dropdownStyleData: DropdownStyleData(
+                                        decoration: BoxDecoration(
+                                          color: V3InputStyle.dropdownMenu,
+                                          borderRadius: BorderRadius.circular(V3InputStyle.radius),
+                                          border: Border.all(color: V3InputStyle.border),
+                                        ),
+                                      ),
+                                      style: V3InputUtils.fieldTextStyle,
+                                      iconStyleData: const IconStyleData(
+                                        iconEnabledColor: V3InputStyle.icon,
+                                      ),
+                                      decoration: V3InputUtils.dropdownDecoration(),
+                                      value: _selectedYear,
+                                      items: years.map((y) {
+                                        return DropdownMenuItem(
+                                          value: y,
+                                          child: Text(
+                                            '$y.',
+                                            style: V3InputUtils.fieldTextStyle,
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (v) => setState(() {
+                                        _selectedYear = v!;
+                                        if (_autoIznosEnabled) {
+                                          _setIznosController(
+                                              _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                        }
+                                      }),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

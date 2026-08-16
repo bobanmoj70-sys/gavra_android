@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,11 +17,50 @@ class V3InputStyle {
   static const Color icon = Color(0xFF475569);
   static const Color dropdownMenu = Colors.white;
   static const double radius = 12;
+
+  /// Labela iznad polja (čitljiva na tamnoj dijalog pozadini).
+  static const Color externalLabel = Color(0xFFCBD5E1);
+  static const double externalLabelGap = 6;
 }
 
 /// V3InputUtils — jedan izvor istine za TextField / TextFormField / dropdown / search.
+///
+/// **Pravilo:** labele su UVEK iznad polja (nikad floating na ivici outline-a).
+/// Floating label na tamnoj pozadini se „prelama“ — zato je zabranjen u [decoration].
 class V3InputUtils {
   V3InputUtils._();
+
+  // ─── Jedna istina: eksterna labela ───────────────────────────────────────
+
+  static TextStyle get externalLabelStyle => const TextStyle(
+        color: V3InputStyle.externalLabel,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        height: 1.2,
+      );
+
+  /// Omota [child] labelom iznad. Koristi za dropdown / InputDecorator / custom polja.
+  static Widget labeled({
+    String? label,
+    required Widget child,
+    Color? labelColor,
+    double gap = V3InputStyle.externalLabelGap,
+  }) {
+    final text = label?.trim();
+    if (text == null || text.isEmpty) return child;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          text,
+          style: labelColor != null ? externalLabelStyle.copyWith(color: labelColor) : externalLabelStyle,
+        ),
+        SizedBox(height: gap),
+        child,
+      ],
+    );
+  }
 
   static Future<void> pasteFromClipboardIntoController(TextEditingController controller) async {
     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
@@ -83,7 +122,10 @@ class V3InputUtils {
     );
   }
 
-  /// Standardni InputDecoration — uvek [V3InputStyle].
+  /// Samo chrome polja — **bez** floating/labelText (label ide preko [labeled]).
+  ///
+  /// Parametar [label] se ignoriše u decoration-u (zadržan radi kompatibilnosti poziva);
+  /// koristi [labeled] ili field buildere koji sami omotaju labelu.
   static InputDecoration decoration({
     String? label,
     String? hint,
@@ -99,6 +141,7 @@ class V3InputUtils {
     Color? iconColor,
     EdgeInsetsGeometry? contentPadding,
   }) {
+    // [label] namerno nije u InputDecoration — vidi [labeled] / field buildere.
     final fill = fillColor ?? V3InputStyle.fill;
     final borderCol = borderColor ?? V3InputStyle.border;
     final focused = focusedBorderColor ?? V3InputStyle.focused;
@@ -108,9 +151,9 @@ class V3InputUtils {
     final r = BorderRadius.circular(V3InputStyle.radius);
 
     return InputDecoration(
-      labelText: label,
-      labelStyle: TextStyle(color: labelCol),
-      floatingLabelStyle: TextStyle(color: focused, fontWeight: FontWeight.w600),
+      // Nikad floating label — jedna istina za celu app.
+      labelText: null,
+      floatingLabelBehavior: FloatingLabelBehavior.never,
       hintText: hint,
       hintStyle: TextStyle(color: hintCol),
       prefixIcon: prefixIcon ?? (icon != null ? Icon(icon, color: iconCol) : null),
@@ -142,15 +185,17 @@ class V3InputUtils {
     );
   }
 
+  /// Decoration za dropdown/InputDecorator. [label] se ne crta ovde — koristi [labeled].
   static InputDecoration dropdownDecoration({
-    required String label,
+    String? label,
     IconData? icon,
     Widget? suffixIcon,
     Color? prefixIconColor,
     bool isDense = true,
+    String? hint,
   }) {
     return decoration(
-      label: label,
+      hint: hint,
       icon: icon,
       suffixIcon: suffixIcon,
       isDense: isDense,
@@ -158,8 +203,7 @@ class V3InputUtils {
     );
   }
 
-  static TextStyle get fieldTextStyle =>
-      const TextStyle(color: V3InputStyle.text, fontWeight: FontWeight.w500);
+  static TextStyle get fieldTextStyle => const TextStyle(color: V3InputStyle.text, fontWeight: FontWeight.w500);
 
   static Widget textField({
     Key? fieldKey,
@@ -182,31 +226,33 @@ class V3InputUtils {
   }) {
     final resolvedFocused = V3InputStyle.focused;
 
-    return TextField(
-      key: fieldKey,
-      controller: controller,
-      enabled: enabled,
-      style: fieldTextStyle,
-      cursorColor: resolvedFocused,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      maxLines: obscureText ? 1 : maxLines,
-      inputFormatters: inputFormatters,
-      textCapitalization: textCapitalization,
-      onSubmitted: onSubmitted,
-      onChanged: onChanged,
-      decoration: decoration(
-        label: label,
-        hint: hint,
-        icon: icon,
-        suffixText: suffixText,
-        isDense: isDense,
-        suffixIcon: _buildSuffixActions(
-          controller: controller,
-          iconColor: V3InputStyle.icon,
-          suffixIcon: suffixIcon,
-          showPaste: showPaste,
-          enabled: enabled,
+    return labeled(
+      label: label,
+      child: TextField(
+        key: fieldKey,
+        controller: controller,
+        enabled: enabled,
+        style: fieldTextStyle,
+        cursorColor: resolvedFocused,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        maxLines: obscureText ? 1 : maxLines,
+        inputFormatters: inputFormatters,
+        textCapitalization: textCapitalization,
+        onSubmitted: onSubmitted,
+        onChanged: onChanged,
+        decoration: decoration(
+          hint: hint,
+          icon: icon,
+          suffixText: suffixText,
+          isDense: isDense,
+          suffixIcon: _buildSuffixActions(
+            controller: controller,
+            iconColor: V3InputStyle.icon,
+            suffixIcon: suffixIcon,
+            showPaste: showPaste,
+            enabled: enabled,
+          ),
         ),
       ),
     );
@@ -231,37 +277,39 @@ class V3InputUtils {
     List<TextInputFormatter>? inputFormatters,
     TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
-    return TextFormField(
-      controller: controller,
-      enabled: enabled,
-      style: fieldTextStyle,
-      cursorColor: V3InputStyle.focused,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      maxLines: obscureText ? 1 : maxLines,
-      inputFormatters: inputFormatters,
-      textCapitalization: textCapitalization,
-      onFieldSubmitted: onSubmitted,
-      onChanged: onChanged,
-      validator: validator,
-      decoration: decoration(
-        label: label,
-        hint: hint,
-        icon: icon,
-        suffixText: suffixText,
-        isDense: isDense,
-        suffixIcon: _buildSuffixActions(
-          controller: controller,
-          iconColor: V3InputStyle.icon,
-          suffixIcon: suffixIcon,
-          showPaste: showPaste,
-          enabled: enabled,
+    return labeled(
+      label: label,
+      child: TextFormField(
+        controller: controller,
+        enabled: enabled,
+        style: fieldTextStyle,
+        cursorColor: V3InputStyle.focused,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        maxLines: obscureText ? 1 : maxLines,
+        inputFormatters: inputFormatters,
+        textCapitalization: textCapitalization,
+        onFieldSubmitted: onSubmitted,
+        onChanged: onChanged,
+        validator: validator,
+        decoration: decoration(
+          hint: hint,
+          icon: icon,
+          suffixText: suffixText,
+          isDense: isDense,
+          suffixIcon: _buildSuffixActions(
+            controller: controller,
+            iconColor: V3InputStyle.icon,
+            suffixIcon: suffixIcon,
+            showPaste: showPaste,
+            enabled: enabled,
+          ),
         ),
       ),
     );
   }
 
-  /// Search polje (hint + search ikona, clear, bez paste).
+  /// Search polje (hint + search ikona, clear, bez paste) — bez eksterne labele.
   static Widget searchField({
     required TextEditingController controller,
     required String hint,
@@ -324,7 +372,7 @@ class V3InputUtils {
 
   static Widget numberField({
     required TextEditingController controller,
-    required String label,
+    String? label,
     String? hint,
     String? suffixText,
     String? Function(String?)? validator,
