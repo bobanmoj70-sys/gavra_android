@@ -262,14 +262,16 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
 
   final response =
       await client.functions.invoke('v3-compute-eta', body: requestBody).timeout(v3ComputeEtaNetworkTimeout);
-  debugPrint('$logTag computeEta response: ${response.data}');
+  debugPrint('$logTag computeEta response status=${response.status} data=${response.data}');
 
   final parsed = v3ParseEtaResponse(response.data);
   if (parsed.etaMap.isEmpty) {
     final data = response.data;
     final reason = data is Map ? data['reason']?.toString() : null;
     final ok = data is Map ? data['ok'] : null;
-    debugPrint('$logTag computeEta empty etaMap ok=$ok reason=$reason');
+    final warning = data is Map ? data['warning']?.toString() : null;
+    final fallback = data is Map ? data['fallback'] : null;
+    debugPrint('$logTag computeEta empty etaMap ok=$ok reason=$reason warning=$warning fallback=$fallback');
   }
   return parsed;
 }

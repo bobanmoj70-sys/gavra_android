@@ -311,24 +311,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   /// 3) slot `optimized_order` — samo pre navigacije / na drugom terminu
   List<String> _resolveOptimizedOrder() {
     final live = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    // Live order važi isključivo za aktivan tracking termin — ne mešaj u drugi slot.
     if (_isViewingTrackedTermin && live.isNotEmpty) return live;
 
     final fromEta = _getOsrmOrderFromEtaResults();
     if (fromEta.isNotEmpty) return fromEta;
 
-    // Tokom live navigacije na tracking terminu ne koristi cron/slot order.
     if (_isViewingTrackedTermin) return const [];
     return _getOsrmOrderFromSlot();
   }
 
-  void _refreshPutniciOrderFromEtaCache({
-    bool afterEtaTick = false,
-    List<String> tickOrder = const [],
-  }) {
+  void _refreshPutniciOrderFromEtaCache() {
+    if (_mojiPutnici.isEmpty) return;
     final osrmOrder = _resolveOptimizedOrder();
     if (osrmOrder.isEmpty) return;
-    if (_mojiPutnici.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
     if (mounted) {
       setState(() {
@@ -343,11 +338,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (vozacId.isEmpty) return const [];
 
     final shownIds = _mojiPutnici.map((p) => p.putnik.id).toSet();
+    final shownTerminIds =
+        _mojiPutnici.map((p) => p.entry?.id).whereType<String>().where((id) => id.isNotEmpty).toSet();
+
     List<String>? bestOrder;
     DateTime? bestAt;
 
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
       if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
+      final terminId = row['termin_id']?.toString() ?? '';
+      if (shownTerminIds.isNotEmpty && !shownTerminIds.contains(terminId)) continue;
       final order = row['optimized_order'];
       if (order is! List || order.isEmpty) continue;
       final asStrings = order.whereType<String>().toList();
@@ -370,23 +370,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   List<String> _getOsrmOrderFromSlot() {
-    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
-    final cache = V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache;
-    debugPrint('[OSRM_SLOT] efektivniVozacId=$vozacId cacheRows=${cache.length}');
-    // Slot je zajednički (datum,grad,vreme) — NE filtriraj po slot.vozac_v3_auth_id.
-    // Redosled filtriraj na putnike ovog vozača (individualna dodela → _mojiPutnici).
     final myIds = _mojiPutnici.map((p) => p.putnik.id).where((id) => id.isNotEmpty).toSet();
 
-    for (final row in cache.values) {
+    for (final row in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       final rowVreme = V3BelgradeTime.normalizeToHHmm(row['vreme']?.toString());
-      final order = row['optimized_order'];
-      final hasOrder = order is List && order.isNotEmpty;
-      debugPrint('[OSRM_SLOT]   datum=$rowDatum grad=$rowGrad vreme=$rowVreme hasOrder=$hasOrder');
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) {
         continue;
       }
+      final order = row['optimized_order'];
       if (order is! List || order.isEmpty) continue;
       final all = order.whereType<String>().where((s) => s.isNotEmpty).toList();
       if (all.isEmpty) continue;
@@ -426,10 +419,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       // Sort/mapa samo kad vozač gleda isti termin kao tracking sesija.
       if (!_isViewingTrackedTermin) return;
       debugPrint('[ETA_TICK] order=${result.order} etaKeys=${result.etaMap.length}');
-      _refreshPutniciOrderFromEtaCache(
-        afterEtaTick: true,
-        tickOrder: result.order,
-      );
+      _refreshPutniciOrderFromEtaCache();
       unawaited(_syncMapRouteIfNeeded(reason: 'eta_tick_20s'));
     });
     _runningSub = V3VozacLocationTrackingService.instance.onRunningChanged.listen((running) {

@@ -73,6 +73,133 @@ function parseCoord(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+type AuthAddressRow = {
+  id: string;
+  adresa_primary_bc_id: string | null;
+  adresa_primary_vs_id: string | null;
+  adresa_secondary_bc_id: string | null;
+  adresa_secondary_vs_id: string | null;
+};
+
+function pickAdresaId(
+  grad: string,
+  auth: AuthAddressRow | undefined,
+  koristiSekundarnu: boolean,
+  overrideId: string | null,
+): string | null {
+  if (overrideId) return overrideId;
+  if (!auth) return null;
+  if (grad === "BC") {
+    return (koristiSekundarnu ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id)
+      ?? auth.adresa_primary_bc_id
+      ?? null;
+  }
+  if (grad === "VS") {
+    return (koristiSekundarnu ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id)
+      ?? auth.adresa_primary_vs_id
+      ?? null;
+  }
+  return null;
+}
+
+/// Ako dodela nema GPS, uzmi ga iz v3_operativna_nedelja + v3_auth + v3_adrese
+/// (iste kolone koje već postoje) i upiši nazad u v3_trenutna_dodela.
+async function fillMissingPassengerGps(
+  client: ReturnType<typeof createClient>,
+  activeGrad: string,
+  dodelaRows: any[],
+): Promise<PassengerEntry[]> {
+  const result: PassengerEntry[] = [];
+  const missing: Array<{ termin_id: string; putnik_id: string }> = [];
+
+  for (const r of dodelaRows ?? []) {
+    const terminId = String(r?.termin_id ?? "").trim();
+    const putnikId = String(r?.putnik_v3_auth_id ?? "").trim();
+    if (!terminId || !putnikId) continue;
+    const lat = parseCoord(r?.adresa_gps_lat);
+    const lng = parseCoord(r?.adresa_gps_lng);
+    if (lat != null && lng != null) {
+      result.push({ putnik_id: putnikId, termin_id: terminId, lat, lng });
+    } else {
+      missing.push({ termin_id: terminId, putnik_id: putnikId });
+    }
+  }
+
+  if (missing.length === 0) return result;
+
+  const terminIds = missing.map((m) => m.termin_id);
+  const putnikIds = [...new Set(missing.map((m) => m.putnik_id))];
+
+  const [{ data: operativnaRows }, { data: authRows }] = await Promise.all([
+    client
+      .from("v3_operativna_nedelja")
+      .select("id, adresa_override_id, koristi_sekundarnu")
+      .in("id", terminIds),
+    client
+      .from("v3_auth")
+      .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
+      .in("id", putnikIds),
+  ]);
+
+  const operativnaById = new Map((operativnaRows ?? []).map((row: any) => [String(row.id), row]));
+  const authById = new Map((authRows ?? []).map((row: any) => [String(row.id), row as AuthAddressRow]));
+
+  const adresaIds: string[] = [];
+  const missingToAdresa = new Map<string, string>();
+  for (const m of missing) {
+    const op = operativnaById.get(m.termin_id);
+    const adresaId = pickAdresaId(
+      activeGrad,
+      authById.get(m.putnik_id),
+      op?.koristi_sekundarnu === true,
+      op?.adresa_override_id ? String(op.adresa_override_id) : null,
+    );
+    if (!adresaId) continue;
+    adresaIds.push(adresaId);
+    missingToAdresa.set(`${m.termin_id}:${m.putnik_id}`, adresaId);
+  }
+
+  if (adresaIds.length === 0) {
+    console.warn(`[v3-compute-eta] missing_gps unresolved=${missing.length} no_adresa_id`);
+    return result;
+  }
+
+  const { data: adresaRows } = await client
+    .from("v3_adrese")
+    .select("id, gps_lat, gps_lng")
+    .in("id", [...new Set(adresaIds)]);
+
+  const gpsByAdresa = new Map<string, { lat: number; lng: number }>();
+  for (const a of adresaRows ?? []) {
+    const lat = parseCoord(a?.gps_lat);
+    const lng = parseCoord(a?.gps_lng);
+    if (lat == null || lng == null) continue;
+    gpsByAdresa.set(String(a.id), { lat, lng });
+  }
+
+  const updates: Array<{ termin_id: string; lat: number; lng: number }> = [];
+  for (const m of missing) {
+    const adresaId = missingToAdresa.get(`${m.termin_id}:${m.putnik_id}`);
+    if (!adresaId) continue;
+    const gps = gpsByAdresa.get(adresaId);
+    if (!gps) continue;
+    result.push({ putnik_id: m.putnik_id, termin_id: m.termin_id, lat: gps.lat, lng: gps.lng });
+    updates.push({ termin_id: m.termin_id, lat: gps.lat, lng: gps.lng });
+  }
+
+  for (const u of updates) {
+    await client
+      .from("v3_trenutna_dodela")
+      .update({ adresa_gps_lat: u.lat, adresa_gps_lng: u.lng })
+      .eq("termin_id", u.termin_id);
+  }
+
+  console.log(
+    `[v3-compute-eta] gps_filled from_adrese=${updates.length} still_missing=${missing.length - updates.length}`,
+  );
+  return result;
+}
+
 /// Preferira lat/lng iz tick payload-a (isti request kao GPS fix).
 /// Fallback: v3_vozac_location ako je dovoljno sveža.
 async function resolveDriverLocation(
@@ -203,124 +330,6 @@ async function buildOsrmFallbackResponse(
   });
 }
 
-/// Dopuni GPS za putnike bez adresa_gps_* iz v3_adrese (kao auto-prepare).
-async function fillMissingPassengerGps(
-  client: ReturnType<typeof createClient>,
-  activeGrad: string,
-  rows: Array<{
-    termin_id: string;
-    putnik_id: string;
-    lat: number | null;
-    lng: number | null;
-  }>,
-): Promise<PassengerEntry[]> {
-  const missing = rows.filter((r) => r.lat == null || r.lng == null);
-  if (missing.length === 0) {
-    return rows
-      .filter((r) => r.lat != null && r.lng != null)
-      .map((r) => ({
-        putnik_id: r.putnik_id,
-        termin_id: r.termin_id,
-        lat: r.lat as number,
-        lng: r.lng as number,
-      }));
-  }
-
-  const terminIds = missing.map((r) => r.termin_id);
-  const { data: opRows } = await client
-    .from("v3_operativna_nedelja")
-    .select("id, created_by, koristi_sekundarnu, adresa_override_id, grad")
-    .in("id", terminIds);
-
-  const opById = new Map((opRows ?? []).map((o: any) => [String(o.id), o]));
-  const putnikIds = [
-    ...new Set(
-      missing
-        .map((r) => r.putnik_id)
-        .filter((id) => id.length > 0),
-    ),
-  ];
-
-  const { data: authRows } = putnikIds.length > 0
-    ? await client
-      .from("v3_auth")
-      .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
-      .in("id", putnikIds)
-    : { data: [] as any[] };
-
-  const authById = new Map((authRows ?? []).map((a: any) => [String(a.id), a]));
-  const adresaIds: string[] = [];
-  const adresaToPassengers = new Map<string, Array<{ termin_id: string; putnik_id: string }>>();
-
-  for (const m of missing) {
-    const op = opById.get(m.termin_id);
-    const auth = authById.get(m.putnik_id);
-    if (!auth) continue;
-
-    const grad = String(op?.grad ?? activeGrad).trim().toUpperCase();
-    const koristiSek = Boolean(op?.koristi_sekundarnu);
-    let adresaId: string | null = op?.adresa_override_id ? String(op.adresa_override_id) : null;
-    if (!adresaId) {
-      if (grad === "BC") {
-        adresaId = koristiSek ? auth.adresa_secondary_bc_id : auth.adresa_primary_bc_id;
-      } else if (grad === "VS") {
-        adresaId = koristiSek ? auth.adresa_secondary_vs_id : auth.adresa_primary_vs_id;
-      }
-    }
-    if (!adresaId) continue;
-    adresaId = String(adresaId);
-    adresaIds.push(adresaId);
-    const list = adresaToPassengers.get(adresaId) ?? [];
-    list.push({ termin_id: m.termin_id, putnik_id: m.putnik_id });
-    adresaToPassengers.set(adresaId, list);
-  }
-
-  const gpsByTermin = new Map<string, { lat: number; lng: number }>();
-  if (adresaIds.length > 0) {
-    const { data: adresaRows } = await client
-      .from("v3_adrese")
-      .select("id, gps_lat, gps_lng")
-      .in("id", [...new Set(adresaIds)]);
-
-    for (const a of adresaRows ?? []) {
-      const lat = parseCoord(a.gps_lat);
-      const lng = parseCoord(a.gps_lng);
-      if (lat == null || lng == null) continue;
-      const mapped = adresaToPassengers.get(String(a.id)) ?? [];
-      for (const p of mapped) {
-        gpsByTermin.set(p.termin_id, { lat, lng });
-      }
-    }
-  }
-
-  // Persist resolved GPS back so sledeći tick ne mora ponovo da rešava.
-  for (const [terminId, coords] of gpsByTermin) {
-    await client
-      .from("v3_trenutna_dodela")
-      .update({ adresa_gps_lat: coords.lat, adresa_gps_lng: coords.lng })
-      .eq("termin_id", terminId);
-  }
-
-  const out: PassengerEntry[] = [];
-  for (const r of rows) {
-    let lat = r.lat;
-    let lng = r.lng;
-    if (lat == null || lng == null) {
-      const filled = gpsByTermin.get(r.termin_id);
-      if (!filled) continue;
-      lat = filled.lat;
-      lng = filled.lng;
-    }
-    out.push({
-      putnik_id: r.putnik_id,
-      termin_id: r.termin_id,
-      lat,
-      lng,
-    });
-  }
-  return out;
-}
-
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json(200, { ok: false, reason: "method_not_allowed" });
@@ -419,9 +428,7 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
 
-    // 2.5. Uzmi putnike iz v3_trenutna_dodela za ovaj slot i vozaca.
-    // Slot je fizicki zajednicki, ali putnici mogu biti override-ovani na druge vozace.
-    // GPS može biti null dok auto-prepare / UI sync ne stigne — dopunjujemo iz adresa.
+    // 2.5. Putnici ovog vozača na slotu. Ako dodela nema GPS, uzmi iz adrese.
     const { data: dodelaRows, error: dodelaError } = await client
       .from("v3_trenutna_dodela")
       .select("termin_id, putnik_v3_auth_id, adresa_gps_lat, adresa_gps_lng")
@@ -432,37 +439,22 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "dodela_lookup_error", warning: dodelaError.message });
     }
 
-    const dodelaCount = (dodelaRows ?? []).length;
-    const partialRows = (dodelaRows ?? [])
-      .filter((r: any) => r?.termin_id && r?.putnik_v3_auth_id)
-      .map((r: any) => ({
-        termin_id: String(r.termin_id),
-        putnik_id: String(r.putnik_v3_auth_id),
-        lat: parseCoord(r.adresa_gps_lat),
-        lng: parseCoord(r.adresa_gps_lng),
-      }));
-
-    const rawPassengers = await fillMissingPassengerGps(client, activeGrad, partialRows);
+    const rawPassengers = await fillMissingPassengerGps(client, activeGrad, dodelaRows ?? []);
 
     console.log(
-      `[v3-compute-eta] slot=${String(activeSlot.id).slice(0, 8)} dodela=${dodelaCount} ` +
-        `withGps=${rawPassengers.length} locSource=${driverLocation.source}`,
+      `[v3-compute-eta] slot=${String(activeSlot.id).slice(0, 8)} dodela=${(dodelaRows ?? []).length} passengers=${rawPassengers.length} locSource=${driverLocation.source}`,
     );
 
-    if (rawPassengers.length === 0) {
-      // Ne briši postojeću ETA ako dodela postoji ali GPS još nije razrešen —
-      // to je prolazno stanje (T-15 pre auto-prepare / sync).
-      if (dodelaCount > 0) {
-        console.warn(`[v3-compute-eta] passengers_missing_gps count=${dodelaCount}`);
-        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "passengers_missing_gps", {
-          dodela_count: dodelaCount,
-        });
-      }
+    if ((dodelaRows ?? []).length === 0) {
       await client.from("v3_eta_results").delete().eq("slot_id", activeSlot.id).eq("vozac_id", vozacId);
       return json(200, { ok: true, reason: "no_passengers_for_this_vozac", updated: 0 });
     }
 
-    // 3. Filter pokupljeni/otkazani — jedan .in() query
+    if (rawPassengers.length === 0) {
+      return json(200, { ok: false, reason: "missing_passenger_gps", updated: 0 });
+    }
+
+    // 3. Izbaci pokupljene/otkazane
     const terminIds = rawPassengers.map((p) => p.termin_id);
     const { data: operativnaRows, error: operativnaError } = await client
       .from("v3_operativna_nedelja")
@@ -486,8 +478,6 @@ Deno.serve(async (req) => {
       return json(200, { ok: true, reason: "no_remaining_passengers", updated: 0 });
     }
 
-    // Obriši ETA za putnike ovog vozača koji više nisu u njegovoj listi
-    // (scope po vozac_id, jer isti slot_id može imati putnike drugih vozača)
     const remainingPutnikIds = new Set<string>(remaining.map((p) => p.putnik_id));
     const { data: existingEtaRows } = await client
       .from("v3_eta_results")
