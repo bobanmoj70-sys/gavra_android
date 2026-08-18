@@ -8,7 +8,8 @@
 # ugašen. Sada je OSRM proxy potpuno samostalan proces.
 #
 # Poziva se automatski pri prijavi u Windows preko Scheduled Task-a
-# (GavraOSRM_Autostart), ili ručno kad je potrebno.
+# (GavraOSRM_Autostart). GavraOSRM_Watchdog svaka 3 min proverava javni DNS
+# i reciklira Funnel ako ime nestane sa 8.8.8.8.
 
 $ErrorActionPreference = "Continue"
 
@@ -19,6 +20,7 @@ $TailscaleExe = "C:\Program Files\Tailscale\tailscale.exe"
 $DockerBin = "C:\Program Files\Docker\Docker\resources\bin"
 $OsrmDataDir = "C:/osrm-data"
 $ContainerName = "osrm-server"
+$MutexName = "Global\GavraOSRMService"
 
 function Log($msg) {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg"
@@ -26,10 +28,27 @@ function Log($msg) {
     Add-Content -Path $LogFile -Value $line
 }
 
+$mutex = New-Object System.Threading.Mutex($false, $MutexName)
+$taken = $false
+try {
+    $taken = $mutex.WaitOne(0)
+    if (-not $taken) {
+        Log "Drugi OSRM start/watchdog već radi, izlazim."
+        exit 0
+    }
+} catch {
+    Log "UPOZORENJE: mutex nije uspeo ($($_.Exception.Message)), nastavljam."
+}
+
 # Proveri neophodne environment varijable pre pokretanja
 $apiKey = $env:GAVRA013_API_KEY
 if (-not $apiKey) {
+    $apiKey = [Environment]::GetEnvironmentVariable("GAVRA013_API_KEY", "User")
+    $env:GAVRA013_API_KEY = $apiKey
+}
+if (-not $apiKey) {
     Log "GREŠKA: GAVRA013_API_KEY environment varijabla nije definisana. OSRM proxy zahteva API ključ."
+    if ($taken) { $mutex.ReleaseMutex() | Out-Null }
     exit 1
 }
 
@@ -55,6 +74,7 @@ while ($waited -lt $maxWaitSeconds) {
 
 if (-not $dockerReady) {
     Log "GREŠKA: Docker engine se nije pokrenuo u roku od $maxWaitSeconds sekundi. Prekidam."
+    if ($taken) { $mutex.ReleaseMutex() | Out-Null }
     exit 1
 }
 
@@ -125,7 +145,26 @@ if ($proxyRunning) {
 # 5. Ponovo primeni Tailscale serve + funnel rute (idempotentno)
 if (-not (Test-Path $TailscaleExe)) {
     Log "GREŠKA: Tailscale nije pronađen na $TailscaleExe"
+    if ($taken) { $mutex.ReleaseMutex() | Out-Null }
     exit 1
+}
+
+$FunnelHost = "win-vfeglqf71ss.tail61b7a2.ts.net"
+
+function Test-FunnelPublicDns {
+    param([string]$HostName)
+    $output = nslookup $HostName 8.8.8.8 2>&1 | Out-String
+    if ($output -match "Non-existent domain|NXDOMAIN|can't find") {
+        return $false
+    }
+    $ips = [regex]::Matches($output, '\b(?:\d{1,3}\.){3}\d{1,3}\b') | ForEach-Object { $_.Value } | Select-Object -Unique
+    foreach ($ip in $ips) {
+        if ($ip -eq "8.8.8.8") { continue }
+        if ($ip -match '^100\.') { continue }
+        if ($ip -match '^127\.') { continue }
+        return $true
+    }
+    return $false
 }
 
 try {
@@ -138,16 +177,36 @@ try {
     Log "GREŠKA pri primeni Tailscale ruta: $($_.Exception.Message)"
 }
 
-# 6. Health-check preko javnog Funnel URL-a
-try {
-    $publicResp = Invoke-RestMethod -Uri "https://win-vfeglqf71ss.tail61b7a2.ts.net/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 15 -Headers @{ "X-API-Key" = $apiKey }
-    if ($publicResp.code -eq "Ok") {
-        Log "OSRM javni (Funnel) health-check OK."
+# Funnel može da javi "on" dok javni DNS još uvek vraća NXDOMAIN.
+# Supabase Edge koristi javni DNS, ne Tailscale MagicDNS.
+if (-not (Test-FunnelPublicDns -HostName $FunnelHost)) {
+    Log "UPOZORENJE: Javni DNS za $FunnelHost je NXDOMAIN. Recikliram Funnel..."
+    & $TailscaleExe funnel --https=443 off 2>&1 | ForEach-Object { Log "  tailscale: $_" }
+    Start-Sleep -Seconds 3
+    & $TailscaleExe funnel --bg --set-path / http://127.0.0.1:8000 2>&1 | ForEach-Object { Log "  tailscale: $_" }
+    Start-Sleep -Seconds 8
+    if (Test-FunnelPublicDns -HostName $FunnelHost) {
+        Log "Javni DNS za $FunnelHost je ponovo objavljen."
     } else {
-        Log "UPOZORENJE: Javni health-check vratio code=$($publicResp.code)"
+        Log "GREŠKA: Javni DNS za $FunnelHost i dalje ne postoji (8.8.8.8 NXDOMAIN). ETA iz Supabase Edge neće raditi."
+    }
+} else {
+    Log "Javni DNS za $FunnelHost je OK (8.8.8.8)."
+}
+
+# 6. Health-check preko javnog Funnel URL-a
+# Ovo sa ove mašine može ići preko MagicDNS (100.x) — zato DNS proveru radimo odvojeno.
+try {
+    $publicResp = Invoke-RestMethod -Uri "https://$FunnelHost/osrm/route/v1/driving/21.4243,44.9028;21.3011,45.1187?overview=false" -TimeoutSec 15 -Headers @{ "X-API-Key" = $apiKey }
+    if ($publicResp.code -eq "Ok") {
+        Log "OSRM Funnel HTTP health-check OK."
+    } else {
+        Log "UPOZORENJE: Funnel HTTP health-check vratio code=$($publicResp.code)"
     }
 } catch {
-    Log "UPOZORENJE: Javni health-check nije uspeo (možda Funnel treba par sekundi da se aktivira): $($_.Exception.Message)"
+    Log "UPOZORENJE: Funnel HTTP health-check nije uspeo: $($_.Exception.Message)"
 }
 
 Log "=== OSRM autostart skripta završena ==="
+
+if ($taken) { $mutex.ReleaseMutex() | Out-Null }
