@@ -153,24 +153,44 @@ class V3FinansijeService {
     return V3BelgradeTime.parseTs(row['created_at']?.toString()) ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
+  /// Stvarno vreme naplate iz uplate_json stavke.
+  /// `datum` je kalendarski dan (često date-only → 00:00), `naplatio_at` je timestamptz.
+  static DateTime? _uplataVreme(Map<String, dynamic> uplata) {
+    return V3BelgradeTime.parseTs(uplata['naplatio_at']?.toString()) ??
+        V3BelgradeTime.parseTs(uplata['datum']?.toString()) ??
+        V3BelgradeTime.parseDatum(uplata['datum']);
+  }
+
   static DateTime? _naplacenoAt(Map<String, dynamic> row) {
-    // Koristimo updated_at za datum poslednje dopune
-    final ts = row['updated_at'];
-    return V3BelgradeTime.parseTs(ts?.toString());
+    return _readLastUplata(row) ?? V3BelgradeTime.parseTs(row['updated_at']?.toString());
   }
 
   static DateTime? _readLastUplata(Map<String, dynamic> row) {
     final uplate = _readUplate(row);
     if (uplate.isEmpty) return null;
-    final last = uplate.last;
-    return V3BelgradeTime.parseDatum(last['datum']);
+    DateTime? latest;
+    for (final uplata in uplate) {
+      final dt = _uplataVreme(uplata);
+      if (dt == null) continue;
+      if (latest == null || dt.isAfter(latest)) latest = dt;
+    }
+    return latest;
   }
 
   /// Iznos poslednje pojedinačne uplate, izveden isključivo iz uplate_json.
   static double _readPosledjaDopuna(Map<String, dynamic> row) {
     final uplate = _readUplate(row);
     if (uplate.isEmpty) return 0.0;
-    return (uplate.last['iznos'] as num?)?.toDouble() ?? 0.0;
+    Map<String, dynamic>? last;
+    DateTime? latest;
+    for (final uplata in uplate) {
+      final dt = _uplataVreme(uplata);
+      if (last == null || (dt != null && (latest == null || dt.isAfter(latest)))) {
+        last = uplata;
+        latest = dt;
+      }
+    }
+    return (last?['iznos'] as num?)?.toDouble() ?? 0.0;
   }
 
   /// Ukupan iznos svih uplata iz uplate_json (jedini izvor istine).
@@ -184,8 +204,16 @@ class V3FinansijeService {
   static String? _getNaplatioBy(Map<String, dynamic> row) {
     final uplate = _readUplate(row);
     if (uplate.isEmpty) return null;
-    final last = uplate.last;
-    final naplatioBy = last['naplatio_by']?.toString().trim();
+    Map<String, dynamic>? last;
+    DateTime? latest;
+    for (final uplata in uplate) {
+      final dt = _uplataVreme(uplata);
+      if (last == null || (dt != null && (latest == null || dt.isAfter(latest)))) {
+        last = uplata;
+        latest = dt;
+      }
+    }
+    final naplatioBy = last?['naplatio_by']?.toString().trim();
     return naplatioBy?.isEmpty ?? true ? null : naplatioBy;
   }
 
@@ -1015,7 +1043,7 @@ class V3FinansijeService {
     return result;
   }
 
-  /// Vraća све vožnje које је возаč uneо/azurirao на задати дан из arhive v3_finansije.
+  /// Vraća све vožnje које је возаč uneо/azurirao на задати дан из arhive v3_finансие.
   static List<Map<String, dynamic>> getDodatiPutniciZaVozacaDan({
     required String vozacId,
     required DateTime dan,
@@ -1614,8 +1642,7 @@ class V3FinansijeService {
 
       final voznje = _readRealizovaneVoznje(row);
       for (final v in voznje) {
-        final datum =
-            V3BelgradeTime.parseDatum(v['datum']);
+        final datum = V3BelgradeTime.parseDatum(v['datum']);
         if (datum == null) continue;
         result.add({
           ...v,
@@ -1648,8 +1675,8 @@ class V3FinansijeService {
       mesec: mesec,
     )) {
       for (final stavka in _readNenaplaceneVoznje(row)) {
-        final datum = V3BelgradeTime.parseDatum(stavka['datum']) ??
-            V3BelgradeTime.parseDatum(stavka['datum']?.toString());
+        final datum =
+            V3BelgradeTime.parseDatum(stavka['datum']) ?? V3BelgradeTime.parseDatum(stavka['datum']?.toString());
         if (datum == null) continue;
         if (datum.year != godina || datum.month != mesec) continue;
         result.add({
