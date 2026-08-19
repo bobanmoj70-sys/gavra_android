@@ -98,11 +98,6 @@ flutter:
     # Branding — ONLY master (crna + plava). Launchers via flutter_launcher_icons.
     - assets/branding/gavra_icon.png
     - assets/weather/ # 🌤️ Vremenske ikone
-    - assets/tablica_066.png # 🚐 Tablice vozila
-    - assets/tablica_088.png
-    - assets/tablica_093.png
-    - assets/tablica_097.png
-    - assets/tablica_102.png
     - assets/fonts/Lato-Regular.ttf
     - assets/fonts/Lato-Bold.ttf
     - assets/fonts/NotoSans-Regular.ttf

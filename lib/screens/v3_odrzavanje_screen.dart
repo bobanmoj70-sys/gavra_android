@@ -33,13 +33,67 @@ Color _getVoziloColor(String reg) {
   return Colors.grey.shade400;
 }
 
-String _getTablicaImage(String reg) {
-  if (reg.contains('066')) return 'assets/tablica_066.png';
-  if (reg.contains('088')) return 'assets/tablica_088.png';
-  if (reg.contains('093')) return 'assets/tablica_093.png';
-  if (reg.contains('097')) return 'assets/tablica_097.png';
-  if (reg.contains('102')) return 'assets/tablica_102.png';
-  return 'assets/tablica_066.png';
+Widget _buildTablica(String registracija, {required bool selected}) {
+  final text = registracija.trim().isEmpty ? '—' : registracija.trim().toUpperCase();
+  return Container(
+    width: 86,
+    height: 24,
+    decoration: BoxDecoration(
+      color: const Color(0xFFF4F4F0),
+      borderRadius: BorderRadius.circular(3),
+      border: Border.all(
+        color: selected ? Colors.amber : const Color(0xFF1A1A1A),
+        width: selected ? 2 : 1,
+      ),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 14,
+          decoration: const BoxDecoration(
+            color: Color(0xFF003399),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(2),
+              bottomLeft: Radius.circular(2),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: const RotatedBox(
+            quarterTurns: 3,
+            child: Text(
+              'SRB',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 6,
+                fontWeight: FontWeight.w800,
+                height: 1,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                maxLines: 1,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                  letterSpacing: 0.4,
+                  height: 1,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 List<BoxShadow>? _getRegistracijaSenka(V3Vozilo v) {
@@ -222,18 +276,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                           shadows: [Shadow(color: Colors.black54, blurRadius: 2, offset: const Offset(1, 1))]),
                     ),
                     const SizedBox(height: 3),
-                    V3ContainerUtils.styledContainer(
-                      borderRadius: BorderRadius.circular(3),
-                      border: Border.all(
-                        color: isSel ? Colors.amber : Colors.transparent,
-                        width: isSel ? 2 : 0,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: Image.asset(_getTablicaImage(v.registracija),
-                            width: 60, height: V3ContainerUtils.responsiveHeight(context, 15), fit: BoxFit.contain),
-                      ),
-                    ),
+                    _buildTablica(v.registracija, selected: isSel),
                   ],
                 ),
               ),
