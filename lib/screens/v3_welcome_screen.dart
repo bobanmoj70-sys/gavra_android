@@ -579,8 +579,39 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                               child: RepaintBoundary(
                                 child: AnimatedBuilder(
                                   animation: _pulseController,
-                                  builder: (context, child) {
+                                  builder: (context, _) {
+                                    final logoHeight = V3ContainerUtils.responsiveHeight(context, 180);
+                                    // Crna pozadina PNG-a ide u alpha 0; ostaju samo cyan slova.
+                                    final letters = ColorFiltered(
+                                      colorFilter: const ColorFilter.matrix(<double>[
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                        0,
+                                        0.10,
+                                        0.45,
+                                        0.55,
+                                        0,
+                                        0,
+                                      ]),
+                                      child: GavraBrandIcon(
+                                        height: logoHeight,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    );
                                     return ShaderMask(
+                                      blendMode: BlendMode.srcATop,
                                       shaderCallback: (bounds) {
                                         return LinearGradient(
                                           begin: Alignment(
@@ -592,21 +623,16 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
                                             0,
                                           ),
                                           colors: [
-                                            Colors.white.withValues(alpha: 0.6),
+                                            Colors.white.withValues(alpha: 0.0),
                                             Colors.white,
-                                            Colors.white.withValues(alpha: 0.6),
+                                            Colors.white.withValues(alpha: 0.0),
                                           ],
                                           stops: const [0.0, 0.5, 1.0],
                                         ).createShader(bounds);
                                       },
-                                      blendMode: BlendMode.srcATop,
-                                      child: child,
+                                      child: letters,
                                     );
                                   },
-                                  child: GavraBrandIcon(
-                                    height: V3ContainerUtils.responsiveHeight(context, 180),
-                                    fit: BoxFit.contain,
-                                  ),
                                 ),
                               ),
                             ),
