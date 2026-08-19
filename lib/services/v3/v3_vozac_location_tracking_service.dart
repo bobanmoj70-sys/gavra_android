@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -47,8 +48,9 @@ extension V3TrackingStartResultX on V3TrackingStartResult {
 /// Stop: polazak+40, svi putnici gotovi, ili ručni stop.
 ///
 /// Platforme (dok traje vožnja):
-/// - **Android FG** — main ticker
-/// - **Android BG** — FGS isolate (isti tick), main ticker ugašen
+/// - **Android** — FGS notifikacija živi dok je tracking aktivan
+/// - **Android FG** — main ticker; FGS ticker pauziran
+/// - **Android BG** — FGS isolate ticker; main ticker ugašen
 /// - **iOS** — uvek main ticker + location keep-alive (nema pouzdanog FGS)
 /// - cold start — [tryRestoreFromSession] iz prefs / FGS
 class V3VozacLocationTrackingService with WidgetsBindingObserver {
@@ -57,6 +59,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   static final V3VozacLocationTrackingService instance = V3VozacLocationTrackingService._();
 
   static const _tag = '[V3VozacLocationTrackingService]';
+  static const _bgNotificationId = 888;
 
   String _vozacId = '';
   String _datumIso = '';
@@ -115,13 +118,14 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     unawaited(tryRestoreFromSession());
   }
 
-  Map<String, dynamic> _sessionPayload() => <String, dynamic>{
+  Map<String, dynamic> _sessionPayload({bool ticksPaused = false}) => <String, dynamic>{
         'vozac_id': _vozacId,
         'datum_iso': _datumIso,
         'grad': _grad,
         'vreme': _vreme,
         'started_at': _startedAt?.toUtc().toIso8601String(),
         'polazak_at': _polazakAt?.toUtc().toIso8601String(),
+        'ticks_paused': ticksPaused,
       };
 
   bool _isSameSession({
@@ -150,7 +154,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   Future<void> _syncEngines({bool immediateTick = true}) async {
     if (!_isRunning || _vozacId.isEmpty) return;
 
-    await v3SaveBgTrackingSession(_sessionPayload());
+    await v3SaveBgTrackingSession(
+      _sessionPayload(ticksPaused: !Platform.isIOS && _isAppInForeground),
+    );
 
     if (Platform.isIOS) {
       // iOS: main isolate mora da ostane živ — ticker + continuous location.
@@ -160,9 +166,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       return;
     }
 
-    // Android: FG = main ticker; BG = FGS (bez dual tick-a).
+    // Android: notifikacija ostaje dok je tracking aktivan.
+    // FG = main ticker (FGS ticker pauziran); BG = FGS ticker.
+    await _ensureBgServiceRunning();
     if (_isAppInForeground) {
-      await _stopBg();
+      await _pauseBgTicks();
       if (_fgTicker == null) _startFgTicker();
       if (immediateTick) unawaited(_fgTick());
     } else {
@@ -282,6 +290,10 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     if (_isSameSession(vozacId: id, datumIso: datum, grad: g, vreme: v)) {
       debugPrint('$_tag start: ista sesija već radi');
+      if (v3TrackingTimedOut(startedAt: _startedAt, polazakAt: _polazakAt)) {
+        await stop();
+        return V3TrackingStartResult.failed;
+      }
       // Garantuj push jednom po prozoru ako prvi put nije prošao.
       await activateSlotWithRetry(
         client: Supabase.instance.client,
@@ -313,6 +325,12 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       _startedAt = V3BelgradeTime.now();
       _lastTickAt = null;
       _optimizedPutnikIds.clear();
+
+      if (_polazakAt == null || !v3IsTrackingWindowOpen(polazakAt: _polazakAt!)) {
+        debugPrint('$_tag start prekinut: van T-15..T+40');
+        await _resetLocalSessionFields();
+        return V3TrackingStartResult.failed;
+      }
 
       final prereq = await v3CheckLocationPrerequisites();
       if (prereq != V3LocationPrereqResult.ok) {
@@ -544,7 +562,7 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
   Future<void> _startBg() async {
     if (_vozacId.isEmpty || !_isRunning || Platform.isIOS) return;
     try {
-      final payload = _sessionPayload();
+      final payload = _sessionPayload(ticksPaused: false);
       await v3SaveBgTrackingSession(payload);
 
       final service = FlutterBackgroundService();
@@ -564,24 +582,60 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _ensureBgServiceRunning() async {
+    if (_vozacId.isEmpty || !_isRunning || Platform.isIOS) return;
+    try {
+      await v3SaveBgTrackingSession(_sessionPayload(ticksPaused: _isAppInForeground));
+      final service = FlutterBackgroundService();
+      if (!await service.isRunning()) {
+        await service.startService();
+      }
+    } catch (e) {
+      debugPrint('$_tag BG ensure greška: $e');
+    }
+  }
+
+  Future<void> _pauseBgTicks() async {
+    if (Platform.isIOS) return;
+    try {
+      await v3SaveBgTrackingSession(_sessionPayload(ticksPaused: true));
+      final service = FlutterBackgroundService();
+      if (!await service.isRunning()) return;
+      service.invoke('pauseTicks');
+    } catch (e) {
+      debugPrint('$_tag BG pause greška: $e');
+    }
+  }
+
+  Future<void> _cancelBgNotification() async {
+    try {
+      await FlutterLocalNotificationsPlugin().cancel(_bgNotificationId);
+    } catch (e) {
+      debugPrint('$_tag cancel BG notifikacije greška: $e');
+    }
+  }
+
   Future<void> _stopBg() async {
     if (Platform.isIOS) return;
     try {
       final service = FlutterBackgroundService();
-      if (!await service.isRunning()) return;
-
-      service.invoke('stopService');
-      for (var i = 0; i < 15; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        if (!await service.isRunning()) {
-          debugPrint('$_tag BG zaustavljen');
-          return;
+      if (await service.isRunning()) {
+        service.invoke('stopService');
+        for (var i = 0; i < 15; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          if (!await service.isRunning()) {
+            debugPrint('$_tag BG zaustavljen');
+            break;
+          }
+        }
+        if (await service.isRunning()) {
+          debugPrint('$_tag BG još radi posle stopService — ponavljam');
+          service.invoke('stopService');
         }
       }
-      debugPrint('$_tag BG još radi posle stopService — ponavljam');
-      service.invoke('stopService');
     } catch (e) {
       debugPrint('$_tag BG stop greška: $e');
     }
+    await _cancelBgNotification();
   }
 }

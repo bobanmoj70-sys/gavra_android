@@ -61,9 +61,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
   /// Tracking prozor za prikaz ETA: T-15 .. T+40 (isto kao vozački tracking).
   bool _isInEtaTrackingWindow(DateTime departure, DateTime now) {
-    final windowStart = departure.subtract(v3AutoStartLeadTime);
-    final windowEnd = departure.add(v3TrackingMaxDuration);
-    return !now.isBefore(windowStart) && now.isBefore(windowEnd);
+    return v3IsTrackingWindowOpen(polazakAt: departure, now: now);
   }
 
   int _buildEtaMinutes(int etaSeconds) {

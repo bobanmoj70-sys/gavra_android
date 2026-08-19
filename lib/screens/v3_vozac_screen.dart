@@ -1358,9 +1358,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (candidates.isEmpty) return null;
     candidates.sort((a, b) => a.polazak.compareTo(b.polazak));
 
-    // Prvo aktivan prozor (T-15 prošlo), inače najraniji budući.
+    // Prvo aktivan prozor (T-15..T+40), inače najraniji budući.
     for (final c in candidates) {
-      if (!now.isBefore(c.polazak.subtract(v3AutoStartLeadTime))) return c;
+      if (v3IsTrackingWindowOpen(polazakAt: c.polazak, now: now)) return c;
     }
     return candidates.first;
   }

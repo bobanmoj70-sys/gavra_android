@@ -27,6 +27,7 @@ Future<void> onStart(ServiceInstance service) async {
   DateTime? polazakAt;
   V3SelfReschedulingTicker? ticker;
   SupabaseClient? client;
+  var ticksPaused = false;
 
   Future<void> ensureSupabase() async {
     if (client != null) return;
@@ -61,6 +62,13 @@ Future<void> onStart(ServiceInstance service) async {
     vreme = null;
     startedAt = null;
     polazakAt = null;
+  }
+
+  void pauseTicks() {
+    ticksPaused = true;
+    ticker?.cancel();
+    ticker = null;
+    debugPrint('[BG_TRACKING] pauseTicks');
   }
 
   void finishAndStop(String reason) {
@@ -123,6 +131,7 @@ Future<void> onStart(ServiceInstance service) async {
       return;
     }
 
+    ticksPaused = false;
     vozacId = id;
     datumIso = datum;
     grad = g;
@@ -138,6 +147,9 @@ Future<void> onStart(ServiceInstance service) async {
   service.on('startTracking').listen((event) {
     startTracking(event is Map<String, dynamic> ? event : null);
   });
+  service.on('pauseTicks').listen((_) {
+    pauseTicks();
+  });
   service.on('stopService').listen((_) {
     stopTracking();
     service.stopSelf();
@@ -145,9 +157,12 @@ Future<void> onStart(ServiceInstance service) async {
 
   try {
     final saved = await v3LoadBgTrackingSession();
-    if (saved != null) {
+    if (saved != null && saved['ticks_paused'] != true) {
       debugPrint('[BG_TRACKING] resume iz prefs');
       startTracking(saved);
+    } else if (saved != null) {
+      ticksPaused = true;
+      debugPrint('[BG_TRACKING] FGS živ, ticker pauziran');
     }
   } catch (e) {
     debugPrint('[BG_TRACKING] prefs resume greška: $e');

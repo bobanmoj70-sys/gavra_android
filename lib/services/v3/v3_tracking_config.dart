@@ -127,18 +127,19 @@ DateTime? v3PolazakDateTime({required String datumIso, required String vreme}) {
   );
 }
 
-/// Hard-stop: raniji od (polazak+40) i (start+15+40).
+/// Hard-stop kad prozor T-15..T+40 nije otvoren.
+/// [startedAt] ostaje zbog starih poziva — prozor se računa samo od polaska.
 bool v3TrackingTimedOut({DateTime? startedAt, DateTime? polazakAt}) {
-  DateTime? deadline;
-  if (polazakAt != null) {
-    deadline = polazakAt.add(v3TrackingMaxDuration);
-  }
-  if (startedAt != null) {
-    final fromStart = startedAt.add(v3AutoStartLeadTime + v3TrackingMaxDuration);
-    if (deadline == null || fromStart.isBefore(deadline)) deadline = fromStart;
-  }
-  if (deadline == null) return false;
-  return !V3BelgradeTime.now().isBefore(deadline);
+  if (polazakAt == null) return false;
+  return !v3IsTrackingWindowOpen(polazakAt: polazakAt);
+}
+
+/// Jedina istina za aktivni tracking: [polazak-15min, polazak+40min).
+bool v3IsTrackingWindowOpen({required DateTime polazakAt, DateTime? now}) {
+  final n = now ?? V3BelgradeTime.now();
+  final start = polazakAt.subtract(v3AutoStartLeadTime);
+  final end = polazakAt.add(v3TrackingMaxDuration);
+  return !n.isBefore(start) && n.isBefore(end);
 }
 
 /// Sam-zakazujući tajmer — fiksni razmak [interval] između početaka tick-ova.
