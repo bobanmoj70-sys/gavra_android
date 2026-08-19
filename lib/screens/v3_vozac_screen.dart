@@ -271,6 +271,55 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return rows;
   }
 
+  List<String> _idListFrom(dynamic raw) {
+    if (raw is! List) return const [];
+    final out = <String>[];
+    for (final item in raw) {
+      final id = item?.toString().trim() ?? '';
+      if (id.isNotEmpty) out.add(id);
+    }
+    return out;
+  }
+
+  /// OSRM/slot order može biti putnik_id ili (stariji) termin_id.
+  /// Kartice i HERE uvek rade sa putnik.id.
+  List<String> _toPutnikIds(List<String> rawOrder) {
+    if (rawOrder.isEmpty) return const [];
+    final aliasToPutnik = <String, String>{};
+    for (final item in _mojiPutnici) {
+      final putnikId = item.putnik.id.trim();
+      if (putnikId.isEmpty) continue;
+      aliasToPutnik[putnikId] = putnikId;
+      final terminId = (item.entry?.id ?? '').trim();
+      if (terminId.isNotEmpty) aliasToPutnik[terminId] = putnikId;
+    }
+    if (aliasToPutnik.isEmpty) return rawOrder;
+
+    final out = <String>[];
+    final seen = <String>{};
+    for (final id in rawOrder) {
+      final putnikId = aliasToPutnik[id];
+      if (putnikId == null || !seen.add(putnikId)) continue;
+      out.add(putnikId);
+    }
+    return out;
+  }
+
+  int _osrmIndexOf(_PutnikEntry item, List<String> osrmOrder) {
+    if (osrmOrder.isEmpty) return 999;
+    final putnikId = item.putnik.id.trim();
+    if (putnikId.isNotEmpty) {
+      final index = osrmOrder.indexOf(putnikId);
+      if (index != -1) return index;
+    }
+    final terminId = (item.entry?.id ?? '').trim();
+    if (terminId.isNotEmpty) {
+      final index = osrmOrder.indexOf(terminId);
+      if (index != -1) return index;
+    }
+    return 999;
+  }
+
   List<_PutnikEntry> _sortPutniciForDisplay(
     List<_PutnikEntry> putnici,
   ) {
@@ -286,9 +335,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
 
       if (osrmOrder.isNotEmpty) {
-        final indexA = osrmOrder.indexOf(a.putnik.id);
-        final indexB = osrmOrder.indexOf(b.putnik.id);
-        return (indexA == -1 ? 999 : indexA).compareTo(indexB == -1 ? 999 : indexB);
+        return _osrmIndexOf(a, osrmOrder).compareTo(_osrmIndexOf(b, osrmOrder));
       }
 
       return 0;
@@ -297,8 +344,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Log sortirani redosled
     final buf = StringBuffer('[SORT] order:');
     for (final p in sorted) {
-      final osrmIdx = osrmOrder.indexOf(p.putnik.id);
-      buf.write(' ${p.putnik.imePrezime}(OsrmIdx=$osrmIdx)');
+      buf.write(' ${p.putnik.imePrezime}(OsrmIdx=${_osrmIndexOf(p, osrmOrder)})');
     }
     debugPrint(buf.toString());
 
@@ -308,15 +354,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   /// Lanac istine za redosled:
   /// 1) live tick (`optimizedPutnikIds`) — samo dok gledaš tracking termin
   /// 2) `v3_eta_results.optimized_order` — poslednji uspešan compute-eta
-  /// 3) slot `optimized_order` — samo pre navigacije / na drugom terminu
+  /// 3) slot `optimized_order` — pre prvog tick-a / drugi termin
   List<String> _resolveOptimizedOrder() {
-    final live = V3VozacLocationTrackingService.instance.optimizedPutnikIds;
-    if (_isViewingTrackedTermin && live.isNotEmpty) return live;
+    if (_isViewingTrackedTermin) {
+      final live = _toPutnikIds(V3VozacLocationTrackingService.instance.optimizedPutnikIds);
+      if (live.isNotEmpty) return live;
+    }
 
     final fromEta = _getOsrmOrderFromEtaResults();
     if (fromEta.isNotEmpty) return fromEta;
 
-    if (_isViewingTrackedTermin) return const [];
     return _getOsrmOrderFromSlot();
   }
 
@@ -347,10 +394,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
       if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
       final terminId = row['termin_id']?.toString() ?? '';
-      if (shownTerminIds.isNotEmpty && !shownTerminIds.contains(terminId)) continue;
-      final order = row['optimized_order'];
-      if (order is! List || order.isEmpty) continue;
-      final asStrings = order.whereType<String>().toList();
+      final rowPutnikId = row['putnik_id']?.toString() ?? '';
+      final belongsToShown = (shownTerminIds.isEmpty && shownIds.isEmpty) ||
+          shownTerminIds.contains(terminId) ||
+          shownIds.contains(rowPutnikId);
+      if (!belongsToShown) continue;
+      final asStrings = _toPutnikIds(_idListFrom(row['optimized_order']));
       if (asStrings.isEmpty) continue;
       if (shownIds.isNotEmpty && !asStrings.any(shownIds.contains)) continue;
 
@@ -379,9 +428,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) {
         continue;
       }
-      final order = row['optimized_order'];
-      if (order is! List || order.isEmpty) continue;
-      final all = order.whereType<String>().where((s) => s.isNotEmpty).toList();
+      final all = _toPutnikIds(_idListFrom(row['optimized_order']));
       if (all.isEmpty) continue;
       if (myIds.isEmpty) return all;
       final mine = all.where(myIds.contains).toList();
@@ -1029,8 +1076,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   Future<({List<V3RouteWaypoint> waypoints, int unresolvedCount})> _resolveWaypointsForCurrentOrder() async {
-    final preostali = _mojiPutnici.where((item) => !_isPutnikEntryCompleted(item)).toList(growable: false);
-    debugPrint('[WAYPOINTS] resolving ${preostali.length} preostalih (od ${_mojiPutnici.length} ukupno)...');
+    final sortedAll = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
+    if (!mounted) {
+      return (waypoints: const <V3RouteWaypoint>[], unresolvedCount: 0);
+    }
+    final sameOrder = sortedAll.length == _mojiPutnici.length &&
+        List.generate(sortedAll.length, (i) => sortedAll[i].putnik.id).join('|') ==
+            _mojiPutnici.map((p) => p.putnik.id).join('|');
+    if (!sameOrder) {
+      setState(() => _mojiPutnici = sortedAll);
+    } else {
+      _mojiPutnici = sortedAll;
+    }
+
+    final preostali = sortedAll.where((item) => !_isPutnikEntryCompleted(item)).toList(growable: false);
+    debugPrint('[WAYPOINTS] resolving ${preostali.length} preostalih (od ${sortedAll.length} ukupno)...');
     final waypointTasks = preostali.map((item) async {
       final grad = (item.entry?.grad ?? _selectedGrad).trim().toUpperCase();
       final waypoint = await _routeWaypointResolverService.resolveWaypointForPutnikModel(
@@ -1047,9 +1107,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }).toList(growable: false);
 
     final resolvedOrNull = await Future.wait(waypointTasks);
-    final resolved = resolvedOrNull.whereType<V3RouteWaypoint>().toList(growable: false);
-    debugPrint('[WAYPOINTS] resolved=${resolved.length} unresolved=${resolvedOrNull.length - resolved.length}');
-    return (waypoints: resolved, unresolvedCount: resolvedOrNull.length - resolved.length);
+    final resolved = <V3RouteWaypoint>[];
+    final skipped = <String>[];
+    for (var i = 0; i < preostali.length; i++) {
+      final waypoint = resolvedOrNull[i];
+      if (waypoint == null) {
+        skipped.add(preostali[i].putnik.imePrezime);
+        continue;
+      }
+      resolved.add(waypoint);
+    }
+    debugPrint(
+      '[WAYPOINTS] cards=${preostali.map((p) => p.putnik.imePrezime).join(' > ')} '
+      'here=${resolved.map((w) => w.label).join(' > ')} '
+      'skipped=${skipped.isEmpty ? '-' : skipped.join(', ')}',
+    );
+    return (waypoints: resolved, unresolvedCount: skipped.length);
   }
 
   Future<
