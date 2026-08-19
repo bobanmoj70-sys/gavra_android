@@ -18,6 +18,8 @@ class V3BottomNavBarSlotovi extends StatefulWidget {
     this.showVozacBoja = false,
     this.getVozacColor,
     this.getVozacColors,
+    this.activeGrad,
+    this.activeVreme,
   });
   final String selectedGrad;
   final String selectedVreme;
@@ -30,6 +32,10 @@ class V3BottomNavBarSlotovi extends StatefulWidget {
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
   final List<Color>? Function(String grad, String vreme)? getVozacColors;
+
+  /// Tracking slot (datum already matched by caller). Green chip, not preview selection.
+  final String? activeGrad;
+  final String? activeVreme;
 
   @override
   State<V3BottomNavBarSlotovi> createState() => _BottomNavBarSlotoviState();
@@ -146,6 +152,8 @@ class _BottomNavBarSlotoviState extends State<V3BottomNavBarSlotovi> {
                     showVozacBoja: widget.showVozacBoja,
                     getVozacColor: widget.getVozacColor,
                     getVozacColors: widget.getVozacColors,
+                    activeGrad: widget.activeGrad,
+                    activeVreme: widget.activeVreme,
                   ),
                 ),
                 const Divider(height: 1),
@@ -167,6 +175,8 @@ class _BottomNavBarSlotoviState extends State<V3BottomNavBarSlotovi> {
                     showVozacBoja: widget.showVozacBoja,
                     getVozacColor: widget.getVozacColor,
                     getVozacColors: widget.getVozacColors,
+                    activeGrad: widget.activeGrad,
+                    activeVreme: widget.activeVreme,
                   ),
                 ),
               ],
@@ -194,6 +204,8 @@ class _PolazakRow extends StatelessWidget {
     this.showVozacBoja = false,
     this.getVozacColor,
     this.getVozacColors,
+    this.activeGrad,
+    this.activeVreme,
   });
   final String label;
   final List<String> vremena;
@@ -209,6 +221,10 @@ class _PolazakRow extends StatelessWidget {
   final bool showVozacBoja;
   final Color? Function(String grad, String vreme)? getVozacColor;
   final List<Color>? Function(String grad, String vreme)? getVozacColors;
+
+  /// Tracking slot (datum already matched by caller). Green chip, not preview selection.
+  final String? activeGrad;
+  final String? activeVreme;
 
   Color _selectedFillColor() {
     if (currentThemeId == 'dark_steel_grey') return const Color(0xFF4A4A4A).withOpacity(0.22);
@@ -253,6 +269,9 @@ class _PolazakRow extends StatelessWidget {
                   final vozacBorderColor = showVozacBoja ? getVozacColor?.call(grad, vreme) : null;
                   final vozacBoje = showVozacBoja ? getVozacColors?.call(grad, vreme) : null;
                   final hasVozac = vozacBorderColor != null || (vozacBoje != null && vozacBoje.isNotEmpty);
+
+                  // Active slot (tracking) - always green
+                  final isActive = grad == activeGrad && vreme == activeVreme;
 
                   return GestureDetector(
                     onTap: () => onPolazakChanged(grad, vreme),
@@ -326,23 +345,27 @@ class _PolazakRow extends StatelessWidget {
                             margin: const EdgeInsets.symmetric(horizontal: 2),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: selected
-                                  ? selectedFillColor
-                                  : hasVozac
-                                      ? (vozacBorderColor != null
-                                          ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
-                                          : Colors.transparent)
-                                      : Colors.transparent,
+                              color: isActive
+                                  ? Colors.green.withOpacity(0.22)
+                                  : selected
+                                      ? selectedFillColor
+                                      : hasVozac
+                                          ? (vozacBorderColor != null
+                                              ? V3CardColorPolicy.slotNavBackgroundFromVozac(vozacBorderColor)
+                                              : Colors.transparent)
+                                          : Colors.transparent,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: hasVozac
-                                    ? (vozacBorderColor != null
-                                        ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
-                                        : Colors.grey[300]!)
-                                    : selected
-                                        ? selectedPrimaryColor.withOpacity(0.8)
-                                        : Colors.grey[300]!,
-                                width: hasVozac ? 1.5 : (selected ? 1.2 : 0.6),
+                                color: isActive
+                                    ? Colors.green
+                                    : hasVozac
+                                        ? (vozacBorderColor != null
+                                            ? V3CardColorPolicy.slotNavBorderFromVozac(vozacBorderColor)
+                                            : Colors.grey[300]!)
+                                        : selected
+                                            ? selectedPrimaryColor.withOpacity(0.8)
+                                            : Colors.grey[300]!,
+                                width: isActive ? 1.8 : (hasVozac ? 1.5 : (selected ? 1.2 : 0.6)),
                               ),
                             ),
                             child: Column(

@@ -272,6 +272,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   List<String> _idListFrom(dynamic raw) {
+    if (raw is String) {
+      final s = raw.trim();
+      if (s.isEmpty) return const [];
+      final inner = (s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))
+          ? s.substring(1, s.length - 1)
+          : s;
+      return inner
+          .split(',')
+          .map((e) => e.trim().replaceAll('"', '').replaceAll("'", ''))
+          .where((e) => e.isNotEmpty)
+          .toList(growable: false);
+    }
     if (raw is! List) return const [];
     final out = <String>[];
     for (final item in raw) {
@@ -283,23 +295,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   /// OSRM/slot order može biti putnik_id ili (stariji) termin_id.
   /// Kartice i HERE uvek rade sa putnik.id.
-  List<String> _toPutnikIds(List<String> rawOrder) {
+  List<String> _toPutnikIds(List<String> rawOrder, List<_PutnikEntry> putnici) {
     if (rawOrder.isEmpty) return const [];
     final aliasToPutnik = <String, String>{};
-    for (final item in _mojiPutnici) {
+    for (final item in putnici) {
       final putnikId = item.putnik.id.trim();
       if (putnikId.isEmpty) continue;
       aliasToPutnik[putnikId] = putnikId;
       final terminId = (item.entry?.id ?? '').trim();
       if (terminId.isNotEmpty) aliasToPutnik[terminId] = putnikId;
     }
-    if (aliasToPutnik.isEmpty) return rawOrder;
 
     final out = <String>[];
     final seen = <String>{};
     for (final id in rawOrder) {
-      final putnikId = aliasToPutnik[id];
-      if (putnikId == null || !seen.add(putnikId)) continue;
+      final putnikId = aliasToPutnik[id] ?? id;
+      if (putnikId.isEmpty || !seen.add(putnikId)) continue;
       out.add(putnikId);
     }
     return out;
@@ -324,7 +335,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     List<_PutnikEntry> putnici,
   ) {
     final sorted = List<_PutnikEntry>.from(putnici);
-    final osrmOrder = _resolveOptimizedOrder();
+    final osrmOrder = _resolveOptimizedOrder(sorted);
 
     sorted.sort((a, b) {
       // Završeni (pokupljeni/otkazani) idu na kraj
@@ -351,25 +362,32 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return sorted;
   }
 
-  /// Lanac istine za redosled:
-  /// 1) live tick (`optimizedPutnikIds`) — samo dok gledaš tracking termin
-  /// 2) `v3_eta_results.optimized_order` — poslednji uspešan compute-eta
-  /// 3) slot `optimized_order` — pre prvog tick-a / drugi termin
-  List<String> _resolveOptimizedOrder() {
+  /// Lanac istine za redosled.
+  ///
+  /// Jedan aktivan tracking termin po vozaču = jedina live OSRM istina.
+  /// Vozač sme da gleda bilo koji slot; tuđi/neaktivni slot ne sme da
+  /// nasledi rutu aktivnog termina.
+  /// 1) live tick — samo dok gleda aktivni termin (prozor 55 min)
+  /// 2) `v3_eta_results` — fallback za isti aktivni termin
+  /// 3) slot `optimized_order` — pregled / pre prvog tick-a
+  List<String> _resolveOptimizedOrder(List<_PutnikEntry> putnici) {
     if (_isViewingTrackedTermin) {
-      final live = _toPutnikIds(V3VozacLocationTrackingService.instance.optimizedPutnikIds);
+      final live = _toPutnikIds(
+        V3VozacLocationTrackingService.instance.optimizedPutnikIds,
+        putnici,
+      );
       if (live.isNotEmpty) return live;
+
+      final fromEta = _getOsrmOrderFromEtaResults(putnici);
+      if (fromEta.isNotEmpty) return fromEta;
     }
 
-    final fromEta = _getOsrmOrderFromEtaResults();
-    if (fromEta.isNotEmpty) return fromEta;
-
-    return _getOsrmOrderFromSlot();
+    return _getOsrmOrderFromSlot(putnici);
   }
 
   void _refreshPutniciOrderFromEtaCache() {
     if (_mojiPutnici.isEmpty) return;
-    final osrmOrder = _resolveOptimizedOrder();
+    final osrmOrder = _resolveOptimizedOrder(_mojiPutnici);
     if (osrmOrder.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
     if (mounted) {
@@ -380,13 +398,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   /// Poslednji redosled iz v3_eta_results za ovog vozača + prikazane putnike.
-  List<String> _getOsrmOrderFromEtaResults() {
+  /// Koristi se samo za aktivni tracking termin.
+  List<String> _getOsrmOrderFromEtaResults(List<_PutnikEntry> putnici) {
     final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isEmpty) return const [];
 
-    final shownIds = _mojiPutnici.map((p) => p.putnik.id).toSet();
-    final shownTerminIds =
-        _mojiPutnici.map((p) => p.entry?.id).whereType<String>().where((id) => id.isNotEmpty).toSet();
+    final shownIds = putnici.map((p) => p.putnik.id).toSet();
+    final shownTerminIds = putnici.map((p) => p.entry?.id).whereType<String>().where((id) => id.isNotEmpty).toSet();
+    if (shownIds.isEmpty && shownTerminIds.isEmpty) return const [];
 
     List<String>? bestOrder;
     DateTime? bestAt;
@@ -395,13 +414,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
       final terminId = row['termin_id']?.toString() ?? '';
       final rowPutnikId = row['putnik_id']?.toString() ?? '';
-      final belongsToShown = (shownTerminIds.isEmpty && shownIds.isEmpty) ||
-          shownTerminIds.contains(terminId) ||
-          shownIds.contains(rowPutnikId);
+      final belongsToShown = shownTerminIds.contains(terminId) || shownIds.contains(rowPutnikId);
       if (!belongsToShown) continue;
-      final asStrings = _toPutnikIds(_idListFrom(row['optimized_order']));
+      final asStrings = _toPutnikIds(_idListFrom(row['optimized_order']), putnici);
       if (asStrings.isEmpty) continue;
-      if (shownIds.isNotEmpty && !asStrings.any(shownIds.contains)) continue;
+      if (!asStrings.any(shownIds.contains)) continue;
 
       final raw = row['computed_at'];
       DateTime? at;
@@ -418,8 +435,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return bestOrder ?? const [];
   }
 
-  List<String> _getOsrmOrderFromSlot() {
-    final myIds = _mojiPutnici.map((p) => p.putnik.id).where((id) => id.isNotEmpty).toSet();
+  List<String> _getOsrmOrderFromSlot(List<_PutnikEntry> putnici) {
+    final myIds = putnici.map((p) => p.putnik.id).where((id) => id.isNotEmpty).toSet();
 
     for (final row in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
@@ -428,7 +445,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) {
         continue;
       }
-      final all = _toPutnikIds(_idListFrom(row['optimized_order']));
+      final all = _toPutnikIds(_idListFrom(row['optimized_order']), putnici);
       if (all.isEmpty) continue;
       if (myIds.isEmpty) return all;
       final mine = all.where(myIds.contains).toList();
@@ -1618,6 +1635,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                   getKapacitet: getKapacitet,
                   bcVremena: bcVremenaToShow,
                   vsVremena: vsVremenaToShow,
+                  activeGrad: _isNavigating ? V3VozacLocationTrackingService.instance.activeGrad : null,
+                  activeVreme:
+                      _isNavigating && _selectedDatumIso == V3VozacLocationTrackingService.instance.activeDatumIso
+                          ? V3VozacLocationTrackingService.instance.activeVreme
+                          : null,
                 );
               },
             ),
