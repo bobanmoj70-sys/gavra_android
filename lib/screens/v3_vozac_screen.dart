@@ -343,11 +343,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     sorted.sort((a, b) {
-      // Završeni (pokupljeni/otkazani) idu na kraj
-      final isCompletedA = _isPutnikEntryCompleted(a);
-      final isCompletedB = _isPutnikEntryCompleted(b);
-      if (isCompletedA != isCompletedB) {
-        return isCompletedA ? 1 : -1;
+      // Redosled grupa: aktivni (0) < pokupljeni (1) < otkazani (2, dno).
+      final rankA = _statusRank(a);
+      final rankB = _statusRank(b);
+      if (rankA != rankB) {
+        return rankA.compareTo(rankB);
       }
 
       if (osrmOrder.isNotEmpty) {
@@ -439,6 +439,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (selectedSlotId.isNotEmpty) break;
     }
 
+    // Ako ne možemo pouzdano da odredimo ID trenutno izabranog slota (npr.
+    // cache još nije stigao / race pri promeni slota), NE prihvatamo eta
+    // rezultate bez slot-filtera — to bi moglo procuriti redosled iz nekog
+    // drugog (starog) slota koji deli putnike sa trenutnim (isti test-putnici
+    // na više termina). Bezbednije je pasti na _getOsrmOrderFromSlot fallback.
+    if (selectedSlotId.isEmpty) return const [];
+
     // Donja granica svežine: početak prozora aktivnog termina (polazak - 15min).
     final t = V3VozacLocationTrackingService.instance;
     final polazak = v3PolazakDateTime(datumIso: t.activeDatumIso, vreme: t.activeVreme);
@@ -450,7 +457,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
       if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
       final rowSlotId = (row['slot_id']?.toString() ?? '').trim();
-      if (rowSlotId.isNotEmpty && selectedSlotId.isNotEmpty && rowSlotId != selectedSlotId) continue;
+      // Sada je selectedSlotId uvek popunjen (ranije vraćeno const [] ako nije).
+      // Red bez slot_id-a (legacy/null) ne može se pouzdano vezati za trenutni
+      // slot — preskoči ga da izbegnemo cross-slot curenje.
+      if (rowSlotId.isEmpty || rowSlotId != selectedSlotId) continue;
       final terminId = row['termin_id']?.toString() ?? '';
       final rowPutnikId = row['putnik_id']?.toString() ?? '';
       final belongsToShown = shownTerminIds.contains(terminId) || shownIds.contains(rowPutnikId);
@@ -668,6 +678,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final pokupljen = V3StatusPolicy.isTimestampSet(entry.pokupljenAt);
     final otkazan = V3StatusPolicy.isTimestampSet(entry.otkazanoAt);
     return pokupljen || otkazan;
+  }
+
+  /// Redosled grupa za sort kartica: aktivan(0) < pokupljen(1) < otkazan(2).
+  /// Otkazan uvek na samom dnu, pokupljen odmah iznad njega, aktivni na vrhu.
+  int _statusRank(_PutnikEntry item) {
+    final entry = item.entry;
+    if (entry == null) return 0;
+    final otkazan = V3StatusPolicy.isTimestampSet(entry.otkazanoAt);
+    if (otkazan) return 2;
+    final pokupljen = V3StatusPolicy.isTimestampSet(entry.pokupljenAt);
+    if (pokupljen) return 1;
+    return 0;
   }
 
   void _rebuild() {

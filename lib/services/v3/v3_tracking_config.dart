@@ -235,9 +235,21 @@ Future<({Map<String, int> etaMap, List<String> order})> v3RunTrackingTick({
   required String datumIso,
   String logTag = '[v3RunTrackingTick]',
 }) async {
-  final position = await Geolocator.getCurrentPosition(
-    locationSettings: v3TrackingLocationSettings,
-  );
+  Position position;
+  try {
+    position = await Geolocator.getCurrentPosition(
+      locationSettings: v3TrackingLocationSettings,
+    );
+  } on TimeoutException {
+    // GPS fix nije stigao na vreme (slab signal / cold start).
+    // Fallback na poslednju poznatu poziciju umesto da tick potpuno propadne
+    // — inače optimized_order ostaje "zamrznut" i novi putnici trajno
+    // dobijaju OsrmIdx=999 dok se ne desi sledeći uspešan tick.
+    final last = await Geolocator.getLastKnownPosition();
+    if (last == null) rethrow;
+    debugPrint('$logTag getCurrentPosition timeout — koristim getLastKnownPosition fallback');
+    position = last;
+  }
 
   // Mora uspeti pre compute-eta — inače edge bi računao na staroj lokaciji.
   await v3UpdateVozacLocation(
