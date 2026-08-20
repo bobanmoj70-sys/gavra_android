@@ -1471,7 +1471,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vsVremenaToShow = vsVremenaSet.toList()..sort();
     final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
     final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
-    final appBarHeight = 88 + (headerScaleExtra * 18);
+    final appBarHeight = 98 + (headerScaleExtra * 18);
     final appBarButtonHeight = 30 + (headerScaleExtra * 6);
 
     return StreamBuilder<int>(
@@ -1521,16 +1521,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                 padding: EdgeInsets.zero,
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // ── Red 1: Datum | Dan ──
-                        _buildDigitalDateDisplay(context, vozac),
-                        const SizedBox(height: 2),
-                        // ── Red 1b: Registracija kombija za selektovani slot ──
+                        // ── Red 1: Registracija kombija za selektovani slot ──
                         _buildKombiRegistracijaDisplay(context),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 1),
+                        // ── Red 1b: Datum | Dan ──
+                        _buildDigitalDateDisplay(context, vozac),
+                        const SizedBox(height: 4),
                         // ── Red 2: Kompaktni gumbi ──
                         Row(
                           children: [
@@ -1886,12 +1886,12 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.airport_shuttle, size: 13, color: prikaznaBoja),
+          Icon(Icons.airport_shuttle, size: 16, color: prikaznaBoja),
           const SizedBox(width: 4),
           Text(
             registracija ?? _tr('kombiNijeDodeljen'),
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
               color: prikaznaBoja,
               letterSpacing: 0.5,
@@ -1997,8 +1997,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }
 
   /// Kombi (vozilo) dodeljen datom slotu (grad+vreme, tekući dan).
-  /// Prioritet: eksplicitna dodela po slotu (v3_trenutna_dodela_slot.vozilo_id),
-  /// fallback na trajno dodeljeni kombi vozača (v3_vozila.vozac_id).
+  /// Isključivo eksplicitna dodela po slotu (v3_trenutna_dodela_slot.vozilo_id)
+  /// — trajna dodela kombija vozaču ne postoji.
   V3Vozilo? _getVoziloZaSlot(String grad, String vreme) {
     final vozac = _efektivniVozac;
     if (vozac == null) return null;
@@ -2019,9 +2019,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       break;
     }
 
-    return (voziloId != null && voziloId.isNotEmpty)
-        ? V3VoziloService.getVoziloById(voziloId)
-        : V3VoziloService.getVoziloForVozac(vozac.id.toString());
+    return (voziloId != null && voziloId.isNotEmpty) ? V3VoziloService.getVoziloById(voziloId) : null;
   }
 }
 

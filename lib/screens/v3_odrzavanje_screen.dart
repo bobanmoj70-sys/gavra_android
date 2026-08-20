@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_translations.dart';
-import '../models/v3_vozac.dart';
 import '../models/v3_vozilo.dart';
-import '../services/v3/v3_vozac_service.dart';
 import '../services/v3/v3_vozilo_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -253,7 +251,7 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
         child: Row(
           children: sorted.map((v) {
             final isSel = v.id == _selected?.id;
-            final color = _getVoziloColor(v.registracija);
+            final color = V3CardColorPolicy.tryParseHexColor(v.boja) ?? _getVoziloColor(v.registracija);
             final borderColor = isSel ? (color == Colors.white ? Colors.black : color) : Colors.white24;
             final senka = _getRegistracijaSenka(v);
             return Padding(
@@ -312,8 +310,6 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                 if (v.godinaProizvodnje != null)
                   Text('${_OdrTr.tr('godinaLabel')}: ${v.godinaProizvodnje}',
                       style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
-                const SizedBox(height: 10),
-                _buildVozacDodelaRow(v),
                 const SizedBox(height: 10),
                 V3ContainerUtils.styledContainer(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -377,6 +373,15 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             label: _OdrTr.tr('napomena'),
             value: v.napomena ?? '-',
             onEdit: () => _editText('napomena', _OdrTr.tr('napomena'), v.napomena, multiline: true),
+          ),
+
+          // Boja kombija
+          _EditableField(
+            icon: '🎨',
+            label: _OdrTr.tr('bojaKombija'),
+            value: (v.boja == null || v.boja!.trim().isEmpty) ? '-' : v.boja!.toUpperCase(),
+            valueColor: V3CardColorPolicy.tryParseHexColor(v.boja),
+            onEdit: () => _editBoja(v.boja),
           ),
 
           _SectionDivider(),
@@ -466,40 +471,6 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     );
   }
 
-  Widget _buildVozacDodelaRow(V3Vozilo v) {
-    final vozacId = (v.vozacId ?? '').trim();
-    final vozac = vozacId.isEmpty ? null : V3VozacService.getVozacById(vozacId);
-    final assigned = vozac != null;
-    final label = assigned ? '${_OdrTr.tr('vozac')}: ${vozac.imePrezime}' : _OdrTr.tr('tapZaDodeluVozaca');
-
-    return GestureDetector(
-      onTap: () => _showVozacForVoziloDialog(v),
-      child: V3ContainerUtils.styledContainer(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        backgroundColor: Colors.white.withValues(alpha: assigned ? 0.18 : 0.10),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-        child: Row(
-          children: [
-            Icon(Icons.person, color: assigned ? Colors.orange.shade200 : Colors.white70, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: assigned ? Colors.white : Colors.white70,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            Icon(Icons.edit_outlined, color: Colors.white.withValues(alpha: 0.7), size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── Edit handlers ─────────────────────────────────────────────────────────
 
   void _editText(String field, String label, String? current, {bool multiline = false}) {
@@ -531,6 +502,16 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
     } catch (_) {
       V3UIUtils.showSaveError(context);
     }
+  }
+
+  void _editBoja(String? current) {
+    V3DialogHelper.showDialogBuilder<void>(
+      context: context,
+      builder: (_) => _BojaKombijaDialog(
+        voziloId: _selected!.id,
+        currentHex: current,
+      ),
+    );
   }
 
   Future<void> _editServis(String prefix, String label, DateTime? datum, int? km, int trenutnaKm) {
@@ -602,120 +583,6 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
       if (!mounted) return;
       V3UIUtils.showSaveError(context);
     }
-  }
-
-  Future<void> _showVozacForVoziloDialog(V3Vozilo vozilo) async {
-    final vozaci = V3VozacService.getAllVozaci();
-    if (vozaci.isEmpty) {
-      if (mounted) V3AppSnackBar.warning(context, _OdrTr.tr('nemaRegistrovanihVozaca'));
-      return;
-    }
-
-    final trenutniId = (vozilo.vozacId ?? '').trim();
-    V3Vozac? odabran = trenutniId.isEmpty ? null : V3VozacService.getVozacById(trenutniId);
-
-    await V3DialogHelper.showBottomSheetBuilder<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
-          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                vozilo.tablicaINaziv,
-                style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 1),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _OdrTr.tr('dodeliVozacaKombiju'),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 360),
-                child: ListView(
-                  shrinkWrap: true,
-                  children: vozaci
-                      .map(
-                        (v) => _VozacAssignTile(
-                          ime: v.imePrezime,
-                          isSelected: odabran?.id == v.id,
-                          color: V3CardColorPolicy.vozacColorOr(v.boja),
-                          onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (trenutniId.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    try {
-                      await V3VoziloService.assignVozacToVozilo(voziloId: vozilo.id);
-                      if (!mounted) return;
-                      V3AppSnackBar.success(context, _OdrTr.tr('kombiUklonjen'));
-                    } catch (_) {
-                      if (!mounted) return;
-                      V3UIUtils.showSaveError(context);
-                    }
-                  },
-                  icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
-                  label: Text(_OdrTr.tr('nijeDodeljen'), style: const TextStyle(color: Colors.redAccent)),
-                ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: V3ButtonUtils.elevatedButton(
-                  onPressed: odabran == null
-                      ? null
-                      : () async {
-                          Navigator.pop(ctx);
-                          try {
-                            await V3VoziloService.assignVozacToVozilo(
-                              voziloId: vozilo.id,
-                              vozacId: odabran!.id,
-                            );
-                            if (!mounted) return;
-                            V3AppSnackBar.success(context, _OdrTr.tr('kombiDodeljen'));
-                          } catch (_) {
-                            if (!mounted) return;
-                            V3UIUtils.showSaveError(context);
-                          }
-                        },
-                  text: _OdrTr.tr('sacuvaj'),
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  foregroundColor: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -1244,6 +1111,114 @@ class _GumeSheetState extends State<_GumeSheet> {
   }
 }
 
+// ─── Boja kombija Dialog ──────────────────────────────────────────────────────
+
+const List<String> _kBojeKombija = [
+  '#FFFFFF', // bela
+  '#E53935', // crvena
+  '#1565C0', // plava (tamnija - bolja vidljivost)
+  '#43A047', // zelena
+  '#FB8C00', // narandžasta
+  '#8E24AA', // ljubičasta
+  '#00ACC1', // tirkizna
+  '#FDD835', // žuta
+  '#6D4C41', // braon
+  '#546E7A', // sivo-plava
+  '#D81B60', // pink
+  '#3949AB', // indigo
+  '#000000', // crna
+];
+
+class _BojaKombijaDialog extends StatefulWidget {
+  final String voziloId;
+  final String? currentHex;
+
+  const _BojaKombijaDialog({required this.voziloId, this.currentHex});
+
+  @override
+  State<_BojaKombijaDialog> createState() => _BojaKombijaDialogState();
+}
+
+class _BojaKombijaDialogState extends State<_BojaKombijaDialog> {
+  String? _selectedHex;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedHex = widget.currentHex?.trim().isEmpty == true ? null : widget.currentHex?.trim().toUpperCase();
+  }
+
+  Future<void> _save(String? hex) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await V3VoziloService.updateKolskaKnjiga(widget.voziloId, {'boja': hex});
+      if (!mounted) return;
+      Navigator.pop(context);
+      V3UIUtils.showSaveSuccess(context);
+    } catch (_) {
+      if (!mounted) return;
+      V3UIUtils.showSaveError(context);
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.grey.shade900,
+      title: Text(_OdrTr.tr('izaberiBojuKombija'), style: const TextStyle(color: Colors.white)),
+      content: SizedBox(
+        width: 280,
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final hex in _kBojeKombija)
+              GestureDetector(
+                onTap: _saving ? null : () => setState(() => _selectedHex = hex),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: V3CardColorPolicy.tryParseHexColor(hex),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _selectedHex == hex ? Colors.orange : Colors.white24,
+                      width: _selectedHex == hex ? 3 : 1,
+                    ),
+                  ),
+                  child: _selectedHex == hex
+                      ? Icon(Icons.check, color: hex.toUpperCase() == '#FFFFFF' ? Colors.black : Colors.white, size: 20)
+                      : null,
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        if (widget.currentHex != null && widget.currentHex!.trim().isNotEmpty)
+          V3ButtonUtils.textButton(
+            onPressed: _saving ? null : () => _save(null),
+            text: 'Reset',
+            foregroundColor: Colors.white38,
+          ),
+        V3ButtonUtils.textButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          text: _OdrTr.tr('otkazi'),
+          foregroundColor: Colors.white60,
+        ),
+        V3ButtonUtils.textButton(
+          onPressed: _saving || _selectedHex == null ? null : () => _save(_selectedHex),
+          text: _OdrTr.tr('sacuvaj'),
+          foregroundColor: Colors.orange,
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Add Vozilo Dialog ────────────────────────────────────────────────────────
 
 class _AddVoziloDialog extends StatefulWidget {
@@ -1342,328 +1317,6 @@ class _AddVoziloDialogState extends State<_AddVoziloDialog> {
           foregroundColor: Colors.orange,
         ),
       ],
-    );
-  }
-}
-
-// ─── Kombi dodela dialog ───────────────────────────────────────────────────
-
-/// Dijalog za dodelu kombija vozačima (jedan slot = jedan kombi = jedan vozač).
-/// Pozvano iz admin ekrana (Red 2 app bara, pored brojača učenika).
-class V3DodeliKombiDialog extends StatefulWidget {
-  const V3DodeliKombiDialog({super.key});
-
-  /// Otvara dijalog za dodelu kombija.
-  static Future<void> show(BuildContext context) {
-    return V3DialogHelper.showDialogBuilder<void>(
-      context: context,
-      builder: (_) => const V3DodeliKombiDialog(),
-    );
-  }
-
-  @override
-  State<V3DodeliKombiDialog> createState() => _V3DodeliKombiDialogState();
-}
-
-class _V3DodeliKombiDialogState extends State<V3DodeliKombiDialog> {
-  final Set<String> _saving = <String>{};
-  final Set<String> _savingBoja = <String>{};
-
-  static const List<Color> _bojePaleta = [
-    Color(0xFFE53935), // crvena
-    Color(0xFFFB8C00), // narandzasta
-    Color(0xFFFDD835), // zuta
-    Color(0xFF43A047), // zelena
-    Color(0xFF00ACC1), // cijan
-    Color(0xFF1E88E5), // plava
-    Color(0xFF5E35B1), // ljubicasta
-    Color(0xFFD81B60), // pink
-    Color(0xFF6D4C41), // braon
-    Color(0xFF757575), // siva
-  ];
-
-  Future<void> _pickVoziloBoja(V3Vozilo vozilo) async {
-    final izabrana = await showDialog<Color>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF252840),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${_OdrTr.tr('izaberiBojuKombija')} — ${vozilo.registracija.trim().toUpperCase()}',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.center,
-                children: _bojePaleta
-                    .map((c) => GestureDetector(
-                          onTap: () => Navigator.pop(ctx, c),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: c,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                            ),
-                          ),
-                        ))
-                    .toList(),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, null),
-                child: Text(_OdrTr.tr('otkazi'), style: const TextStyle(color: Colors.white60)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (izabrana == null) return;
-
-    final hex = '#${izabrana.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
-    setState(() => _savingBoja.add(vozilo.id));
-    try {
-      await V3VoziloService.updateKolskaKnjiga(vozilo.id, {'boja': hex});
-    } catch (_) {
-      if (mounted) V3AppSnackBar.error(context, _OdrTr.tr('greskaCuvanja'));
-    } finally {
-      if (mounted) setState(() => _savingBoja.remove(vozilo.id));
-    }
-  }
-
-  Future<void> _promeniKombi(V3Vozac vozac, String? voziloId) async {
-    final currentId = V3VoziloService.getVoziloForVozac(vozac.id)?.id ?? '';
-    final nextId = (voziloId ?? '').trim();
-    if (currentId == nextId) return;
-    setState(() => _saving.add(vozac.id));
-    try {
-      await V3VoziloService.assignVoziloToVozac(
-        vozacId: vozac.id,
-        voziloId: nextId.isEmpty ? null : nextId,
-      );
-    } catch (_) {
-      if (mounted) V3AppSnackBar.error(context, _OdrTr.tr('greskaCuvanja'));
-    } finally {
-      if (mounted) setState(() => _saving.remove(vozac.id));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<List<V3Vozilo>>(
-      stream: V3VoziloService.streamVozila(),
-      builder: (context, snapshot) {
-        final vozila = snapshot.data ?? V3VoziloService.getAllVozila();
-        final vozaci = V3VozacService.getAllVozaci();
-
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-          child: V3ContainerUtils.gradientContainer(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E2235), Color(0xFF252840)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 520),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 16, 12, 8),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.airport_shuttle, color: Colors.white, size: 22),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _OdrTr.tr('dodeliKombi'),
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white54),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(color: Colors.white12, height: 1),
-                  Flexible(
-                    child: vozaci.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              _OdrTr.tr('nemaRegistrovanihVozaca'),
-                              style: const TextStyle(color: Colors.white60),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            shrinkWrap: true,
-                            itemCount: vozaci.length,
-                            itemBuilder: (context, i) {
-                              final v = vozaci[i];
-                              final isSaving = _saving.contains(v.id);
-                              final dodeljen = V3VoziloService.getVoziloForVozac(v.id);
-                              final boja = V3CardColorPolicy.vozacColorOr(v.boja);
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: boja.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: boja.withValues(alpha: 0.35)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        v.imePrezime,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    if (isSaving)
-                                      const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    else ...[
-                                      if (dodeljen != null)
-                                        GestureDetector(
-                                          onTap: _savingBoja.contains(dodeljen.id)
-                                              ? null
-                                              : () => _pickVoziloBoja(dodeljen),
-                                          child: _savingBoja.contains(dodeljen.id)
-                                              ? const SizedBox(
-                                                  width: 18,
-                                                  height: 18,
-                                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                                )
-                                              : Container(
-                                                  width: 18,
-                                                  height: 18,
-                                                  margin: const EdgeInsets.only(right: 8),
-                                                  decoration: BoxDecoration(
-                                                    color: V3CardColorPolicy.tryParseHexColor(dodeljen.boja) ??
-                                                        Colors.white24,
-                                                    shape: BoxShape.circle,
-                                                    border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
-                                                  ),
-                                                ),
-                                        ),
-                                      DropdownButton<String>(
-                                        value: dodeljen?.id ?? '',
-                                        dropdownColor: const Color(0xFF252840),
-                                        underline: const SizedBox.shrink(),
-                                        style: TextStyle(color: boja, fontWeight: FontWeight.bold, fontSize: 13),
-                                        items: [
-                                          DropdownMenuItem<String>(
-                                            value: '',
-                                            child: Text(_OdrTr.tr('nijeDodeljen')),
-                                          ),
-                                          ...vozila.map(
-                                            (vozilo) => DropdownMenuItem<String>(
-                                              value: vozilo.id,
-                                              child: Text(vozilo.registracija.trim().toUpperCase()),
-                                            ),
-                                          ),
-                                        ],
-                                        onChanged: (nova) => _promeniKombi(v, nova),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _VozacAssignTile extends StatelessWidget {
-  final String ime;
-  final bool isSelected;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _VozacAssignTile({
-    required this.ime,
-    required this.isSelected,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? color : Colors.white.withValues(alpha: 0.15),
-              width: isSelected ? 1 : 0.6,
-            ),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: color.withValues(alpha: 0.3),
-                child: Text(
-                  ime.isNotEmpty ? ime[0].toUpperCase() : '?',
-                  style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  ime,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

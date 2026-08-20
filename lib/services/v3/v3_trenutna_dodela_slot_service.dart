@@ -262,9 +262,9 @@ class V3TrenutnaDodelaSlotService {
     return result;
   }
 
-  /// Kombi trenutno dodeljen svakom slotu (ako je eksplicitno postavljen po slotu).
-  /// Ako slot nema `vozilo_id`, pozivalac treba da uradi fallback na trajnu
-  /// dodelu vozača (`V3VoziloService.getVoziloForVozac`).
+  /// Kombi trenutno dodeljen svakom slotu (isklju\u010divo eksplicitna dodela po
+  /// slotu). Nema fallback-a na trajnu dodelu voza\u010du \u2014 kombi je nezavisan
+  /// izbor po slotu, isto kao dodela putnika.
   static Future<Map<String, String>> loadAllVoziloBySlotKey({
     String? datumIso,
   }) async {

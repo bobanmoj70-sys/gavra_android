@@ -112,6 +112,14 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Keine Zuweisung — tippen zum Zuweisen des Fahrers',
       'zh': '未分配 — 点击以分配司机',
     },
+    'kombi': {'sr': 'Kombi', 'en': 'Van', 'ru': 'Микроавтобус', 'de': 'Kleinbus', 'zh': '面包车'},
+    'nemaDodeljenogKombija': {
+      'sr': 'Nema dodeljenog kombija',
+      'en': 'No van assigned',
+      'ru': 'Микроавтобус не назначен',
+      'de': 'Kein Kleinbus zugewiesen',
+      'zh': '未分配面包车',
+    },
   },
   'adminScreen': {
     'neradniDani': {

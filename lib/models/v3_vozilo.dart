@@ -8,7 +8,6 @@ class V3Vozilo {
   final String? model;
   final double trenutnaKm;
   final DateTime? updatedAt;
-  final String? vozacId;
   final String? boja;
 
   // Kolska knjiga polja
@@ -45,7 +44,6 @@ class V3Vozilo {
     this.model,
     this.trenutnaKm = 0.0,
     this.updatedAt,
-    this.vozacId,
     this.boja,
     this.brojSasije,
     this.godinaProizvodnje,
@@ -115,7 +113,6 @@ class V3Vozilo {
       model: json['model'] as String?,
       trenutnaKm: (json['trenutna_km'] as num?)?.toDouble() ?? 0.0,
       updatedAt: parseDate(json['updated_at']),
-      vozacId: json['vozac_id'] as String?,
       boja: json['boja'] as String?,
       brojSasije: json['broj_sasije'] as String?,
       godinaProizvodnje: json['godina_proizvodnje'] as int?,
@@ -152,7 +149,6 @@ class V3Vozilo {
       'marka': marka,
       'model': model,
       'trenutna_km': trenutnaKm,
-      'vozac_id': vozacId,
       if (boja != null) 'boja': boja,
       if (brojSasije != null) 'broj_sasije': brojSasije,
       if (godinaProizvodnje != null) 'godina_proizvodnje': godinaProizvodnje,

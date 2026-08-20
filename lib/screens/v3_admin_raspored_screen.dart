@@ -333,15 +333,14 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   }
 
   /// Kombi dodeljen konkretnom slotu (datum+grad+vreme).
-  /// Prioritet: eksplicitna dodela po slotu, fallback na trajnu dodelu vozača.
+  /// Isključivo eksplicitna dodela po slotu — nema fallback-a na trajnu
+  /// dodelu vozača, kombi je nezavisan izbor po slotu (isto kao kod putnika).
   V3Vozilo? _getVoziloZaTermin(String grad, String vreme) {
-    final vozac = _getVozacZaTermin(grad, vreme);
     final voziloId = V3DodelaResolverService.resolveVoziloIdForSlot(
       datumIso: _selectedDatumIso,
       grad: grad,
       vreme: vreme,
       activeVoziloBySlotKey: _activeVoziloBySlotKey,
-      vozacId: vozac?.id,
     );
     if (voziloId.isEmpty) return null;
     return V3VoziloService.getVoziloById(voziloId);
@@ -524,14 +523,15 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               const SizedBox(height: 16),
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
-                    subtitle: V3VoziloService.getVoziloForVozac(v.id)?.registracija,
                     isSelected: odabran?.id == v.id,
                     color: V3CardColorPolicy.vozacColorOr(v.boja),
                     onTap: () => setS(() {
                       final novi = odabran?.id == v.id ? null : v;
                       odabran = novi;
-                      // Podrazumevano: kombi trajno dodeljen novom vozaču.
-                      odabranoVoziloId = novi != null ? (V3VoziloService.getVoziloForVozac(novi.id)?.id ?? '') : '';
+                      // Kombi je nezavisan po slotu — ne diramo odabranoVoziloId
+                      // ovde. Ako slot nema eksplicitnu dodelu kombija, ostaje
+                      // prazno dok admin ručno ne izabere kombi iz padajućeg
+                      // menija ispod (isto kao dodela putnika po slotu).
                     }),
                   )),
               if (odabran != null && vozila.isNotEmpty) ...[
@@ -645,7 +645,6 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               const SizedBox(height: 16),
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
-                    subtitle: V3VoziloService.getVoziloForVozac(v.id)?.registracija,
                     isSelected: odabran?.id == v.id,
                     color: V3CardColorPolicy.vozacColorOr(v.boja),
                     onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
@@ -701,6 +700,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       builder: (context, snapshot) {
         final sviZapisi = snapshot.data ?? [];
         final vozacTermin = _getVozacZaTermin(_selectedGrad, _selectedVreme);
+        final voziloTermin = _getVoziloZaTermin(_selectedGrad, _selectedVreme);
         String slotVreme(V3OperativnaNedeljaEntry z) => z.polazakAt ?? '';
         final currentVozacId = V3VozacService.currentVozac?.id;
 
@@ -820,6 +820,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                       grad: _selectedGrad,
                       vreme: _selectedVreme,
                       vozac: vozacTermin,
+                      vozilo: voziloTermin,
                       onTap: () => _showTerminAssignDialog(_selectedGrad, _selectedVreme),
                     ),
 
@@ -953,9 +954,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     required String grad,
     required String vreme,
     required V3Vozac? vozac,
+    required V3Vozilo? vozilo,
     required VoidCallback onTap,
   }) {
     final color = vozac != null ? V3CardColorPolicy.vozacColorOr(vozac.boja) : Colors.white24;
+    final kombiColor = vozilo != null ? V3CardColorPolicy.vozacColorOr(vozilo.boja) : color;
+    final kombiLabel = vozilo?.registracija.trim().toUpperCase();
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -967,23 +971,47 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: color.withValues(alpha: 0.5), width: 0.8),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.directions_car, color: color, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                vozac != null ? '${_RasTr.tr('vozac')}: ${vozac.imePrezime}' : _RasTr.tr('nemaDodeleTapZaDodelu'),
-                style: TextStyle(
-                  color: vozac != null ? Colors.white : Colors.white54,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+            Row(
+              children: [
+                Icon(Icons.directions_car, color: color, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    vozac != null ? '${_RasTr.tr('vozac')}: ${vozac.imePrezime}' : _RasTr.tr('nemaDodeleTapZaDodelu'),
+                    style: TextStyle(
+                      color: vozac != null ? Colors.white : Colors.white54,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-              ),
+                Text('$grad $vreme', style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                const SizedBox(width: 8),
+                Icon(Icons.edit_outlined, color: color.withValues(alpha: 0.7), size: 16),
+              ],
             ),
-            Text('$grad $vreme', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-            const SizedBox(width: 8),
-            Icon(Icons.edit_outlined, color: color.withValues(alpha: 0.7), size: 16),
+            if (vozac != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.airport_shuttle, color: kombiColor, size: 16),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      kombiLabel != null ? '${_RasTr.tr('kombi')}: $kombiLabel' : _RasTr.tr('nemaDodeljenogKombija'),
+                      style: TextStyle(
+                        color: kombiLabel != null ? Colors.white70 : Colors.white38,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

@@ -1,6 +1,5 @@
 import '../../utils/v3_belgrade_time.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
-import 'v3_vozilo_service.dart';
 
 class V3DodelaResolverService {
   V3DodelaResolverService._();
@@ -20,24 +19,17 @@ class V3DodelaResolverService {
   }
 
   /// Kombi za konkretan slot (datum+grad+vreme).
-  /// Prioritet: eksplicitna dodela po slotu (`activeVoziloBySlotKey`) →
-  /// fallback na trajnu dodelu voza\u010da (`v3_vozila.vozac_id`) ako je [vozacId] prosle\u0111en.
+  /// Isključivo eksplicitna dodela po slotu (`activeVoziloBySlotKey`) — BEZ
+  /// fallback-a na trajnu dodelu vozača. Kombi je nezavisan atribut sloga,
+  /// isto kao dodela putnika, i ne treba da se "nasleđuje" od vozača.
   static String resolveVoziloIdForSlot({
     required String datumIso,
     required String grad,
     required String vreme,
     required Map<String, String> activeVoziloBySlotKey,
-    String? vozacId,
   }) {
     final key = V3TrenutnaDodelaSlotService.slotKey(datumIso: datumIso, grad: grad, vreme: vreme);
-    final bySlot = activeVoziloBySlotKey[key] ?? '';
-    if (bySlot.isNotEmpty) return bySlot;
-
-    final driverId = (vozacId ?? '').trim();
-    if (driverId.isNotEmpty) {
-      return V3VoziloService.getVoziloForVozac(driverId)?.id ?? '';
-    }
-    return '';
+    return activeVoziloBySlotKey[key] ?? '';
   }
 
   static String resolveVozacIdForOperativnaRow({
