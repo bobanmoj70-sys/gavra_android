@@ -185,7 +185,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _trenutnaDodelaRevisionSub = V3MasterRealtimeManager.instance.tablesRevisionStream(const [
       V3TrenutnaDodelaService.tableName,
       V3TrenutnaDodelaSlotService.tableName,
-      'v3_eta_results',
     ]).listen((_) {
       unawaited(_refreshDodelaFromRealtime());
     });
@@ -406,6 +405,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final osrmOrder = _resolveOptimizedOrder(_mojiPutnici);
     if (osrmOrder.isEmpty) return;
     final sorted = _sortPutniciForDisplay(List<_PutnikEntry>.from(_mojiPutnici));
+    final sameOrder = sorted.length == _mojiPutnici.length &&
+        List.generate(sorted.length, (i) => sorted[i].putnik.id).join('|') ==
+            _mojiPutnici.map((p) => p.putnik.id).join('|');
+    if (sameOrder) return;
     if (mounted) {
       setState(() {
         _mojiPutnici = sorted;
@@ -424,6 +427,18 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final shownTerminIds = putnici.map((p) => p.entry?.id).whereType<String>().where((id) => id.isNotEmpty).toSet();
     if (shownIds.isEmpty && shownTerminIds.isEmpty) return const [];
 
+    var selectedSlotId = '';
+    for (final slot in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
+      final rowDatum = V3BelgradeTime.parseIsoDatePart(slot['datum']?.toString() ?? '');
+      final rowGrad = (slot['grad']?.toString() ?? '').trim().toUpperCase();
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(slot['vreme']?.toString());
+      if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) {
+        continue;
+      }
+      selectedSlotId = (slot['id']?.toString() ?? '').trim();
+      if (selectedSlotId.isNotEmpty) break;
+    }
+
     // Donja granica svežine: početak prozora aktivnog termina (polazak - 15min).
     final t = V3VozacLocationTrackingService.instance;
     final polazak = v3PolazakDateTime(datumIso: t.activeDatumIso, vreme: t.activeVreme);
@@ -434,6 +449,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
       if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
+      final rowSlotId = (row['slot_id']?.toString() ?? '').trim();
+      if (rowSlotId.isNotEmpty && selectedSlotId.isNotEmpty && rowSlotId != selectedSlotId) continue;
       final terminId = row['termin_id']?.toString() ?? '';
       final rowPutnikId = row['putnik_id']?.toString() ?? '';
       final belongsToShown = shownTerminIds.contains(terminId) || shownIds.contains(rowPutnikId);
@@ -504,7 +521,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _isNavigating = V3VozacLocationTrackingService.instance.isRunning;
     _startTrenutnaDodelaRealtime();
     _etaTickSub = V3VozacLocationTrackingService.instance.onEtaTick.listen((result) {
-      if (!mounted || !_isNavigating) return;
+      if (!mounted) return;
       // Sort/mapa samo kad vozač gleda isti termin kao tracking sesija.
       if (!_isViewingTrackedTermin) return;
       debugPrint('[ETA_TICK] order=${result.order} etaKeys=${result.etaMap.length}');
