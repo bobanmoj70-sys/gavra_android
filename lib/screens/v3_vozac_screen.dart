@@ -427,7 +427,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final shownTerminIds = putnici.map((p) => p.entry?.id).whereType<String>().where((id) => id.isNotEmpty).toSet();
     if (shownIds.isEmpty && shownTerminIds.isEmpty) return const [];
 
-    var selectedSlotId = '';
+    // Sakupi SVE slot ID-jeve koji fizički odgovaraju ovom terminu
+    // (datum+grad+vreme). Server ponekad ima format-duplikate istog termina
+    // (npr. vreme "15:25" vs "15:25:00" — vidi komentar u v3-compute-eta:
+    // "Više redova (format time vs text)") i bira activeSlot.id na osnovu
+    // toga koji red ima dodelu za KONKRETNOG vozača. To znači da dva vozača
+    // na istom deljenom terminu mogu imati različit "aktivan" slot_id.
+    // Zato ne smemo da tražimo TAČNO JEDAN selectedSlotId — moramo prihvatiti
+    // eta_results red čiji je slot_id BILO KOJI od ovih fizičkih duplikata,
+    // inače bismo mogli pogrešno odbaciti sveže live rezultate ovog vozača.
+    final matchingSlotIds = <String>{};
     for (final slot in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(slot['datum']?.toString() ?? '');
       final rowGrad = (slot['grad']?.toString() ?? '').trim().toUpperCase();
@@ -435,16 +444,17 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) {
         continue;
       }
-      selectedSlotId = (slot['id']?.toString() ?? '').trim();
-      if (selectedSlotId.isNotEmpty) break;
+      final id = (slot['id']?.toString() ?? '').trim();
+      if (id.isNotEmpty) matchingSlotIds.add(id);
     }
 
-    // Ako ne možemo pouzdano da odredimo ID trenutno izabranog slota (npr.
-    // cache još nije stigao / race pri promeni slota), NE prihvatamo eta
-    // rezultate bez slot-filtera — to bi moglo procuriti redosled iz nekog
-    // drugog (starog) slota koji deli putnike sa trenutnim (isti test-putnici
-    // na više termina). Bezbednije je pasti na _getOsrmOrderFromSlot fallback.
-    if (selectedSlotId.isEmpty) return const [];
+    // Ako ne možemo pouzdano da odredimo nijedan slot ID za trenutni termin
+    // (npr. cache još nije stigao / race pri promeni slota), NE prihvatamo
+    // eta rezultate bez slot-filtera — to bi moglo procuriti redosled iz
+    // nekog drugog (starog) slota koji deli putnike sa trenutnim (isti
+    // test-putnici na više termina). Bezbednije je pasti na
+    // _getOsrmOrderFromSlot fallback.
+    if (matchingSlotIds.isEmpty) return const [];
 
     // Donja granica svežine: početak prozora aktivnog termina (polazak - 15min).
     final t = V3VozacLocationTrackingService.instance;
@@ -457,10 +467,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final row in V3MasterRealtimeManager.instance.etaResultsCache.values) {
       if ((row['vozac_id']?.toString() ?? '') != vozacId) continue;
       final rowSlotId = (row['slot_id']?.toString() ?? '').trim();
-      // Sada je selectedSlotId uvek popunjen (ranije vraćeno const [] ako nije).
-      // Red bez slot_id-a (legacy/null) ne može se pouzdano vezati za trenutni
-      // slot — preskoči ga da izbegnemo cross-slot curenje.
-      if (rowSlotId.isEmpty || rowSlotId != selectedSlotId) continue;
+      // matchingSlotIds je uvek nepraznо (ranije vraćeno const [] ako nije).
+      // Red bez slot_id-a (legacy/null), ili čiji slot_id ne pripada nijednom
+      // fizičkom duplikatu trenutnog termina, ne može se pouzdano vezati za
+      // trenutni slot — preskoči ga da izbegnemo cross-slot curenje.
+      if (rowSlotId.isEmpty || !matchingSlotIds.contains(rowSlotId)) continue;
       final terminId = row['termin_id']?.toString() ?? '';
       final rowPutnikId = row['putnik_id']?.toString() ?? '';
       final belongsToShown = shownTerminIds.contains(terminId) || shownIds.contains(rowPutnikId);
@@ -488,7 +499,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   List<String> _getOsrmOrderFromSlot(List<_PutnikEntry> putnici) {
     final myIds = putnici.map((p) => p.putnik.id).where((id) => id.isNotEmpty).toSet();
+    if (myIds.isEmpty) return const [];
 
+    // Isti format-duplikat rizik kao u _getOsrmOrderFromEtaResults: mogu
+    // postojati dva fizička reda za isti termin (vreme kao tekst npr. "15:25"
+    // vs "15:25:00"). Ne zaustavljaj se na prvom poklapajućem redu ako on
+    // ne sadrži nijednog od mojih putnika — probaj i ostale duplikate pre
+    // nego što odustaneš.
     for (final row in V3MasterRealtimeManager.instance.trenutnaDodelaSlotCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
@@ -499,9 +516,10 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       final all = _toPutnikIds(_idListFrom(row['optimized_order']), putnici);
       if (all.isEmpty) continue;
       // Slot je deljen (admin dodeljuje) — optimized_order je merge svih vozača.
-      // Nikad ne vraćaj tuđi deo: samo moji putnici, inače prazno.
-      if (myIds.isEmpty) return const [];
-      return all.where(myIds.contains).toList();
+      // Nikad ne vraćaj tuđi deo: samo moji putnici.
+      final mine = all.where(myIds.contains).toList();
+      if (mine.isNotEmpty) return mine;
+      // Ovaj duplikat ne sadrži moje putnike — probaj sledeći poklapajući red.
     }
     return const [];
   }
