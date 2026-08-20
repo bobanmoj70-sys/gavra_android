@@ -694,8 +694,23 @@ class V3PutnikStatistikaService {
       mesec: mesec,
     );
 
+    // Otkazivanja se moraju izračunati NEZAVISNO od broja realizovanih
+    // vožnji / uplata — putnik može ovog meseca imati samo otkazane vožnje
+    // (nijednu realizovanu, nijednu uplatu), pa raniji rani-return ovde nije
+    // smeo da vrati čistu nulu za `otkazano` (bug: kocka "Otkazano" uvek 0).
+    final otkazano = _countOtkazivanjaZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
     if (obracun.brojVoznji <= 0 && obracun.uplaceno <= 0) {
-      return V3PutnikMesecnaStatistika(godina: godina, mesec: mesec, mesecNaziv: mesecNaziv);
+      return V3PutnikMesecnaStatistika(
+        godina: godina,
+        mesec: mesec,
+        mesecNaziv: mesecNaziv,
+        otkazano: otkazano,
+      );
     }
 
     // Neplaćeno se izvodi iz stvarnog broja preostalih nenaplaćenih stavki
@@ -707,11 +722,6 @@ class V3PutnikStatistikaService {
       mesec: mesec,
     ).clamp(0, obracun.brojVoznji);
     final placeno = (obracun.brojVoznji - neplaceno).clamp(0, obracun.brojVoznji);
-    final otkazano = _countOtkazivanjaZaMesec(
-      putnikId: putnikId,
-      godina: godina,
-      mesec: mesec,
-    );
     final uplate = V3FinansijeService.getUplateZaMesec(
       putnikId: putnikId,
       godina: godina,
@@ -804,16 +814,14 @@ class V3PutnikStatistikaService {
     // Brojač naplativih jedinica po danu iz nenaplacene_voznje_json.
     final nenaplacenePoDanu = <DateTime, int>{};
     for (final stavka in nenaplacene) {
-      final dt = stavka['_datum_parsed'] as DateTime? ??
-          V3BelgradeTime.parseDatum(stavka['datum']);
+      final dt = stavka['_datum_parsed'] as DateTime? ?? V3BelgradeTime.parseDatum(stavka['datum']);
       if (dt == null) continue;
       final dan = DateTime(dt.year, dt.month, dt.day);
       nenaplacenePoDanu[dan] = (nenaplacenePoDanu[dan] ?? 0) + 1;
     }
 
     for (final v in voznje) {
-      final dt = v['_datum_parsed'] as DateTime? ??
-          V3BelgradeTime.parseDatum(v['datum']);
+      final dt = v['_datum_parsed'] as DateTime? ?? V3BelgradeTime.parseDatum(v['datum']);
       if (dt == null) continue;
 
       final dan = DateTime(dt.year, dt.month, dt.day);
