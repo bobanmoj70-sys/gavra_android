@@ -13,6 +13,15 @@ function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
+async function clearMestoPonuda(client: any, zahtevId: string) {
+  await client
+    .from("v3_zahtevi")
+    .update({ mesto_ponuda: false, mesto_ponuda_at: null })
+    .eq("id", zahtevId)
+    .eq("status", "odbijeno")
+    .eq("mesto_ponuda", true);
+}
+
 function normalizeStatus(status: unknown): string {
   return String(status ?? "").trim().toLowerCase();
 }
@@ -30,6 +39,45 @@ function normalizeToHHmm(input: unknown): string {
   return `${hour}:${minute}`;
 }
 
+function isMestoPonudaExpired(offeredAt: unknown): boolean {
+  const raw = String(offeredAt ?? "").trim();
+  if (!raw) return false;
+  const ts = Date.parse(raw);
+  if (!Number.isFinite(ts)) return false;
+  return Date.now() - ts > 10 * 60 * 1000;
+}
+
+async function expireMestoPonudaAndOfferNext(client: any, zahtev: any) {
+  const zahtevId = String(zahtev?.id ?? "").trim();
+  if (!zahtevId) return;
+
+  await client
+    .from("v3_zahtevi")
+    .update({
+      mesto_ponuda: false,
+      mesto_ponuda_odbijena: true,
+      mesto_ponuda_at: null,
+    })
+    .eq("id", zahtevId)
+    .eq("status", "odbijeno")
+    .eq("mesto_ponuda", true);
+
+  const datumIso = String(zahtev.datum ?? "").split("T")[0];
+  const grad = String(zahtev.grad ?? "").trim();
+  const vreme = normalizeToHHmm(zahtev.trazeni_polazak_at);
+  if (!datumIso || !grad || !vreme) return;
+
+  try {
+    await client.rpc("fn_v3_offer_freed_seats", {
+      p_datum: datumIso,
+      p_grad: grad,
+      p_vreme: vreme,
+    });
+  } catch (_) {
+    // Ponuda sledećem nije kritična.
+  }
+}
+
 async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: string, isPosiljka: boolean) {
   const putnikId = String(row.created_by ?? "").trim();
   const grad = String(row.grad ?? "").trim();
@@ -37,18 +85,38 @@ async function updateOperativnaForAccept(client: any, row: any, selectedHHmm: st
 
   if (!putnikId || !grad || !datum) return;
 
-  await client
+  const { data: existingRows } = await client
     .from("v3_operativna_nedelja")
-    .update({
-      polazak_at: selectedHHmm,
-      otkazano_at: null,
-      otkazano_by: null,
-      updated_by: putnikId,
-    })
+    .select("id")
     .eq("created_by", putnikId)
     .eq("datum", datum)
     .eq("grad", grad)
-    .is("otkazano_at", null);
+    .is("otkazano_at", null)
+    .limit(1);
+
+  const existing = Array.isArray(existingRows) ? existingRows : [];
+  if (existing.length > 0) {
+    await client
+      .from("v3_operativna_nedelja")
+      .update({
+        polazak_at: selectedHHmm,
+        otkazano_at: null,
+        otkazano_by: null,
+        updated_by: putnikId,
+      })
+      .eq("id", existing[0].id);
+    return;
+  }
+
+  await client.from("v3_operativna_nedelja").insert({
+    created_by: putnikId,
+    datum,
+    grad,
+    polazak_at: selectedHHmm,
+    koristi_sekundarnu: Boolean(row.koristi_sekundarnu),
+    adresa_override_id: row.adresa_override_id ?? null,
+    updated_by: putnikId,
+  });
 }
 
 async function updateOperativnaForReject(client: any, row: any) {
@@ -116,7 +184,7 @@ Deno.serve(async (req) => {
 
     const { data: zahtev, error: zahtevError } = await client
       .from("v3_zahtevi")
-      .select("id, status, grad, datum, created_by, alternativa_pre_at, alternativa_posle_at")
+      .select("id, status, grad, datum, created_by, alternativa_pre_at, alternativa_posle_at, trazeni_polazak_at, mesto_ponuda, mesto_ponuda_at, koristi_sekundarnu, adresa_override_id")
       .eq("id", zahtevId)
       .maybeSingle();
 
@@ -129,8 +197,18 @@ Deno.serve(async (req) => {
     }
 
     const normalizedStatus = normalizeStatus(zahtev.status);
-    if (normalizedStatus !== "alternativa") {
+    const isMestoPonuda = Boolean(zahtev.mesto_ponuda) && normalizedStatus === "odbijeno";
+    if (normalizedStatus !== "alternativa" && !isMestoPonuda) {
       return json(200, { ok: false, reason: "zahtev_not_in_alternativa", status: normalizedStatus });
+    }
+
+    if (isMestoPonuda && isMestoPonudaExpired(zahtev.mesto_ponuda_at)) {
+      await expireMestoPonudaAndOfferNext(client, zahtev);
+      return json(200, {
+        ok: false,
+        reason: "offer_expired",
+        offer_kind: "mesto_oslobodjeno",
+      });
     }
 
     const putnikId = String(zahtev.created_by ?? "").trim();
@@ -152,6 +230,46 @@ Deno.serve(async (req) => {
     }
 
     if (action === "reject") {
+      if (isMestoPonuda) {
+        const { data: rejectRow, error: rejectError } = await client
+          .from("v3_zahtevi")
+          .update({
+            mesto_ponuda: false,
+            mesto_ponuda_odbijena: true,
+            mesto_ponuda_at: null,
+          })
+          .eq("id", zahtevId)
+          .eq("status", "odbijeno")
+          .eq("mesto_ponuda", true)
+          .select("id")
+          .maybeSingle();
+
+        if (rejectError) {
+          return json(200, { ok: false, reason: "reject_update_error", warning: rejectError.message });
+        }
+
+        if (!rejectRow) {
+          return json(200, { ok: false, reason: "zahtev_not_in_alternativa" });
+        }
+
+        const datumIso = String(zahtev.datum ?? "").split("T")[0];
+        const grad = String(zahtev.grad ?? "").trim();
+        const vreme = normalizeToHHmm(zahtev.trazeni_polazak_at);
+        if (datumIso && grad && vreme) {
+          try {
+            await client.rpc("fn_v3_offer_freed_seats", {
+              p_datum: datumIso,
+              p_grad: grad,
+              p_vreme: vreme,
+            });
+          } catch (_) {
+            // Ponuda sledećem nije kritična za reject.
+          }
+        }
+
+        return json(200, { ok: true, action: "reject", zahtev_id: zahtevId, offer_kind: "mesto_oslobodjeno" });
+      }
+
       const { data: rejectRow, error: rejectError } = await client
         .from("v3_zahtevi")
         .update({
@@ -179,7 +297,9 @@ Deno.serve(async (req) => {
 
     const altPre = normalizeToHHmm(zahtev.alternativa_pre_at);
     const altPosle = normalizeToHHmm(zahtev.alternativa_posle_at);
-    const selectedHHmm = action === "accept_pre" ? altPre : altPosle;
+    const selectedHHmm = isMestoPonuda
+      ? normalizeToHHmm(zahtev.trazeni_polazak_at)
+      : (action === "accept_pre" ? altPre : altPosle);
     const datumIso = String(zahtev.datum ?? "").split("T")[0];
     const grad = String(zahtev.grad ?? "").trim();
 
@@ -202,10 +322,14 @@ Deno.serve(async (req) => {
 
       const maxMesta = Number(slotRow?.max_mesta ?? 0);
       if (!slotRow || !Number.isFinite(maxMesta) || maxMesta <= 0) {
+        if (isMestoPonuda) {
+          await clearMestoPonuda(client, zahtevId);
+        }
         return json(200, {
           ok: false,
           reason: "no_capacity_slot",
           selected_time: selectedHHmm,
+          ...(isMestoPonuda ? { offer_kind: "mesto_oslobodjeno" } : {}),
         });
       }
 
@@ -250,28 +374,35 @@ Deno.serve(async (req) => {
         return !posiljkaIds.has(id);
       }).length;
       if (occupied >= maxMesta) {
+        if (isMestoPonuda) {
+          await clearMestoPonuda(client, zahtevId);
+        }
         return json(200, {
           ok: false,
           reason: "selected_slot_full",
           selected_time: selectedHHmm,
           max_mesta: maxMesta,
           occupied,
+          ...(isMestoPonuda ? { offer_kind: "mesto_oslobodjeno" } : {}),
         });
       }
     }
 
-    const { data: acceptRow, error: acceptError } = await client
+    const acceptQuery = client
       .from("v3_zahtevi")
       .update({
         status: "odobreno",
         polazak_at: selectedHHmm,
         alternativa_pre_at: null,
         alternativa_posle_at: null,
+        mesto_ponuda: false,
+        mesto_ponuda_at: null,
       })
-      .eq("id", zahtevId)
-      .eq("status", "alternativa")
-      .select("id, polazak_at")
-      .maybeSingle();
+      .eq("id", zahtevId);
+
+    const { data: acceptRow, error: acceptError } = isMestoPonuda
+      ? await acceptQuery.eq("status", "odbijeno").eq("mesto_ponuda", true).select("id, polazak_at").maybeSingle()
+      : await acceptQuery.eq("status", "alternativa").select("id, polazak_at").maybeSingle();
 
     if (acceptError) {
       return json(200, { ok: false, reason: "accept_update_error", warning: acceptError.message });
@@ -290,6 +421,7 @@ Deno.serve(async (req) => {
       action,
       zahtev_id: zahtevId,
       selected_time: confirmedTime,
+      ...(isMestoPonuda ? { offer_kind: "mesto_oslobodjeno" } : {}),
     });
   } catch (error) {
     return json(200, {

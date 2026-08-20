@@ -189,6 +189,15 @@ Future<void> _ensureLocalNotificationsInitialized() async {
           }),
         ],
       ),
+      DarwinNotificationCategory(
+        'mesto_oslobodjeno',
+        actions: <DarwinNotificationAction>[
+          DarwinNotificationAction.plain('accept_pre', 'Prihvati'),
+          DarwinNotificationAction.plain('reject', 'Ne', options: <DarwinNotificationActionOption>{
+            DarwinNotificationActionOption.destructive,
+          }),
+        ],
+      ),
     ];
 
     final DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
@@ -647,9 +656,16 @@ Future<void> _showAlternativaFromData(
     zahtevId: zahtevId,
     altPre: altPre,
     altPosle: altPosle,
-    title: (title == null || title.trim().isEmpty) ? 'Informacija o dostupnosti termina' : title,
+    offerKind: (data['offer_kind'] ?? '').trim(),
+    title: (title == null || title.trim().isEmpty)
+        ? ((data['offer_kind'] ?? '').trim() == 'mesto_oslobodjeno'
+            ? 'Oslobodilo se mesto'
+            : 'Informacija o dostupnosti termina')
+        : title,
     body: (body == null || body.trim().isEmpty)
-        ? 'Trenutno nema slobodnih mesta u željenom terminu. Izaberite dostupni termin.'
+        ? ((data['offer_kind'] ?? '').trim() == 'mesto_oslobodjeno'
+            ? 'Oslobodilo se mesto. Prihvati ili odbij.'
+            : 'Trenutno nema slobodnih mesta u željenom terminu. Izaberite dostupni termin.')
         : body,
   );
 }
@@ -991,12 +1007,14 @@ Future<void> showAlternativaNotification({
   required String zahtevId,
   required String altPre,
   required String altPosle,
+  String offerKind = '',
   String title = '🕒 Predlog alternativnog termina',
   String body = 'Nema slobodnih mesta u traženom terminu. Izaberi dostupnu opciju.',
 }) async {
   await _ensureLocalNotificationsInitialized();
 
-  final payload = '$zahtevId|$altPre|$altPosle';
+  final isMesto = offerKind.trim() == 'mesto_oslobodjeno';
+  final payload = isMesto ? '$zahtevId|$altPre|$altPosle|mesto_oslobodjeno' : '$zahtevId|$altPre|$altPosle';
   final optionsText = [
     if (altPre.isNotEmpty) altPre,
     if (altPosle.isNotEmpty) altPosle,
@@ -1004,23 +1022,30 @@ Future<void> showAlternativaNotification({
   final modernBody = optionsText.isNotEmpty ? '$body\nDostupno: $optionsText' : body;
 
   final actions = <AndroidNotificationAction>[
-    if (altPre.isNotEmpty)
+    if (isMesto)
+      const AndroidNotificationAction(
+        'accept_pre',
+        '✅ Prihvati',
+        showsUserInterface: true,
+        cancelNotification: true,
+      )
+    else if (altPre.isNotEmpty)
       AndroidNotificationAction(
         'accept_pre',
         '✅ $altPre',
         showsUserInterface: true,
         cancelNotification: true,
       ),
-    if (altPosle.isNotEmpty)
+    if (!isMesto && altPosle.isNotEmpty)
       AndroidNotificationAction(
         'accept_posle',
         '✅ $altPosle',
         showsUserInterface: true,
         cancelNotification: true,
       ),
-    const AndroidNotificationAction(
+    AndroidNotificationAction(
       'reject',
-      '❌ Odbij',
+      isMesto ? '❌ Ne' : '❌ Odbij',
       showsUserInterface: true,
       cancelNotification: true,
     ),
@@ -1037,13 +1062,16 @@ Future<void> showAlternativaNotification({
     styleInformation: BigTextStyleInformation(
       modernBody,
       contentTitle: title,
-      summaryText: 'Gavra • Alternativa',
+      summaryText: isMesto ? 'Gavra • Mesto' : 'Gavra • Alternativa',
     ),
   );
 
   String iosCategory = '';
   String finalBody = modernBody;
-  if (altPre.isNotEmpty && altPosle.isNotEmpty) {
+  if (isMesto) {
+    iosCategory = 'mesto_oslobodjeno';
+    finalBody = altPre.isNotEmpty ? '$body\nTermin: $altPre' : body;
+  } else if (altPre.isNotEmpty && altPosle.isNotEmpty) {
     iosCategory = 'alternativa_oba';
     finalBody = '$body\nOpcije: $altPre ili $altPosle';
   } else if (altPre.isNotEmpty) {
@@ -1099,11 +1127,6 @@ Future<Map<String, dynamic>> _executeAlternativaEdgeAction({
   }
 
   final map = Map<String, dynamic>.from(data);
-  if (map['ok'] != true) {
-    final reason = (map['reason'] ?? 'unknown_error').toString();
-    throw Exception('Alternativa akcija nije uspela: $reason');
-  }
-
   return map;
 }
 
@@ -1151,26 +1174,56 @@ void onNotificationTap(NotificationResponse response) async {
 
   try {
     // V3 alternativa handling (Edge-only)
-    // payload format (strict): "id|altPre|altPosle"
+    // payload: "id|altPre|altPosle" ili "id|altPre|altPosle|mesto_oslobodjeno"
     final parts = payload.split('|');
-    if (parts.length != 3 || parts[0].trim().isEmpty) {
+    if (parts.length < 3 || parts[0].trim().isEmpty) {
       await _showActionFeedback('⚠️ Akcija nije izvršena', 'Neispravan format notifikacije.');
       return;
     }
 
     final zahtevId = parts[0].trim();
+    final isMesto = parts.length > 3 && parts[3].trim() == 'mesto_oslobodjeno';
     if (actionId == 'accept_pre' || actionId == 'accept_posle' || actionId == 'reject') {
       final result = await _executeAlternativaEdgeAction(
         zahtevId: zahtevId,
         actionId: actionId,
       );
 
+      if (result['ok'] != true) {
+        final reason = (result['reason'] ?? 'unknown_error').toString();
+        if (isMesto && (reason == 'selected_slot_full' || reason == 'no_capacity_slot')) {
+          await _showActionFeedback(
+            '⚠️ Mesto je zauzeto',
+            'Mesto je u međuvremenu zauzeto.',
+          );
+          return;
+        }
+        if (isMesto && reason == 'offer_expired') {
+          await _showActionFeedback(
+            '⚠️ Ponuda je istekla',
+            'Niste odgovorili u roku od 10 minuta. Mesto je ponuđeno sledećem.',
+          );
+          return;
+        }
+        await _showActionFeedback('⚠️ Akcija nije izvršena', 'Akcija nije uspela: $reason');
+        return;
+      }
+
       if (actionId == 'reject') {
-        await _showActionFeedback('❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
+        if (isMesto) {
+          await _showActionFeedback('❌ Ne', 'Ponuda mesta je odbijena.');
+        } else {
+          await _showActionFeedback('❌ Alternativa odbijena', 'Zahtev je postavljen na odbijeno.');
+        }
       } else {
         final selectedTime = (result['selected_time'] ?? '').toString().trim();
-        final suffix = selectedTime.isNotEmpty ? 'Prihvaćen termin: $selectedTime' : 'Alternativa je prihvaćena.';
-        await _showActionFeedback('✅ Alternativa prihvaćena', suffix);
+        if (isMesto) {
+          final suffix = selectedTime.isNotEmpty ? 'Prihvaćen termin: $selectedTime' : 'Mesto je prihvaćeno.';
+          await _showActionFeedback('✅ Mesto prihvaćeno', suffix);
+        } else {
+          final suffix = selectedTime.isNotEmpty ? 'Prihvaćen termin: $selectedTime' : 'Alternativa je prihvaćena.';
+          await _showActionFeedback('✅ Alternativa prihvaćena', suffix);
+        }
       }
     } else {
       await _showActionFeedback('⚠️ Akcija nije izvršena', 'Nepoznata akcija notifikacije.');
