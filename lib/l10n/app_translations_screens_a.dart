@@ -1748,6 +1748,70 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Fehler beim Löschen',
       'zh': '删除时出错'
     },
+    'dodeliKombiVozacima': {
+      'sr': 'Dodeli kombije vozačima',
+      'en': 'Assign vans to drivers',
+      'ru': 'Назначить микроавтобусы водителям',
+      'de': 'Transporter den Fahrern zuweisen',
+      'zh': '将面包车分配给司机'
+    },
+    'dodeliKombi': {
+      'sr': 'Dodeli kombi vozaču',
+      'en': 'Assign van to driver',
+      'ru': 'Назначить микроавтобус водителю',
+      'de': 'Transporter dem Fahrer zuweisen',
+      'zh': '将面包车分配给司机'
+    },
+    'dodeliVozacaKombiju': {
+      'sr': 'Dodeli vozača kombiju',
+      'en': 'Assign driver to van',
+      'ru': 'Назначить водителя на микроавтобус',
+      'de': 'Fahrer dem Transporter zuweisen',
+      'zh': '将司机分配到面包车'
+    },
+    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
+    'nijeDodeljen': {
+      'sr': 'Nije dodeljen',
+      'en': 'Not assigned',
+      'ru': 'Не назначен',
+      'de': 'Nicht zugewiesen',
+      'zh': '未分配'
+    },
+    'tapZaDodeluVozaca': {
+      'sr': 'Tap za dodelu vozača',
+      'en': 'Tap to assign driver',
+      'ru': 'Нажмите для назначения водителя',
+      'de': 'Tippen zum Zuweisen des Fahrers',
+      'zh': '点击分配司机'
+    },
+    'kombiDodeljen': {
+      'sr': '✅ Kombi dodeljen vozaču',
+      'en': '✅ Van assigned to driver',
+      'ru': '✅ Микроавтобус назначен водителю',
+      'de': '✅ Transporter dem Fahrer zugewiesen',
+      'zh': '✅ 面包车已分配给司机'
+    },
+    'kombiUklonjen': {
+      'sr': '🗑️ Dodela kombija uklonjena',
+      'en': '🗑️ Van assignment removed',
+      'ru': '🗑️ Назначение микроавтобуса удалено',
+      'de': '🗑️ Transporter-Zuweisung entfernt',
+      'zh': '🗑️ 已移除面包车分配'
+    },
+    'nemaRegistrovanihVozaca': {
+      'sr': 'Nema registrovanih vozača',
+      'en': 'No registered drivers',
+      'ru': 'Нет зарегистрированных водителей',
+      'de': 'Keine registrierten Fahrer',
+      'zh': '没有已注册的司机'
+    },
+    'greskaCuvanja': {
+      'sr': 'Greška pri čuvanju',
+      'en': 'Error saving',
+      'ru': 'Ошибка сохранения',
+      'de': 'Fehler beim Speichern',
+      'zh': '保存出错'
+    },
   },
   'posiljkeZahteviScreen': {
     'posiljke': {'sr': 'Pošiljke', 'en': 'Shipments', 'ru': 'Посылки', 'de': 'Sendungen', 'zh': '包裹'},

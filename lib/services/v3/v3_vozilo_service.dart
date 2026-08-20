@@ -26,6 +26,62 @@ class V3VoziloService {
     return data != null ? V3Vozilo.fromJson(data) : null;
   }
 
+  static V3Vozilo? getVoziloForVozac(String vozacId) {
+    final id = vozacId.trim();
+    if (id.isEmpty) return null;
+    for (final vozilo in getAllVozila()) {
+      if ((vozilo.vozacId ?? '').trim() == id) return vozilo;
+    }
+    return null;
+  }
+
+  /// Dodeljuje kombi vozaču. Jedan vozač = jedan kombi.
+  /// [vozacId] null/prazan skida dodelu sa tog kombija.
+  static Future<void> assignVozacToVozilo({
+    required String voziloId,
+    String? vozacId,
+  }) async {
+    final targetId = voziloId.trim();
+    final nextVozacId = (vozacId ?? '').trim();
+    if (targetId.isEmpty) return;
+
+    try {
+      if (nextVozacId.isNotEmpty) {
+        for (final other in getAllVozila()) {
+          if (other.id == targetId) continue;
+          if ((other.vozacId ?? '').trim() != nextVozacId) continue;
+          final cleared = await _repo.updateByIdReturning(other.id, {'vozac_id': null});
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_vozila', cleared);
+        }
+      }
+
+      final row = await _repo.updateByIdReturning(targetId, {
+        'vozac_id': nextVozacId.isEmpty ? null : nextVozacId,
+      });
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_vozila', row);
+    } catch (e) {
+      debugPrint('[V3VoziloService] assignVozacToVozilo error: $e');
+      rethrow;
+    }
+  }
+
+  /// Dodeljuje (ili skida) kombi vozaču. Prazan [voziloId] skida trenutnu dodelu.
+  static Future<void> assignVoziloToVozac({
+    required String vozacId,
+    String? voziloId,
+  }) async {
+    final driverId = vozacId.trim();
+    if (driverId.isEmpty) return;
+    final nextVoziloId = (voziloId ?? '').trim();
+    if (nextVoziloId.isEmpty) {
+      final current = getVoziloForVozac(driverId);
+      if (current == null) return;
+      await assignVozacToVozilo(voziloId: current.id);
+      return;
+    }
+    await assignVozacToVozilo(voziloId: nextVoziloId, vozacId: driverId);
+  }
+
   static Future<void> addUpdateVozilo(V3Vozilo vozilo) async {
     try {
       final data = vozilo.toJson();

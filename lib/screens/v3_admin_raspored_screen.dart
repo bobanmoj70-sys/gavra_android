@@ -14,6 +14,7 @@ import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3/v3_vozilo_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
@@ -498,6 +499,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               const SizedBox(height: 16),
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
+                    subtitle: V3VoziloService.getVoziloForVozac(v.id)?.registracija,
                     isSelected: odabran?.id == v.id,
                     color: V3CardColorPolicy.vozacColorOr(v.boja),
                     onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
@@ -580,6 +582,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
               const SizedBox(height: 16),
               ...vozaci.map((v) => _vozacTile(
                     ime: v.imePrezime,
+                    subtitle: V3VoziloService.getVoziloForVozac(v.id)?.registracija,
                     isSelected: odabran?.id == v.id,
                     color: V3CardColorPolicy.vozacColorOr(v.boja),
                     onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
@@ -927,10 +930,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   // ─── Vozač tile za bottom sheet ───────────────────────────────────────────
   Widget _vozacTile({
     required String ime,
+    String? subtitle,
     required bool isSelected,
     required Color color,
     required VoidCallback onTap,
   }) {
+    final tablica = (subtitle ?? '').trim().toUpperCase();
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -958,15 +963,30 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                ime,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white70,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 16,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ime,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 16,
+                      ),
+                    ),
+                    if (tablica.isNotEmpty)
+                      Text(
+                        tablica,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 11,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              const Spacer(),
               if (isSelected) Icon(Icons.check_circle, color: color, size: 20),
             ],
           ),

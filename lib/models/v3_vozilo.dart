@@ -8,6 +8,7 @@ class V3Vozilo {
   final String? model;
   final double trenutnaKm;
   final DateTime? updatedAt;
+  final String? vozacId;
 
   // Kolska knjiga polja
   final String? brojSasije;
@@ -43,6 +44,7 @@ class V3Vozilo {
     this.model,
     this.trenutnaKm = 0.0,
     this.updatedAt,
+    this.vozacId,
     this.brojSasije,
     this.godinaProizvodnje,
     this.napomena,
@@ -79,6 +81,13 @@ class V3Vozilo {
     return parts.isEmpty ? registracija : parts.join(' ');
   }
 
+  String get tablicaINaziv {
+    final naziv = displayNaziv.trim();
+    final tablica = registracija.trim().toUpperCase();
+    if (naziv.isEmpty || naziv.toUpperCase() == tablica) return tablica;
+    return '$tablica · $naziv';
+  }
+
   static String formatDatum(DateTime? d) {
     if (d == null) return '-';
     return V3DanHelper.formatDatumPuni(d);
@@ -104,6 +113,7 @@ class V3Vozilo {
       model: json['model'] as String?,
       trenutnaKm: (json['trenutna_km'] as num?)?.toDouble() ?? 0.0,
       updatedAt: parseDate(json['updated_at']),
+      vozacId: json['vozac_id'] as String?,
       brojSasije: json['broj_sasije'] as String?,
       godinaProizvodnje: json['godina_proizvodnje'] as int?,
       napomena: json['napomena'] as String?,
@@ -139,6 +149,7 @@ class V3Vozilo {
       'marka': marka,
       'model': model,
       'trenutna_km': trenutnaKm,
+      'vozac_id': vozacId,
       if (brojSasije != null) 'broj_sasije': brojSasije,
       if (godinaProizvodnje != null) 'godina_proizvodnje': godinaProizvodnje,
       if (napomena != null) 'napomena': napomena,
