@@ -6,6 +6,7 @@ import '../globals.dart';
 import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
 import '../models/v3_vozac.dart';
+import '../models/v3_vozilo.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_dodela_orchestrator_service.dart';
 import '../services/v3/v3_dodela_resolver_service.dart';
@@ -54,6 +55,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
   String _selectedDay = 'Ponedeljak';
   Map<String, String> _activeVozacByTerminId = const {};
   Map<String, String> _activeVozacBySlotKey = const {};
+  Map<String, String> _activeVoziloBySlotKey = const {};
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
 
   /// ISO datum za izabrani dan u tekućoj nedelji.
@@ -82,12 +84,17 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       final bySlotKey = await V3TrenutnaDodelaSlotService.loadAllVozacBySlotKey(
         datumIso: _selectedDatumIso,
       );
+      final voziloBySlotKey = await V3TrenutnaDodelaSlotService.loadAllVoziloBySlotKey(
+        datumIso: _selectedDatumIso,
+      );
       _activeVozacByTerminId = byTerminId;
       _activeVozacBySlotKey = bySlotKey;
+      _activeVoziloBySlotKey = voziloBySlotKey;
     } catch (e) {
       debugPrint('[V3AdminRasporedScreen] _reloadTrenutnaDodelaMap error: $e');
       _activeVozacByTerminId = const {};
       _activeVozacBySlotKey = const {};
+      _activeVoziloBySlotKey = const {};
     }
   }
 
@@ -325,9 +332,24 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
     return v != null ? V3CardColorPolicy.vozacColorOr(v.boja) : null;
   }
 
+  /// Kombi dodeljen konkretnom slotu (datum+grad+vreme).
+  /// Prioritet: eksplicitna dodela po slotu, fallback na trajnu dodelu vozača.
+  V3Vozilo? _getVoziloZaTermin(String grad, String vreme) {
+    final vozac = _getVozacZaTermin(grad, vreme);
+    final voziloId = V3DodelaResolverService.resolveVoziloIdForSlot(
+      datumIso: _selectedDatumIso,
+      grad: grad,
+      vreme: vreme,
+      activeVoziloBySlotKey: _activeVoziloBySlotKey,
+      vozacId: vozac?.id,
+    );
+    if (voziloId.isEmpty) return null;
+    return V3VoziloService.getVoziloById(voziloId);
+  }
+
   // ─── DB operacije ─────────────────────────────────────────────────────────
 
-  Future<void> _dodelijTermin(String grad, String vreme, V3Vozac vozac) async {
+  Future<void> _dodelijTermin(String grad, String vreme, V3Vozac vozac, {String? voziloId}) async {
     try {
       final datum = _selectedDatumIso;
       final actorUuid = V3UuidUtils.normalizeUuid(
@@ -340,6 +362,7 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
         grad: grad,
         vreme: vreme,
         vozacId: vozac.id,
+        voziloId: voziloId,
         updatedBy: actorUuid,
         includeRow: (row) {
           final putnikId = row['created_by']?.toString() ?? '';
@@ -466,6 +489,8 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
       if (mounted) V3AppSnackBar.warning(context, _RasTr.tr('nemaRegistrovanihVozaca'));
       return;
     }
+    final vozila = V3VoziloService.getAllVozila();
+    String odabranoVoziloId = _getVoziloZaTermin(grad, vreme)?.id ?? '';
 
     await V3DialogHelper.showBottomSheetBuilder<void>(
       context: context,
@@ -502,8 +527,41 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                     subtitle: V3VoziloService.getVoziloForVozac(v.id)?.registracija,
                     isSelected: odabran?.id == v.id,
                     color: V3CardColorPolicy.vozacColorOr(v.boja),
-                    onTap: () => setS(() => odabran = odabran?.id == v.id ? null : v),
+                    onTap: () => setS(() {
+                      final novi = odabran?.id == v.id ? null : v;
+                      odabran = novi;
+                      // Podrazumevano: kombi trajno dodeljen novom vozaču.
+                      odabranoVoziloId = novi != null ? (V3VoziloService.getVoziloForVozac(novi.id)?.id ?? '') : '';
+                    }),
                   )),
+              if (odabran != null && vozila.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('🚐 ${_RasTr.tr('dodeliKombi')}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: odabranoVoziloId.isEmpty ? null : odabranoVoziloId,
+                  dropdownColor: const Color(0xFF252840),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.07),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  items: vozila
+                      .map((v) => DropdownMenuItem<String>(
+                            value: v.id,
+                            child: Text(v.registracija.trim().toUpperCase()),
+                          ))
+                      .toList(),
+                  onChanged: (nova) => setS(() => odabranoVoziloId = nova ?? ''),
+                ),
+              ],
               const SizedBox(height: 8),
               if (trenutni != null)
                 TextButton.icon(
@@ -522,7 +580,12 @@ class _V3AdminRasporedScreenState extends State<V3AdminRasporedScreen> {
                       ? null
                       : () async {
                           Navigator.pop(ctx);
-                          await _dodelijTermin(grad, vreme, odabran!);
+                          await _dodelijTermin(
+                            grad,
+                            vreme,
+                            odabran!,
+                            voziloId: odabranoVoziloId.isEmpty ? null : odabranoVoziloId,
+                          );
                         },
                   text: _RasTr.tr('potvrdi'),
                   backgroundColor: Colors.white.withValues(alpha: 0.15),

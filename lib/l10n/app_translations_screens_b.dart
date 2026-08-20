@@ -1201,6 +1201,13 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     },
   },
   'vozacScreen': {
+    'kombiNijeDodeljen': {
+      'sr': 'Kombi nije dodeljen',
+      'en': 'No vehicle assigned',
+      'ru': 'Микроавтобус не назначен',
+      'de': 'Kein Fahrzeug zugewiesen',
+      'zh': '未分配车辆',
+    },
     'operativnaSedmicaPrefix': {
       'sr': 'Operativna sedmica:',
       'en': 'Operating week:',

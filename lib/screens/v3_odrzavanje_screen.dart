@@ -155,8 +155,6 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             onSelected: (value) {
               if (value == 'add') {
                 _addVozilo();
-              } else if (value == 'assign') {
-                _showDodeliKombiDialog();
               } else if (value == 'delete') {
                 _deleteVozilo();
               }
@@ -169,16 +167,6 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                     const Icon(Icons.add, color: Colors.green),
                     const SizedBox(width: 8),
                     Text(_OdrTr.tr('dodajVozilo'), style: const TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'assign',
-                child: Row(
-                  children: [
-                    const Icon(Icons.airport_shuttle, color: Colors.orange),
-                    const SizedBox(width: 8),
-                    Text(_OdrTr.tr('dodeliKombiVozacima'), style: const TextStyle(color: Colors.white)),
                   ],
                 ),
               ),
@@ -614,15 +602,6 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
       if (!mounted) return;
       V3UIUtils.showSaveError(context);
     }
-  }
-
-  // ── Kombi dodela dialog ───────────────────────────────────────────────────
-
-  void _showDodeliKombiDialog() {
-    V3DialogHelper.showDialogBuilder<void>(
-      context: context,
-      builder: (_) => const _DodeliKombiDialog(),
-    );
   }
 
   Future<void> _showVozacForVoziloDialog(V3Vozilo vozilo) async {
@@ -1369,15 +1348,98 @@ class _AddVoziloDialogState extends State<_AddVoziloDialog> {
 
 // ─── Kombi dodela dialog ───────────────────────────────────────────────────
 
-class _DodeliKombiDialog extends StatefulWidget {
-  const _DodeliKombiDialog();
+/// Dijalog za dodelu kombija vozačima (jedan slot = jedan kombi = jedan vozač).
+/// Pozvano iz admin ekrana (Red 2 app bara, pored brojača učenika).
+class V3DodeliKombiDialog extends StatefulWidget {
+  const V3DodeliKombiDialog({super.key});
+
+  /// Otvara dijalog za dodelu kombija.
+  static Future<void> show(BuildContext context) {
+    return V3DialogHelper.showDialogBuilder<void>(
+      context: context,
+      builder: (_) => const V3DodeliKombiDialog(),
+    );
+  }
 
   @override
-  State<_DodeliKombiDialog> createState() => _DodeliKombiDialogState();
+  State<V3DodeliKombiDialog> createState() => _V3DodeliKombiDialogState();
 }
 
-class _DodeliKombiDialogState extends State<_DodeliKombiDialog> {
+class _V3DodeliKombiDialogState extends State<V3DodeliKombiDialog> {
   final Set<String> _saving = <String>{};
+  final Set<String> _savingBoja = <String>{};
+
+  static const List<Color> _bojePaleta = [
+    Color(0xFFE53935), // crvena
+    Color(0xFFFB8C00), // narandzasta
+    Color(0xFFFDD835), // zuta
+    Color(0xFF43A047), // zelena
+    Color(0xFF00ACC1), // cijan
+    Color(0xFF1E88E5), // plava
+    Color(0xFF5E35B1), // ljubicasta
+    Color(0xFFD81B60), // pink
+    Color(0xFF6D4C41), // braon
+    Color(0xFF757575), // siva
+  ];
+
+  Future<void> _pickVoziloBoja(V3Vozilo vozilo) async {
+    final izabrana = await showDialog<Color>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF252840),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${_OdrTr.tr('izaberiBojuKombija')} — ${vozilo.registracija.trim().toUpperCase()}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: _bojePaleta
+                    .map((c) => GestureDetector(
+                          onTap: () => Navigator.pop(ctx, c),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: c,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: Text(_OdrTr.tr('otkazi'), style: const TextStyle(color: Colors.white60)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (izabrana == null) return;
+
+    final hex = '#${izabrana.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+    setState(() => _savingBoja.add(vozilo.id));
+    try {
+      await V3VoziloService.updateKolskaKnjiga(vozilo.id, {'boja': hex});
+    } catch (_) {
+      if (mounted) V3AppSnackBar.error(context, _OdrTr.tr('greskaCuvanja'));
+    } finally {
+      if (mounted) setState(() => _savingBoja.remove(vozilo.id));
+    }
+  }
 
   Future<void> _promeniKombi(V3Vozac vozac, String? voziloId) async {
     final currentId = V3VoziloService.getVoziloForVozac(vozac.id)?.id ?? '';
@@ -1484,7 +1546,30 @@ class _DodeliKombiDialogState extends State<_DodeliKombiDialog> {
                                         height: 18,
                                         child: CircularProgressIndicator(strokeWidth: 2),
                                       )
-                                    else
+                                    else ...[
+                                      if (dodeljen != null)
+                                        GestureDetector(
+                                          onTap: _savingBoja.contains(dodeljen.id)
+                                              ? null
+                                              : () => _pickVoziloBoja(dodeljen),
+                                          child: _savingBoja.contains(dodeljen.id)
+                                              ? const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                                )
+                                              : Container(
+                                                  width: 18,
+                                                  height: 18,
+                                                  margin: const EdgeInsets.only(right: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: V3CardColorPolicy.tryParseHexColor(dodeljen.boja) ??
+                                                        Colors.white24,
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                                                  ),
+                                                ),
+                                        ),
                                       DropdownButton<String>(
                                         value: dodeljen?.id ?? '',
                                         dropdownColor: const Color(0xFF252840),
@@ -1504,6 +1589,7 @@ class _DodeliKombiDialogState extends State<_DodeliKombiDialog> {
                                         ],
                                         onChanged: (nova) => _promeniKombi(v, nova),
                                       ),
+                                    ],
                                   ],
                                 ),
                               );

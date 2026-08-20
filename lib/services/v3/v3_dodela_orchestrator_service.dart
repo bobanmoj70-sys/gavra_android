@@ -11,6 +11,7 @@ class V3DodelaOrchestratorService {
     required String grad,
     required String vreme,
     required String vozacId,
+    String? voziloId,
     String? updatedBy,
     required bool Function(Map<String, dynamic> row) includeRow,
   }) async {
@@ -34,6 +35,7 @@ class V3DodelaOrchestratorService {
       grad: grad,
       vreme: normVreme,
       vozacId: vozacId,
+      voziloId: voziloId,
       updatedBy: updatedBy,
     );
 

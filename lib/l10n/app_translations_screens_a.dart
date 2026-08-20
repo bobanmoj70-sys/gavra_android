@@ -1557,6 +1557,13 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
   },
   'odrzavanjeScreen': {
+    'izaberiBojuKombija': {
+      'sr': 'Izaberi boju kombija',
+      'en': 'Choose vehicle color',
+      'ru': 'Выберите цвет микроавтобуса',
+      'de': 'Fahrzeugfarbe wählen',
+      'zh': '选择车辆颜色',
+    },
     'kolskaKnjiga': {
       'sr': '📖 Kolska knjiga',
       'en': '📖 Vehicle logbook',

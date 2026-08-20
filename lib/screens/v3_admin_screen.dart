@@ -1300,6 +1300,26 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 6),
+                    // 🚐 Dodeli kombi vozačima (jedan kombi = jedan vozač)
+                    _NavBtn(
+                      color: Colors.orange,
+                      height: V3ContainerUtils.responsiveHeight(context, 50),
+                      width: V3ContainerUtils.responsiveHeight(context, 50),
+                      onTap: () => V3DodeliKombiDialog.show(context),
+                      child: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '🚐',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Colors.white,
+                            shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

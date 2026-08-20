@@ -11,6 +11,7 @@ class V3TrenutnaDodelaSlotService {
   static const String colGrad = 'grad';
   static const String colVreme = 'vreme';
   static const String colVozacId = 'vozac_v3_auth_id';
+  static const String colVoziloId = 'vozilo_id';
   static const String colUpdatedBy = 'updated_by';
 
   /// Delegira na deljeni `V3BelgradeTime.parseIsoDatePart` (JEDAN IZVOR ISTINE za
@@ -71,12 +72,14 @@ class V3TrenutnaDodelaSlotService {
     required String grad,
     required String vreme,
     required String vozacId,
+    String? voziloId,
     String? updatedBy,
   }) async {
     final datum = _normalizeDatumIso(datumIso);
     final gradNorm = _normalizeGrad(grad);
     final vremeNorm = _normalizeVreme(vreme);
     final vozac = vozacId.trim();
+    final vozilo = (voziloId ?? '').trim();
 
     if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
 
@@ -85,6 +88,7 @@ class V3TrenutnaDodelaSlotService {
       colGrad: gradNorm,
       colVreme: vremeNorm,
       colVozacId: vozac,
+      colVoziloId: vozilo.isEmpty ? null : vozilo,
       if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
     };
 
@@ -155,12 +159,14 @@ class V3TrenutnaDodelaSlotService {
     required String grad,
     required String vreme,
     required String vozacId,
+    String? voziloId,
     String? updatedBy,
   }) async {
     final datum = _normalizeDatumIso(datumIso);
     final gradNorm = _normalizeGrad(grad);
     final vremeNorm = _normalizeVreme(vreme);
     final vozac = vozacId.trim();
+    final vozilo = (voziloId ?? '').trim();
     if (datum.isEmpty || gradNorm.isEmpty || vremeNorm.isEmpty || vozac.isEmpty) return null;
 
     final existing = await supabase
@@ -187,6 +193,7 @@ class V3TrenutnaDodelaSlotService {
           colGrad: gradNorm,
           colVreme: vremeNorm,
           colVozacId: vozac,
+          colVoziloId: vozilo.isEmpty ? null : vozilo,
           if ((updatedBy ?? '').trim().isNotEmpty) colUpdatedBy: updatedBy!.trim(),
         })
         .select('id')
@@ -232,7 +239,8 @@ class V3TrenutnaDodelaSlotService {
     final vozac = vozacId.trim();
     if (vozac.isEmpty) return <Map<String, String>>[];
 
-    final rows = await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme').eq(colVozacId, vozac);
+    final rows =
+        await supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVoziloId').eq(colVozacId, vozac);
 
     final result = <Map<String, String>>[];
     for (final row in (rows as List<dynamic>)) {
@@ -242,13 +250,47 @@ class V3TrenutnaDodelaSlotService {
       final vreme = _normalizeVreme(mapped[colVreme]?.toString());
       if (datum.isEmpty || grad.isEmpty || vreme.isEmpty) continue;
 
+      final voziloId = (mapped[colVoziloId]?.toString() ?? '').trim();
       result.add(<String, String>{
         colDatum: datum,
         colGrad: grad,
         colVreme: vreme,
+        if (voziloId.isNotEmpty) colVoziloId: voziloId,
       });
     }
 
+    return result;
+  }
+
+  /// Kombi trenutno dodeljen svakom slotu (ako je eksplicitno postavljen po slotu).
+  /// Ako slot nema `vozilo_id`, pozivalac treba da uradi fallback na trajnu
+  /// dodelu vozača (`V3VoziloService.getVoziloForVozac`).
+  static Future<Map<String, String>> loadAllVoziloBySlotKey({
+    String? datumIso,
+  }) async {
+    dynamic query = supabase.from(tableName).select('$colDatum, $colGrad, $colVreme, $colVoziloId, updated_at');
+
+    final trimmedDatum = _normalizeDatumIso(datumIso);
+    if (trimmedDatum.isNotEmpty) {
+      query = query.eq(colDatum, trimmedDatum);
+    }
+
+    query = query.order('updated_at', ascending: false);
+
+    final rows = await query;
+
+    final result = <String, String>{};
+    for (final row in (rows as List<dynamic>)) {
+      final mapped = row as Map<String, dynamic>;
+      final datum = _normalizeDatumIso(mapped[colDatum]?.toString());
+      final grad = _normalizeGrad(mapped[colGrad]?.toString());
+      final vreme = _normalizeVreme(mapped[colVreme]?.toString());
+      final voziloId = (mapped[colVoziloId]?.toString() ?? '').trim();
+      if (datum.isNotEmpty && grad.isNotEmpty && vreme.isNotEmpty && voziloId.isNotEmpty) {
+        final key = '$datum|$grad|$vreme';
+        result.putIfAbsent(key, () => voziloId);
+      }
+    }
     return result;
   }
 

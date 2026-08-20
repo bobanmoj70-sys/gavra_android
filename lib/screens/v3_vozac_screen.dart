@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../globals.dart';
 import '../l10n/app_translations.dart';
 import '../models/v3_putnik.dart';
+import '../models/v3_vozilo.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_address_coordinate_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
@@ -21,6 +22,7 @@ import '../services/v3/v3_trenutna_dodela_service.dart';
 import '../services/v3/v3_trenutna_dodela_slot_service.dart';
 import '../services/v3/v3_vozac_location_tracking_service.dart';
 import '../services/v3/v3_vozac_service.dart';
+import '../services/v3/v3_vozilo_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../services/v3_theme_manager.dart';
 import '../theme.dart';
@@ -1469,13 +1471,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vsVremenaToShow = vsVremenaSet.toList()..sort();
     final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
     final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
-    final appBarHeight = 104 + (headerScaleExtra * 18);
+    final appBarHeight = 88 + (headerScaleExtra * 18);
     final appBarButtonHeight = 30 + (headerScaleExtra * 6);
-    final weekRange = V3DanHelper.schedulingWeekRange();
-    final ponedeljak = weekRange.start;
-    final petak = weekRange.end;
-    final aktivnaSedmica =
-        '${_tr('operativnaSedmicaPrefix')} ${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')} - ${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}';
 
     return StreamBuilder<int>(
       stream: rm.tablesRevisionStream(
@@ -1528,18 +1525,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          aktivnaSedmica,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 3),
                         // ── Red 1: Datum | Dan ──
                         _buildDigitalDateDisplay(context, vozac),
+                        const SizedBox(height: 2),
+                        // ── Red 1b: Registracija kombija za selektovani slot ──
+                        _buildKombiRegistracijaDisplay(context),
                         const SizedBox(height: 6),
                         // ── Red 2: Kompaktni gumbi ──
                         Row(
@@ -1881,6 +1871,37 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     );
   }
 
+  // ── Registracija kombija za trenutno selektovan slot (BC/VS + vreme) ──
+  Widget _buildKombiRegistracijaDisplay(BuildContext context) {
+    final vozilo = _getVoziloZaSlot(_selectedGrad, _selectedVreme);
+    final reg = vozilo?.registracija.trim();
+    final registracija = (reg != null && reg.isNotEmpty) ? reg.toUpperCase() : null;
+
+    final vozacBoja = _getVozacBojaRaw(_efektivniVozac);
+    final kombiBoja = V3CardColorPolicy.tryParseHexColor(vozilo?.boja) ?? vozacBoja;
+    final prikaznaBoja = registracija != null ? kombiBoja : Colors.white38;
+
+    return Align(
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.airport_shuttle, size: 13, color: prikaznaBoja),
+          const SizedBox(width: 4),
+          Text(
+            registracija ?? _tr('kombiNijeDodeljen'),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: prikaznaBoja,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Kompaktni AppBar dugme (label, h=30) ──
   Widget _buildAppBarBtn({
     required BuildContext context,
@@ -1973,6 +1994,34 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   Color _getVozacBojaRaw(dynamic v3Vozac) {
     final hex = v3Vozac?.boja?.toString();
     return V3CardColorPolicy.parseHexColor(hex, fallback: Colors.white);
+  }
+
+  /// Kombi (vozilo) dodeljen datom slotu (grad+vreme, tekući dan).
+  /// Prioritet: eksplicitna dodela po slotu (v3_trenutna_dodela_slot.vozilo_id),
+  /// fallback na trajno dodeljeni kombi vozača (v3_vozila.vozac_id).
+  V3Vozilo? _getVoziloZaSlot(String grad, String vreme) {
+    final vozac = _efektivniVozac;
+    if (vozac == null) return null;
+
+    final trazeniGrad = grad.trim().toUpperCase();
+    final trazenoVreme = V3BelgradeTime.normalizeToHHmm(vreme);
+    String? voziloId;
+
+    for (final slot in _assignedSlotRows) {
+      final slotDatum = (slot[V3TrenutnaDodelaSlotService.colDatum] ?? '').trim();
+      final slotGrad = (slot[V3TrenutnaDodelaSlotService.colGrad] ?? '').trim().toUpperCase();
+      final slotVreme = V3BelgradeTime.normalizeToHHmm(slot[V3TrenutnaDodelaSlotService.colVreme]);
+      if (slotDatum != _selectedDatumIso || slotGrad != trazeniGrad || slotVreme != trazenoVreme) continue;
+      final rowVoziloId = slot[V3TrenutnaDodelaSlotService.colVoziloId];
+      if (rowVoziloId != null && rowVoziloId.trim().isNotEmpty) {
+        voziloId = rowVoziloId.trim();
+      }
+      break;
+    }
+
+    return (voziloId != null && voziloId.isNotEmpty)
+        ? V3VoziloService.getVoziloById(voziloId)
+        : V3VoziloService.getVoziloForVozac(vozac.id.toString());
   }
 }
 
