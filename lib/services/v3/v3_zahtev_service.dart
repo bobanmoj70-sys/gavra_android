@@ -163,7 +163,7 @@ class V3ZahtevService {
     // NAPOMENA: Namerno NE proveravamo/kreiramo operativni red ovde čak i ako
     // slot već ima dodeljenog vozača. Zahtev MORA proći kroz server-side
     // kron dispečer (process_pending_zahtevi / process_pending_zahtevi_slots),
-    // koji poštuje scheduled_at (vreme čekanja po tipu putnika) i proverava
+    // koji poštuje scheduled_at (10 minuta čekanja za sve) i proverava
     // kapacitet (v3_kapacitet_slots). Ranije je ovde postojao bypass koji je
     // odmah (sinhrono, iz klijenta) postavljao status='odobreno' zaobilazeći
     // i čekanje i proveru kapaciteta čim je slot već imao dodeljenog vozača —
