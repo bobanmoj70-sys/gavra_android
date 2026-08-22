@@ -73,6 +73,79 @@ function parseCoord(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function parseIdList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const id = String(item ?? "").trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+/// Zadrži prethodni redosled ako pokriva sve preostale putnike.
+/// Inače null → novi OSRM /trip.
+function lockRemainingPassengers(
+  remaining: PassengerEntry[],
+  candidateOrders: string[][],
+): PassengerEntry[] | null {
+  if (remaining.length === 0) return remaining;
+  const byId = new Map<string, PassengerEntry>();
+  for (const p of remaining) {
+    if (!byId.has(p.putnik_id)) byId.set(p.putnik_id, p);
+  }
+  if (byId.size !== remaining.length) return null;
+  for (const candidate of candidateOrders) {
+    const locked = candidate.filter((id) => byId.has(id));
+    if (locked.length !== byId.size) continue;
+    return locked.map((id) => byId.get(id)!);
+  }
+  return null;
+}
+
+function etaRowsFromFixedOrder(
+  ordered: PassengerEntry[],
+  legs: any[],
+  ctx: { slotId: string; vozacId: string; now: string },
+): Array<{
+  slot_id: string;
+  termin_id: string;
+  putnik_id: string;
+  vozac_id: string;
+  eta_seconds: number;
+  computed_at: string;
+}> {
+  const upsertRows: Array<{
+    slot_id: string;
+    termin_id: string;
+    putnik_id: string;
+    vozac_id: string;
+    eta_seconds: number;
+    computed_at: string;
+  }> = [];
+  let cumulative = 0;
+  for (let i = 0; i < ordered.length; i++) {
+    const duration = Number(legs[i]?.duration ?? -1);
+    if (!Number.isFinite(duration) || duration < 0) {
+      console.warn(`[v3-compute-eta] leg[${i}] duration invalid: ${duration}`);
+      continue;
+    }
+    cumulative += Math.round(duration);
+    upsertRows.push({
+      slot_id: ctx.slotId,
+      termin_id: ordered[i].termin_id,
+      putnik_id: ordered[i].putnik_id,
+      vozac_id: ctx.vozacId,
+      eta_seconds: cumulative,
+      computed_at: ctx.now,
+    });
+  }
+  return upsertRows;
+}
+
 type AuthAddressRow = {
   id: string;
   adresa_primary_bc_id: string | null;
@@ -384,7 +457,7 @@ Deno.serve(async (req) => {
     //    Fizički ključ slota — NE po vozaču (override putnik može biti na drugom vozaču).
     const { data: slotRows, error: slotError } = await client
       .from("v3_trenutna_dodela_slot")
-      .select("id, vreme, vozac_v3_auth_id")
+      .select("id, vreme, vozac_v3_auth_id, optimized_order")
       .eq("grad", activeGrad)
       .eq("datum", activeDatumIso);
 
@@ -481,7 +554,7 @@ Deno.serve(async (req) => {
     const remainingPutnikIds = new Set<string>(remaining.map((p) => p.putnik_id));
     const { data: existingEtaRows } = await client
       .from("v3_eta_results")
-      .select("putnik_id")
+      .select("putnik_id, optimized_order")
       .eq("slot_id", activeSlot.id)
       .eq("vozac_id", vozacId);
     const toDelete = (existingEtaRows ?? [])
@@ -494,21 +567,17 @@ Deno.serve(async (req) => {
         .in("putnik_id", toDelete);
     }
 
-    // 4. OSRM /trip: vozač → preostali putnici → suprotni grad
+    // 4. ETA: zaključan redosled (/route) ili novi OSRM /trip samo kad se skup promeni.
     const destLat = activeGrad === "BC" ? 45.118736452002345 : 44.90281796231954;
     const destLng = activeGrad === "BC" ? 21.301195520159723 : 21.424364904529384;
 
-    const tripCoords = [
-      coordStr(driverLat, driverLng),
-      ...remaining.map((p) => coordStr(p.lat, p.lng)),
-      coordStr(destLat, destLng),
-    ].join(";");
+    const etaOrder = parseIdList((existingEtaRows ?? [])[0]?.optimized_order);
+    const slotOrder = parseIdList((activeSlot as { optimized_order?: unknown }).optimized_order);
+    const lockedRemaining = lockRemainingPassengers(remaining, [etaOrder, slotOrder]);
+    const useLockedOrder = lockedRemaining != null;
+    const orderedPassengers = lockedRemaining ?? remaining;
 
-    const osrmUrl =
-      `${osrmBaseUrl}/trip/v1/driving/${tripCoords}` +
-      `?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
-
-    const waypointCount = remaining.length + 2;
+    const waypointCount = orderedPassengers.length + 2;
     if (waypointCount > OSRM_MAX_WAYPOINTS) {
       return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_too_many_waypoints", {
         count: waypointCount,
@@ -516,7 +585,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[v3-compute-eta] remaining=${remaining.length} tripCoords=${tripCoords}`);
+    const osrmCoords = [
+      coordStr(driverLat, driverLng),
+      ...orderedPassengers.map((p) => coordStr(p.lat, p.lng)),
+      coordStr(destLat, destLng),
+    ].join(";");
+
+    const osrmUrl = useLockedOrder
+      ? `${osrmBaseUrl}/route/v1/driving/${osrmCoords}?overview=false&steps=false`
+      : `${osrmBaseUrl}/trip/v1/driving/${osrmCoords}?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
+
+    console.log(
+      `[v3-compute-eta] remaining=${remaining.length} locked=${useLockedOrder} mode=${useLockedOrder ? "route" : "trip"} coords=${osrmCoords}`,
+    );
 
     let osrmResponse: Response;
     try {
@@ -541,42 +622,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 5. Parsiraj optimizovani redosled
-    const rawWaypoints = osrmData.waypoints;
-    const rawTrips = osrmData.trips;
-
-    const expectedWaypointCount = remaining.length + 2; // vozač + putnici + destinacija
-    if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
-      console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
-      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_waypoints_mismatch", {
-        expected: expectedWaypointCount,
-        got: rawWaypoints?.length,
-      });
-    }
-    if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
-      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_trips");
-    }
-
-    const legs = rawTrips[0].legs;
-    if (!Array.isArray(legs)) {
-      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
-    }
-
-    const passengerWaypoints = rawWaypoints
-      .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
-      .slice(1, -1)
-      .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
-
-    // Mapa: originalni indeks u tripCoords → {putnik_id, termin_id}
-    const originalIndexToEntry: Record<number, { putnik_id: string; termin_id: string }> = {};
-    for (let i = 0; i < remaining.length; i++) {
-      originalIndexToEntry[i + 1] = {
-        putnik_id: remaining[i].putnik_id,
-        termin_id: remaining[i].termin_id,
-      };
-    }
-
-    const upsertRows: Array<{
+    const upsertCtx = { slotId: activeSlot.id, vozacId, now };
+    let upsertRows: Array<{
       slot_id: string;
       termin_id: string;
       putnik_id: string;
@@ -585,32 +632,52 @@ Deno.serve(async (req) => {
       computed_at: string;
     }> = [];
 
-    let cumulative = 0;
-
-    for (let tripRank = 0; tripRank < passengerWaypoints.length; tripRank++) {
-      const leg = legs[tripRank];
-      const duration = Number(leg?.duration ?? -1);
-      if (!Number.isFinite(duration) || duration < 0) {
-        console.warn(`[v3-compute-eta] leg[${tripRank}] duration invalid: ${duration}`);
-        continue;
+    if (useLockedOrder) {
+      const rawRoutes = osrmData.routes;
+      if (!Array.isArray(rawRoutes) || rawRoutes.length === 0) {
+        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_routes");
       }
-      cumulative += Math.round(duration);
-
-      const originalIdx = Number(passengerWaypoints[tripRank].inputIndex);
-      const entry = originalIndexToEntry[originalIdx];
-      if (!entry) {
-        console.warn(`[v3-compute-eta] input index ${originalIdx} not found in map`);
-        continue;
+      const legs = rawRoutes[0].legs;
+      if (!Array.isArray(legs) || legs.length < orderedPassengers.length) {
+        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
+      }
+      upsertRows = etaRowsFromFixedOrder(orderedPassengers, legs, upsertCtx);
+    } else {
+      const rawWaypoints = osrmData.waypoints;
+      const rawTrips = osrmData.trips;
+      const expectedWaypointCount = orderedPassengers.length + 2;
+      if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
+        console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
+        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_waypoints_mismatch", {
+          expected: expectedWaypointCount,
+          got: rawWaypoints?.length,
+        });
+      }
+      if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
+        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_trips");
       }
 
-      upsertRows.push({
-        slot_id: activeSlot.id,
-        termin_id: entry.termin_id,
-        putnik_id: entry.putnik_id,
-        vozac_id: vozacId,
-        eta_seconds: cumulative,
-        computed_at: now,
-      });
+      const legs = rawTrips[0].legs;
+      if (!Array.isArray(legs)) {
+        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
+      }
+
+      const passengerWaypoints = rawWaypoints
+        .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
+        .slice(1, -1)
+        .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
+
+      const originalIndexToEntry: Record<number, PassengerEntry> = {};
+      for (let i = 0; i < orderedPassengers.length; i++) {
+        originalIndexToEntry[i + 1] = orderedPassengers[i];
+      }
+
+      const tripOrdered: PassengerEntry[] = [];
+      for (const pw of passengerWaypoints) {
+        const entry = originalIndexToEntry[Number(pw.inputIndex)];
+        if (entry) tripOrdered.push(entry);
+      }
+      upsertRows = etaRowsFromFixedOrder(tripOrdered, legs, upsertCtx);
     }
 
     if (upsertRows.length === 0) {

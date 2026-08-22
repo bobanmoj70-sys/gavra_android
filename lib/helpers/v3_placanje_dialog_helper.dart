@@ -49,6 +49,44 @@ class V3PlacanjeDialogHelper {
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
+  static Widget _oneLineDropdownLabel(String text, TextStyle style) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.fade,
+          style: style,
+        ),
+      ),
+    );
+  }
+
+  static InputDecoration _compactDropdownDecoration() {
+    return V3InputUtils.dropdownDecoration().copyWith(
+      isDense: true,
+      contentPadding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
+    );
+  }
+
+  static DropdownStyleData get _compactDropdownStyle => DropdownStyleData(
+        decoration: BoxDecoration(
+          color: V3InputStyle.dropdownMenu,
+          borderRadius: BorderRadius.circular(V3InputStyle.radius),
+          border: Border.all(color: V3InputStyle.border),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+      );
+
+  static const ButtonStyleData _compactButtonStyle = ButtonStyleData(
+    padding: EdgeInsets.only(right: 4),
+    height: 44,
+  );
+
   static Future<V3PlacanjeRezultat?> _prikaziDialog({
     required BuildContext context,
     required String putnikId,
@@ -250,111 +288,123 @@ class V3PlacanjeDialogHelper {
                             icon: Icons.payments_outlined,
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      _placanjeTr('mesec'),
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.78),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    DropdownButtonFormField2<int>(
-                                      isExpanded: true,
-                                      dropdownStyleData: DropdownStyleData(
-                                        decoration: BoxDecoration(
-                                          color: V3InputStyle.dropdownMenu,
-                                          borderRadius: BorderRadius.circular(V3InputStyle.radius),
-                                          border: Border.all(color: V3InputStyle.border),
-                                        ),
-                                      ),
-                                      style: V3InputUtils.fieldTextStyle,
-                                      iconStyleData: const IconStyleData(
-                                        iconEnabledColor: V3InputStyle.icon,
-                                      ),
-                                      decoration: V3InputUtils.dropdownDecoration(),
-                                      value: _selectedMonth,
-                                      items: List.generate(12, (i) => i + 1).map((m) {
-                                        final mesecStyle = _mesecStyle(m);
-                                        return DropdownMenuItem(
-                                          value: m,
-                                          child: Text(
-                                            V3BelgradeTime.mesecNaziv(m),
-                                            style: TextStyle(
-                                              color: mesecStyle.color,
-                                              fontWeight: mesecStyle.weight,
-                                            ),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final yearWidth = (constraints.maxWidth * 0.34).clamp(92.0, 124.0);
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Text(
+                                          _placanjeTr('mesec'),
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.78),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
                                           ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (v) => setState(() {
-                                        _selectedMonth = v!;
-                                        if (_autoIznosEnabled) {
-                                          _setIznosController(
-                                              _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                                        }
-                                      }),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      _placanjeTr('godina'),
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.78),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    DropdownButtonFormField2<int>(
-                                      isExpanded: true,
-                                      dropdownStyleData: DropdownStyleData(
-                                        decoration: BoxDecoration(
-                                          color: V3InputStyle.dropdownMenu,
-                                          borderRadius: BorderRadius.circular(V3InputStyle.radius),
-                                          border: Border.all(color: V3InputStyle.border),
                                         ),
-                                      ),
-                                      style: V3InputUtils.fieldTextStyle,
-                                      iconStyleData: const IconStyleData(
-                                        iconEnabledColor: V3InputStyle.icon,
-                                      ),
-                                      decoration: V3InputUtils.dropdownDecoration(),
-                                      value: _selectedYear,
-                                      items: years.map((y) {
-                                        return DropdownMenuItem(
-                                          value: y,
-                                          child: Text(
-                                            '$y.',
-                                            style: V3InputUtils.fieldTextStyle,
+                                        const SizedBox(height: 6),
+                                        DropdownButtonFormField2<int>(
+                                          isExpanded: true,
+                                          dropdownStyleData: _compactDropdownStyle,
+                                          buttonStyleData: _compactButtonStyle,
+                                          style: V3InputUtils.fieldTextStyle,
+                                          iconStyleData: const IconStyleData(
+                                            iconEnabledColor: V3InputStyle.icon,
+                                            iconSize: 20,
                                           ),
-                                        );
-                                      }).toList(),
-                                      onChanged: (v) => setState(() {
-                                        _selectedYear = v!;
-                                        if (_autoIznosEnabled) {
-                                          _setIznosController(
-                                              _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                                        }
-                                      }),
+                                          decoration: _compactDropdownDecoration(),
+                                          value: _selectedMonth,
+                                          selectedItemBuilder: (context) {
+                                            return List.generate(12, (i) {
+                                              final m = i + 1;
+                                              return _oneLineDropdownLabel(
+                                                V3BelgradeTime.mesecNaziv(m),
+                                                V3InputUtils.fieldTextStyle,
+                                              );
+                                            });
+                                          },
+                                          items: List.generate(12, (i) => i + 1).map((m) {
+                                            final mesecStyle = _mesecStyle(m);
+                                            return DropdownMenuItem(
+                                              value: m,
+                                              child: _oneLineDropdownLabel(
+                                                V3BelgradeTime.mesecNaziv(m),
+                                                TextStyle(
+                                                  color: mesecStyle.color,
+                                                  fontWeight: mesecStyle.weight,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (v) => setState(() {
+                                            _selectedMonth = v!;
+                                            if (_autoIznosEnabled) {
+                                              _setIznosController(
+                                                  _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                            }
+                                          }),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    width: yearWidth,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Text(
+                                          _placanjeTr('godina'),
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.78),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        DropdownButtonFormField2<int>(
+                                          isExpanded: true,
+                                          dropdownStyleData: _compactDropdownStyle,
+                                          buttonStyleData: _compactButtonStyle,
+                                          style: V3InputUtils.fieldTextStyle,
+                                          iconStyleData: const IconStyleData(
+                                            iconEnabledColor: V3InputStyle.icon,
+                                            iconSize: 20,
+                                          ),
+                                          decoration: _compactDropdownDecoration(),
+                                          value: _selectedYear,
+                                          selectedItemBuilder: (context) {
+                                            return years
+                                                .map((y) => _oneLineDropdownLabel('$y.', V3InputUtils.fieldTextStyle))
+                                                .toList();
+                                          },
+                                          items: years.map((y) {
+                                            return DropdownMenuItem(
+                                              value: y,
+                                              child: _oneLineDropdownLabel(
+                                                '$y.',
+                                                V3InputUtils.fieldTextStyle,
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (v) => setState(() {
+                                            _selectedYear = v!;
+                                            if (_autoIznosEnabled) {
+                                              _setIznosController(
+                                                  _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                            }
+                                          }),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),

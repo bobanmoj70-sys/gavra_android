@@ -73,10 +73,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   bool _isLoading = true;
   bool _loadingDodela = false;
   StreamSubscription<int>? _trenutnaDodelaRevisionSub;
+  StreamSubscription<int>? _tablesRevisionSub;
   StreamSubscription<({Map<String, int> etaMap, List<String> order})>? _etaTickSub;
   StreamSubscription<bool>? _runningSub;
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   int? _lastRealtimeTick;
+  String _lastPutniciSignature = '';
+  List<String> _stableRemainingOrder = const [];
 
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
@@ -127,6 +130,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _hasSentRouteToMap = false;
     _mapResyncInFlight = false;
     _lastSentRouteSignature = '';
+    _stableRemainingOrder = const [];
+    _lastPutniciSignature = '';
   }
 
   int _timeToMinutes(String hhmm) {
@@ -189,6 +194,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       V3TrenutnaDodelaSlotService.tableName,
     ]).listen((_) {
       unawaited(_refreshDodelaFromRealtime());
+    });
+  }
+
+  void _startTablesRevisionRealtime() {
+    _tablesRevisionSub?.cancel();
+    _tablesRevisionSub = V3MasterRealtimeManager.instance.tablesRevisionStream(const [
+      'v3_operativna_nedelja',
+      'v3_auth',
+      'v3_adrese',
+      'v3_kapacitet_slots',
+      'v3_app_settings',
+      'v3_finansije',
+    ]).listen((tick) {
+      if (!mounted || tick == _lastRealtimeTick) return;
+      _lastRealtimeTick = tick;
+      _rebuild();
     });
   }
 
@@ -317,6 +338,38 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return out;
   }
 
+  List<String> _remainingPutnikIds(List<_PutnikEntry> putnici) {
+    final out = <String>[];
+    final seen = <String>{};
+    for (final item in putnici) {
+      if (_isPutnikEntryCompleted(item)) continue;
+      final id = item.putnik.id.trim();
+      if (id.isEmpty || !seen.add(id)) continue;
+      out.add(id);
+    }
+    return out;
+  }
+
+  /// Isti preostali putnici ne smeju da zamene mesta zbog OSRM /trip šuma.
+  List<String> _stabilizeRemainingOsrmOrder(List<String> incoming, List<_PutnikEntry> putnici) {
+    final remainingIds = _remainingPutnikIds(putnici).toSet();
+    final incomingRemaining = incoming.where(remainingIds.contains).toList(growable: false);
+    final prevRemaining = _stableRemainingOrder.where(remainingIds.contains).toList(growable: false);
+    final sameSet = prevRemaining.isNotEmpty &&
+        prevRemaining.length == incomingRemaining.length &&
+        prevRemaining.length == remainingIds.length &&
+        remainingIds.every(prevRemaining.contains);
+
+    if (sameSet) return prevRemaining;
+
+    if (incomingRemaining.isNotEmpty) {
+      _stableRemainingOrder = incomingRemaining;
+      return incomingRemaining;
+    }
+    if (prevRemaining.isNotEmpty) return prevRemaining;
+    return incoming;
+  }
+
   int _osrmIndexOf(_PutnikEntry item, List<String> osrmOrder) {
     if (osrmOrder.isEmpty) return 999;
     final putnikId = item.putnik.id.trim();
@@ -388,18 +441,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   /// 2) `v3_eta_results` — fallback za isti aktivni termin
   /// 3) slot `optimized_order` — pregled / pre prvog tick-a
   List<String> _resolveOptimizedOrder(List<_PutnikEntry> putnici) {
+    List<String> raw = const [];
     if (_isViewingTrackedTermin) {
       final live = _toPutnikIds(
         V3VozacLocationTrackingService.instance.optimizedPutnikIds,
         putnici,
       );
-      if (live.isNotEmpty) return live;
-
-      final fromEta = _getOsrmOrderFromEtaResults(putnici);
-      if (fromEta.isNotEmpty) return fromEta;
+      if (live.isNotEmpty) {
+        raw = live;
+      } else {
+        raw = _getOsrmOrderFromEtaResults(putnici);
+      }
     }
-
-    return _getOsrmOrderFromSlot(putnici);
+    if (raw.isEmpty) {
+      raw = _getOsrmOrderFromSlot(putnici);
+    }
+    return _stabilizeRemainingOsrmOrder(raw, putnici);
   }
 
   void _refreshPutniciOrderFromEtaCache() {
@@ -414,8 +471,25 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (mounted) {
       setState(() {
         _mojiPutnici = sorted;
+        _lastPutniciSignature = _putniciSignature(sorted);
       });
     }
+  }
+
+  String _putniciSignature(List<_PutnikEntry> list) {
+    return list.map((p) {
+      final e = p.entry;
+      return [
+        p.putnik.id,
+        e?.id ?? '',
+        e?.pokupljenAt ?? '',
+        e?.otkazanoAt ?? '',
+        e?.statusFinal ?? '',
+        e?.koristiSekundarnu ?? false,
+        e?.adresaIdOverride ?? '',
+        p.putnik.imePrezime,
+      ].join('|');
+    }).join('||');
   }
 
   /// Poslednji redosled iz v3_eta_results za ovog vozača + prikazane putnike.
@@ -550,6 +624,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // Ako je tracking već aktivan (npr. vozač se vratio back), obnovi state
     _isNavigating = V3VozacLocationTrackingService.instance.isRunning;
     _startTrenutnaDodelaRealtime();
+    _startTablesRevisionRealtime();
     _etaTickSub = V3VozacLocationTrackingService.instance.onEtaTick.listen((result) {
       if (!mounted) return;
       // Sort/mapa samo kad vozač gleda isti termin kao tracking sesija.
@@ -572,6 +647,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_trenutnaDodelaRevisionSub?.cancel());
     _trenutnaDodelaRevisionSub = null;
+    unawaited(_tablesRevisionSub?.cancel());
+    _tablesRevisionSub = null;
     unawaited(_etaTickSub?.cancel());
     _etaTickSub = null;
     unawaited(_runningSub?.cancel());
@@ -839,10 +916,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     }
 
     final putniciZaPrikaz = _sortPutniciForDisplay(putnici);
-
-    V3StateUtils.safeSetState(this, () {
+    final nextSig = _putniciSignature(putniciZaPrikaz);
+    final listChanged = nextSig != _lastPutniciSignature;
+    if (listChanged) {
+      V3StateUtils.safeSetState(this, () {
+        _mojiPutnici = putniciZaPrikaz;
+        _lastPutniciSignature = nextSig;
+      });
+    } else {
       _mojiPutnici = putniciZaPrikaz;
-    });
+    }
 
     // Sigurnosna mreža: ETA redosled samo na tracking terminu.
     // Drugi termini ostaju slobodni za pregled/akcije.
@@ -1482,7 +1565,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
           'v3_adrese',
           'v3_kapacitet_slots',
           'v3_app_settings',
-          'v3_eta_results',
           'v3_finansije',
         ],
       ),
@@ -1503,7 +1585,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
             appBar: AppBar(
               automaticallyImplyLeading: false,
               backgroundColor: Colors.transparent,
-              elevation: 0,
+              elevation:  0,
               toolbarHeight: appBarHeight,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.only(

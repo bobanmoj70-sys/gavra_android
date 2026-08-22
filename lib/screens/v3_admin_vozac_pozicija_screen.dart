@@ -216,7 +216,10 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
                         point: _pozicije[vozac.id]!,
                         width: 140,
                         height: 78,
-                        alignment: Alignment.bottomCenter,
+                        // flutter_map: alignment = gde je WIDGET u odnosu na tačku.
+                        // topCenter = ceo marker IZNAD tačke, vrh pina = GPS.
+                        // bottomCenter bi ceo marker spustio ISPOD puta.
+                        alignment: Alignment.topCenter,
                         child: _VozacMarker(
                           boja: V3CardColorPolicy.vozacColorOr(vozac.boja),
                           ime: vozac.imePrezime,
@@ -248,7 +251,7 @@ class _V3AdminVozacPozicijaScreenState extends State<V3AdminVozacPozicijaScreen>
 }
 
 /// Marker na mapi: balončić sa imenom + brzinom + pin.
-/// Sadržaj je na dnu kutije (`MainAxisAlignment.end`) da vrh pina = GPS tačka.
+/// Pin je na dnu kutije; Marker.alignment = topCenter da vrh pina = GPS tačka.
 class _VozacMarker extends StatelessWidget {
   const _VozacMarker({
     required this.boja,
@@ -306,8 +309,12 @@ class _VozacMarker extends StatelessWidget {
             ],
           ),
         ),
-        // Material `location_on` ima ~2–3px praznog ispod vrha igle u glyph-u.
-        Icon(Icons.location_on, color: boja, size: 34, opticalSize: 34),
+        // Material location_on ima ~3px praznog ispod vrha igle — spusti glyph
+        // da vrh pina sedne na donju ivicu markera (GPS tačka).
+        Transform.translate(
+          offset: const Offset(0, 3),
+          child: Icon(Icons.location_on, color: boja, size: 34, opticalSize: 34),
+        ),
       ],
     );
   }
