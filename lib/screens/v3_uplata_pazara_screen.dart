@@ -135,14 +135,24 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
       return;
     }
 
-    debugPrint('[Admin] _zatraziUnosOdVozaca: vozacId=${vozac.id}, datum=$_selectedDate, ukupno=$_ukupnoNaplaceno');
+    if (_ukupnoNaplaceno <= 0) {
+      V3AppSnackBar.warning(context, _UplTr.tr('nemaPazaraZaTajDan'));
+      return;
+    }
+
+    // Ne prepisujemo već uneti iznos vozača na 0 - čuvamo postojeći _predao
+    // ako je vozač već nešto uneo za ovaj dan.
+    final vecUnetoPredao = _predao ?? 0;
+
+    debugPrint(
+        '[Admin] _zatraziUnosOdVozaca: vozacId=${vozac.id}, datum=$_selectedDate, ukupno=$_ukupnoNaplaceno, vecUnetoPredao=$vecUnetoPredao');
 
     setState(() => _isSaving = true);
     try {
       await V3UplataPazaraService.sacuvajDnevnuUplatu(
         vozacId: vozac.id,
         datum: _selectedDate,
-        predao: 0,
+        predao: vecUnetoPredao,
         ukupno: _ukupnoNaplaceno,
         zahtevanUnos: true,
       );

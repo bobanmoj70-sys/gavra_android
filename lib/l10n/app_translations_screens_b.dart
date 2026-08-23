@@ -1126,6 +1126,13 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Geben Sie einen Betrag größer als 0 ein.',
       'zh': '请输入大于0的金额。'
     },
+    'nemaPazaraZaTajDan': {
+      'sr': 'Nema pazara za taj dan, zahtev nije poslat.',
+      'en': 'No cash revenue for that day, request not sent.',
+      'ru': 'Нет выручки за этот день, запрос не отправлен.',
+      'de': 'Keine Kassenumsätze an diesem Tag, Anfrage nicht gesendet.',
+      'zh': '当天没有营业额，请求未发送。'
+    },
     'uplataPazaraSacuvana': {
       'sr': 'Uplata pazara sačuvana',
       'en': 'Cash payment saved',
