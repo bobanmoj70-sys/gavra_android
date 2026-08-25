@@ -458,7 +458,7 @@ class V3FinansijeService {
       if (uplate.isEmpty) continue;
 
       for (final uplata in uplate) {
-        final datum = V3BelgradeTime.parseDatum(uplata['datum']);
+        final datum = _uplataVreme(uplata);
         if (datum == null) continue;
         if (latestUplataDatum == null || datum.isAfter(latestUplataDatum)) {
           latestUplataDatum = datum;
