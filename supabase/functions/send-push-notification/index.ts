@@ -247,6 +247,37 @@ async function getFcmAccessToken(payload: PushPayload): Promise<string> {
   throw new Error(lastError);
 }
 
+function resolveIosAlternativaPresentation(
+  data: Record<string, string>,
+): { category: string; actionPayload: string } | null {
+  if (String(data.type ?? '').trim() !== 'v3_alternativa') return null;
+
+  const zahtevId = String(data.zahtev_id ?? '').trim();
+  if (!zahtevId) return null;
+
+  const altPre = normalizeHhMmOrEmpty(String(data.alt_pre ?? '')) ?? '';
+  const altPosle = normalizeHhMmOrEmpty(String(data.alt_posle ?? '')) ?? '';
+  const isMesto = String(data.offer_kind ?? '').trim() === 'mesto_oslobodjeno';
+
+  let category = '';
+  if (isMesto) {
+    category = 'mesto_oslobodjeno';
+  } else if (altPre && altPosle) {
+    category = 'alternativa_oba';
+  } else if (altPre) {
+    category = 'alternativa_pre';
+  } else if (altPosle) {
+    category = 'alternativa_posle';
+  } else {
+    return null;
+  }
+
+  const actionPayload = isMesto
+    ? `${zahtevId}|${altPre}|${altPosle}|mesto_oslobodjeno`
+    : `${zahtevId}|${altPre}|${altPosle}`;
+
+  return { category, actionPayload };
+}
 
 async function sendFcm(
   token: string,
@@ -265,9 +296,31 @@ async function sendFcm(
     // - Nema android `notification` bloka → app gradi lokalnu notif (actions, dedup).
     // - title/body uvek u data (i kad je dataOnly), da background/alternativa imaju tekst.
     // - iOS: alert samo kad NIJE dataOnly; dataOnly = content-available + data.
+    // - v3_alternativa: APNs category + payload string da lock-screen akcije rade.
+    const iosAlternativa = resolveIosAlternativaPresentation(data);
     const messageData: Record<string, string> = { ...data };
     if (title) messageData.title = title;
     if (body) messageData.body = body;
+    if (iosAlternativa?.actionPayload) {
+      messageData.payload = iosAlternativa.actionPayload;
+    }
+
+    const aps = dataOnly
+      ? { 'content-available': 1 }
+      : {
+          alert: { title, body },
+          sound: 'default',
+          ...(iosAlternativa?.category ? { category: iosAlternativa.category } : {}),
+        };
+
+    const apnsHeaders: Record<string, string> = dataOnly
+      ? { 'apns-priority': '5', 'apns-push-type': 'background' }
+      : { 'apns-priority': '10', 'apns-push-type': 'alert' };
+
+    const zahtevId = String(data.zahtev_id ?? '').trim();
+    if (!dataOnly && zahtevId) {
+      apnsHeaders['apns-collapse-id'] = zahtevId.slice(0, 64);
+    }
 
     const message: Record<string, unknown> = {
       token,
@@ -277,14 +330,10 @@ async function sendFcm(
         data: messageData,
       },
       apns: {
-        headers: { 'apns-priority': '10' },
+        headers: apnsHeaders,
         payload: {
-          aps: dataOnly
-            ? { 'content-available': 1 }
-            : {
-                alert: { title, body },
-                sound: 'default',
-              },
+          aps,
+          ...(iosAlternativa?.actionPayload ? { payload: iosAlternativa.actionPayload } : {}),
         },
       },
     };
@@ -313,8 +362,6 @@ async function sendFcm(
     };
   }
 }
-
-
 
 function isDeadFcmToken(status: number | undefined, error: string | undefined): boolean {
   if (status === 404) return true; // NotRegistered

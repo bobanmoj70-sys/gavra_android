@@ -164,37 +164,61 @@ Future<void> _ensureLocalNotificationsInitialized() async {
       DarwinNotificationCategory(
         'alternativa_oba',
         actions: <DarwinNotificationAction>[
-          DarwinNotificationAction.plain('accept_pre', 'Prihvati prvi termin'),
-          DarwinNotificationAction.plain('accept_posle', 'Prihvati drugi termin'),
+          DarwinNotificationAction.plain(
+            'accept_pre',
+            'Prihvati prvi termin',
+            options: <DarwinNotificationActionOption>{DarwinNotificationActionOption.foreground},
+          ),
+          DarwinNotificationAction.plain(
+            'accept_posle',
+            'Prihvati drugi termin',
+            options: <DarwinNotificationActionOption>{DarwinNotificationActionOption.foreground},
+          ),
           DarwinNotificationAction.plain('reject', 'Odbij', options: <DarwinNotificationActionOption>{
             DarwinNotificationActionOption.destructive,
+            DarwinNotificationActionOption.foreground,
           }),
         ],
       ),
       DarwinNotificationCategory(
         'alternativa_pre',
         actions: <DarwinNotificationAction>[
-          DarwinNotificationAction.plain('accept_pre', 'Prihvati termin'),
+          DarwinNotificationAction.plain(
+            'accept_pre',
+            'Prihvati termin',
+            options: <DarwinNotificationActionOption>{DarwinNotificationActionOption.foreground},
+          ),
           DarwinNotificationAction.plain('reject', 'Odbij', options: <DarwinNotificationActionOption>{
             DarwinNotificationActionOption.destructive,
+            DarwinNotificationActionOption.foreground,
           }),
         ],
       ),
       DarwinNotificationCategory(
         'alternativa_posle',
         actions: <DarwinNotificationAction>[
-          DarwinNotificationAction.plain('accept_posle', 'Prihvati termin'),
+          DarwinNotificationAction.plain(
+            'accept_posle',
+            'Prihvati termin',
+            options: <DarwinNotificationActionOption>{DarwinNotificationActionOption.foreground},
+          ),
           DarwinNotificationAction.plain('reject', 'Odbij', options: <DarwinNotificationActionOption>{
             DarwinNotificationActionOption.destructive,
+            DarwinNotificationActionOption.foreground,
           }),
         ],
       ),
       DarwinNotificationCategory(
         'mesto_oslobodjeno',
         actions: <DarwinNotificationAction>[
-          DarwinNotificationAction.plain('accept_pre', 'Prihvati'),
+          DarwinNotificationAction.plain(
+            'accept_pre',
+            'Prihvati',
+            options: <DarwinNotificationActionOption>{DarwinNotificationActionOption.foreground},
+          ),
           DarwinNotificationAction.plain('reject', 'Ne', options: <DarwinNotificationActionOption>{
             DarwinNotificationActionOption.destructive,
+            DarwinNotificationActionOption.foreground,
           }),
         ],
       ),
@@ -1182,7 +1206,19 @@ void onNotificationTap(NotificationResponse response) async {
   try {
     // V3 alternativa handling (Edge-only)
     // payload: "id|altPre|altPosle" ili "id|altPre|altPosle|mesto_oslobodjeno"
-    final parts = payload.split('|');
+    // iOS remote APNs može doneti FCM JSON umesto pipe stringa.
+    var actionPayload = payload;
+    if (!actionPayload.contains('|')) {
+      final zahtevId = (decodedData['zahtev_id'] ?? '').trim();
+      if (zahtevId.isNotEmpty) {
+        final altPre = (decodedData['alt_pre'] ?? '').trim();
+        final altPosle = (decodedData['alt_posle'] ?? '').trim();
+        final isMesto = (decodedData['offer_kind'] ?? '').trim() == 'mesto_oslobodjeno';
+        actionPayload = isMesto ? '$zahtevId|$altPre|$altPosle|mesto_oslobodjeno' : '$zahtevId|$altPre|$altPosle';
+      }
+    }
+
+    final parts = actionPayload.split('|');
     if (parts.length < 3 || parts[0].trim().isEmpty) {
       await _showActionFeedback('⚠️ Akcija nije izvršena', 'Neispravan format notifikacije.');
       return;
