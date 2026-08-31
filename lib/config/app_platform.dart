@@ -23,12 +23,16 @@ class AppPlatform {
   /// OSM / flutter_map User-Agent — use the running platform's store id.
   static String get mapUserAgentPackageName => !kIsWeb && Platform.isIOS ? iosBundleId : androidApplicationId;
 
-  // ── Native MethodChannels (Android MainActivity only; iOS uses plugins) ──
+  // ── Native MethodChannels ──
+  // Android MainActivity: wakelock + push_token (GMS / android id)
+  // iOS AppDelegate: push_actions (lock-screen alternativa akcije)
 
   static const String wakelockChannel = 'com.gavra013.gavra_android/wakelock';
   static const String pushTokenChannel = 'com.gavra013.gavra_android/push_token';
+  static const String pushActionsChannel = 'com.gavra013.gavra_android/push_actions';
 
   static const String methodWakeScreen = 'wakeScreen';
   static const String methodIsGmsAvailable = 'isGmsAvailable';
   static const String methodGetAndroidId = 'getAndroidId';
+  static const String methodGetPendingPushAction = 'getPendingAction';
 }
