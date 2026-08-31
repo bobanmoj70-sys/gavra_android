@@ -1145,13 +1145,28 @@ void onNotificationTap(NotificationResponse response) async {
   final decodedType = decodedPayload.type;
   final decodedData = decodedPayload.data;
 
-  // Tap na samu notifikaciju (bez action dugmeta) za putnik status flow
-  if (decodedType == 'zahtev_status') {
-    await _handleFcmLaunch(decodedType, decodedData);
-    return;
-  }
-
+  // Tap na telo notifikacije (bez action dugmeta).
   if (actionId == null) {
+    switch (decodedType) {
+      case 'zahtev_status':
+      case 'v3_zahtev_odobren':
+      case 'v3_zahtev_odbijen':
+      case 'v3_otkazano':
+      case 'putnik_eta_start':
+      case 'v3_alternativa':
+        await _handleFcmLaunch(decodedType, decodedData);
+        return;
+    }
+
+    final parts = payload.split('|');
+    if (parts.length >= 3 && parts[0].trim().isNotEmpty) {
+      await _showAlternativaFromData({
+        'zahtev_id': parts[0].trim(),
+        'alt_pre': parts[1].trim(),
+        'alt_posle': parts[2].trim(),
+        if (parts.length > 3) 'offer_kind': parts[3].trim(),
+      });
+    }
     return;
   }
 

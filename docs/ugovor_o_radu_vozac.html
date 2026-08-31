@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="sr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ugovor o radu – vozač limo servisa</title>
+    <style>
+        :root {
+            --ink: #111;
+            --muted: #444;
+            --line: #222;
+            --gold: #8a6d2f;
+            --bg: #f4f1ea;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Times New Roman", Times, serif;
+            color: var(--ink);
+            background: var(--bg);
+            margin: 0;
+            padding: 24px;
+            line-height: 1.45;
+        }
+
+        .page {
+            max-width: 820px;
+            margin: 0 auto 28px;
+            background: #fff;
+            padding: 42px 48px 36px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, .12);
+        }
+
+        .letterhead {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            border-bottom: 2.5px solid var(--line);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: .4px;
+            text-transform: uppercase;
+        }
+
+        .brand p,
+        .meta p {
+            margin: 2px 0;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        .meta {
+            text-align: right;
+            font-size: 12.5px;
+        }
+
+        .doc-title {
+            text-align: center;
+            margin: 22px 0 6px;
+        }
+
+        .doc-title h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+
+        .doc-title .sub {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        p {
+            margin: 8px 0;
+            font-size: 14.5px;
+            text-align: justify;
+        }
+
+        h3 {
+            font-size: 14.5px;
+            margin: 18px 0 8px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 3px;
+        }
+
+        .blank {
+            display: inline-block;
+            min-width: 180px;
+            border-bottom: 1px solid #111;
+            padding: 0 4px;
+        }
+
+        .blank.sm {
+            min-width: 90px;
+        }
+
+        .blank.lg {
+            min-width: 280px;
+        }
+
+        ul {
+            margin: 6px 0 8px 18px;
+            padding: 0;
+        }
+
+        li {
+            font-size: 14.5px;
+            margin: 3px 0;
+        }
+
+        table.data {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0 14px;
+            font-size: 13.5px;
+        }
+
+        table.data th,
+        table.data td {
+            border: 1px solid #333;
+            padding: 6px 8px;
+            vertical-align: top;
+        }
+
+        table.data th {
+            width: 34%;
+            background: #f7f4ee;
+            text-align: left;
+            font-weight: 700;
+        }
+
+        .note {
+            font-size: 12.5px;
+            color: var(--muted);
+            border-left: 3px solid var(--gold);
+            padding: 6px 10px;
+            margin: 12px 0;
+            background: #faf7f0;
+        }
+
+        .sign-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+            margin-top: 42px;
+        }
+
+        .sign {
+            width: 46%;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .sign .line {
+            margin-top: 56px;
+            border-top: 1px solid #111;
+            padding-top: 6px;
+        }
+
+        .copies {
+            margin-top: 28px;
+            font-size: 12.5px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .no-print {
+            max-width: 820px;
+            margin: 0 auto 16px;
+            background: #fff8e6;
+            border: 1px solid #e0c56d;
+            padding: 12px 16px;
+            font-family: Arial, sans-serif;
+            font-size: 13.5px;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .page {
+                box-shadow: none;
+                padding: 18mm 16mm;
+                margin: 0;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            h3 {
+                break-after: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print">
+        <strong>Kako da koristiš:</strong> ostala su prazna polja za LK, vozačku, datum i vozilo. Štampaj
+        (Ctrl+P). Ovo je radni obrazac, nije pravni savet.
+        Pre potpisa prijavi radnika na CROSO.
+    </div>
+
+    <div class="page">
+        <header class="letterhead">
+            <div class="brand">
+                <h1>Bojan Gavrilović PR<br>Limo servis GAVRA 013</h1>
+                <p>Partizanska 51, 26340 Bela Crkva, Republika Srbija</p>
+                <p>PIB: 102853497 &nbsp;|&nbsp; MB: 55572178</p>
+                <p>Delatnost: 4932 – Taksi prevoz</p>
+            </div>
+            <div class="meta">
+                <p>Tel: 064/11-62-560</p>
+                <p>e-mail: gavriconi@gmail.com</p>
+                <p>Broj ugovora: <span class="blank sm">______/2026</span></p>
+                <p>Mesto: Bela Crkva</p>
+                <p>Datum: <span class="blank sm">__________</span></p>
+            </div>
+        </header>
+
+        <div class="doc-title">
+            <h2>Ugovor o radu</h2>
+            <p class="sub">za poslove vozača limo servisa / taksi prevoza<br>
+                zaključen u skladu sa Zakonom o radu („Sl. glasnik RS“, br. 24/2005 i dalje)</p>
+        </div>
+
+        <p>
+            Zaključen između:
+        </p>
+
+        <p>
+            <strong>1. Poslodavca:</strong>
+            <strong>BOJAN GAVRILOVIĆ PR LIMO SERVIS GAVRA 013 BELA CRKVA</strong>,
+            sa sedištem u Beloj Crkvi, Partizanska 51, PIB 102853497, MB 55572178,
+            koga zastupa preduzetnik <strong>Bojan Gavrilović</strong> (u daljem tekstu: <strong>Poslodavac</strong>),
+        </p>
+        <p>i</p>
+        <p>
+            <strong>2. Zaposlenog:</strong>
+            <strong>Goran Bilevski</strong>,
+            JMBG <strong>2610983870228</strong>,
+            broj lične karte <strong>014191090</strong>,
+            izdate od <strong>Policijske stanice Bela Crkva</strong>,
+            prebivalište <strong>Vojske Jugoslavije 82/14, 26340 Bela Crkva</strong>,
+            broj vozačke dozvole <strong>000001005</strong>,
+            kategorije <span class="blank sm">B</span>
+            (u daljem tekstu: <strong>Zaposleni</strong>).
+        </p>
+
+        <h3>Član 1. Predmet ugovora</h3>
+        <p>
+            Poslodavac prima Zaposlenog u radni odnos na poslove
+            <strong>vozača limo servisa / vozača putničkog motornog vozila</strong>
+            (šifra delatnosti poslodavca 4932 – taksi prevoz), a Zaposleni prihvata da te poslove
+            obavlja savjesno, stručno i u skladu sa propisima, ovim ugovorom i uputstvima Poslodavca.
+        </p>
+
+        <h3>Član 2. Vrsta i trajanje radnog odnosa</h3>
+        <p>
+            Radni odnos zasniva se na <strong>neodređeno vreme</strong> / <strong>određeno vreme</strong>
+            do <span class="blank sm"></span> (zaokružiti i popuniti).
+        </p>
+        <p>
+            Dan početka rada je <strong>1. septembar 2026. godine</strong>.
+            Ako Zaposleni ne stupi na rad tog dana bez opravdanog razloga, smatra se da nije zasnovao radni odnos.
+        </p>
+        <p>
+            Ugovara se <strong>probni rad u trajanju od 3 (tri) meseca</strong> od dana stupanja na rad.
+            Za vreme probnog rada svaka strana može otkazati ugovor sa otkaznim rokom od
+            <strong>5 radnih dana</strong>. Ako Zaposleni ne pokaže odgovarajuće radne i stručne sposobnosti,
+            Poslodavac može otkazati ugovor i po isteku probnog rada, uz obrazloženje.
+        </p>
+
+        <h3>Član 3. Mesto rada</h3>
+        <p>
+            Mesto rada je sedište Poslodavca u Beloj Crkvi, Partizanska 51, kao i
+            <strong>sva mesta i relacije na kojima Poslodavac obavlja prevoz putnika</strong>
+            (lokalni, vanlinijski i limo prevoz na teritoriji Republike Srbije i, po potrebi, inostranstva),
+            uključujući polazišta, destinacije klijenata i privremena stajališta.
+        </p>
+        <p>
+            Zaposleni je saglasan da, prema rasporedu vožnji, radi i van sedišta Poslodavca.
+        </p>
+
+        <h3>Član 4. Opis poslova</h3>
+        <p>Zaposleni je dužan da, između ostalog:</p>
+        <ul>
+            <li>upravlja putničkim vozilom Poslodavca radi prevoza putnika i prtljaga, prema nalogu i rasporedu;</li>
+            <li>prima i izvršava vožnje uredno, ljubazno i bezbedno, uz poštovanje saobraćajnih propisa;</li>
+            <li>održava vozilo čistim (spolja i iznutra) i prijavljuje kvarove, oštećenja i nestanak goriva;</li>
+            <li>proverava tehničku ispravnost vozila pre polaska (gume, svetla, tečnosti, dokumentacija);</li>
+            <li>vodi evidenciju vožnji, putnih naloga i primljenih sredstava, ako mu to Poslodavac poveri;</li>
+            <li>čuva poslovnu tajnu, podatke o klijentima i sadržaj vožnji;</li>
+            <li>nosi urednu odeću / uniformu koju odredi Poslodavac;</li>
+            <li>ne koristi alkohol, opojna sredstva ni psihoaktivne supstance pre i za vreme rada;</li>
+            <li>odmah obavesti Poslodavca o saobraćajnoj nezgodi, kazni, oduzimanju dozvole ili bolesti;</li>
+            <li>obavlja i druge poslove svog radnog mesta po nalogu Poslodavca, u skladu sa zakonom.</li>
+        </ul>
+
+        <h3>Član 5. Radno vreme</h3>
+        <p>
+            Puno radno vreme iznosi <strong>40 časova nedeljno</strong>, po pravilu 8 časova dnevno,
+            od ponedeljka do petka, u vremenu koje odredi Poslodavac rasporedom
+            (zbog prirode limo / taksi prevoza rad se može obavljati i subotom, nedeljom,
+            noću i na državni praznik).
+        </p>
+        <p>
+            Poslodavac može uvesti <strong>preraspodelu radnog vremena</strong> u skladu sa zakonom,
+            tako da ukupno radno vreme u periodu preraspodele u proseku ne prelazi puno radno vreme.
+        </p>
+        <p>
+            Prekovremeni rad, noćni rad i rad na praznik obračunavaju se i uvećavaju u skladu sa Zakonom o radu.
+            Zaposleni ima pravo na odmor u toku dnevnog rada, dnevni i nedeljni odmor, u skladu sa zakonom.
+        </p>
+
+        <h3>Član 6. Zarada – minimalna cena rada</h3>
+        <p>
+            Zaposlenom pripada <strong>osnovna zarada u visini minimalne zarade</strong>
+            utvrđene odlukom nadležnog organa Republike Srbije.
+        </p>
+        <p>
+            Za 2026. godinu minimalna cena rada iznosi <strong>371,00 dinara neto po radnom času</strong>.
+            Mesecna neto zarada zavisi od broja ostvarenih časova rada u tom mesecu, npr.:
+        </p>
+        <table class="data">
+            <tr>
+                <th>Osnov</th>
+                <td>Minimalna cena rada (neto / čas)</td>
+            </tr>
+            <tr>
+                <th>Cena časa (2026.)</th>
+                <td>371,00 RSD neto</td>
+            </tr>
+            <tr>
+                <th>Puno vreme 174 časa (orijentir)</th>
+                <td>oko 64.554,00 RSD neto</td>
+            </tr>
+            <tr>
+                <th>Primer: 176 časova (22 radna dana)</th>
+                <td>65.296,00 RSD neto</td>
+            </tr>
+            <tr>
+                <th>Isplata</th>
+                <td>najkasnije do 5. u mesecu za prethodni mesec, na tekući račun Zaposlenog</td>
+            </tr>
+        </table>
+        <p>
+            Ako se zakonom ili odlukom Vlade promeni visina minimalne cene rada,
+            <strong>osnovna zarada se automatski usklađuje</strong> na novi iznos, bez aneksa ovog ugovora.
+        </p>
+        <p>
+            U zaradu ulaze i zakonom propisana uvećanja (minuli rad 0,4% po godini staža kod Poslodavca,
+            prekovremeni rad najmanje 26%, noćni rad najmanje 26%, rad na praznik najmanje 110% i sl.).
+        </p>
+        <p>
+            Poslodavac obračunava i plaća porez i doprinose za obavezno socijalno osiguranje
+            u skladu sa propisima. Zaposleni može ostvariti i stimulaciju / deo od vožnje
+            prema pisanom pravilniku ili aneksu, ako ga Poslodavac uvede, što ne sme da smanji
+            minimalnu zaradu.
+        </p>
+        <div class="note">
+            Minimalna zarada se obračunava prema stvarno ostvarenim časovima u mesecu.
+            Bruto iznos knjigovođa obračunava prema važećem neoporezivom cenzusu
+            (za 2026: 34.221 RSD).
+        </div>
+
+        <h3>Član 7. Ostala primanja i troškovi</h3>
+        <p>
+            Zaposleni ima pravo na naknadu troškova prevoza za dolazak i odlazak sa rada
+            u visini cene prevozne karte u javnom saobraćaju, ako taj prevoz Poslodavac nije
+            drugačije obezbedio, kao i na naknadu za ishranu u toku rada i regres za godišnji odmor,
+            u skladu sa zakonom i odlukom Poslodavca, a najmanje u zakonskom minimumu ako bude propisan.
+        </p>
+        <p>
+            Gorivo, putarine, parking vezan za službenu vožnju i sitni servis po nalogu
+            snosi Poslodavac, uz priložene fiskalne račune. Zaposleni ne sme koristiti službeno
+            vozilo u privatne svrhe bez pisane saglasnosti Poslodavca.
+        </p>
+
+        <h3>Član 8. Godišnji odmor i odsustva</h3>
+        <p>
+            Zaposleni ima pravo na godišnji odmor u trajanju od <strong>20 radnih dana</strong> po kalendarskoj godini
+            (može se uvećati odlukom Poslodavca). Raspored odmora utvrđuje Poslodavac, vodeći računa
+            o potrebama posla i zahtevu Zaposlenog. Plaćeno i neplaćeno odsustvo, bolovanje i porodiljsko
+            ostvaruju se po zakonu.
+        </p>
+
+        <h3>Član 9. Vozilo, oprema i odgovornost</h3>
+        <p>
+            Poslodavac poverava Zaposlenom na korišćenje službeno vozilo:
+            marka/model <span class="blank"></span>,
+            reg. oznaka <span class="blank sm"></span>,
+            sa ključevima, saobraćajnom dozvolom, polisom osiguranja i ostalom opremom.
+        </p>
+        <p>
+            Zaposleni odgovara za štetu koju na radu ili u vezi sa radom namerno ili krajnjom nepažnjom
+            prouzrokuje Poslodavcu (uključujući vozilo, opremu i novac klijenata), u skladu sa zakonom.
+            Kazne za saobraćajne prekršaje učinjene krivicom Zaposlenog snosi Zaposleni.
+        </p>
+
+        <h3>Član 10. Zaštita na radu i zdravstvena sposobnost</h3>
+        <p>
+            Zaposleni je dužan da poštuje mere bezbednosti i zdravlja na radu i da se podvrgne
+            lekarskim pregledima koje Poslodavac odredi. Uslov za rad je važeća vozačka dozvola
+            odgovarajuće kategorije i zdravstvena sposobnost za upravljanje vozilom.
+            Gubitak vozačke dozvole ili zabrana upravljanja predstavlja razlog zbog kojeg
+            Zaposleni ne može da obavlja ugovorene poslove.
+        </p>
+
+        <h3>Član 11. Obaveze Poslodavca</h3>
+        <ul>
+            <li>da Zaposlenog prijavi na obavezno socijalno osiguranje pre stupanja na rad;</li>
+            <li>da obezbedi rad, vozilo i uslove za bezbedan rad;</li>
+            <li>da obračuna i isplati zaradu u roku iz člana 6;</li>
+            <li>da poštuje dostojanstvo, jednakost i zaštitu ličnih podataka Zaposlenog;</li>
+            <li>da vodi propisanu evidenciju o radnom vremenu i zaradama.</li>
+        </ul>
+
+        <h3>Član 12. Zabrane</h3>
+        <p>
+            Zaposleni ne sme da, za svoj ili tuđi račun, obavlja iste ili slične poslove prevoza
+            putnika u konkurenciji Poslodavcu, niti da odvlači klijente, bez pisane saglasnosti Poslodavca.
+            Zabranjeno je preuzimanje „divljih“ vožnji van evidencije Poslodavca.
+        </p>
+
+        <h3>Član 13. Prestanak radnog odnosa</h3>
+        <p>
+            Radni odnos prestaje na način i iz razloga predviđenih Zakonom o radu
+            (sporazum, otkaz, isteka određenog vremena, silom zakona i dr.).
+        </p>
+        <p>
+            Otkazni rok pri otkazu od strane Zaposlenog iznosi <strong>15 dana</strong>,
+            a pri otkazu od strane Poslodavca utvrđuje se u skladu sa zakonom
+            (najmanje 8, a najviše 30 dana, zavisno od staža osiguranja).
+            U slučaju povrede radne obaveze ili nepoštovanja radne discipline,
+            Poslodavac postupa po zakonskoj proceduri (upozorenje, otkaz).
+        </p>
+        <p>
+            Na dan prestanka rada Zaposleni je dužan da preda vozilo, ključeve, dokumentaciju,
+            opremu i novac, u stanju koje odgovara redovnoj upotrebi.
+        </p>
+
+        <h3>Član 14. Lični podaci</h3>
+        <p>
+            Zaposleni je saglasan da Poslodavac obrađuje njegove lične podatke isključivo
+            radi izvršenja ovog ugovora, prijave na osiguranje, obračuna zarade i vođenja
+            zakonskih evidencija, u skladu sa propisima o zaštiti podataka o ličnosti.
+        </p>
+
+        <h3>Član 15. Završne odredbe</h3>
+        <p>
+            Na sva pitanja koja nisu uređena ovim ugovorom primenjuje se Zakon o radu
+            i drugi važeći propisi Republike Srbije. Sporove rešava nadležni sud
+            prema sedištu Poslodavca, po prethodnom pokušaju sporazuma.
+        </p>
+        <p>
+            Izmene ugovora vrše se aneksom u pisanoj formi, osim automatskog usklađivanja
+            minimalne zarade iz člana 6.
+        </p>
+        <p>
+            Ugovor je sačinjen u 3 (tri) istovetna primerka, od kojih 2 zadržava Poslodavac
+            (dosije i knjigovodstvo), a 1 Zaposleni.
+        </p>
+        <p>
+            Potpisivanjem ugovora strane potvrđuju da su ga pročitale, razumele i da ga
+            prihvataju u celosti.
+        </p>
+
+        <div class="sign-row">
+            <div class="sign">
+                <strong>ZAPOSLENI</strong>
+                <div class="line">
+                    Goran Bilevski, svojom rukom
+                </div>
+            </div>
+            <div class="sign">
+                <strong>POSLODAVAC</strong><br>
+                Bojan Gavrilović PR<br>
+                Limo servis GAVRA 013
+                <div class="line">
+                    Bojan Gavrilović, preduzetnik
+                </div>
+            </div>
+        </div>
+        <p class="copies">
+            Prilozi: fotokopija lične karte, vozačke dozvole i tekućeg računa Zaposlenog;
+            zapisnik o primopredaji vozila (ako se predaje prilikom potpisa).
+        </p>
+    </div>
+</body>
+
+</html>

@@ -393,7 +393,7 @@ Deno.serve(async (req) => {
     const normalizedTokens = normalizeTokens(payload.tokens);
     const title = String(payload.title ?? '').trim();
     const body = String(payload.body ?? '').trim();
-    let dataOnly = Boolean(payload.data_only);
+    const dataOnly = Boolean(payload.data_only);
     const rawData = toStringData(payload.data);
     const alignedDataResult = alignAndValidateData(payload, rawData);
 
@@ -409,11 +409,9 @@ Deno.serve(async (req) => {
     const resolvedTitle = resolveLocalizedText(title, data, 'title', localeCode);
     const resolvedBody = resolveLocalizedText(body, data, 'body', localeCode);
 
-    const pushType = String(data.type ?? '').trim();
-    if (pushType === 'v3_alternativa') {
-      // v3_alternativa: data-only na obe platforme — app gradi action notifikaciju.
-      dataOnly = true;
-    }
+    // Android je uvek data-only (nema android.notification bloka).
+    // dataOnly utiče samo na iOS APNs: silent push ne budi ugašenu app,
+    // zato alternativa ide kao običan iOS alert.
 
     if (normalizedTokens.length === 0) {
       return new Response(
