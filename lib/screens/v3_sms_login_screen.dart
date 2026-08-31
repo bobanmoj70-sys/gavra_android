@@ -438,6 +438,10 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
     }
 
     V3AppSnackBar.success(context, _tr('pinPodesen'));
+    setState(() {
+      _isLoading = false;
+      _statusMessage = '';
+    });
     await widget.onVerified(phone, authId);
   }
 
@@ -555,7 +559,8 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       return;
     }
 
-    if (_vozacPinOnlyOnboarding) {
+    if (_vozacPinOnlyOnboarding ||
+        (_addressOnlyOnboarding && _requirePin && !_requireBcAddress && !_requireVsAddress)) {
       await _saveVozacPinOnly(phone: phone, authId: authId);
       return;
     }

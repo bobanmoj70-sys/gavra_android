@@ -53,9 +53,9 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim() ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")?.trim() ?? "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim() ?? "";
 
-    if (!supabaseUrl || !anonKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return json(200, { ok: false, reason: "missing_supabase_credentials" });
     }
 
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       return json(200, { ok: false, reason: "invalid_old_pin_format" });
     }
 
-    const client = createClient(supabaseUrl, anonKey, {
+    const client = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 

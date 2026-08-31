@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -166,11 +168,12 @@ class V3ClosedAuthService {
       final response = await _client.functions.invoke(
         'v3-pin-auth',
         body: {'action': 'set', 'v3_auth_id': authId, 'pin': cleanPin},
-      );
+      ).timeout(const Duration(seconds: 12));
       final status = response.status;
       final data = response.data;
       if (status < 200 || status >= 300 || data is! Map) return false;
-      return data['ok'] == true;
+      if (data['ok'] == true) return true;
+      return data['reason']?.toString() == 'pin_already_set';
     } catch (e) {
       debugPrint('[V3ClosedAuthService] setPin error: $e');
       return false;
