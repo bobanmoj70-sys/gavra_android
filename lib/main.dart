@@ -1153,20 +1153,12 @@ void onNotificationTap(NotificationResponse response) async {
       case 'v3_zahtev_odbijen':
       case 'v3_otkazano':
       case 'putnik_eta_start':
-      case 'v3_alternativa':
         await _handleFcmLaunch(decodedType, decodedData);
         return;
     }
 
-    final parts = payload.split('|');
-    if (parts.length >= 3 && parts[0].trim().isNotEmpty) {
-      await _showAlternativaFromData({
-        'zahtev_id': parts[0].trim(),
-        'alt_pre': parts[1].trim(),
-        'alt_posle': parts[2].trim(),
-        if (parts.length > 3) 'offer_kind': parts[3].trim(),
-      });
-    }
+    // Lokalna alternativa već ima action dugmad. Tap na telo samo otvara app,
+    // ne sme da prikaže isti banner ponovo.
     return;
   }
 

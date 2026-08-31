@@ -119,38 +119,6 @@ function resolveLocalizedText(
   return baseText;
 }
 
-async function resolveRecipientLocale(payload: PushPayload, data: Record<string, string>): Promise<string> {
-  // VAŽNO: normalizeLocaleCode uvek vraća string (default 'sr'), pa ne sme da se koristi
-  // za proveru "da li je locale_code eksplicitno prosleđen". Prvo proveravamo sirovu
-  // vrednost — samo ako je stvarno prosleđena, koristimo je bez upita ka bazi.
-  const rawExplicit = String(data.locale_code ?? payload._secrets?.locale_code ?? '').trim();
-  if (rawExplicit) return normalizeLocaleCode(rawExplicit);
-
-  const recipientId = String(payload.recipient_id ?? data.recipient_id ?? '').trim();
-  if (!recipientId) return 'sr';
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
-  if (!supabaseUrl || !serviceRoleKey) return 'sr';
-
-  try {
-    const client = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const { data: recipient, error } = await client
-      .from('v3_auth')
-      .select('locale_code')
-      .eq('id', recipientId)
-      .maybeSingle();
-
-    if (error) return 'sr';
-    return normalizeLocaleCode(recipient?.locale_code);
-  } catch {
-    return 'sr';
-  }
-}
-
 function alignAndValidateData(payload: PushPayload, data: Record<string, string>): { ok: true; data: Record<string, string> } | { ok: false; error: string } {
   const aligned = { ...data };
   const payloadType = String(payload.type ?? '').trim();
@@ -380,6 +348,50 @@ async function clearDeadTokens(tokens: string[]): Promise<void> {
   }
 }
 
+async function resolveLocalesByToken(
+  tokens: string[],
+  payload: PushPayload,
+  data: Record<string, string>,
+): Promise<Map<string, string>> {
+  const localeByToken = new Map<string, string>();
+  const rawExplicit = String(data.locale_code ?? payload._secrets?.locale_code ?? '').trim();
+  if (rawExplicit) {
+    const locale = normalizeLocaleCode(rawExplicit);
+    for (const token of tokens) localeByToken.set(token, locale);
+    return localeByToken;
+  }
+
+  if (tokens.length === 0) return localeByToken;
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
+  if (!supabaseUrl || !serviceRoleKey) return localeByToken;
+
+  try {
+    const client = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const [{ data: rows1 }, { data: rows2 }] = await Promise.all([
+      client.from('v3_auth').select('push_token, locale_code').in('push_token', tokens),
+      client.from('v3_auth').select('push_token_2, locale_code').in('push_token_2', tokens),
+    ]);
+
+    for (const row of rows1 ?? []) {
+      const token = String(row?.push_token ?? '').trim();
+      if (token) localeByToken.set(token, normalizeLocaleCode(row?.locale_code));
+    }
+    for (const row of rows2 ?? []) {
+      const token = String(row?.push_token_2 ?? '').trim();
+      if (token) localeByToken.set(token, normalizeLocaleCode(row?.locale_code));
+    }
+  } catch {
+    // fallback sr per token below
+  }
+
+  return localeByToken;
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
@@ -405,9 +417,6 @@ Deno.serve(async (req) => {
     }
 
     const data = alignedDataResult.data;
-    const localeCode = await resolveRecipientLocale(payload, data);
-    const resolvedTitle = resolveLocalizedText(title, data, 'title', localeCode);
-    const resolvedBody = resolveLocalizedText(body, data, 'body', localeCode);
 
     // Android je uvek data-only (nema android.notification bloka).
     // dataOnly utiče samo na iOS APNs: silent push ne budi ugašenu app,
@@ -420,8 +429,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    const localeByToken = await resolveLocalesByToken(normalizedTokens.map((t) => t.token), payload, data);
+
     const results: PushResult[] = await Promise.all(
-      normalizedTokens.map((tokenItem) => sendFcm(tokenItem.token, resolvedTitle, resolvedBody, dataOnly, data, payload)),
+      normalizedTokens.map((tokenItem) => {
+        const tokenLocale = localeByToken.get(tokenItem.token) ?? 'sr';
+        const titleLocalized = resolveLocalizedText(title, data, 'title', tokenLocale);
+        const bodyLocalized = resolveLocalizedText(body, data, 'body', tokenLocale);
+        return sendFcm(tokenItem.token, titleLocalized, bodyLocalized, dataOnly, data, payload);
+      }),
     );
 
     const sent = results.filter((entry) => entry.ok).length;

@@ -218,15 +218,17 @@ Deno.serve(async (req) => {
             body: "Vaš uređaj je odjavljen jer je prijavljen novi uređaj potvrđen PIN kodom.",
             data: {
               type: "v3_device_replaced",
-              locale_code: incomingLocaleCode || String(existing.locale_code ?? "").trim() || "sr",
+              locale_code: String(existing.locale_code ?? "").trim() || incomingLocaleCode || "sr",
               title_sr: "Bezbednosno obaveštenje",
               title_en: "Security notice",
               title_ru: "Уведомление безопасности",
               title_de: "Sicherheitsmeldung",
+              title_zh: "安全通知",
               body_sr: "Vaš uređaj je odjavljen jer je prijavljen novi uređaj potvrđen PIN kodom.",
               body_en: "Your device was signed out because a new device was approved with a PIN code.",
               body_ru: "Ваше устройство было отключено, потому что новое устройство было подтверждено PIN-кодом.",
               body_de: "Ihr Gerät wurde abgemeldet, weil ein neues Gerät per PIN-Code bestätigt wurde.",
+              body_zh: "您的设备已退出，因为新设备已通过 PIN 码确认。",
             },
           }),
         }).catch((e: unknown) => console.error("send-push-notification failed", e));
