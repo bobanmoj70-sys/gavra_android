@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -13,6 +14,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'config/app_platform.dart';
 import 'globals.dart';
 import 'screens/v3_putnik_profil_screen.dart';
 import 'screens/v3_welcome_screen.dart';
@@ -43,6 +45,10 @@ DateTime? _lastLocaleResumeSyncAt;
 bool _pushTokenConfirmed = false;
 bool _fcmHandlersInitialized = false;
 final Map<String, DateTime> _canceledStatusPushSeenAt = <String, DateTime>{};
+String _lastProcessedPushActionKey = '';
+DateTime? _lastProcessedPushActionAt;
+const MethodChannel _iosPushActionsChannel = MethodChannel(AppPlatform.pushActionsChannel);
+bool _iosPushActionsBridgeInitialized = false;
 const Duration _canceledStatusPushDedupWindow = Duration(seconds: 20);
 
 bool _isCanceledZahtevStatusPush({
@@ -554,6 +560,14 @@ Future<void> _doStartupTasks() async {
     timeout: const Duration(seconds: 8),
     retries: 2,
   );
+  if (Platform.isIOS) {
+    _startBackgroundTask(
+      label: 'iOS push action bridge',
+      task: _initIosPushActionBridge,
+      timeout: const Duration(seconds: 8),
+      retries: 1,
+    );
+  }
 }
 
 Future<bool> _ensureFirebaseInitialized() async {
@@ -915,11 +929,14 @@ Future<void> _handleIncomingFcmMessage(
   }
 
   if (type == 'v3_alternativa') {
-    await _showAlternativaFromData(
-      data,
-      title: title,
-      body: body,
-    );
+    // iOS background/killed: OS već prikazuje APNs alert sa kategorijom.
+    if (source == 'foreground' || !Platform.isIOS) {
+      await _showAlternativaFromData(
+        data,
+        title: title,
+        body: body,
+      );
+    }
     return;
   }
 
@@ -934,6 +951,9 @@ Future<void> _handleIncomingFcmMessage(
     );
     return;
   }
+
+  // iOS APNs alert je već prikazan — ne crtaj drugi lokalni banner.
+  if (Platform.isIOS) return;
 
   // background / killed — data-only push mora da prikaže lokalnu notifikaciju
   await _ensureLocalNotificationsInitialized();
@@ -967,7 +987,7 @@ Future<void> _handleIncomingFcmMessage(
 /// Tipovi koji otvaraju V3PutnikProfilScreen:
 ///  - `zahtev_status`, `v3_zahtev_odobren`, `v3_zahtev_odbijen`, `v3_otkazano`, `putnik_eta_start`
 /// Posebni tipovi:
-///  - `v3_alternativa` → prikazuje dijalog za izbor alternativnog termina
+///  - `v3_alternativa` → tap na telo samo otvara app; akcije idu kroz native/local handler
 Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
   // Sačekaj da navigator bude dostupan (max 5s)
   for (var i = 0; i < 50; i++) {
@@ -985,7 +1005,8 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
 
   switch (type) {
     case 'v3_alternativa':
-      await _showAlternativaFromData(data);
+      // Tap na telo samo otvara app. Akcije idu kroz lokalni handler / iOS native bridge.
+      debugPrint('[FCM launch] v3_alternativa body tap — bez ponovnog bannera');
       return;
 
     case 'zahtev_status':
@@ -1004,6 +1025,67 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
       debugPrint('[FCM launch] Nepoznat type=$type, ignoriši');
       return;
   }
+}
+
+Future<void> _initIosPushActionBridge() async {
+  if (!Platform.isIOS || _iosPushActionsBridgeInitialized) return;
+
+  _iosPushActionsChannel.setMethodCallHandler((call) async {
+    if (call.method != 'pushAction') return;
+    final args = call.arguments;
+    if (args is! Map) return;
+    final mapped = args.map((key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
+    await _handleNativeRemotePushAction(
+      actionId: mapped['actionId'] ?? '',
+      payload: mapped['payload'] ?? '',
+    );
+  });
+
+  _iosPushActionsBridgeInitialized = true;
+  await _consumePendingIosPushAction();
+}
+
+Future<void> _consumePendingIosPushAction() async {
+  if (!Platform.isIOS) return;
+  try {
+    final pending = await _iosPushActionsChannel.invokeMethod<dynamic>(
+      AppPlatform.methodGetPendingPushAction,
+    );
+    if (pending is! Map) return;
+    final mapped = pending.map((key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
+    await _handleNativeRemotePushAction(
+      actionId: mapped['actionId'] ?? '',
+      payload: mapped['payload'] ?? '',
+    );
+  } catch (e) {
+    debugPrint('[Push] iOS pending action greška: $e');
+  }
+}
+
+Future<void> _handleNativeRemotePushAction({
+  required String actionId,
+  required String payload,
+}) async {
+  final safeActionId = actionId.trim();
+  final safePayload = payload.trim();
+  if (safeActionId.isEmpty || safePayload.isEmpty) return;
+  await _processAlternativaNotificationAction(
+    actionId: safeActionId,
+    payload: safePayload,
+  );
+}
+
+bool _shouldSkipDuplicatePushAction(String actionId, String payload) {
+  final key = '$actionId|$payload';
+  final now = DateTime.now();
+  if (_lastProcessedPushActionKey == key &&
+      _lastProcessedPushActionAt != null &&
+      now.difference(_lastProcessedPushActionAt!) <= const Duration(seconds: 8)) {
+    return true;
+  }
+  _lastProcessedPushActionKey = key;
+  _lastProcessedPushActionAt = now;
+  return false;
 }
 
 /// Inicijalizacija notification handlers + push token sync (manual SMS tok)
@@ -1187,8 +1269,21 @@ void onNotificationTap(NotificationResponse response) async {
   }
 
   debugPrint('Notification Action Clicked: $actionId, Payload: $payload');
+  await _processAlternativaNotificationAction(
+    actionId: actionId,
+    payload: payload,
+  );
+}
 
-  // Cold start — Supabase možda nije inicijalizovan
+Future<void> _processAlternativaNotificationAction({
+  required String actionId,
+  required String payload,
+}) async {
+  if (_shouldSkipDuplicatePushAction(actionId, payload)) {
+    debugPrint('[Push] Preskočena dupla alternativa akcija.');
+    return;
+  }
+
   if (!isSupabaseReady) {
     try {
       final ready = await _ensureSupabaseInitialized();
@@ -1204,9 +1299,8 @@ void onNotificationTap(NotificationResponse response) async {
   }
 
   try {
-    // V3 alternativa handling (Edge-only)
-    // payload: "id|altPre|altPosle" ili "id|altPre|altPosle|mesto_oslobodjeno"
-    // iOS remote APNs može doneti FCM JSON umesto pipe stringa.
+    final decodedPayload = _decodeTapPayload(payload);
+    final decodedData = decodedPayload.data;
     var actionPayload = payload;
     if (!actionPayload.contains('|')) {
       final zahtevId = (decodedData['zahtev_id'] ?? '').trim();
@@ -1278,6 +1372,7 @@ void onNotificationTap(NotificationResponse response) async {
 }
 
 Future<void> _showActionFeedback(String title, String body) async {
+  await _ensureLocalNotificationsInitialized();
   final androidDetails = AndroidNotificationDetails(
     'gavra_push_v2',
     'Gavra obaveštenja',
@@ -1294,7 +1389,14 @@ Future<void> _showActionFeedback(String title, String body) async {
     DateTime.now().millisecondsSinceEpoch.remainder(100000),
     title,
     body,
-    NotificationDetails(android: androidDetails),
+    NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        presentBadge: false,
+      ),
+    ),
   );
 }
 
@@ -1453,6 +1555,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_syncLocaleOnResume());
+      unawaited(_consumePendingIosPushAction());
     }
   }
 

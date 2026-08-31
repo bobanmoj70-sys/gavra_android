@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -91,19 +92,17 @@ class V3PushTokenProvider {
       String? apnsToken;
       if (isIos) {
         // Permission UI is owned by V3RolePermissionService — here only token fetch.
-        final rawApns = await messaging.getAPNSToken().timeout(
-              const Duration(seconds: 2),
-              onTimeout: () => null,
-            );
-        final safeApns = (rawApns ?? '').trim();
-        if (safeApns.isNotEmpty) {
-          await _writeTokenSafely(_lastApnsTokenStorageKey, safeApns);
-          apnsToken = safeApns;
+        // getToken() na iOS baca ako APNs još nije stigao.
+        final resolvedApns = await _waitForApnsToken(messaging);
+        if (resolvedApns == null || resolvedApns.isEmpty) {
+          debugPrint('[PushTokenProvider] APNs token not ready — skip FCM getToken.');
+          return _fallbackToken(isIos: true);
         }
+        apnsToken = resolvedApns;
       }
 
-      final timeout = isIos ? const Duration(seconds: 15) : const Duration(seconds: 8);
-      final token = await messaging.getToken().timeout(timeout, onTimeout: () => null);
+      final tokenTimeout = isIos ? const Duration(seconds: 12) : const Duration(seconds: 8);
+      final token = await messaging.getToken().timeout(tokenTimeout, onTimeout: () => null);
       final safeToken = (token ?? '').trim();
       if (safeToken.isNotEmpty) {
         await _writeTokenSafely(_lastFcmTokenStorageKey, safeToken);
@@ -115,6 +114,27 @@ class V3PushTokenProvider {
       debugPrint('[PushTokenProvider] FCM token unavailable (${isIos ? 'iOS' : 'Android'}): $e');
       return _fallbackToken(isIos: isIos);
     }
+  }
+
+  static Future<String?> _waitForApnsToken(FirebaseMessaging messaging) async {
+    const delaysMs = <int>[0, 300, 500, 800, 1200, 1500, 2000];
+    for (final delayMs in delaysMs) {
+      if (delayMs > 0) {
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
+      }
+      try {
+        final rawApns = await messaging.getAPNSToken().timeout(
+              const Duration(seconds: 1),
+              onTimeout: () => null,
+            );
+        final safeApns = (rawApns ?? '').trim();
+        if (safeApns.isNotEmpty) {
+          await _writeTokenSafely(_lastApnsTokenStorageKey, safeApns);
+          return safeApns;
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 
   static Future<V3PushTokenResult?> _fallbackToken({bool isIos = false}) async {
