@@ -842,10 +842,14 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'zh': '为确认您的身份，请输入您的PIN码（6位数字）。',
     },
     'podesitePin': {
-      'sr': 'PIN kod sami kreirate ovde — niko Vam ga neće poslati. Unesite 6 cifara koje ćete zapamtiti i koristiti pri prijavi.',
-      'en': 'You create the PIN yourself here — nobody will send it to you. Enter 6 digits you will remember and use when signing in.',
-      'ru': 'PIN-код вы создаёте сами здесь — никто вам его не пришлёт. Введите 6 цифр, которые запомните и будете использовать при входе.',
-      'de': 'Die PIN legen Sie selbst hier fest — niemand sendet sie Ihnen. Geben Sie 6 Ziffern ein, die Sie sich merken und beim Anmelden verwenden.',
+      'sr':
+          'PIN kod sami kreirate ovde — niko Vam ga neće poslati. Unesite 6 cifara koje ćete zapamtiti i koristiti pri prijavi.',
+      'en':
+          'You create the PIN yourself here — nobody will send it to you. Enter 6 digits you will remember and use when signing in.',
+      'ru':
+          'PIN-код вы создаёте сами здесь — никто вам его не пришлёт. Введите 6 цифр, которые запомните и будете использовать при входе.',
+      'de':
+          'Die PIN legen Sie selbst hier fest — niemand sendet sie Ihnen. Geben Sie 6 Ziffern ein, die Sie sich merken und beim Anmelden verwenden.',
       'zh': '请在此自行设置PIN码——不会有人发送给您。请输入您会记住并用于登录的6位数字。',
     },
     'imeKratko': {'sr': 'ime', 'en': 'name', 'ru': 'имя', 'de': 'Name', 'zh': '名字'},
