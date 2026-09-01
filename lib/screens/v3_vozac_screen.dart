@@ -79,7 +79,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   final V3RouteWaypointResolverService _routeWaypointResolverService = V3RouteWaypointResolverService();
   int? _lastRealtimeTick;
   String _lastPutniciSignature = '';
-  List<String> _stableRemainingOrder = const [];
 
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
@@ -130,7 +129,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _hasSentRouteToMap = false;
     _mapResyncInFlight = false;
     _lastSentRouteSignature = '';
-    _stableRemainingOrder = const [];
     _lastPutniciSignature = '';
   }
 
@@ -338,38 +336,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return out;
   }
 
-  List<String> _remainingPutnikIds(List<_PutnikEntry> putnici) {
-    final out = <String>[];
-    final seen = <String>{};
-    for (final item in putnici) {
-      if (_isPutnikEntryCompleted(item)) continue;
-      final id = item.putnik.id.trim();
-      if (id.isEmpty || !seen.add(id)) continue;
-      out.add(id);
-    }
-    return out;
-  }
-
-  /// Isti preostali putnici ne smeju da zamene mesta zbog OSRM /trip šuma.
-  List<String> _stabilizeRemainingOsrmOrder(List<String> incoming, List<_PutnikEntry> putnici) {
-    final remainingIds = _remainingPutnikIds(putnici).toSet();
-    final incomingRemaining = incoming.where(remainingIds.contains).toList(growable: false);
-    final prevRemaining = _stableRemainingOrder.where(remainingIds.contains).toList(growable: false);
-    final sameSet = prevRemaining.isNotEmpty &&
-        prevRemaining.length == incomingRemaining.length &&
-        prevRemaining.length == remainingIds.length &&
-        remainingIds.every(prevRemaining.contains);
-
-    if (sameSet) return prevRemaining;
-
-    if (incomingRemaining.isNotEmpty) {
-      _stableRemainingOrder = incomingRemaining;
-      return incomingRemaining;
-    }
-    if (prevRemaining.isNotEmpty) return prevRemaining;
-    return incoming;
-  }
-
   int _osrmIndexOf(_PutnikEntry item, List<String> osrmOrder) {
     if (osrmOrder.isEmpty) return 999;
     final putnikId = item.putnik.id.trim();
@@ -456,7 +422,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     if (raw.isEmpty) {
       raw = _getOsrmOrderFromSlot(putnici);
     }
-    return _stabilizeRemainingOsrmOrder(raw, putnici);
+    return raw;
   }
 
   void _refreshPutniciOrderFromEtaCache() {
@@ -1585,7 +1551,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
             appBar: AppBar(
               automaticallyImplyLeading: false,
               backgroundColor: Colors.transparent,
-              elevation:  0,
+              elevation: 0,
               toolbarHeight: appBarHeight,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.only(
