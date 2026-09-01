@@ -73,39 +73,6 @@ function parseCoord(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseIdList(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const item of raw) {
-    const id = String(item ?? "").trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    out.push(id);
-  }
-  return out;
-}
-
-/// Zadrži prethodni redosled ako pokriva sve preostale putnike.
-/// Inače null → novi OSRM /trip.
-function lockRemainingPassengers(
-  remaining: PassengerEntry[],
-  candidateOrders: string[][],
-): PassengerEntry[] | null {
-  if (remaining.length === 0) return remaining;
-  const byId = new Map<string, PassengerEntry>();
-  for (const p of remaining) {
-    if (!byId.has(p.putnik_id)) byId.set(p.putnik_id, p);
-  }
-  if (byId.size !== remaining.length) return null;
-  for (const candidate of candidateOrders) {
-    const locked = candidate.filter((id) => byId.has(id));
-    if (locked.length !== byId.size) continue;
-    return locked.map((id) => byId.get(id)!);
-  }
-  return null;
-}
-
 function etaRowsFromFixedOrder(
   ordered: PassengerEntry[],
   legs: any[],
@@ -567,15 +534,11 @@ Deno.serve(async (req) => {
         .in("putnik_id", toDelete);
     }
 
-    // 4. ETA: zaključan redosled (/route) ili novi OSRM /trip samo kad se skup promeni.
+    // 4. ETA: OSRM /trip na svaki tick — reoptimizacija preostalih putnika.
     const destLat = activeGrad === "BC" ? 45.118736452002345 : 44.90281796231954;
     const destLng = activeGrad === "BC" ? 21.301195520159723 : 21.424364904529384;
 
-    const etaOrder = parseIdList((existingEtaRows ?? [])[0]?.optimized_order);
-    const slotOrder = parseIdList((activeSlot as { optimized_order?: unknown }).optimized_order);
-    const lockedRemaining = lockRemainingPassengers(remaining, [etaOrder, slotOrder]);
-    const useLockedOrder = lockedRemaining != null;
-    const orderedPassengers = lockedRemaining ?? remaining;
+    const orderedPassengers = remaining;
 
     const waypointCount = orderedPassengers.length + 2;
     if (waypointCount > OSRM_MAX_WAYPOINTS) {
@@ -591,12 +554,11 @@ Deno.serve(async (req) => {
       coordStr(destLat, destLng),
     ].join(";");
 
-    const osrmUrl = useLockedOrder
-      ? `${osrmBaseUrl}/route/v1/driving/${osrmCoords}?overview=false&steps=false`
-      : `${osrmBaseUrl}/trip/v1/driving/${osrmCoords}?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
+    const osrmUrl =
+      `${osrmBaseUrl}/trip/v1/driving/${osrmCoords}?source=first&destination=last&roundtrip=false&steps=false&overview=false`;
 
     console.log(
-      `[v3-compute-eta] remaining=${remaining.length} locked=${useLockedOrder} mode=${useLockedOrder ? "route" : "trip"} coords=${osrmCoords}`,
+      `[v3-compute-eta] remaining=${remaining.length} mode=trip coords=${osrmCoords}`,
     );
 
     let osrmResponse: Response;
@@ -632,53 +594,41 @@ Deno.serve(async (req) => {
       computed_at: string;
     }> = [];
 
-    if (useLockedOrder) {
-      const rawRoutes = osrmData.routes;
-      if (!Array.isArray(rawRoutes) || rawRoutes.length === 0) {
-        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_routes");
-      }
-      const legs = rawRoutes[0].legs;
-      if (!Array.isArray(legs) || legs.length < orderedPassengers.length) {
-        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
-      }
-      upsertRows = etaRowsFromFixedOrder(orderedPassengers, legs, upsertCtx);
-    } else {
-      const rawWaypoints = osrmData.waypoints;
-      const rawTrips = osrmData.trips;
-      const expectedWaypointCount = orderedPassengers.length + 2;
-      if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
-        console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
-        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_waypoints_mismatch", {
-          expected: expectedWaypointCount,
-          got: rawWaypoints?.length,
-        });
-      }
-      if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
-        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_trips");
-      }
-
-      const legs = rawTrips[0].legs;
-      if (!Array.isArray(legs)) {
-        return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
-      }
-
-      const passengerWaypoints = rawWaypoints
-        .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
-        .slice(1, -1)
-        .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
-
-      const originalIndexToEntry: Record<number, PassengerEntry> = {};
-      for (let i = 0; i < orderedPassengers.length; i++) {
-        originalIndexToEntry[i + 1] = orderedPassengers[i];
-      }
-
-      const tripOrdered: PassengerEntry[] = [];
-      for (const pw of passengerWaypoints) {
-        const entry = originalIndexToEntry[Number(pw.inputIndex)];
-        if (entry) tripOrdered.push(entry);
-      }
-      upsertRows = etaRowsFromFixedOrder(tripOrdered, legs, upsertCtx);
+    const rawWaypoints = osrmData.waypoints;
+    const rawTrips = osrmData.trips;
+    const expectedWaypointCount = orderedPassengers.length + 2;
+    if (!Array.isArray(rawWaypoints) || rawWaypoints.length !== expectedWaypointCount) {
+      console.warn(`[v3-compute-eta] waypoints mismatch: expected=${expectedWaypointCount} got=${rawWaypoints?.length}`);
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_waypoints_mismatch", {
+        expected: expectedWaypointCount,
+        got: rawWaypoints?.length,
+      });
     }
+    if (!Array.isArray(rawTrips) || rawTrips.length === 0) {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_trips");
+    }
+
+    const legs = rawTrips[0].legs;
+    if (!Array.isArray(legs)) {
+      return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "osrm_no_legs");
+    }
+
+    const passengerWaypoints = rawWaypoints
+      .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
+      .slice(1, -1)
+      .sort((a: any, b: any) => Number(a?.waypoint?.waypoint_index ?? 0) - Number(b?.waypoint?.waypoint_index ?? 0));
+
+    const originalIndexToEntry: Record<number, PassengerEntry> = {};
+    for (let i = 0; i < orderedPassengers.length; i++) {
+      originalIndexToEntry[i + 1] = orderedPassengers[i];
+    }
+
+    const tripOrdered: PassengerEntry[] = [];
+    for (const pw of passengerWaypoints) {
+      const entry = originalIndexToEntry[Number(pw.inputIndex)];
+      if (entry) tripOrdered.push(entry);
+    }
+    upsertRows = etaRowsFromFixedOrder(tripOrdered, legs, upsertCtx);
 
     if (upsertRows.length === 0) {
       return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "no_eta_rows");
