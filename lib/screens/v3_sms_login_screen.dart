@@ -352,8 +352,13 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
         if (missingBc) missingFieldKeys.add('adresaBcKratko');
         if (missingVs) missingFieldKeys.add('adresaVsKratko');
         if (missingPin) missingFieldKeys.add('pinKod');
-        _missingProfileStaticMessageKey = null;
-        _missingProfileFieldKeys = missingFieldKeys;
+        if (missingPin && missingFieldKeys.length == 1) {
+          _missingProfileStaticMessageKey = 'podesitePin';
+          _missingProfileFieldKeys = <String>[];
+        } else {
+          _missingProfileStaticMessageKey = null;
+          _missingProfileFieldKeys = missingFieldKeys;
+        }
         _missingProfileUseRequiredTemplate = false;
         _step = _SmsStep.unosProfila;
       });
