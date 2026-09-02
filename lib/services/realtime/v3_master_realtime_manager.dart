@@ -851,10 +851,10 @@ class V3MasterRealtimeManager {
         break;
       }
     }
-    if (activeSlot == null) return false;
+    if (activeSlot == null) return null;
 
     final slotId = activeSlot['id']?.toString() ?? '';
-    if (slotId.isEmpty) return false;
+    if (slotId.isEmpty) return null;
 
     if (trenutnaDodelaCache.isEmpty && operativnaNedeljaCache.isEmpty) return null;
 

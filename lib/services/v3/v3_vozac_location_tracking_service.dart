@@ -483,7 +483,6 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
 
     _tickInFlight = true;
     try {
-      await _runTick();
       final allDone = await v3AllPassengersCompleted(
         client: Supabase.instance.client,
         vozacId: _vozacId,
@@ -494,7 +493,9 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       if (allDone) {
         debugPrint('$_tag stop reason=all_passengers_completed');
         await stop();
+        return;
       }
+      await _runTick();
     } catch (e) {
       debugPrint('$_tag tick error: $e');
     } finally {

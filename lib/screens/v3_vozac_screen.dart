@@ -669,6 +669,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _autoStartTimer = null;
     if (!mounted || _autoStartInProgress) return;
     if (V3VozacLocationTrackingService.instance.isRunning) {
+      if (_allTrackedPassengersCompleted()) {
+        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed');
+        unawaited(V3VozacLocationTrackingService.instance.stop());
+        return;
+      }
       if (!_isNavigating) {
         V3StateUtils.safeSetState(this, () => _isNavigating = true);
       }
@@ -743,6 +748,19 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return pokupljen || otkazan;
   }
 
+  /// True kad aktivni tracking slot nema više putnika za pokupiti
+  /// (svi pokupljeni ili otkazani).
+  bool _allTrackedPassengersCompleted() {
+    final t = V3VozacLocationTrackingService.instance;
+    if (!t.isRunning) return false;
+
+    if (_isViewingTrackedTermin && _mojiPutnici.isNotEmpty) {
+      return _mojiPutnici.every(_isPutnikEntryCompleted);
+    }
+
+    return !_terminHasActivePassengers(t.activeDatumIso, t.activeGrad, t.activeVreme);
+  }
+
   /// Redosled grupa za sort kartica: aktivan(0) < pokupljen(1) < otkazan(2).
   /// Otkazan uvek na samom dnu, pokupljen odmah iznad njega, aktivni na vrhu.
   int _statusRank(_PutnikEntry item) {
@@ -803,6 +821,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
       // Nema termina za ovaj dan — prikaži prazno
       V3StateUtils.safeSetState(this, () => _mojiPutnici = []);
+      _scheduleAutoStart();
       return;
     }
 
