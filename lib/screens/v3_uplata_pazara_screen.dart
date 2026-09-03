@@ -128,45 +128,6 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
     }
   }
 
-  Future<void> _zatraziUnosOdVozaca() async {
-    final vozac = _selectedVozac;
-    if (vozac == null) {
-      debugPrint('[Admin] _zatraziUnosOdVozaca: nije izabran vozač');
-      return;
-    }
-
-    if (_ukupnoNaplaceno <= 0) {
-      V3AppSnackBar.warning(context, _UplTr.tr('nemaPazaraZaTajDan'));
-      return;
-    }
-
-    // Ne prepisujemo već uneti iznos vozača na 0 - čuvamo postojeći _predao
-    // ako je vozač već nešto uneo za ovaj dan.
-    final vecUnetoPredao = _predao ?? 0;
-
-    debugPrint(
-        '[Admin] _zatraziUnosOdVozaca: vozacId=${vozac.id}, datum=$_selectedDate, ukupno=$_ukupnoNaplaceno, vecUnetoPredao=$vecUnetoPredao');
-
-    setState(() => _isSaving = true);
-    try {
-      await V3UplataPazaraService.sacuvajDnevnuUplatu(
-        vozacId: vozac.id,
-        datum: _selectedDate,
-        predao: vecUnetoPredao,
-        ukupno: _ukupnoNaplaceno,
-        zahtevanUnos: true,
-      );
-      if (!mounted) return;
-      V3AppSnackBar.success(context, _UplTr.tr('zahtevProslijedjenVozacu'));
-      debugPrint('[Admin] _zatraziUnosOdVozaca: uspešno sačuvano');
-    } catch (e) {
-      debugPrint('[Admin] _zatraziUnosOdVozaca: greška $e');
-      V3ErrorUtils.safeError(this, context, '${_UplTr.tr('greskaPriSlanjuZahteva')}: $e');
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final predaoVal = double.tryParse(_iznosController.text.replaceAll(',', '.'));
@@ -269,25 +230,6 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
                       onPressed: _isSaving ? null : _save,
                       text: _isSaving ? _UplTr.tr('cuvanje') : _UplTr.tr('sacuvaj'),
                       isLoading: _isSaving,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Dugme Zatraži unos
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orangeAccent.withValues(alpha: 0.2),
-                        foregroundColor: Colors.orangeAccent,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      onPressed: _isSaving ? null : _zatraziUnosOdVozaca,
-                      icon: const Icon(Icons.send_to_mobile),
-                      label: Text(_UplTr.tr('zatraziUnosOdVozaca'),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

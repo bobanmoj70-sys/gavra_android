@@ -562,7 +562,7 @@ class V3PutnikStatistikaService {
           cena: stavka.cena,
           ukupnaObaveza: stavka.obaveza,
           brojUplata: uplate.length,
-          poslednjaUplata: uplate.isNotEmpty ? uplate.last.datum : null,
+          poslednjaUplata: uplate.isNotEmpty ? (uplate.last.naplatioAt ?? uplate.last.datum) : null,
           poslednjaUplataVozac: uplate.isNotEmpty ? _imeVozaca(uplate.last.naplatioBy) : null,
         );
       },
@@ -743,7 +743,7 @@ class V3PutnikStatistikaService {
       cena: obracun.cena,
       ukupnaObaveza: obracun.obaveza,
       brojUplata: uplate.length,
-      poslednjaUplata: uplate.isNotEmpty ? uplate.last.datum : null,
+      poslednjaUplata: uplate.isNotEmpty ? (uplate.last.naplatioAt ?? uplate.last.datum) : null,
       poslednjaUplataVozac: uplate.isNotEmpty ? _imeVozaca(uplate.last.naplatioBy) : null,
     );
   }
@@ -871,8 +871,9 @@ class V3PutnikStatistikaService {
       if (u.naplatioBy != null && u.naplatioBy!.isNotEmpty) {
         agregat.uplatioVozacId = u.naplatioBy;
       }
-      final h = u.datum.hour.toString().padLeft(2, '0');
-      final m = u.datum.minute.toString().padLeft(2, '0');
+      final vremeIzvor = u.naplatioAt ?? u.datum;
+      final h = vremeIzvor.hour.toString().padLeft(2, '0');
+      final m = vremeIzvor.minute.toString().padLeft(2, '0');
       agregat.uplataVreme = '$h:$m';
     }
 

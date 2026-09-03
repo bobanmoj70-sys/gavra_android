@@ -1109,13 +1109,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:', 'zh': '不足：'},
     'cuvanje': {'sr': 'Čuvanje...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...', 'zh': '保存中...'},
     'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
-    'zatraziUnosOdVozaca': {
-      'sr': 'Zatraži unos od vozača',
-      'en': 'Request entry from driver',
-      'ru': 'Запросить ввод у водителя',
-      'de': 'Eingabe vom Fahrer anfordern',
-      'zh': '请求司机输入'
-    },
     'greskaPriUcitavanju': {
       'sr': 'Greška pri učitavanju',
       'en': 'Error loading',
@@ -1130,13 +1123,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Geben Sie einen Betrag größer als 0 ein.',
       'zh': '请输入大于0的金额。'
     },
-    'nemaPazaraZaTajDan': {
-      'sr': 'Nema pazara za taj dan, zahtev nije poslat.',
-      'en': 'No cash revenue for that day, request not sent.',
-      'ru': 'Нет выручки за этот день, запрос не отправлен.',
-      'de': 'Keine Kassenumsätze an diesem Tag, Anfrage nicht gesendet.',
-      'zh': '当天没有营业额，请求未发送。'
-    },
     'uplataPazaraSacuvana': {
       'sr': 'Uplata pazara sačuvana',
       'en': 'Cash payment saved',
@@ -1150,20 +1136,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'ru': 'Ошибка сохранения',
       'de': 'Fehler beim Speichern',
       'zh': '保存错误'
-    },
-    'zahtevProslijedjenVozacu': {
-      'sr': 'Zahtev prosleđen vozaču!',
-      'en': 'Request sent to driver!',
-      'ru': 'Запрос отправлен водителю!',
-      'de': 'Anfrage an Fahrer gesendet!',
-      'zh': '请求已发送给司机！'
-    },
-    'greskaPriSlanjuZahteva': {
-      'sr': 'Greška pri slanju zahteva',
-      'en': 'Error sending request',
-      'ru': 'Ошибка отправки запроса',
-      'de': 'Fehler beim Senden der Anfrage',
-      'zh': '发送请求错误'
     },
   },
   'vozacPazarPopup': {
