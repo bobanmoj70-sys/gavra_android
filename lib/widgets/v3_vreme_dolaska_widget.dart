@@ -125,8 +125,7 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
 
       final departure = _parseDepartureDateTime(row);
       if (departure == null) continue;
-      // Van tracking prozora posle T+40 — vožnja više nije relevantna za ETA/prikaz.
-      if (!now.isBefore(departure.add(v3TrackingMaxDuration))) continue;
+      // Nema vremenskog hard-stopa: putnik je već filtriran gore (nije pokupljen/otkazan).
       String? vozacId;
 
       final terminId = row['id']?.toString();

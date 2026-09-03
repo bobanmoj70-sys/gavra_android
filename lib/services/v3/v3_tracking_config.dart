@@ -10,10 +10,6 @@ import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 
-/// Hard stop: polazak + ovoliko (T+40).
-/// Primer BC 07:00 → tracking 06:45–07:40.
-const Duration v3TrackingMaxDuration = Duration(minutes: 40);
-
 /// Auto-start koliko pre polaska (T-15). Uskladiti sa `v3-auto-prepare-termins`.
 const Duration v3AutoStartLeadTime = Duration(minutes: 15);
 
@@ -127,19 +123,21 @@ DateTime? v3PolazakDateTime({required String datumIso, required String vreme}) {
   );
 }
 
-/// Hard-stop kad prozor T-15..T+40 nije otvoren.
-/// [startedAt] ostaje zbog starih poziva — prozor se računa samo od polaska.
+/// Hard-stop se više NE računa po vremenu (T+40 uklonjeno).
+/// Jedina istina da li je tracking aktivan: da li termin ima putnike
+/// koji nisu pokupljeni niti otkazani (vidi `_terminHasActivePassengers`
+/// / pozivaoce ove funkcije). [startedAt] ostaje zbog starih poziva.
 bool v3TrackingTimedOut({DateTime? startedAt, DateTime? polazakAt}) {
-  if (polazakAt == null) return false;
-  return !v3IsTrackingWindowOpen(polazakAt: polazakAt);
+  return false;
 }
 
-/// Jedina istina za aktivni tracking: [polazak-15min, polazak+40min).
+/// Prozor se otvara na T-15, a zatvara se samo kad više nema aktivnih
+/// putnika (proverava pozivalac preko `_terminHasActivePassengers` i sl.).
+/// Ovde ostaje samo provera donje granice (T-15) — gornje vremenske granice nema.
 bool v3IsTrackingWindowOpen({required DateTime polazakAt, DateTime? now}) {
   final n = now ?? V3BelgradeTime.now();
   final start = polazakAt.subtract(v3AutoStartLeadTime);
-  final end = polazakAt.add(v3TrackingMaxDuration);
-  return !n.isBefore(start) && n.isBefore(end);
+  return !n.isBefore(start);
 }
 
 /// Sam-zakazujući tajmer — fiksni razmak [interval] između početaka tick-ova.

@@ -674,6 +674,22 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         unawaited(V3VozacLocationTrackingService.instance.stop());
         return;
       }
+      // Zaštita od zaglavljivanja: ako je sledeći termin već ušao u svoj
+      // T-15 prozor (npr. zaboravljen "pokupljen"/"otkazan" na prethodnom),
+      // prisilno prebaci tracking na taj sledeći termin da ne ostane
+      // večno zaglavljen na starom.
+      final t = V3VozacLocationTrackingService.instance;
+      final activePolazak = v3PolazakDateTime(datumIso: t.activeDatumIso, vreme: t.activeVreme);
+      final nextTermin = _findForceSwitchTermin(activePolazak: activePolazak, activeGrad: t.activeGrad);
+      if (nextTermin != null) {
+        debugPrint(
+          '[V3VozacScreen] force-switch reason=next_window_open '
+          'stari=${t.activeGrad} ${t.activeVreme} novi=${nextTermin.grad} ${nextTermin.vreme}',
+        );
+        await V3VozacLocationTrackingService.instance.stop();
+        unawaited(_scheduleAutoStart());
+        return;
+      }
       if (!_isNavigating) {
         V3StateUtils.safeSetState(this, () => _isNavigating = true);
       }
@@ -1456,8 +1472,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     return false;
   }
 
-  /// Najbliži termin danas u prozoru T-15 … T+40 (nezavisno od UI selektora).
-  ({String datumIso, String grad, String vreme, DateTime polazak})? _findAutoStartTermin() {
+  /// Svi termini danas koji imaju bar jednog aktivnog putnika, sortirani po polasku.
+  List<({String datumIso, String grad, String vreme, DateTime polazak})> _activeTerminCandidates() {
     final now = V3BelgradeTime.now();
     final todayIso = V3DanHelper.toIsoDate(now);
 
@@ -1476,20 +1492,43 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
       final polazak = v3PolazakDateTime(datumIso: datum, vreme: vreme);
       if (polazak == null) continue;
-      if (now.isAfter(polazak.add(v3TrackingMaxDuration))) continue;
+      // Nema T+40 hard-stopa: jedina istina je da li termin ima aktivne putnike.
       if (!_terminHasActivePassengers(datum, grad, vreme)) continue;
 
       candidates.add((datumIso: datum, grad: grad, vreme: vreme, polazak: polazak));
     }
 
-    if (candidates.isEmpty) return null;
     candidates.sort((a, b) => a.polazak.compareTo(b.polazak));
+    return candidates;
+  }
 
-    // Prvo aktivan prozor (T-15..T+40), inače najraniji budući.
+  /// Najbliži termin danas u T-15 prozoru (nezavisno od UI selektora).
+  ({String datumIso, String grad, String vreme, DateTime polazak})? _findAutoStartTermin() {
+    final now = V3BelgradeTime.now();
+    final candidates = _activeTerminCandidates();
+    if (candidates.isEmpty) return null;
+
+    // Prvo aktivan prozor (T-15..), inače najraniji budući.
     for (final c in candidates) {
       if (v3IsTrackingWindowOpen(polazakAt: c.polazak, now: now)) return c;
     }
     return candidates.first;
+  }
+
+  /// Sledeći termin (kasniji polazak od trenutno aktivnog) čiji je T-15
+  /// prozor već otvoren — koristi se za prisilan prelaz kad prethodni
+  /// termin ostane zaglavljen (npr. zaboravljen pokupljen/otkazan).
+  ({String datumIso, String grad, String vreme, DateTime polazak})? _findForceSwitchTermin({
+    required DateTime? activePolazak,
+    required String activeGrad,
+  }) {
+    final now = V3BelgradeTime.now();
+    for (final c in _activeTerminCandidates()) {
+      final isLater = activePolazak == null || c.polazak.isAfter(activePolazak) || c.grad != activeGrad;
+      if (!isLater) continue;
+      if (!now.isBefore(c.polazak.subtract(v3AutoStartLeadTime))) return c;
+    }
+    return null;
   }
 
   @override
