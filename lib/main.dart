@@ -31,7 +31,6 @@ import 'services/v3/v3_vozac_service.dart';
 import 'services/v3_locale_manager.dart';
 import 'services/v3_theme_manager.dart';
 import 'utils/v3_belgrade_time.dart';
-import 'widgets/v3_pazar_listener.dart';
 
 // Globalna instanca za lokalne notifikacije
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -1585,9 +1584,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   _resolveSupportedLocale(locale, supportedLocales) ?? V3LocaleManager.supportedLocales.first,
               locale: locale,
               theme: themeData,
-              builder: (context, child) => V3PazarListener(
-                child: child ?? const SizedBox.shrink(),
-              ),
               home: const V3WelcomeScreen(),
             );
           },

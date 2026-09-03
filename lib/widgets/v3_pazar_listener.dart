@@ -197,7 +197,8 @@ class _V3PazarListenerState extends State<V3PazarListener> {
         return;
       }
 
-      final vozacId = V3VozacService.currentVozac?.id;
+      final currentVozac = V3VozacService.currentVozac;
+      final vozacId = currentVozac?.id;
       if (vozacId == null || vozacId.isEmpty) {
         debugPrint('[V3PazarListener] currentVozac je null/empty');
         return;
