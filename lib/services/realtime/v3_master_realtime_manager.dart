@@ -149,6 +149,15 @@ class V3MasterRealtimeManager {
       }
     }
 
+    if (row.containsKey('pazar_policy_start_date')) {
+      final pazarStartParsed = V3BelgradeTime.parseDatum(row['pazar_policy_start_date']);
+      if (pazarStartParsed != null) {
+        V3AppSettingsState.instance.setPazarPolicyStartDate(pazarStartParsed);
+      } else {
+        debugPrint('[V3MasterRealtimeManager] pazar_policy_start_date je nevažeći, zadržavam postojeću vrednost.');
+      }
+    }
+
     if (row.containsKey('here_wego_install_url_android')) {
       V3AppSettingsState.instance.setHereWegoInstallUrlAndroid(
         row['here_wego_install_url_android']?.toString(),

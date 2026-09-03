@@ -68,39 +68,42 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(0xFF2A2A2A),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.attach_money, size: 64, color: Colors.greenAccent),
-            const SizedBox(height: 16),
-            Text(
-              _PopupTr.tr('smenaZavrsenaUnesiteIznos'),
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            V3InputUtils.numberField(
-              controller: _iznosController,
-              label: _PopupTr.tr('unesitePredatIznos'),
-              suffixText: 'din',
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: V3ButtonUtils.elevatedButton(
-                onPressed: _isSaving ? null : _save,
-                text: _isSaving ? _PopupTr.tr('belezenje') : _PopupTr.tr('sacuvajPazarIZatvori'),
-                isLoading: _isSaving,
-                backgroundColor: Colors.greenAccent.shade700,
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Dialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.attach_money, size: 64, color: Colors.greenAccent),
+              const SizedBox(height: 16),
+              Text(
+                _PopupTr.tr('smenaZavrsenaUnesiteIznos'),
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              V3InputUtils.numberField(
+                controller: _iznosController,
+                label: _PopupTr.tr('unesitePredatIznos'),
+                suffixText: 'din',
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: V3ButtonUtils.elevatedButton(
+                  onPressed: _isSaving ? null : _save,
+                  text: _isSaving ? _PopupTr.tr('belezenje') : _PopupTr.tr('sacuvajPazarIZatvori'),
+                  isLoading: _isSaving,
+                  backgroundColor: Colors.greenAccent.shade700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

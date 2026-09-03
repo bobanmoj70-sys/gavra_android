@@ -8,6 +8,7 @@ class V3AppSettingsState {
 
   final ValueNotifier<DateTime?> activeWeekStart = ValueNotifier<DateTime?>(null);
   final ValueNotifier<DateTime?> activeWeekEnd = ValueNotifier<DateTime?>(null);
+  final ValueNotifier<DateTime?> pazarPolicyStartDate = ValueNotifier<DateTime?>(null);
 
   /// Runtime-only HERE WeGo install listing URLs from `v3_app_settings`
   /// (driver nav install prompt; not hardcoded in binary).
@@ -21,6 +22,7 @@ class V3AppSettingsState {
 
   DateTime? get activeWeekStartValue => activeWeekStart.value;
   DateTime? get activeWeekEndValue => activeWeekEnd.value;
+  DateTime? get pazarPolicyStartDateValue => pazarPolicyStartDate.value;
 
   /// Samo kalendarski dan (Beograd poslovna logika). Nikad TZ instant uređaja.
   void setActiveWeekStart(DateTime? value) {
@@ -29,6 +31,10 @@ class V3AppSettingsState {
 
   void setActiveWeekEnd(DateTime? value) {
     activeWeekEnd.value = value == null ? null : V3BelgradeTime.dateOnly(value);
+  }
+
+  void setPazarPolicyStartDate(DateTime? value) {
+    pazarPolicyStartDate.value = value == null ? null : V3BelgradeTime.dateOnly(value);
   }
 
   void setHereWegoInstallUrlAndroid(String? value) {
