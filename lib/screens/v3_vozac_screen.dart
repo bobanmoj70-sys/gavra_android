@@ -205,6 +205,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       'v3_kapacitet_slots',
       'v3_app_settings',
       'v3_finansije',
+      // BG isolate (flutter_background_service) računa tickove u SVOJOJ
+      // instanci V3VozacLocationTrackingService dok je app u pozadini —
+      // onEtaTick stream u ovom (UI) isolate-u tada ne prima te rezultate.
+      // Bez ove tabele u listi, _rebuild() se ne bi pokrenuo kad BG upiše
+      // svež optimized_order u v3_eta_results, pa bi kartice ostale
+      // zaglavljene na redosledu iz poslednjeg FG ticka.
+      'v3_eta_results',
     ]).listen((tick) {
       if (!mounted || tick == _lastRealtimeTick) return;
       _lastRealtimeTick = tick;
