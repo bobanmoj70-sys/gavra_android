@@ -410,9 +410,9 @@ class _DnevnaStavkaRow extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        if (o.otkazanoAt != null && o.vreme != null && o.vreme!.isNotEmpty)
+                        if (o.vreme != null && o.vreme!.isNotEmpty)
                           Text(
-                            '${_VoznjeMesecTr.tr('vreme')}: ${o.vreme}',
+                            o.otkazanoAt != null ? 'Termin: ${o.vreme}' : '${_VoznjeMesecTr.tr('vreme')}: ${o.vreme}',
                             style: TextStyle(
                               color: Colors.redAccent.withValues(alpha: 0.65),
                               fontSize: 10,
@@ -422,7 +422,7 @@ class _DnevnaStavkaRow extends StatelessWidget {
                         Text(
                           o.otkazaoVozac
                               ? '${_VoznjeMesecTr.tr('otkazaoVozac')}${o.otkazaoImePrezime != null ? ' (${o.otkazaoImePrezime})' : ''}'
-                              : _VoznjeMesecTr.tr('otkazaoPutnik'),
+                              : (o.otkazaoPutnik ? _VoznjeMesecTr.tr('otkazaoPutnik') : _VoznjeMesecTr.tr('otkazano')),
                           style: TextStyle(
                             color: Colors.redAccent.withValues(alpha: 0.75),
                             fontSize: 11,
@@ -446,11 +446,14 @@ class _DnevnaStavkaRow extends StatelessWidget {
     return _VoznjeMesecTr.tr('voznji');
   }
 
-  /// Tačno vreme akcije otkazivanja (iz otkazane_voznje_json.otkazano_at).
+  /// Tačan datum i vreme akcije otkazivanja (iz otkazane_voznje_json.otkazano_at).
   String? _formatOtkazanoAt(DateTime? dt) {
     if (dt == null) return null;
+    final d = dt.day.toString().padLeft(2, '0');
+    final mo = dt.month.toString().padLeft(2, '0');
+    final y = dt.year.toString();
     final h = dt.hour.toString().padLeft(2, '0');
     final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
+    return '$d.$mo.$y $h:$m';
   }
 }

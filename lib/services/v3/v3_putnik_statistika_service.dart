@@ -144,6 +144,7 @@ class V3PutnikOtkazivanjeStavka {
   final String? vreme;
   final String? otkazaoImePrezime;
   final bool otkazaoVozac;
+  final bool otkazaoPutnik;
   final DateTime? otkazanoAt;
 
   const V3PutnikOtkazivanjeStavka({
@@ -151,6 +152,7 @@ class V3PutnikOtkazivanjeStavka {
     this.vreme,
     this.otkazaoImePrezime,
     this.otkazaoVozac = false,
+    this.otkazaoPutnik = false,
     this.otkazanoAt,
   });
 }
@@ -883,9 +885,11 @@ class V3PutnikStatistikaService {
       final agregat = poDanu.putIfAbsent(dan, () => _DnevniAgregat());
 
       final tipOtkazivanja = (o['tip_otkazivanja']?.toString() ?? '').trim().toLowerCase();
-      final otkazaoVozac = tipOtkazivanja == 'vozac';
       final otkazaoById = (o['otkazao_by']?.toString() ?? '').trim();
-      final otkazaoIme = otkazaoVozac ? _imeVozaca(otkazaoById) : null;
+      final imeVozaca = _imeVozaca(otkazaoById);
+      final otkazaoVozac = tipOtkazivanja == 'vozac' || (tipOtkazivanja.isEmpty && imeVozaca != null);
+      final otkazaoPutnik = tipOtkazivanja == 'putnik';
+      final otkazaoIme = otkazaoVozac ? imeVozaca : null;
       final otkazanoAt = V3BelgradeTime.parseTs(o['otkazano_at']?.toString());
 
       agregat.otkazivanja.add(
@@ -894,6 +898,7 @@ class V3PutnikStatistikaService {
           vreme: (o['vreme']?.toString() ?? '').trim().isEmpty ? null : o['vreme'].toString().trim(),
           otkazaoImePrezime: otkazaoIme,
           otkazaoVozac: otkazaoVozac,
+          otkazaoPutnik: otkazaoPutnik,
           otkazanoAt: otkazanoAt,
         ),
       );
