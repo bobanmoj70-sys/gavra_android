@@ -274,7 +274,7 @@ class V3PutnikStatistikaService {
       godina: godina,
       mesec: mesec,
     );
-    final obaveza = uplaceno - visak + dug;
+    final obaveza = (uplaceno - visak + dug).clamp(0.0, double.infinity).toDouble();
 
     return V3MesecniObracun(
       godina: godina,
