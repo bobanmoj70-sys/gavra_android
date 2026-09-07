@@ -653,6 +653,13 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'zh': '总收款：',
     },
     'predao': {'sr': 'Predao:', 'en': 'Handed over:', 'ru': 'Сдал:', 'de': 'Übergeben:', 'zh': '已上交：'},
+    'nijeUneto': {
+      'sr': 'Nije uneto',
+      'en': 'Not entered',
+      'ru': 'Не внесено',
+      'de': 'Nicht eingetragen',
+      'zh': '未输入',
+    },
     'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
     'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:', 'zh': '盈余：'},
     'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:', 'zh': '短缺：'},

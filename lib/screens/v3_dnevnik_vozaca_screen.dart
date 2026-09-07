@@ -9,22 +9,18 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../l10n/app_translations.dart';
-import '../models/v3_dnevna_predaja.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
-import '../services/v3/v3_dnevna_predaja_service.dart';
 import '../services/v3/v3_finansije_service.dart';
+import '../services/v3/v3_uplata_pazara_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
 import '../theme.dart';
 import '../utils/v3_app_snack_bar.dart';
 import '../utils/v3_belgrade_time.dart';
-import '../utils/v3_button_utils.dart';
 import '../utils/v3_dan_helper.dart';
 import '../utils/v3_error_utils.dart';
-import '../utils/v3_input_utils.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_stream_utils.dart';
-import '../utils/v3_text_utils.dart';
 
 class _DnevTr {
   static final Map<String, Map<String, String>> _t = AppTranslations.ns('dnevnikVozacaScreen');
@@ -889,7 +885,8 @@ class _PredajaFooter extends StatefulWidget {
 }
 
 class _PredajaFooterState extends State<_PredajaFooter> {
-  bool _sacuvan = false;
+  bool _isLoading = true;
+  double? _predaoIznos;
 
   @override
   void initState() {
@@ -897,59 +894,22 @@ class _PredajaFooterState extends State<_PredajaFooter> {
     _loadPredaja();
   }
 
-  @override
-  void dispose() {
-    V3TextUtils.disposeController('iznos');
-    super.dispose();
-  }
-
   Future<void> _loadPredaja() async {
-    final predaja = await V3DnevnaPredajaService.getPredaja(
+    final predaoIznos = await V3UplataPazaraService.getPredaoZaDan(
       vozacId: widget.vozacId,
       datum: widget.datum,
     );
     if (!mounted) return;
-    final iznos = (predaja != null && predaja.predaoIznos > 0) ? predaja.predaoIznos : null;
-    widget.onPredaoChanged?.call(iznos);
+    widget.onPredaoChanged?.call(predaoIznos);
     setState(() {
-      V3TextUtils.setControllerText('iznos', iznos != null ? iznos.toStringAsFixed(0) : '');
-      _sacuvan = iznos != null;
+      _predaoIznos = predaoIznos;
+      _isLoading = false;
     });
-  }
-
-  Future<void> _sacuvaj() async {
-    final predaoVal = double.tryParse(V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
-    if (predaoVal == null) return;
-    if (predaoVal <= 0) {
-      if (mounted) {
-        V3AppSnackBar.warning(context, _DnevTr.tr('unesiteIznosPredajeVeciOd0'));
-      }
-      return;
-    }
-
-    try {
-      await V3DnevnaPredajaService.upsertPredaja(V3DnevnaPredaja(
-        id: '',
-        vozacId: widget.vozacId,
-        vozacImePrezime: widget.vozacIme,
-        datum: widget.datum,
-        predaoIznos: predaoVal,
-        ukupnoNaplaceno: widget.ukupnoIznos,
-        razlika: predaoVal - widget.ukupnoIznos,
-      ));
-      if (mounted) {
-        widget.onPredaoChanged?.call(predaoVal);
-        setState(() => _sacuvan = true);
-        V3AppSnackBar.success(context, _DnevTr.tr('predajaSacuvana'));
-      }
-    } catch (e) {
-      V3ErrorUtils.safeError(this, context, '${_DnevTr.tr('greskaPriCuvanju')}: $e');
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final predaoVal = double.tryParse(V3TextUtils.getControllerText('iznos').replaceAll(',', '.'));
+    final predaoVal = _predaoIznos;
     final razlika = predaoVal != null ? predaoVal - widget.ukupnoIznos : null;
 
     return Container(
@@ -976,26 +936,20 @@ class _PredajaFooterState extends State<_PredajaFooter> {
           ),
           const SizedBox(height: 10),
 
-          // Predao input + dugme
+          // Predao — iznos koji je vozač uneo na ekranu uplate pazara
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(_DnevTr.tr('predao'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: V3InputUtils.numberField(
-                  controller: V3TextUtils.iznosController,
-                  label: '0',
-                  suffixText: 'din',
+              Text(
+                _isLoading
+                    ? '...'
+                    : (predaoVal != null ? '${predaoVal.toStringAsFixed(0)} din' : _DnevTr.tr('nijeUneto')),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
-              ),
-              const SizedBox(width: 8),
-              V3ButtonUtils.elevatedButton(
-                onPressed: _sacuvaj,
-                text: _sacuvan ? '✅' : _DnevTr.tr('sacuvaj'),
-                backgroundColor: _sacuvan ? Colors.green[700] : Colors.green,
-                foregroundColor: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
             ],
           ),
