@@ -821,7 +821,7 @@ class _ServisSheetState extends State<_ServisSheet> {
   @override
   void initState() {
     super.initState();
-    _datum = widget.datum ?? V3BelgradeTime.now();
+    _datum = V3BelgradeTime.now();
     _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
   }
 
@@ -945,7 +945,7 @@ class _GumeSheetState extends State<_GumeSheet> {
   @override
   void initState() {
     super.initState();
-    _datum = widget.datum ?? V3BelgradeTime.now();
+    _datum = V3BelgradeTime.now();
     _opisCtrl = TextEditingController(text: widget.opis ?? '');
     _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
     final o = widget.opis;
