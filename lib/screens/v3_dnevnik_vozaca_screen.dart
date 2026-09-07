@@ -887,18 +887,32 @@ class _PredajaFooter extends StatefulWidget {
 class _PredajaFooterState extends State<_PredajaFooter> {
   bool _isLoading = true;
   double? _predaoIznos;
+  StreamSubscription<int>? _uplataRevisionSub;
+  bool _loadInFlight = false;
 
   @override
   void initState() {
     super.initState();
     _loadPredaja();
+    _uplataRevisionSub = V3MasterRealtimeManager.instance.tableRevisionStream('v3_uplata_pazara').listen((_) {
+      _loadPredaja();
+    });
+  }
+
+  @override
+  void dispose() {
+    _uplataRevisionSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPredaja() async {
+    if (_loadInFlight) return;
+    _loadInFlight = true;
     final predaoIznos = await V3UplataPazaraService.getPredaoZaDan(
       vozacId: widget.vozacId,
       datum: widget.datum,
     );
+    _loadInFlight = false;
     if (!mounted) return;
     widget.onPredaoChanged?.call(predaoIznos);
     setState(() {

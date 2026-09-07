@@ -105,8 +105,8 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
     if (vozac == null) return;
 
     final predaoVal = double.tryParse(_iznosController.text.replaceAll(',', '.'));
-    if (predaoVal == null || predaoVal <= 0) {
-      V3AppSnackBar.warning(context, _UplTr.tr('unesiteIznosVeciOd0'));
+    if (predaoVal == null || predaoVal < 0) {
+      V3AppSnackBar.warning(context, _UplTr.tr('unesiteIspravanIznos'));
       return;
     }
 

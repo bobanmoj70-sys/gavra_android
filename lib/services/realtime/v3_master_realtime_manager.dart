@@ -5,17 +5,31 @@ import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../globals.dart';
+import '../../models/v3_uplata_pazara.dart';
 import '../../utils/v3_belgrade_time.dart';
 import '../../utils/v3_status_policy.dart';
 import '../v3/v3_address_coordinate_service.dart';
 import '../v3/v3_app_settings_state.dart';
 import '../v3/v3_app_update_service.dart';
+import '../v3/v3_finansije_service.dart';
 import '../v3/v3_operativna_nedelja_service.dart';
+import '../v3/v3_uplata_pazara_service.dart';
+import '../v3/v3_vozac_service.dart';
 import 'engine/v3_bootstrap_loader.dart';
 import 'engine/v3_cache_store.dart';
 import 'engine/v3_event_bus.dart';
 import 'engine/v3_table_registry.dart';
 import 'repositories/v3_realtime_bootstrap_repository.dart';
+
+class V3PazarPromptEvent {
+  final DateTime datum;
+  final double ukupno;
+
+  const V3PazarPromptEvent({
+    required this.datum,
+    required this.ukupno,
+  });
+}
 
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
@@ -23,6 +37,10 @@ class V3MasterRealtimeManager {
   static final V3MasterRealtimeManager _instance = V3MasterRealtimeManager._internal();
   static V3MasterRealtimeManager get instance => _instance;
   static final V3RealtimeBootstrapRepository _bootstrapRepository = V3RealtimeBootstrapRepository();
+
+  static final DateTime _defaultPazarPolicyStartDate = V3BelgradeTime.dateTime(2026, 9, 4);
+  static const Duration _pazarAutoDelayAfterLastRide = Duration(minutes: 60);
+  static const Duration _pazarAutoCheckInterval = Duration(minutes: 1);
 
   final V3CacheStore _cacheStore = V3CacheStore();
   final V3EventBus _eventBus = V3EventBus();
@@ -44,6 +62,15 @@ class V3MasterRealtimeManager {
   static const Duration _fullResyncCooldown = Duration(seconds: 20);
   int _deltaResyncFailures = 0;
   static const int _maxDeltaResyncFailuresBeforeFull = 3;
+
+  final StreamController<V3PazarPromptEvent> _pazarPromptController = StreamController<V3PazarPromptEvent>.broadcast();
+  StreamSubscription<int>? _pazarRevisionSub;
+  StreamSubscription<int>? _pazarVoznjeRevisionSub;
+  Timer? _pazarAutoCheckTimer;
+  bool _pazarMonitoringStarted = false;
+  int _pazarMonitoringSubscribers = 0;
+  bool _pazarCheckInFlight = false;
+  bool _pazarAutoTriggerInFlight = false;
 
   // --- IN-MEMORY CACHE ---
   final Map<String, Map<String, dynamic>> adreseCache = {};
@@ -772,6 +799,225 @@ class V3MasterRealtimeManager {
   }
 
   Map<String, dynamic>? getPutnik(String id) => putniciCache[id];
+
+  Stream<V3PazarPromptEvent> get pazarPromptStream => _pazarPromptController.stream;
+
+  void startPazarMonitoring() {
+    _pazarMonitoringSubscribers++;
+    if (_pazarMonitoringStarted) return;
+    _pazarMonitoringStarted = true;
+
+    debugPrint('[V3MasterRealtimeManager] pazar monitoring start');
+    unawaited(_checkPazarForCurrentDriver(fromRealtime: false));
+
+    _pazarRevisionSub = tableRevisionStream('v3_uplata_pazara').listen((revision) {
+      debugPrint('[V3MasterRealtimeManager] pazar revision=$revision');
+      unawaited(_checkPazarForCurrentDriver(fromRealtime: true));
+    });
+
+    _pazarVoznjeRevisionSub = tablesRevisionStream(const [
+      'v3_trenutna_dodela',
+      'v3_operativna_nedelja',
+    ]).listen((revision) {
+      debugPrint('[V3MasterRealtimeManager] voznje revision hash=$revision');
+      unawaited(_checkPazarForCurrentDriver(fromRealtime: true));
+    });
+
+    _pazarAutoCheckTimer = Timer.periodic(_pazarAutoCheckInterval, (_) {
+      unawaited(_checkPazarForCurrentDriver(fromRealtime: false));
+    });
+  }
+
+  void stopPazarMonitoring() {
+    if (_pazarMonitoringSubscribers > 0) {
+      _pazarMonitoringSubscribers--;
+    }
+    if (_pazarMonitoringSubscribers > 0) return;
+    if (!_pazarMonitoringStarted) return;
+    _pazarMonitoringStarted = false;
+    _pazarRevisionSub?.cancel();
+    _pazarRevisionSub = null;
+    _pazarVoznjeRevisionSub?.cancel();
+    _pazarVoznjeRevisionSub = null;
+    _pazarAutoCheckTimer?.cancel();
+    _pazarAutoCheckTimer = null;
+    debugPrint('[V3MasterRealtimeManager] pazar monitoring stop');
+  }
+
+  bool _isPazarPolicyActiveFor(DateTime dayBelgrade) {
+    final dayOnly = V3BelgradeTime.dateTime(dayBelgrade.year, dayBelgrade.month, dayBelgrade.day);
+    final configuredStart = V3AppSettingsState.instance.pazarPolicyStartDateValue;
+    final effectiveStart = configuredStart ?? _defaultPazarPolicyStartDate;
+    return !dayOnly.isBefore(effectiveStart);
+  }
+
+  DateTime? _parseBelgradeDateTimeFromIsoAndHHmm({
+    required String datumIso,
+    required String hhmm,
+  }) {
+    if (datumIso.length < 10) return null;
+    final year = int.tryParse(datumIso.substring(0, 4));
+    final month = int.tryParse(datumIso.substring(5, 7));
+    final day = int.tryParse(datumIso.substring(8, 10));
+    final parts = hhmm.split(':');
+    if (year == null || month == null || day == null || parts.length < 2) return null;
+
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+
+    return V3BelgradeTime.dateTime(year, month, day, hour, minute);
+  }
+
+  DateTime? _findLastAssignedRideForToday({
+    required String vozacId,
+    required DateTime nowBelgrade,
+  }) {
+    final todayIso = V3BelgradeTime.toIsoDate(nowBelgrade);
+    DateTime? latest;
+
+    for (final assignment in trenutnaDodelaCache.values) {
+      final assignedVozacId = (assignment['vozac_v3_auth_id']?.toString() ?? '').trim();
+      if (assignedVozacId != vozacId) continue;
+
+      final terminId = (assignment['termin_id']?.toString() ?? '').trim();
+      if (terminId.isEmpty) continue;
+
+      final row = operativnaNedeljaCache[terminId] ?? operativnaAssignedCache[terminId];
+      if (row == null) continue;
+      if (V3StatusPolicy.isTimestampSet(row['otkazano_at'])) continue;
+
+      final datumIso = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
+      if (datumIso != todayIso) continue;
+
+      final vreme = V3BelgradeTime.normalizeToHHmm(row['polazak_at']?.toString() ?? row['vreme']?.toString());
+      if (vreme.isEmpty) continue;
+
+      final departure = _parseBelgradeDateTimeFromIsoAndHHmm(
+        datumIso: datumIso,
+        hhmm: vreme,
+      );
+      if (departure == null) continue;
+
+      if (latest == null || departure.isAfter(latest)) {
+        latest = departure;
+      }
+    }
+
+    return latest;
+  }
+
+  bool _isDailyPazarAlreadySubmitted(V3DnevnaUplataPazara? dnevna) {
+    if (dnevna == null) return false;
+    return dnevna.zahtevanUnos == false;
+  }
+
+  Future<void> _autoRequestIfPazarDue({
+    required DateTime nowBelgrade,
+    required String vozacId,
+    required V3DnevnaUplataPazara? dnevna,
+  }) async {
+    if (_pazarAutoTriggerInFlight) return;
+    if (dnevna?.zahtevanUnos == true) return;
+    if (_isDailyPazarAlreadySubmitted(dnevna)) return;
+
+    final lastRide = _findLastAssignedRideForToday(
+      vozacId: vozacId,
+      nowBelgrade: nowBelgrade,
+    );
+    if (lastRide == null) return;
+
+    final dueAt = lastRide.add(_pazarAutoDelayAfterLastRide);
+    if (nowBelgrade.isBefore(dueAt)) return;
+
+    final pazarMap = V3FinansijeService.getPazarPoVozacuZaDan(nowBelgrade);
+    final ukupno = dnevna?.ukupno ?? (pazarMap[vozacId] ?? 0.0);
+    if (ukupno <= 0.009) {
+      debugPrint('[V3MasterRealtimeManager] auto zahtev preskočen: ukupno=0 vozacId=$vozacId');
+      return;
+    }
+
+    _pazarAutoTriggerInFlight = true;
+    try {
+      await V3UplataPazaraService.sacuvajDnevnuUplatu(
+        vozacId: vozacId,
+        datum: nowBelgrade,
+        predao: dnevna?.predao ?? 0,
+        ukupno: ukupno,
+        zahtevanUnos: true,
+      );
+      debugPrint('[V3MasterRealtimeManager] auto zahtev unosa aktiviran (60min posle poslednje vožnje)');
+    } catch (e) {
+      debugPrint('[V3MasterRealtimeManager] auto zahtev unosa error: $e');
+    } finally {
+      _pazarAutoTriggerInFlight = false;
+    }
+  }
+
+  Future<void> _checkPazarForCurrentDriver({required bool fromRealtime}) async {
+    if (!_pazarMonitoringStarted) return;
+    if (_pazarCheckInFlight) return;
+    _pazarCheckInFlight = true;
+
+    try {
+      final currentVozac = V3VozacService.currentVozac;
+      final vozacId = currentVozac?.id;
+      if (vozacId == null || vozacId.isEmpty) return;
+
+      final today = V3BelgradeTime.now();
+      if (!_isPazarPolicyActiveFor(today)) return;
+
+      Map<String, dynamic>? targetRow;
+      for (final row in uplataPazaraCache.values) {
+        if (row['vozac_id'] == vozacId && row['mesec'] == today.month && row['godina'] == today.year) {
+          targetRow = row;
+          break;
+        }
+      }
+
+      if (targetRow == null && !fromRealtime) {
+        final uplata = await V3UplataPazaraService.getZaVozacaIMesec(
+          vozacId: vozacId,
+          datum: today,
+        );
+        if (uplata != null) {
+          targetRow = uplata.toJson();
+        }
+      }
+
+      V3DnevnaUplataPazara? dnevna;
+      if (targetRow != null) {
+        final uplata = V3UplataPazara.fromJson(targetRow);
+        dnevna = uplata.uplataZaDan(today.day);
+      }
+
+      await _autoRequestIfPazarDue(
+        nowBelgrade: today,
+        vozacId: vozacId,
+        dnevna: dnevna,
+      );
+
+      final afterAuto = await V3UplataPazaraService.getZaVozacaIMesec(
+        vozacId: vozacId,
+        datum: today,
+      );
+      final dnevnaAfterAuto = afterAuto?.uplataZaDan(today.day) ?? dnevna;
+      if (dnevnaAfterAuto == null) return;
+
+      if (dnevnaAfterAuto.zahtevanUnos == true) {
+        _pazarPromptController.add(
+          V3PazarPromptEvent(
+            datum: today,
+            ukupno: dnevnaAfterAuto.ukupno,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[V3MasterRealtimeManager] check pazar error: $e');
+    } finally {
+      _pazarCheckInFlight = false;
+    }
+  }
 
   Map<String, Map<String, dynamic>> getCache(String table) {
     switch (table) {
