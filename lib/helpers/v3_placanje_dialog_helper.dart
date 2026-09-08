@@ -143,27 +143,20 @@ class V3PlacanjeDialogHelper {
           final cs = Theme.of(context).colorScheme;
 
           ({Color color, FontWeight weight}) _mesecStyle(int mesec) {
-            final summary = V3FinansijeService.getNaplataSummaryForPutnik(
+            final saldo = V3FinansijeService.resolveSaldoInfoForPeriod(
               putnikId: putnikId,
               mesec: mesec,
               godina: _selectedYear,
             );
-            final nenaplacenIznos = V3FinansijeService.getNenaplacenIznosForPutnik(
-              putnikId: putnikId,
-              mesec: mesec,
-              godina: _selectedYear,
-            );
-            final uplaceno = summary.ukupanIznos;
-            if (nenaplacenIznos > 0.009) {
-              return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
-            }
 
-            // Beli meni (V3InputStyle.dropdownMenu) — bela boja bi bila nečitljiva
-            if (uplaceno <= 0) {
-              return (color: V3InputStyle.text, weight: FontWeight.w500);
+            switch (saldo.status) {
+              case V3SaldoStatus.minus:
+                return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
+              case V3SaldoStatus.plus:
+                return (color: const Color(0xFF00C853), weight: FontWeight.w700);
+              case V3SaldoStatus.nula:
+                return (color: V3InputStyle.text, weight: FontWeight.w500);
             }
-
-            return (color: const Color(0xFF00C853), weight: FontWeight.w700);
           }
 
           return Dialog(

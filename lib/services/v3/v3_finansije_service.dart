@@ -15,11 +15,30 @@ enum V3NaplataStatus {
   potpunoPlacen,
 }
 
+enum V3SaldoStatus {
+  minus,
+  nula,
+  plus,
+}
+
+class V3SaldoInfo {
+  final V3SaldoStatus status;
+  final double dug;
+  final double visak;
+
+  const V3SaldoInfo({
+    required this.status,
+    required this.dug,
+    required this.visak,
+  });
+}
+
 class V3NaplataInfo {
   final V3NaplataStatus status;
   final double ukupanIznos;
   final double poslednjaDopuna;
   final double dug;
+  final double visak;
   final DateTime? paidAt;
   final String? paidBy;
   final DateTime? updatedAt;
@@ -37,6 +56,7 @@ class V3NaplataInfo {
     required this.ukupanIznos,
     required this.poslednjaDopuna,
     this.dug = 0.0,
+    this.visak = 0.0,
     this.paidAt,
     this.paidBy,
     this.updatedAt,
@@ -425,6 +445,11 @@ class V3FinansijeService {
 
     _sortByCreatedAtDesc(candidates);
     final latest = candidates.first;
+    final saldo = resolveSaldoInfoForPeriod(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
 
     // Ukupan iznos se izvodi isključivo iz uplate_json (jedini izvor istine).
     final ukupanIznos = _getUkupanIznosUplata(latest);
@@ -434,6 +459,8 @@ class V3FinansijeService {
       status: _resolveNaplataStatus(latest),
       ukupanIznos: ukupanIznos,
       poslednjaDopuna: poslednjaDopuna,
+      dug: saldo.dug,
+      visak: saldo.visak,
       paidAt: _naplacenoAt(latest),
       paidBy: _getNaplatioBy(latest),
       updatedAt: V3BelgradeTime.parseTs(latest['updated_at']?.toString()),
@@ -470,6 +497,16 @@ class V3FinansijeService {
 
     if (latestUplata == null || latestRow == null) return null;
 
+    final godina = _parseInternalInt(latestRow['godina']);
+    final mesec = _parseInternalInt(latestRow['mesec']);
+    final saldo = (godina != null && mesec != null)
+        ? resolveSaldoInfoForPeriod(
+            putnikId: putnik,
+            godina: godina,
+            mesec: mesec,
+          )
+        : const V3SaldoInfo(status: V3SaldoStatus.nula, dug: 0.0, visak: 0.0);
+
     final ukupanIznos = _getUkupanIznosUplata(latestRow);
     final poslednjaDopuna = (latestUplata['iznos'] as num?)?.toDouble() ?? 0.0;
 
@@ -477,6 +514,8 @@ class V3FinansijeService {
       status: _resolveNaplataStatus(latestRow),
       ukupanIznos: ukupanIznos,
       poslednjaDopuna: poslednjaDopuna,
+      dug: saldo.dug,
+      visak: saldo.visak,
       paidAt: latestUplataDatum,
       paidBy: latestUplata['naplatio_by']?.toString(),
       updatedAt: V3BelgradeTime.parseTs(latestRow['updated_at']?.toString()),
@@ -669,6 +708,42 @@ class V3FinansijeService {
       ukupno += _readVisak(row);
     }
     return ukupno;
+  }
+
+  static V3SaldoInfo resolveSaldoInfoForPeriod({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final dug = getNenaplacenIznosForPutnik(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+    final visak = getVisakIznosForPutnik(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    if (dug > 0.009) {
+      return V3SaldoInfo(status: V3SaldoStatus.minus, dug: dug, visak: visak);
+    }
+    if (visak > 0.009) {
+      return V3SaldoInfo(status: V3SaldoStatus.plus, dug: dug, visak: visak);
+    }
+    return V3SaldoInfo(status: V3SaldoStatus.nula, dug: dug, visak: visak);
+  }
+
+  static V3SaldoInfo resolveSaldoInfo({
+    required String putnikId,
+    required DateTime datumRef,
+  }) {
+    return resolveSaldoInfoForPeriod(
+      putnikId: putnikId,
+      godina: datumRef.year,
+      mesec: datumRef.month,
+    );
   }
 
   /// Pronalazi hronološki poslednji master red za putnika STROGO pre

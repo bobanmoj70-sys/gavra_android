@@ -123,6 +123,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     );
   }
 
+  V3SaldoInfo _resolveSaldoInfo() {
+    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? V3BelgradeTime.now();
+    return V3FinansijeService.resolveSaldoInfo(
+      putnikId: widget.putnik.id,
+      datumRef: datumRef,
+    );
+  }
+
+  bool _isPlacenBySaldo(V3NaplataInfo? naplataInfo, V3SaldoInfo saldoInfo) {
+    if (!(naplataInfo?.imaUplatu ?? false)) return false;
+    return saldoInfo.status != V3SaldoStatus.minus;
+  }
+
   bool _isPoDanuModel(String tipPutnika) {
     final tip = tipPutnika.trim().toLowerCase();
     return tip == 'radnik' || tip == 'ucenik';
@@ -409,8 +422,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = V3StatusPolicy.normalizeStatus(widget.entry?.statusFinal ?? widget.zahtev?.status ?? '');
     final bool isPokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final naplataInfo = _resolveNaplataInfo();
-    final naplataStatus = naplataInfo?.status ?? V3NaplataStatus.nemaUplate;
-    final bool isPlacen = naplataStatus == V3NaplataStatus.potpunoPlacen;
+    final saldoInfo = _resolveSaldoInfo();
+    final bool isPlacen = _isPlacenBySaldo(naplataInfo, saldoInfo);
 
     return V3StyleHelper.putnikCard(
       status: status,
@@ -424,8 +437,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final status = widget.entry?.statusFinal ?? widget.zahtev?.status;
     final pokupljen = V3StatusPolicy.isTimestampSet(widget.entry?.pokupljenAt);
     final naplataInfo = _resolveNaplataInfo();
-    final naplataStatus = naplataInfo?.status ?? V3NaplataStatus.nemaUplate;
-    final placen = naplataStatus == V3NaplataStatus.potpunoPlacen;
+    final saldoInfo = _resolveSaldoInfo();
+    final placen = _isPlacenBySaldo(naplataInfo, saldoInfo);
     return V3StatusPolicy.textForCard(
       status: status,
       pokupljen: pokupljen,
@@ -544,14 +557,19 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final bool isOtkazan = widget.entry?.otkazanoAt != null;
     final tip = widget.putnik.tipPutnika;
     final naplataInfo = _resolveNaplataInfo();
-    final naplataStatus = naplataInfo?.status ?? V3NaplataStatus.nemaUplate;
-    final bool isPlacen = naplataStatus == V3NaplataStatus.potpunoPlacen;
+    final saldoInfo = _resolveSaldoInfo();
+    final bool isPlacen = _isPlacenBySaldo(naplataInfo, saldoInfo);
     final bool imaUplatu = naplataInfo?.imaUplatu ?? false;
     final String? naplataById = naplataInfo?.paidBy;
     final DateTime? naplataAt = naplataInfo?.paidAt;
     final DateTime? poslednjaDopunaAt = naplataInfo?.uplataAt;
     final double ukupanIznos = naplataInfo?.ukupanIznos ?? 0;
     final double poslednjaDopuna = naplataInfo?.poslednjaDopuna ?? 0;
+    final double dugIznos = naplataInfo?.dug ?? saldoInfo.dug;
+    final double visakIznos = naplataInfo?.visak ?? saldoInfo.visak;
+    final bool saldoMinus = dugIznos > 0.009;
+    final bool saldoPlus = !saldoMinus && visakIznos > 0.009;
+    final bool saldoNula = !saldoMinus && !saldoPlus;
     final bool hasTel = _firstValidTelefon() != null;
     final String? polazakAdresaNaziv = _getAdresaNaziv();
     final String? odredisteAdresaNaziv = _getOdredisteAdresaNaziv();
@@ -751,7 +769,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
               ),
 
               // Red 2 — status info
-              if (isPokupljen || isOtkazan || imaUplatu)
+              if (isPokupljen || isOtkazan || imaUplatu || naplataInfo != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 2.0),
                   child: Builder(builder: (_) {
@@ -803,6 +821,21 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       runSpacing: 2,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        Text(
+                          saldoMinus
+                              ? 'Saldo: -${dugIznos.toStringAsFixed(0)} RSD'
+                              : (saldoPlus
+                                  ? 'Saldo: +${visakIznos.toStringAsFixed(0)} RSD'
+                                  : (saldoNula ? 'Saldo: 0 RSD' : 'Saldo: 0 RSD')),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: saldoMinus
+                                ? const Color(0xFFFF6D00)
+                                : (saldoPlus ? const Color(0xFF00C853) : secondaryTextColor),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
                         // Vožnje: broj + vreme pokupljanja — prikazuje se svaki put kad je putnik pokupljen,
                         // nezavisno od statusa naplate.
                         if (isPokupljen) ...[
