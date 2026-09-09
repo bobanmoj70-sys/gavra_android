@@ -20,12 +20,14 @@ class _PopupTr {
 class V3VozacPazarPopup extends StatefulWidget {
   final DateTime datum;
   final double ukupno;
+  final bool naknadnaNaplataDetektovana;
   final VoidCallback onSaved;
 
   const V3VozacPazarPopup({
     super.key,
     required this.datum,
     required this.ukupno,
+    this.naknadnaNaplataDetektovana = false,
     required this.onSaved,
   });
 
@@ -85,6 +87,27 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
+              if (widget.naknadnaNaplataDetektovana) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
+                  ),
+                  child: Text(
+                    _PopupTr.tr('naknadnaNaplataDetektovanaPoruka'),
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               V3InputUtils.numberField(
                 controller: _iznosController,

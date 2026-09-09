@@ -1182,6 +1182,17 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Einnahmen speichern und schließen',
       'zh': '保存收入并关闭'
     },
+    'naknadnaNaplataDetektovanaPoruka': {
+      'sr':
+          'Detektovana je naknadna naplata nakon prethodnog unosa. Potreban je ponovni unos pazara sa ažuriranim iznosom.',
+      'en':
+          'An additional payment was detected after the previous entry. Please re-enter earnings with the updated amount.',
+      'ru':
+          'После предыдущего ввода обнаружен дополнительный платеж. Пожалуйста, повторно введите выручку с обновленной суммой.',
+      'de':
+          'Nach dem vorherigen Eintrag wurde eine zusätzliche Zahlung erkannt. Bitte geben Sie die Einnahmen mit dem aktualisierten Betrag erneut ein.',
+      'zh': '检测到在上次录入后有新增收款。请使用更新后的金额重新录入收入。'
+    },
   },
   'vozacScreen': {
     'kombiNijeDodeljen': {

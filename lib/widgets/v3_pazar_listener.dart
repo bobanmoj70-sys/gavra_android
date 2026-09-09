@@ -54,6 +54,7 @@ class _V3PazarListenerState extends State<V3PazarListener> {
       builder: (_) => V3VozacPazarPopup(
         datum: event.datum,
         ukupno: event.ukupno,
+        naknadnaNaplataDetektovana: event.naknadnaNaplataDetektovana,
         onSaved: () {
           navigatorKey.currentState?.pop();
         },

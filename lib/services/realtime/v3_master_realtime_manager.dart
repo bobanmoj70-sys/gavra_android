@@ -24,10 +24,12 @@ import 'repositories/v3_realtime_bootstrap_repository.dart';
 class V3PazarPromptEvent {
   final DateTime datum;
   final double ukupno;
+  final bool naknadnaNaplataDetektovana;
 
   const V3PazarPromptEvent({
     required this.datum,
     required this.ukupno,
+    this.naknadnaNaplataDetektovana = false,
   });
 }
 
@@ -39,7 +41,7 @@ class V3MasterRealtimeManager {
   static final V3RealtimeBootstrapRepository _bootstrapRepository = V3RealtimeBootstrapRepository();
 
   static final DateTime _defaultPazarPolicyStartDate = V3BelgradeTime.dateTime(2026, 9, 4);
-  static const Duration _pazarAutoDelayAfterLastRide = Duration(minutes: 60);
+  static const Duration _pazarAutoDelayAfterLastRide = Duration(minutes: 90);
   static const Duration _pazarAutoCheckInterval = Duration(minutes: 1);
 
   final V3CacheStore _cacheStore = V3CacheStore();
@@ -818,6 +820,7 @@ class V3MasterRealtimeManager {
     _pazarVoznjeRevisionSub = tablesRevisionStream(const [
       'v3_trenutna_dodela',
       'v3_operativna_nedelja',
+      'v3_finansije',
     ]).listen((revision) {
       debugPrint('[V3MasterRealtimeManager] voznje revision hash=$revision');
       unawaited(_checkPazarForCurrentDriver(fromRealtime: true));
@@ -932,10 +935,6 @@ class V3MasterRealtimeManager {
 
     final pazarMap = V3FinansijeService.getPazarPoVozacuZaDan(nowBelgrade);
     final ukupno = dnevna?.ukupno ?? (pazarMap[vozacId] ?? 0.0);
-    if (ukupno <= 0.009) {
-      debugPrint('[V3MasterRealtimeManager] auto zahtev preskočen: ukupno=0 vozacId=$vozacId');
-      return;
-    }
 
     _pazarAutoTriggerInFlight = true;
     try {
@@ -946,7 +945,7 @@ class V3MasterRealtimeManager {
         ukupno: ukupno,
         zahtevanUnos: true,
       );
-      debugPrint('[V3MasterRealtimeManager] auto zahtev unosa aktiviran (60min posle poslednje vožnje)');
+      debugPrint('[V3MasterRealtimeManager] auto zahtev unosa aktiviran (90min posle poslednje vožnje)');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] auto zahtev unosa error: $e');
     } finally {
@@ -1004,11 +1003,36 @@ class V3MasterRealtimeManager {
       final dnevnaAfterAuto = afterAuto?.uplataZaDan(today.day) ?? dnevna;
       if (dnevnaAfterAuto == null) return;
 
-      if (dnevnaAfterAuto.zahtevanUnos == true) {
+      final pazarMapNow = V3FinansijeService.getPazarPoVozacuZaDan(today);
+      final trenutnoUkupno = pazarMapNow[vozacId] ?? 0.0;
+      var effectiveDnevna = dnevnaAfterAuto;
+      var naknadnaNaplataDetektovana = false;
+
+      if (effectiveDnevna.zahtevanUnos == false && (trenutnoUkupno - effectiveDnevna.ukupno) > 0.009) {
+        naknadnaNaplataDetektovana = true;
+        await V3UplataPazaraService.sacuvajDnevnuUplatu(
+          vozacId: vozacId,
+          datum: today,
+          predao: effectiveDnevna.predao,
+          ukupno: trenutnoUkupno,
+          zahtevanUnos: true,
+        );
+        effectiveDnevna = V3DnevnaUplataPazara(
+          dan: today.day,
+          predao: effectiveDnevna.predao,
+          ukupno: trenutnoUkupno,
+          razlika: effectiveDnevna.predao - trenutnoUkupno,
+          zahtevanUnos: true,
+        );
+        debugPrint('[V3MasterRealtimeManager] reblokada pazara: detektovana naknadna naplata');
+      }
+
+      if (effectiveDnevna.zahtevanUnos == true) {
         _pazarPromptController.add(
           V3PazarPromptEvent(
             datum: today,
-            ukupno: dnevnaAfterAuto.ukupno,
+            ukupno: effectiveDnevna.ukupno,
+            naknadnaNaplataDetektovana: naknadnaNaplataDetektovana,
           ),
         );
       }
