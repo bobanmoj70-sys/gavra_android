@@ -974,7 +974,10 @@ class V3MasterRealtimeManager {
         }
       }
 
-      if (targetRow == null && !fromRealtime) {
+      if (targetRow == null) {
+        if (fromRealtime) {
+          debugPrint('[V3MasterRealtimeManager] pazar cache miss na realtime trigger-u, radim fallback fetch');
+        }
         final uplata = await V3UplataPazaraService.getZaVozacaIMesec(
           vozacId: vozacId,
           datum: today,
@@ -1059,6 +1062,8 @@ class V3MasterRealtimeManager {
         return finansijeCache;
       case 'v3_krediti':
         return kreditiCache;
+      case 'v3_uplata_pazara':
+        return uplataPazaraCache;
       case 'v3_racuni':
         return racuniCache;
       case 'v3_trenutna_dodela':
