@@ -57,9 +57,18 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
         predao: predaoVal,
         ukupno: widget.ukupno,
         zahtevanUnos: false, // gasimo popup jer je ukucao!
+        saberiSaPostojecimPredao: true,
+      );
+      final noviPredao = await V3UplataPazaraService.getPredaoZaDan(
+        vozacId: vozacId,
+        datum: widget.datum,
       );
       if (!mounted) return;
-      V3AppSnackBar.success(context, _PopupTr.tr('pazarEvidentiran'));
+      final ukupnoPredato = (noviPredao ?? predaoVal).toStringAsFixed(0);
+      V3AppSnackBar.success(
+        context,
+        _PopupTr.tr('pazarEvidentiranSaUkupnim').replaceAll('{iznos}', ukupnoPredato),
+      );
       widget.onSaved();
     } catch (e) {
       V3AppSnackBar.error(context, '${_PopupTr.tr('greska')}: $e');

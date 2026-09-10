@@ -40,6 +40,7 @@ class V3UplataPazaraService {
     required double predao,
     required double ukupno,
     bool zahtevanUnos = false,
+    bool saberiSaPostojecimPredao = false,
   }) async {
     final id = vozacId.trim();
     if (id.isEmpty) return;
@@ -49,7 +50,7 @@ class V3UplataPazaraService {
     final dan = datum.day;
 
     debugPrint(
-        '[V3UplataPazaraService] sacuvajDnevnuUplatu: vozacId=$id, dan=$dan.$mesec.$godina, predao=$predao, ukupno=$ukupno, zahtevanUnos=$zahtevanUnos');
+        '[V3UplataPazaraService] sacuvajDnevnuUplatu: vozacId=$id, dan=$dan.$mesec.$godina, predao=$predao, ukupno=$ukupno, zahtevanUnos=$zahtevanUnos, saberiSaPostojecimPredao=$saberiSaPostojecimPredao');
 
     try {
       final existing = await supabase
@@ -60,16 +61,17 @@ class V3UplataPazaraService {
           .eq('godina', godina)
           .maybeSingle();
 
-      final novaUplata = V3DnevnaUplataPazara(
-        dan: dan,
-        predao: predao,
-        ukupno: ukupno,
-        razlika: predao - ukupno,
-        zahtevanUnos: zahtevanUnos,
-      );
-
       if (existing != null) {
         final uplata = V3UplataPazara.fromJson(existing);
+        final prethodnaZaDan = uplata.uplataZaDan(dan);
+        final efektivniPredao = saberiSaPostojecimPredao ? (prethodnaZaDan?.predao ?? 0) + predao : predao;
+        final novaUplata = V3DnevnaUplataPazara(
+          dan: dan,
+          predao: efektivniPredao,
+          ukupno: ukupno,
+          razlika: efektivniPredao - ukupno,
+          zahtevanUnos: zahtevanUnos,
+        );
         final updated = uplata.withUplata(novaUplata);
 
         debugPrint('[V3UplataPazaraService] ažuriram postojeći zapis id=${uplata.id}');
@@ -78,6 +80,13 @@ class V3UplataPazaraService {
           'updated_at': V3BelgradeTime.nowIsoUtc(),
         }).eq('id', uplata.id);
       } else {
+        final novaUplata = V3DnevnaUplataPazara(
+          dan: dan,
+          predao: predao,
+          ukupno: ukupno,
+          razlika: predao - ukupno,
+          zahtevanUnos: zahtevanUnos,
+        );
         debugPrint('[V3UplataPazaraService] kreiram novi zapis');
         await supabase.from('v3_uplata_pazara').insert({
           'vozac_id': id,

@@ -1130,6 +1130,20 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Kassenzahlung gespeichert',
       'zh': '现金付款已保存'
     },
+    'uplataPazaraSacuvanaSabrana': {
+      'sr': 'Uplata sačuvana i dodata na postojeći iznos',
+      'en': 'Payment saved and added to existing amount',
+      'ru': 'Платеж сохранен и добавлен к существующей сумме',
+      'de': 'Zahlung gespeichert und zum bestehenden Betrag addiert',
+      'zh': '付款已保存并添加到现有金额'
+    },
+    'uplataPazaraSacuvanaSaUkupnim': {
+      'sr': 'Uplata sačuvana. Novi ukupno predato: {iznos} din',
+      'en': 'Payment saved. New total handed over: {iznos} RSD',
+      'ru': 'Платеж сохранен. Новый итог сдано: {iznos} дин',
+      'de': 'Zahlung gespeichert. Neuer insgesamt übergebener Betrag: {iznos} RSD',
+      'zh': '付款已保存。新的已交总额：{iznos} 第纳尔'
+    },
     'greskaPriCuvanju': {
       'sr': 'Greška pri čuvanju',
       'en': 'Error saving',
@@ -1152,6 +1166,20 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'ru': 'Выручка успешно зарегистрирована. Спасибо.',
       'de': 'Einnahmen erfolgreich erfasst. Danke.',
       'zh': '收入已成功记录。谢谢。'
+    },
+    'pazarEvidentiranSabran': {
+      'sr': 'Pazar je sačuvan i dodat na postojeći iznos.',
+      'en': 'Earnings were saved and added to the existing amount.',
+      'ru': 'Выручка сохранена и добавлена к существующей сумме.',
+      'de': 'Die Einnahmen wurden gespeichert und zum bestehenden Betrag addiert.',
+      'zh': '收入已保存并添加到现有金额。'
+    },
+    'pazarEvidentiranSaUkupnim': {
+      'sr': 'Pazar je evidentiran. Novi ukupno predato: {iznos} din',
+      'en': 'Earnings recorded. New total handed over: {iznos} RSD',
+      'ru': 'Выручка зафиксирована. Новый итог сдано: {iznos} дин',
+      'de': 'Einnahmen erfasst. Neuer insgesamt übergebener Betrag: {iznos} RSD',
+      'zh': '收入已记录。新的已交总额：{iznos} 第纳尔'
     },
     'greska': {'sr': 'Greška', 'en': 'Error', 'ru': 'Ошибка', 'de': 'Fehler', 'zh': '错误'},
     'smenaZavrsenaUnesiteIznos': {

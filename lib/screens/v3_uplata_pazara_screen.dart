@@ -117,10 +117,19 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
         datum: _selectedDate,
         predao: predaoVal,
         ukupno: _ukupnoNaplaceno,
+        saberiSaPostojecimPredao: true,
+      );
+      final noviPredao = await V3UplataPazaraService.getPredaoZaDan(
+        vozacId: vozac.id,
+        datum: _selectedDate,
       );
       if (!mounted) return;
-      setState(() => _predao = predaoVal);
-      V3AppSnackBar.success(context, _UplTr.tr('uplataPazaraSacuvana'));
+      setState(() => _predao = noviPredao ?? predaoVal);
+      final ukupnoPredato = (noviPredao ?? predaoVal).toStringAsFixed(0);
+      V3AppSnackBar.success(
+        context,
+        _UplTr.tr('uplataPazaraSacuvanaSaUkupnim').replaceAll('{iznos}', ukupnoPredato),
+      );
     } catch (e) {
       V3ErrorUtils.safeError(this, context, '${_UplTr.tr('greskaPriCuvanju')}: $e');
     } finally {
