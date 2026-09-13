@@ -1089,6 +1089,7 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
         'v3_auth',
         'v3_zahtevi',
         'v3_finansije',
+        'v3_uplata_pazara',
       ]),
       builder: (context, _) => _buildScaffold(context),
     );
