@@ -821,19 +821,30 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                       runSpacing: 2,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(
-                          saldoMinus
-                              ? 'Saldo: -${dugIznos.toStringAsFixed(0)} RSD'
-                              : (saldoPlus
-                                  ? 'Saldo: +${visakIznos.toStringAsFixed(0)} RSD'
-                                  : (saldoNula ? 'Saldo: 0 RSD' : 'Saldo: 0 RSD')),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: saldoMinus
-                                ? const Color(0xFFFF6D00)
-                                : (saldoPlus ? const Color(0xFF00C853) : secondaryTextColor),
-                            fontWeight: FontWeight.w700,
-                          ),
+                        StreamBuilder<int>(
+                          stream:
+                              V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_finansije', 'v3_auth']),
+                          builder: (context, __) {
+                            final _naplataInfo = _resolveNaplataInfo();
+                            final _saldoInfo = _resolveSaldoInfo();
+                            final double _dugIznos = _naplataInfo?.dug ?? _saldoInfo.dug;
+                            final double _visakIznos = _naplataInfo?.visak ?? _saldoInfo.visak;
+                            final bool _saldoMinus = _dugIznos > 0.009;
+                            final bool _saldoPlus = !_saldoMinus && _visakIznos > 0.009;
+
+                            return Text(
+                              _saldoMinus
+                                  ? 'Saldo: -${_dugIznos.toStringAsFixed(0)} RSD'
+                                  : (_saldoPlus ? 'Saldo: +${_visakIznos.toStringAsFixed(0)} RSD' : 'Saldo: 0 RSD'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _saldoMinus
+                                    ? const Color(0xFFFF6D00)
+                                    : (_saldoPlus ? const Color(0xFF00C853) : secondaryTextColor),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            );
+                          },
                         ),
 
                         // Vožnje: broj + vreme pokupljanja — prikazuje se svaki put kad je putnik pokupljen,

@@ -466,6 +466,13 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'placeno': {'sr': 'Plaćeno', 'en': 'Paid', 'ru': 'Оплачено', 'de': 'Bezahlt', 'zh': '已支付'},
     'dug': {'sr': 'Dug', 'en': 'Debt', 'ru': 'Долг', 'de': 'Schuld', 'zh': '欠款'},
     'ukupanDug': {'sr': 'Ukupan dug', 'en': 'Total debt', 'ru': 'Общий долг', 'de': 'Gesamtschuld', 'zh': '总欠款'},
+    'ukupanVisak': {
+      'sr': 'Ukupan višak',
+      'en': 'Total credit',
+      'ru': 'Общий остаток',
+      'de': 'Gesamtguthaben',
+      'zh': '总余额'
+    },
     'poslednjaUplata': {
       'sr': 'Poslednja uplata',
       'en': 'Last payment',

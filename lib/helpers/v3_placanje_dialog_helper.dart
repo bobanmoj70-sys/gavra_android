@@ -2,6 +2,7 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_translations.dart';
+import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_vozac_service.dart';
 import '../services/v3_locale_manager.dart';
@@ -159,299 +160,302 @@ class V3PlacanjeDialogHelper {
             }
           }
 
-          return Dialog(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.9,
-              ),
-              decoration: BoxDecoration(
-                gradient: Theme.of(context).backgroundGradient,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  )
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header
-                  V3ContainerUtils.iconContainer(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    backgroundColor: Theme.of(context).glassContainer,
-                    borderRadiusGeometry: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                    border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _placanjeTrf('naplataNaslov', {'NAME': imePrezime}),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: V3ContainerUtils.iconContainer(
-                            padding: const EdgeInsets.all(8),
-                            backgroundColor: Colors.red.withValues(alpha: 0.2),
-                            borderRadiusGeometry: BorderRadius.circular(15),
-                            border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
-                            child: const Icon(Icons.close, color: Colors.white, size: 20),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Content
-                  Flexible(
-                    child: SingleChildScrollView(
+          return StreamBuilder<int>(
+            stream: V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_finansije', 'v3_auth']),
+            builder: (context, __) => Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                ),
+                decoration: BoxDecoration(
+                  gradient: Theme.of(context).backgroundGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Theme.of(context).glassBorder, width: 0.8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    )
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    V3ContainerUtils.iconContainer(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      backgroundColor: Theme.of(context).glassContainer,
+                      borderRadiusGeometry: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                      border: Border(bottom: BorderSide(color: Theme.of(context).glassBorder)),
+                      child: Row(
                         children: [
-                          if (zadnjaNaplata != null)
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 14),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: cs.surface.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Theme.of(context).glassBorder),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _placanjeTr('zadnjaNaplata'),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _placanjeTrf('datumLabel',
-                                        {'VALUE': vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen)}),
-                                    style: const TextStyle(color: Colors.white70),
-                                  ),
-                                  Text(
-                                    _placanjeTrf('iznosLabel', {'VALUE': zadnjiIznos.toStringAsFixed(0)}),
-                                    style: const TextStyle(color: Colors.white70),
-                                  ),
-                                  Text(
-                                    _placanjeTrf('naplatioLabel', {'NAME': naplatioIme}),
-                                    style: const TextStyle(color: Colors.white70),
-                                  ),
-                                ],
+                          Expanded(
+                            child: Text(
+                              _placanjeTrf('naplataNaslov', {'NAME': imePrezime}),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          // Labele iznad polja (ne floating na ivici — inače pola teksta ide preko tamne pozadine).
-                          Text(
-                            _placanjeTr('iznosRsd'),
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.78),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: V3ContainerUtils.iconContainer(
+                              padding: const EdgeInsets.all(8),
+                              backgroundColor: Colors.red.withValues(alpha: 0.2),
+                              borderRadiusGeometry: BorderRadius.circular(15),
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
+                              child: const Icon(Icons.close, color: Colors.white, size: 20),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          V3InputUtils.numberField(
-                            controller: _iznosController,
-                            hint: '0',
-                            suffixText: 'RSD',
-                            keyboardType: TextInputType.number,
-                            icon: Icons.payments_outlined,
-                          ),
-                          const SizedBox(height: 16),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final yearWidth = (constraints.maxWidth * 0.34).clamp(92.0, 124.0);
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        Text(
-                                          _placanjeTr('mesec'),
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.78),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        DropdownButtonFormField2<int>(
-                                          isExpanded: true,
-                                          dropdownStyleData: _compactDropdownStyle,
-                                          buttonStyleData: _compactButtonStyle,
-                                          style: V3InputUtils.fieldTextStyle,
-                                          iconStyleData: const IconStyleData(
-                                            iconEnabledColor: V3InputStyle.icon,
-                                            iconSize: 20,
-                                          ),
-                                          decoration: _compactDropdownDecoration(),
-                                          value: _selectedMonth,
-                                          selectedItemBuilder: (context) {
-                                            return List.generate(12, (i) {
-                                              final m = i + 1;
-                                              return _oneLineDropdownLabel(
-                                                V3BelgradeTime.mesecNaziv(m),
-                                                V3InputUtils.fieldTextStyle,
-                                              );
-                                            });
-                                          },
-                                          items: List.generate(12, (i) => i + 1).map((m) {
-                                            final mesecStyle = _mesecStyle(m);
-                                            return DropdownMenuItem(
-                                              value: m,
-                                              child: _oneLineDropdownLabel(
-                                                V3BelgradeTime.mesecNaziv(m),
-                                                TextStyle(
-                                                  color: mesecStyle.color,
-                                                  fontWeight: mesecStyle.weight,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                          onChanged: (v) => setState(() {
-                                            _selectedMonth = v!;
-                                            if (_autoIznosEnabled) {
-                                              _setIznosController(
-                                                  _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                                            }
-                                          }),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  SizedBox(
-                                    width: yearWidth,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        Text(
-                                          _placanjeTr('godina'),
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.78),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        DropdownButtonFormField2<int>(
-                                          isExpanded: true,
-                                          dropdownStyleData: _compactDropdownStyle,
-                                          buttonStyleData: _compactButtonStyle,
-                                          style: V3InputUtils.fieldTextStyle,
-                                          iconStyleData: const IconStyleData(
-                                            iconEnabledColor: V3InputStyle.icon,
-                                            iconSize: 20,
-                                          ),
-                                          decoration: _compactDropdownDecoration(),
-                                          value: _selectedYear,
-                                          selectedItemBuilder: (context) {
-                                            return years
-                                                .map((y) => _oneLineDropdownLabel('$y.', V3InputUtils.fieldTextStyle))
-                                                .toList();
-                                          },
-                                          items: years.map((y) {
-                                            return DropdownMenuItem(
-                                              value: y,
-                                              child: _oneLineDropdownLabel(
-                                                '$y.',
-                                                V3InputUtils.fieldTextStyle,
-                                              ),
-                                            );
-                                          }).toList(),
-                                          onChanged: (v) => setState(() {
-                                            _selectedYear = v!;
-                                            if (_autoIznosEnabled) {
-                                              _setIznosController(
-                                                  _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
-                                            }
-                                          }),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  // Actions
-                  V3ContainerUtils.iconContainer(
-                    padding: const EdgeInsets.all(16),
-                    backgroundColor: Theme.of(context).glassContainer,
-                    borderRadiusGeometry: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                    border: Border(top: BorderSide(color: Theme.of(context).glassBorder)),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: V3ButtonUtils.outlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            text: _placanjeTr('otkazi'),
-                            borderColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: V3ButtonUtils.elevatedButton(
-                            onPressed: () {
-                              final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
-                              final iznos = double.tryParse(rawIznos) ?? 0;
-                              if (iznos <= 0) {
-                                V3AppSnackBar.warning(context, _placanjeTr('unesiteIspravanIznos'));
-                                return;
-                              }
-                              Navigator.pop(
-                                context,
-                                V3PlacanjeRezultat(
-                                  iznos: iznos,
-                                  mesec: _selectedMonth,
-                                  godina: _selectedYear,
+                    // Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (zadnjaNaplata != null)
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 14),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: cs.surface.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Theme.of(context).glassBorder),
                                 ),
-                              );
-                            },
-                            text: _placanjeTr('potvrdi'),
-                            icon: Icons.check,
-                            backgroundColor: Colors.green.withValues(alpha: 0.7),
-                            foregroundColor: Colors.white,
-                          ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _placanjeTr('zadnjaNaplata'),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _placanjeTrf('datumLabel',
+                                          {'VALUE': vremePlacen == null ? '-' : _formatDatumVreme(vremePlacen)}),
+                                      style: const TextStyle(color: Colors.white70),
+                                    ),
+                                    Text(
+                                      _placanjeTrf('iznosLabel', {'VALUE': zadnjiIznos.toStringAsFixed(0)}),
+                                      style: const TextStyle(color: Colors.white70),
+                                    ),
+                                    Text(
+                                      _placanjeTrf('naplatioLabel', {'NAME': naplatioIme}),
+                                      style: const TextStyle(color: Colors.white70),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            // Labele iznad polja (ne floating na ivici — inače pola teksta ide preko tamne pozadine).
+                            Text(
+                              _placanjeTr('iznosRsd'),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.78),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            V3InputUtils.numberField(
+                              controller: _iznosController,
+                              hint: '0',
+                              suffixText: 'RSD',
+                              keyboardType: TextInputType.number,
+                              icon: Icons.payments_outlined,
+                            ),
+                            const SizedBox(height: 16),
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final yearWidth = (constraints.maxWidth * 0.34).clamp(92.0, 124.0);
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Text(
+                                            _placanjeTr('mesec'),
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.78),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          DropdownButtonFormField2<int>(
+                                            isExpanded: true,
+                                            dropdownStyleData: _compactDropdownStyle,
+                                            buttonStyleData: _compactButtonStyle,
+                                            style: V3InputUtils.fieldTextStyle,
+                                            iconStyleData: const IconStyleData(
+                                              iconEnabledColor: V3InputStyle.icon,
+                                              iconSize: 20,
+                                            ),
+                                            decoration: _compactDropdownDecoration(),
+                                            value: _selectedMonth,
+                                            selectedItemBuilder: (context) {
+                                              return List.generate(12, (i) {
+                                                final m = i + 1;
+                                                return _oneLineDropdownLabel(
+                                                  V3BelgradeTime.mesecNaziv(m),
+                                                  V3InputUtils.fieldTextStyle,
+                                                );
+                                              });
+                                            },
+                                            items: List.generate(12, (i) => i + 1).map((m) {
+                                              final mesecStyle = _mesecStyle(m);
+                                              return DropdownMenuItem(
+                                                value: m,
+                                                child: _oneLineDropdownLabel(
+                                                  V3BelgradeTime.mesecNaziv(m),
+                                                  TextStyle(
+                                                    color: mesecStyle.color,
+                                                    fontWeight: mesecStyle.weight,
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (v) => setState(() {
+                                              _selectedMonth = v!;
+                                              if (_autoIznosEnabled) {
+                                                _setIznosController(
+                                                    _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                              }
+                                            }),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: yearWidth,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Text(
+                                            _placanjeTr('godina'),
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.78),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          DropdownButtonFormField2<int>(
+                                            isExpanded: true,
+                                            dropdownStyleData: _compactDropdownStyle,
+                                            buttonStyleData: _compactButtonStyle,
+                                            style: V3InputUtils.fieldTextStyle,
+                                            iconStyleData: const IconStyleData(
+                                              iconEnabledColor: V3InputStyle.icon,
+                                              iconSize: 20,
+                                            ),
+                                            decoration: _compactDropdownDecoration(),
+                                            value: _selectedYear,
+                                            selectedItemBuilder: (context) {
+                                              return years
+                                                  .map((y) => _oneLineDropdownLabel('$y.', V3InputUtils.fieldTextStyle))
+                                                  .toList();
+                                            },
+                                            items: years.map((y) {
+                                              return DropdownMenuItem(
+                                                value: y,
+                                                child: _oneLineDropdownLabel(
+                                                  '$y.',
+                                                  V3InputUtils.fieldTextStyle,
+                                                ),
+                                              );
+                                            }).toList(),
+                                            onChanged: (v) => setState(() {
+                                              _selectedYear = v!;
+                                              if (_autoIznosEnabled) {
+                                                _setIznosController(
+                                                    _predlozeniIznosZaMesecGodinu(_selectedMonth, _selectedYear));
+                                              }
+                                            }),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    // Actions
+                    V3ContainerUtils.iconContainer(
+                      padding: const EdgeInsets.all(16),
+                      backgroundColor: Theme.of(context).glassContainer,
+                      borderRadiusGeometry: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                      border: Border(top: BorderSide(color: Theme.of(context).glassBorder)),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: V3ButtonUtils.outlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              text: _placanjeTr('otkazi'),
+                              borderColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: V3ButtonUtils.elevatedButton(
+                              onPressed: () {
+                                final rawIznos = _iznosController.text.trim().replaceAll(',', '.');
+                                final iznos = double.tryParse(rawIznos) ?? 0;
+                                if (iznos <= 0) {
+                                  V3AppSnackBar.warning(context, _placanjeTr('unesiteIspravanIznos'));
+                                  return;
+                                }
+                                Navigator.pop(
+                                  context,
+                                  V3PlacanjeRezultat(
+                                    iznos: iznos,
+                                    mesec: _selectedMonth,
+                                    godina: _selectedYear,
+                                  ),
+                                );
+                              },
+                              text: _placanjeTr('potvrdi'),
+                              icon: Icons.check,
+                              backgroundColor: Colors.green.withValues(alpha: 0.7),
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

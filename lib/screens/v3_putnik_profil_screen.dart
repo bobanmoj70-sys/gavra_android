@@ -933,88 +933,102 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final adresaVsNaziv = V3AdresaService.getNazivAdreseById(adresaVsId);
     final adresaBcNaziv2 = V3AdresaService.getNazivAdreseById(adresaBcId2);
     final adresaVsNaziv2 = V3AdresaService.getNazivAdreseById(adresaVsId2);
-    final stats = V3PutnikStatistikaService.getTekuciMesec(putnikId ?? '');
-    final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
     final nedeljaOpseg = _formatNedeljaOpsegLabel();
     final nedeljaInfo = '${_tr('operativnaNedelja')}: $nedeljaOpseg';
     return ValueListenableBuilder<Locale>(
       valueListenable: V3LocaleManager().localeNotifier,
       builder: (context, __, ___) => ValueListenableBuilder<ThemeData>(
         valueListenable: V3ThemeManager().themeNotifier,
-        builder: (context, _, __) => V3ContainerUtils.backgroundContainer(
-          gradient: V3ThemeManager().currentGradient,
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            appBar: PreferredSize(
-              preferredSize: Size.zero,
-              child: AppBar(
-                toolbarHeight: 0,
+        builder: (context, _, __) => StreamBuilder<int>(
+          stream: V3MasterRealtimeManager.instance
+              .tablesRevisionStream(const ['v3_finansije', 'v3_operativna_nedelja', 'v3_auth']),
+          builder: (context, ___) {
+            final stats = V3PutnikStatistikaService.getTekuciMesec(putnikId ?? '');
+            final ukupanDug = V3PutnikStatistikaService.getUkupanDugZaSveMesece(putnikId ?? '');
+            final now = V3BelgradeTime.now();
+            final ukupanVisak = V3PutnikStatistikaService.getUkupanViskDoMeseca(
+              putnikId: putnikId ?? '',
+              godina: now.year,
+              mesec: now.month,
+            );
+
+            return V3ContainerUtils.backgroundContainer(
+              gradient: V3ThemeManager().currentGradient,
+              child: Scaffold(
                 backgroundColor: Colors.transparent,
-                elevation: 0,
-                systemOverlayStyle: const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.light,
-                  statusBarBrightness: Brightness.dark,
-                  systemNavigationBarColor: Colors.transparent,
-                  systemNavigationBarIconBrightness: Brightness.light,
-                ),
-              ),
-            ),
-            body: SafeArea(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Forced update gate
-                        const V3UpdateBanner(),
-                        // ── HEADER CARD ──────────────────────────────────────
-                        _buildHeaderCard(
-                          tip: tip,
-                          imePrezime: imePrezime,
-                          telefon: telefon,
-                          telefon2: telefon2,
-                          adresaBcNaziv: adresaBcNaziv,
-                          adresaVsNaziv: adresaVsNaziv,
-                          adresaBcNaziv2: adresaBcNaziv2,
-                          adresaVsNaziv2: adresaVsNaziv2,
-                        ),
-                        if (putnikId != null && putnikId.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          V3VremeDolaskaWidget(putnikId: putnikId),
-                        ],
-                        const SizedBox(height: 16),
-                        _buildStatistikaCard(
-                          tip: tip,
-                          stats: stats,
-                          cenaInfo: cenaInfo,
-                          ukupanDug: ukupanDug,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildDetaljneStatistikeSection(
-                          putnikId: putnikId,
-                          imePrezime: imePrezime,
-                          tipPutnika: tip,
-                        ),
-                        const SizedBox(height: 16),
-                        // ── RASPORED TERMINA ─────────────────────────────────
-                        _buildRasporedCard(nedeljaInfo: nedeljaInfo),
-                        const SizedBox(height: 16),
-                      ],
+                appBar: PreferredSize(
+                  preferredSize: Size.zero,
+                  child: AppBar(
+                    toolbarHeight: 0,
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    systemOverlayStyle: const SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness: Brightness.light,
+                      statusBarBrightness: Brightness.dark,
+                      systemNavigationBarColor: Colors.transparent,
+                      systemNavigationBarIconBrightness: Brightness.light,
                     ),
                   ),
-                  Positioned(
-                    top: 8,
-                    left: 16,
-                    right: 16,
-                    child: const V3InfoBanner(),
+                ),
+                body: SafeArea(
+                  child: Stack(
+                    children: [
+                      SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Forced update gate
+                            const V3UpdateBanner(),
+                            // ── HEADER CARD ──────────────────────────────────────
+                            _buildHeaderCard(
+                              tip: tip,
+                              imePrezime: imePrezime,
+                              telefon: telefon,
+                              telefon2: telefon2,
+                              adresaBcNaziv: adresaBcNaziv,
+                              adresaVsNaziv: adresaVsNaziv,
+                              adresaBcNaziv2: adresaBcNaziv2,
+                              adresaVsNaziv2: adresaVsNaziv2,
+                            ),
+                            if (putnikId != null && putnikId.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              V3VremeDolaskaWidget(putnikId: putnikId),
+                            ],
+                            const SizedBox(height: 16),
+                            _buildStatistikaCard(
+                              tip: tip,
+                              stats: stats,
+                              cenaInfo: cenaInfo,
+                              ukupanDug: ukupanDug,
+                              ukupanVisak: ukupanVisak,
+                            ),
+                            const SizedBox(height: 10),
+                            _buildDetaljneStatistikeSection(
+                              putnikId: putnikId,
+                              imePrezime: imePrezime,
+                              tipPutnika: tip,
+                            ),
+                            const SizedBox(height: 16),
+                            // ── RASPORED TERMINA ─────────────────────────────────
+                            _buildRasporedCard(nedeljaInfo: nedeljaInfo),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        left: 16,
+                        right: 16,
+                        child: const V3InfoBanner(),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -1227,6 +1241,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     required V3PutnikMesecnaStatistika stats,
     String? cenaInfo,
     required double ukupanDug,
+    required double ukupanVisak,
   }) {
     return V3ContainerUtils.styledContainer(
       padding: const EdgeInsets.all(16),
@@ -1311,6 +1326,19 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
               ),
             ],
           ),
+          if (ukupanVisak > 0.009) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_tr('ukupanVisak'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
+                Text(
+                  '${ukupanVisak.toStringAsFixed(0)} RSD',
+                  style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ],
           if (stats.poslednjaUplata != null) ...[
             const SizedBox(height: 6),
             Row(
