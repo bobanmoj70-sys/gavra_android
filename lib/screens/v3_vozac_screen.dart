@@ -677,15 +677,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _autoStartTimer = null;
     if (!mounted || _autoStartInProgress) return;
     if (V3VozacLocationTrackingService.instance.isRunning) {
-      if (_allTrackedPassengersCompleted()) {
-        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed');
-        unawaited(V3VozacLocationTrackingService.instance.stop());
-        return;
-      }
-      // Zaštita od zaglavljivanja: ako je sledeći termin već ušao u svoj
-      // T-15 prozor (npr. zaboravljen "pokupljen"/"otkazan" na prethodnom),
-      // prisilno prebaci tracking na taj sledeći termin da ne ostane
-      // večno zaglavljen na starom.
+      // Prioritet: čim sledeći termin uđe u svoj T-15 prozor,
+      // odmah prebaci tracking na taj termin (bez obzira na status starog).
       final t = V3VozacLocationTrackingService.instance;
       final activePolazak = v3PolazakDateTime(datumIso: t.activeDatumIso, vreme: t.activeVreme);
       final nextTermin = _findForceSwitchTermin(activePolazak: activePolazak, activeGrad: t.activeGrad);
@@ -698,6 +691,13 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         unawaited(_scheduleAutoStart());
         return;
       }
+
+      if (_allTrackedPassengersCompleted()) {
+        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed');
+        unawaited(V3VozacLocationTrackingService.instance.stop());
+        return;
+      }
+
       if (!_isNavigating) {
         V3StateUtils.safeSetState(this, () => _isNavigating = true);
       }
