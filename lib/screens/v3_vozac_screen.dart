@@ -84,6 +84,16 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
 
+  String _resolveVozacId() {
+    final fromSession = (_efektivniVozac?.id?.toString() ?? '').trim();
+    if (fromSession.isNotEmpty) return fromSession;
+
+    final fromRouteArg = (widget.vozacId ?? '').trim();
+    if (fromRouteArg.isNotEmpty) return fromRouteArg;
+
+    return '';
+  }
+
   // Moji termini (izvor: v3_operativna_nedelja)
   List<Map<String, dynamic>> _mojiTermini = [];
 
@@ -714,9 +724,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return;
     }
 
-    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
+    final vozacId = _resolveVozacId();
     if (vozacId.isEmpty) {
-      if (mounted) V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
+      // Auto-start može da se pokrene pre nego što je sesija vozača
+      // potpuno učitana nakon resume/cold start-a.
+      // Umesto lažnog errora, pokušaj ponovo za kratko.
+      if (mounted) {
+        _autoStartTimer = Timer(const Duration(seconds: 2), () => unawaited(_scheduleAutoStart()));
+      }
       return;
     }
 
@@ -875,7 +890,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final raw in rm.operativnaNedeljaCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['vreme']?.toString() ?? raw['polazak_at']?.toString());
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
       if (raw['created_by'] == null) continue;
 
@@ -1119,7 +1134,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final raw in rm.operativnaNedeljaCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['vreme']?.toString() ?? raw['polazak_at']?.toString());
       if (rowDatum != _selectedDatumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
       if (raw['created_by'] == null) continue;
 
@@ -1463,7 +1478,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final raw in rm.operativnaNedeljaCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['vreme']?.toString() ?? raw['polazak_at']?.toString());
       if (rowDatum != datumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
       if (raw['created_by'] == null) continue;
 
