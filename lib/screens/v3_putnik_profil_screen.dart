@@ -119,23 +119,23 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     return '$od - $doDatuma';
   }
 
-  ({int godina, int mesec}) _previousMonth(DateTime ref) {
-    if (ref.month == 1) {
-      return (godina: ref.year - 1, mesec: 12);
-    }
-    return (godina: ref.year, mesec: ref.month - 1);
-  }
-
   double _historicalDebtAmountUntilPreviousMonth(String putnikId) {
     final normalizedId = putnikId.trim();
     if (normalizedId.isEmpty) return 0;
     final now = V3BelgradeTime.now();
-    final prev = _previousMonth(now);
-    return V3PutnikStatistikaService.getUkupanDugDoMeseca(
+    final ukupniDugDoSada = V3PutnikStatistikaService.getUkupanDugDoMeseca(
       putnikId: normalizedId,
-      godina: prev.godina,
-      mesec: prev.mesec,
+      godina: now.year,
+      mesec: now.month,
     );
+    final tekuciMesecObracun = V3PutnikStatistikaService.getMesecniObracun(
+      putnikId: normalizedId,
+      godina: now.year,
+      mesec: now.month,
+    );
+
+    final istorijskiDug = (ukupniDugDoSada - tekuciMesecObracun.dug).clamp(0.0, double.infinity).toDouble();
+    return istorijskiDug;
   }
 
   String _formatWholeRsd(double value) {
