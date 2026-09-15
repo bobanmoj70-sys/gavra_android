@@ -90,6 +90,58 @@ class V3PutnikProfilMessages {
           '📅 Zakazivanje za dnevne putnike je moguće samo za $allowedLabel.\nPre 16:00 zakazuje se za tekući dan, posle 16:00 – za sledeći radni dan.',
       };
 
+  static String previousMonthDebtLocked(String giroRacun) => switch (_lang) {
+        'en' =>
+          '⛔ You have outstanding debt from previous months. You can make a payment to the giro account $giroRacun, after which uninterrupted app usage will be enabled.',
+        'ru' =>
+          '⛔ У вас есть непогашенная задолженность за предыдущие месяцы. Вы можете оплатить на расчётный счёт $giroRacun, после чего будет доступно полноценное использование приложения.',
+        'de' =>
+          '⛔ Sie haben offene Schulden aus vorherigen Monaten. Sie können die Zahlung auf das Girokonto $giroRacun vornehmen; danach ist die uneingeschränkte Nutzung der App wieder möglich.',
+        'zh' => '⛔ 您有之前几个月未结清的欠款。请向转账账户 $giroRacun 付款，付款后即可恢复正常使用应用。',
+        _ =>
+          '⛔ Imate neizmirena dugovanja iz prethodnih meseci. Uplatu možete izvršiti na broj žiro računa $giroRacun, nakon čega će vam biti omogućeno nesmetano korišćenje aplikacije.',
+      };
+
+  static String previousMonthDebtAmount(String iznos) => switch (_lang) {
+        'en' => 'Debt amount (previous months): $iznos RSD',
+        'ru' => 'Сумма долга (предыдущие месяцы): $iznos RSD',
+        'de' => 'Schuldbetrag (vorherige Monate): $iznos RSD',
+        'zh' => '欠款金额（之前几个月）：$iznos RSD',
+        _ => 'Iznos duga (prethodni meseci): $iznos RSD',
+      };
+
+  static String get previousMonthDebtTitle => switch (_lang) {
+        'en' => 'Payment required',
+        'ru' => 'Potrebna uplata',
+        'de' => 'Zahlung erforderlich',
+        'zh' => '需要付款',
+        _ => 'Neizmirena dugovanja',
+      };
+
+  static String get copyGiroAccount => switch (_lang) {
+        'en' => 'Copy account',
+        'ru' => 'Копировать счёт',
+        'de' => 'Konto kopieren',
+        'zh' => '复制账户',
+        _ => 'Kopiraj račun',
+      };
+
+  static String get close => switch (_lang) {
+        'en' => 'Close',
+        'ru' => 'Закрыть',
+        'de' => 'Schließen',
+        'zh' => '关闭',
+        _ => 'Zatvori',
+      };
+
+  static String get giroAccountCopied => switch (_lang) {
+        'en' => '📋 Giro account copied.',
+        'ru' => '📋 Расчётный счёт скопирован.',
+        'de' => '📋 Girokonto kopiert.',
+        'zh' => '📋 转账账户已复制。',
+        _ => '📋 Žiro račun je kopiran.',
+      };
+
   static String schedulingLocked(String vreme, String unlockStr) => switch (_lang) {
         'en' =>
           '🔒 Scheduling for $vreme is closed.\nNew scheduling for next week opens on Saturday at 03:00 ($unlockStr).',

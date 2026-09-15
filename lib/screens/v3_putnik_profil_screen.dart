@@ -56,6 +56,7 @@ class V3PutnikProfilScreen extends StatefulWidget {
 }
 
 class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with WidgetsBindingObserver {
+  static const String _giroRacun = '340-11436537-92';
   late Map<String, dynamic> _putnikData;
   // Operativni termini po danu
   // key = dan kratica npr 'pon', value = lista termina (BC i VS)
@@ -116,6 +117,64 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final od = '${ponedeljak.day.toString().padLeft(2, '0')}.${ponedeljak.month.toString().padLeft(2, '0')}.';
     final doDatuma = '${petak.day.toString().padLeft(2, '0')}.${petak.month.toString().padLeft(2, '0')}.';
     return '$od - $doDatuma';
+  }
+
+  ({int godina, int mesec}) _previousMonth(DateTime ref) {
+    if (ref.month == 1) {
+      return (godina: ref.year - 1, mesec: 12);
+    }
+    return (godina: ref.year, mesec: ref.month - 1);
+  }
+
+  double _historicalDebtAmountUntilPreviousMonth(String putnikId) {
+    final normalizedId = putnikId.trim();
+    if (normalizedId.isEmpty) return 0;
+    final now = V3BelgradeTime.now();
+    final prev = _previousMonth(now);
+    return V3PutnikStatistikaService.getUkupanDugDoMeseca(
+      putnikId: normalizedId,
+      godina: prev.godina,
+      mesec: prev.mesec,
+    );
+  }
+
+  String _formatWholeRsd(double value) {
+    final raw = value.toStringAsFixed(0);
+    final isNegative = raw.startsWith('-');
+    final digits = isNegative ? raw.substring(1) : raw;
+    final grouped = digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+    return isNegative ? '-$grouped' : grouped;
+  }
+
+  Future<void> _showPreviousMonthDebtDialog(BuildContext ctx, {required double dugIznos}) async {
+    final formatiranIznos = _formatWholeRsd(dugIznos);
+    final content =
+        '${V3PutnikProfilMessages.previousMonthDebtLocked(_giroRacun)}\n\n${V3PutnikProfilMessages.previousMonthDebtAmount(formatiranIznos)}';
+    await V3DialogHelper.showBasicDialog<void>(
+      context: ctx,
+      title: V3PutnikProfilMessages.previousMonthDebtTitle,
+      content: content,
+      titleIcon: Icons.lock_outline,
+      titleIconColor: Colors.orange,
+      actions: [
+        V3ButtonUtils.textButton(
+          onPressed: () => Navigator.of(ctx, rootNavigator: true).pop(),
+          text: V3PutnikProfilMessages.close,
+          foregroundColor: Colors.grey,
+        ),
+        V3ButtonUtils.textButton(
+          onPressed: () {
+            Clipboard.setData(const ClipboardData(text: _giroRacun));
+            Navigator.of(ctx, rootNavigator: true).pop();
+            if (mounted) {
+              V3AppSnackBar.success(context, V3PutnikProfilMessages.giroAccountCopied);
+            }
+          },
+          text: V3PutnikProfilMessages.copyGiroAccount,
+          foregroundColor: Colors.amber,
+        ),
+      ],
+    );
   }
 
   @override
@@ -429,6 +488,15 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
+    final currentPutnikId = _putnikData['id']?.toString() ?? '';
+    final previousMonthDebt = _historicalDebtAmountUntilPreviousMonth(currentPutnikId);
+    if (previousMonthDebt > 0.009) {
+      if (mounted) {
+        await _showPreviousMonthDebtDialog(ctx, dugIznos: previousMonthDebt);
+      }
+      return;
+    }
+
     final tipPutnika = (_putnikData['tip_putnika'] as String? ?? '').toLowerCase();
     final datumPolaska = V3DanHelper.datumZaDanAbbrUTekucojSedmici(
       dan,
