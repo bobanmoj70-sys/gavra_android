@@ -1426,6 +1426,24 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
       'de': 'Der Fahrer konnte nicht identifiziert werden.',
       'zh': '无法识别司机。',
     },
+    'autoStartUToku': {
+      'sr': 'Pokretanje praćenja je već u toku, pokušaj ponovo za koji trenutak.',
+      'en': 'Tracking start is already in progress, try again in a moment.',
+      'ru': 'Запуск отслеживания уже выполняется, повторите попытку через мгновение.',
+      'de': 'Der Tracking-Start läuft bereits, versuchen Sie es gleich noch einmal.',
+      'zh': '跟踪启动已在进行中，请稍后再试。',
+    },
+    'autoStartVanProzora': {
+      'sr':
+          'Praćenje nije pokrenuto: termin je van dozvoljenog vremenskog okvira (od 15 min pre do 40 min posle polaska).',
+      'en':
+          'Tracking not started: this slot is outside the allowed time window (15 min before to 40 min after departure).',
+      'ru':
+          'Отслеживание не запущено: рейс вне допустимого временного окна (от 15 мин до отправления до 40 мин после).',
+      'de':
+          'Tracking nicht gestartet: Der Termin liegt außerhalb des zulässigen Zeitfensters (15 Min. vor bis 40 Min. nach Abfahrt).',
+      'zh': '未启动跟踪：该班次超出允许的时间窗口（发车前15分钟到发车后40分钟）。',
+    },
     'promeniTemu': {
       'sr': 'Promeni temu',
       'en': 'Change theme',

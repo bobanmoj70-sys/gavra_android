@@ -687,24 +687,26 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _autoStartTimer = null;
     if (!mounted || _autoStartInProgress) return;
     if (V3VozacLocationTrackingService.instance.isRunning) {
+      if (_allTrackedPassengersCompleted()) {
+        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed');
+        unawaited(V3VozacLocationTrackingService.instance.stop());
+        return;
+      }
+
       // Prioritet: čim sledeći termin uđe u svoj T-15 prozor,
       // odmah prebaci tracking na taj termin (bez obzira na status starog).
       final t = V3VozacLocationTrackingService.instance;
       final activePolazak = v3PolazakDateTime(datumIso: t.activeDatumIso, vreme: t.activeVreme);
       final nextTermin = _findForceSwitchTermin(activePolazak: activePolazak, activeGrad: t.activeGrad);
-      if (nextTermin != null) {
+      final canForceSwitch =
+          activePolazak != null && V3BelgradeTime.now().isAfter(activePolazak.add(const Duration(minutes: 40)));
+      if (canForceSwitch && nextTermin != null) {
         debugPrint(
           '[V3VozacScreen] force-switch reason=next_window_open '
           'stari=${t.activeGrad} ${t.activeVreme} novi=${nextTermin.grad} ${nextTermin.vreme}',
         );
         await V3VozacLocationTrackingService.instance.stop();
         unawaited(_scheduleAutoStart());
-        return;
-      }
-
-      if (_allTrackedPassengersCompleted()) {
-        debugPrint('[V3VozacScreen] stop reason=all_passengers_completed');
-        unawaited(V3VozacLocationTrackingService.instance.stop());
         return;
       }
 
@@ -1515,7 +1517,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
       final polazak = v3PolazakDateTime(datumIso: datum, vreme: vreme);
       if (polazak == null) continue;
-      // Nema T+40 hard-stopa: jedina istina je da li termin ima aktivne putnike.
+      if (now.isAfter(polazak.add(const Duration(minutes: 40)))) continue;
       if (!_terminHasActivePassengers(datum, grad, vreme)) continue;
 
       candidates.add((datumIso: datum, grad: grad, vreme: vreme, polazak: polazak));

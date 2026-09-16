@@ -34,10 +34,9 @@ extension V3TrackingStartResultX on V3TrackingStartResult {
         V3TrackingStartResult.permissionDenied => 'dozvolaOdbijena',
         V3TrackingStartResult.permissionDeniedForever => 'dozvolaTrajnoOdbijena',
         V3TrackingStartResult.permissionAlwaysRequired => 'dozvolaPotrebnaUvek',
-        V3TrackingStartResult.missingData ||
-        V3TrackingStartResult.inProgress ||
-        V3TrackingStartResult.failed =>
-          'nemogucIdentifikovatiVozaca',
+        V3TrackingStartResult.missingData => 'nemogucIdentifikovatiVozaca',
+        V3TrackingStartResult.inProgress => 'autoStartUToku',
+        V3TrackingStartResult.failed => 'autoStartVanProzora',
       };
 }
 
