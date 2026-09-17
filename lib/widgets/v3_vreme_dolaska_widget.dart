@@ -11,6 +11,7 @@ import '../services/v3/v3_tracking_config.dart';
 import '../services/v3_locale_manager.dart';
 import '../utils/v3_belgrade_time.dart';
 import '../utils/v3_container_utils.dart';
+import '../utils/v3_putnik_id_resolver.dart';
 
 class V3VremeDolaskaWidget extends StatefulWidget {
   const V3VremeDolaskaWidget({
@@ -57,6 +58,10 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
   /// Direktni lookup — cache ključ je uvek termin_id:putnik_id.
   Map<String, dynamic>? _findEtaRow(String terminId, String putnikId) {
     return V3MasterRealtimeManager.instance.etaResultsCache['$terminId:$putnikId'];
+  }
+
+  String _rowPutnikId(Map<String, dynamic> row) {
+    return V3PutnikIdResolver.fromRow(row);
   }
 
   /// Tracking prozor za prikaz ETA: T-15 .. T+40 (isto kao vozački tracking).
@@ -118,18 +123,14 @@ class _V3VremeDolaskaWidgetState extends State<V3VremeDolaskaWidget> {
     String? bestVozacId;
 
     for (final row in V3MasterRealtimeManager.instance.operativnaNedeljaCache.values) {
-      final createdBy = row['created_by']?.toString();
-      if (createdBy != putnikId) continue;
+      final rowPutnikId = _rowPutnikId(row);
+      if (rowPutnikId != putnikId) continue;
       if (row['pokupljen_at'] != null) continue;
       if (row['otkazano_at'] != null) continue;
 
       final departure = _parseDepartureDateTime(row);
       if (departure == null) continue;
-      // Stare nepokupljene vožnje (van T-15..T+40) ne smeju da blokiraju
-      // izbor aktuelne/sledeće vožnje i sakriju ETA.
-      if (departure.isBefore(now) && !_isInEtaTrackingWindow(departure, now)) {
-        continue;
-      }
+      // Nema vremenskog hard-stopa: putnik je već filtriran gore (nije pokupljen/otkazan).
       String? vozacId;
 
       final terminId = row['id']?.toString();

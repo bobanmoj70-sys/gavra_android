@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'v3_belgrade_time.dart';
+import 'v3_putnik_id_resolver.dart';
 
 class V3StatusPolicy {
   V3StatusPolicy._();
@@ -272,7 +273,7 @@ class V3StatusPolicy {
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3BelgradeTime.normalizeToHHmm(row[vremeKolona]?.toString());
       final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum']);
-      final rowPutnikId = row['created_by']?.toString() ?? '';
+      final rowPutnikId = V3PutnikIdResolver.fromRow(row);
 
       if (rowPutnikId != putnikId) continue;
       if (rowGrad != grad) continue;

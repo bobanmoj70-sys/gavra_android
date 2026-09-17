@@ -35,6 +35,7 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_geo_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_navigation_utils.dart';
+import '../utils/v3_putnik_id_resolver.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
 import '../widgets/v3_bottom_nav_bar_slotovi.dart';
@@ -83,16 +84,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
   /// Efektivni vozač
   dynamic get _efektivniVozac => V3VozacService.currentVozac;
-
-  String _resolveVozacId() {
-    final fromSession = (_efektivniVozac?.id?.toString() ?? '').trim();
-    if (fromSession.isNotEmpty) return fromSession;
-
-    final fromRouteArg = (widget.vozacId ?? '').trim();
-    if (fromRouteArg.isNotEmpty) return fromRouteArg;
-
-    return '';
-  }
 
   // Moji termini (izvor: v3_operativna_nedelja)
   List<Map<String, dynamic>> _mojiTermini = [];
@@ -329,6 +320,11 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (id.isNotEmpty) out.add(id);
     }
     return out;
+  }
+
+  String _rowPutnikId(Map<String, dynamic> row) {
+    final putnikId = V3PutnikIdResolver.fromRow(row);
+    return putnikId;
   }
 
   /// OSRM/slot order može biti putnik_id ili (stariji) termin_id.
@@ -692,15 +688,14 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         unawaited(V3VozacLocationTrackingService.instance.stop());
         return;
       }
-
-      // Prioritet: čim sledeći termin uđe u svoj T-15 prozor,
-      // odmah prebaci tracking na taj termin (bez obzira na status starog).
+      // Zaštita od zaglavljivanja: ako je sledeći termin već ušao u svoj
+      // T-15 prozor (npr. zaboravljen "pokupljen"/"otkazan" na prethodnom),
+      // prisilno prebaci tracking na taj sledeći termin da ne ostane
+      // večno zaglavljen na starom.
       final t = V3VozacLocationTrackingService.instance;
       final activePolazak = v3PolazakDateTime(datumIso: t.activeDatumIso, vreme: t.activeVreme);
       final nextTermin = _findForceSwitchTermin(activePolazak: activePolazak, activeGrad: t.activeGrad);
-      final canForceSwitch =
-          activePolazak != null && V3BelgradeTime.now().isAfter(activePolazak.add(const Duration(minutes: 40)));
-      if (canForceSwitch && nextTermin != null) {
+      if (nextTermin != null) {
         debugPrint(
           '[V3VozacScreen] force-switch reason=next_window_open '
           'stari=${t.activeGrad} ${t.activeVreme} novi=${nextTermin.grad} ${nextTermin.vreme}',
@@ -709,7 +704,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         unawaited(_scheduleAutoStart());
         return;
       }
-
       if (!_isNavigating) {
         V3StateUtils.safeSetState(this, () => _isNavigating = true);
       }
@@ -726,14 +720,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       return;
     }
 
-    final vozacId = _resolveVozacId();
+    final vozacId = (_efektivniVozac?.id?.toString() ?? '').trim();
     if (vozacId.isEmpty) {
-      // Auto-start može da se pokrene pre nego što je sesija vozača
-      // potpuno učitana nakon resume/cold start-a.
-      // Umesto lažnog errora, pokušaj ponovo za kratko.
-      if (mounted) {
-        _autoStartTimer = Timer(const Duration(seconds: 2), () => unawaited(_scheduleAutoStart()));
-      }
+      if (mounted) V3AppSnackBar.error(context, _tr('nemogucIdentifikovatiVozaca'));
       return;
     }
 
@@ -878,7 +867,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       grad: _selectedGrad,
       vreme: selectedVNorm,
       onlyEligible: false,
-    ).where((r) => r['created_by'] != null);
+    ).where((r) => _rowPutnikId(r).isNotEmpty);
 
     // Redovi bez duplikata po operativna ID
     final allSelectedRowsById = <String, Map<String, dynamic>>{};
@@ -892,9 +881,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final raw in rm.operativnaNedeljaCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['vreme']?.toString() ?? raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
       if (rowDatum != _selectedDatumIso || rowGrad != _selectedGrad || rowVreme != _selectedVreme) continue;
-      if (raw['created_by'] == null) continue;
+      if (_rowPutnikId(raw).isEmpty) continue;
 
       final entryId = raw['id']?.toString() ?? '';
       if (entryId.isEmpty) continue;
@@ -915,8 +904,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     // 3. Za svaki red izgradimo _PutnikEntry iz operativna_nedelja
     final putnici = <_PutnikEntry>[];
     for (final row in allSelectedRowsById.values) {
-      final putnikId = row['created_by']?.toString();
-      final putnikData = putnikId != null ? rm.putniciCache[putnikId] : null;
+      final putnikId = _rowPutnikId(row);
+      final putnikData = putnikId.isNotEmpty ? rm.putniciCache[putnikId] : null;
       if (putnikData == null) continue;
 
       final entryId = row['id']?.toString() ?? '';
@@ -1115,8 +1104,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final gradUp = grad.toUpperCase();
 
     bool hasActivePutnik(Map<String, dynamic> row) {
-      final putnikId = row['created_by']?.toString();
-      if (putnikId == null || putnikId.isEmpty) return false;
+      final putnikId = _rowPutnikId(row);
+      if (putnikId.isEmpty) return false;
       final putnik = rm.putniciCache[putnikId];
       return putnik != null;
     }
@@ -1136,9 +1125,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final raw in rm.operativnaNedeljaCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['vreme']?.toString() ?? raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
       if (rowDatum != _selectedDatumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
-      if (raw['created_by'] == null) continue;
+      if (_rowPutnikId(raw).isEmpty) continue;
 
       final entryId = raw['id']?.toString() ?? '';
       if (entryId.isEmpty) continue;
@@ -1158,7 +1147,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       grad: gradUp,
       vreme: vremeNorm,
       includeItem: (row) {
-        final putnikId = row['created_by']?.toString() ?? '';
+        final putnikId = _rowPutnikId(row);
         final tip = (rm.putniciCache[putnikId]?['tip_putnika'] as String?)?.toLowerCase().trim();
         return tip != 'posiljka';
       },
@@ -1472,7 +1461,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       vreme: vremeNorm,
       onlyEligible: false,
     )) {
-      if (row['created_by'] == null) continue;
+      if (_rowPutnikId(row).isEmpty) continue;
       if (isActive(row)) return true;
     }
 
@@ -1480,9 +1469,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     for (final raw in rm.operativnaNedeljaCache.values) {
       final rowDatum = V3BelgradeTime.parseIsoDatePart(raw['datum'] as String? ?? '');
       final rowGrad = raw['grad']?.toString().toUpperCase() ?? '';
-      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['vreme']?.toString() ?? raw['polazak_at']?.toString());
+      final rowVreme = V3BelgradeTime.normalizeToHHmm(raw['polazak_at']?.toString());
       if (rowDatum != datumIso || rowGrad != gradUp || rowVreme != vremeNorm) continue;
-      if (raw['created_by'] == null) continue;
+      if (_rowPutnikId(raw).isEmpty) continue;
 
       final entryId = raw['id']?.toString() ?? '';
       if (entryId.isEmpty) continue;
@@ -1517,7 +1506,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
       final polazak = v3PolazakDateTime(datumIso: datum, vreme: vreme);
       if (polazak == null) continue;
-      if (now.isAfter(polazak.add(const Duration(minutes: 40)))) continue;
+      // Nema T+40 hard-stopa: jedina istina je da li termin ima aktivne putnike.
       if (!_terminHasActivePassengers(datum, grad, vreme)) continue;
 
       candidates.add((datumIso: datum, grad: grad, vreme: vreme, polazak: polazak));

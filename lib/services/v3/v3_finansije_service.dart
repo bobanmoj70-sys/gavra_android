@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/v3_dug.dart';
 import '../../models/v3_finansije.dart';
 import '../../utils/v3_belgrade_time.dart';
+import '../../utils/v3_putnik_id_resolver.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_finansije_repository.dart';
 
@@ -824,7 +825,7 @@ class V3FinansijeService {
           final danIso = V3BelgradeTime.toIsoDate(datum);
           final opCache = V3MasterRealtimeManager.instance.getCache('v3_operativna_nedelja');
           final vecVozioDanas = opCache.values.any((r) {
-            final rPutnikId = (r['created_by']?.toString() ?? '').trim().toLowerCase();
+            final rPutnikId = V3PutnikIdResolver.fromRow(r).trim().toLowerCase();
             if (rPutnikId != safePutnikId.toLowerCase()) return false;
 
             final rDanIso = V3BelgradeTime.parseIsoDatePart(r['datum']?.toString() ?? '');
@@ -1104,7 +1105,7 @@ class V3FinansijeService {
         'azurirao_by': operRow['azurirao_by']?.toString(),
         'grad': operRow['grad']?.toString(),
         'vreme': operRow['vreme']?.toString(),
-        'putnik_v3_auth_id': operRow['created_by']?.toString(),
+        'putnik_v3_auth_id': V3PutnikIdResolver.fromRow(operRow),
         'finansije_id': null,
       });
     }
@@ -1310,7 +1311,7 @@ class V3FinansijeService {
       }
       if (pokupioVozacId.isEmpty) {
         for (final operRow in rm.operativnaNedeljaCache.values) {
-          final rPutnikId = (operRow['created_by']?.toString() ?? '').trim().toLowerCase();
+          final rPutnikId = V3PutnikIdResolver.fromRow(operRow).trim().toLowerCase();
           if (rPutnikId != putnikId.toLowerCase()) continue;
           final pokupljenBy = operRow['pokupljen_by']?.toString().trim();
           if (pokupljenBy == null || pokupljenBy.isEmpty) continue;

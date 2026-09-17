@@ -1,4 +1,5 @@
 import '../../utils/v3_belgrade_time.dart';
+import '../../utils/v3_putnik_id_resolver.dart';
 import 'v3_trenutna_dodela_service.dart';
 import 'v3_trenutna_dodela_slot_service.dart';
 
@@ -43,7 +44,7 @@ class V3DodelaOrchestratorService {
       matchedRows
           .map((row) => (
                 terminId: row['id']?.toString() ?? '',
-                putnikId: row['created_by']?.toString() ?? '',
+                putnikId: V3PutnikIdResolver.fromRow(row),
                 vozacId: vozacId,
               ))
           .toList(growable: false),
@@ -171,7 +172,7 @@ class V3DodelaOrchestratorService {
 
     for (final row in operativnaRows) {
       final datum = V3BelgradeTime.parseIsoDatePart(row['datum']);
-      final rowPutnikId = row['created_by']?.toString() ?? '';
+      final rowPutnikId = V3PutnikIdResolver.fromRow(row);
       final rowGrad = row['grad']?.toString() ?? '';
       final rowVreme = V3BelgradeTime.normalizeToHHmm(row['polazak_at']?.toString());
 

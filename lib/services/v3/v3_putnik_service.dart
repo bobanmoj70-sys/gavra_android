@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../models/v3_putnik.dart';
 import '../../models/v3_vozac.dart';
 import '../../utils/v3_belgrade_time.dart';
+import '../../utils/v3_putnik_id_resolver.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
@@ -112,11 +113,11 @@ class V3PutnikService {
           if ((row['grad']?.toString() ?? '') != grad) return false;
           if (V3BelgradeTime.normalizeToHHmm(row['polazak_at']) != vremeNorm) return false;
           if (row['otkazano_at'] != null) return false;
-          if (row['created_by'] == null) return false;
+          if (V3PutnikIdResolver.fromRow(row).isEmpty) return false;
           return true;
         })
         .map((row) {
-          final pid = row['created_by'].toString();
+          final pid = V3PutnikIdResolver.fromRow(row);
           final pData = rm.putniciCache[pid];
           return {
             'id': pid,

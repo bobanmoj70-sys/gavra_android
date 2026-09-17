@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../globals.dart';
 import '../../utils/v3_belgrade_time.dart';
+import '../../utils/v3_putnik_id_resolver.dart';
 import '../../utils/v3_status_policy.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
@@ -49,7 +50,7 @@ class V3OperativnaNedeljaEntry {
   });
 
   factory V3OperativnaNedeljaEntry.fromJson(Map<String, dynamic> json) {
-    final effectivePutnikId = (json['created_by'] as String?) ?? '';
+    final effectivePutnikId = V3PutnikIdResolver.fromRow(json);
 
     return V3OperativnaNedeljaEntry(
       id: json['id'] as String? ?? '',
@@ -126,7 +127,7 @@ class V3OperativnaNedeljaService {
 
     final zahtevCache = V3MasterRealtimeManager.instance.zahteviCache.values;
     final contextRows = zahtevCache.where((row) {
-      final rowPutnikId = (row['created_by']?.toString() ?? '').trim();
+      final rowPutnikId = V3PutnikIdResolver.fromRow(row);
       final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum'] as String? ?? '');
       final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
       return rowPutnikId == putnikId && rowDatum == datum && rowGrad == gradNorm;
@@ -189,7 +190,7 @@ class V3OperativnaNedeljaService {
     String? updatedBy,
   }) async {
     final terminId = (operativnaRow['id']?.toString() ?? '').trim();
-    final putnikId = (operativnaRow['created_by']?.toString() ?? '').trim();
+    final putnikId = V3PutnikIdResolver.fromRow(operativnaRow);
     final datumIso = V3BelgradeTime.parseIsoDatePart(operativnaRow['datum'] as String? ?? '');
     final grad = (operativnaRow['grad']?.toString() ?? '').trim();
     final vreme = (operativnaRow['polazak_at']?.toString() ?? operativnaRow['vreme']?.toString() ?? '').trim();
@@ -322,7 +323,7 @@ class V3OperativnaNedeljaService {
       final cache = V3MasterRealtimeManager.instance.operativnaNedeljaCache.values;
       final postojeci = cache.where((r) {
         final rDatum = V3BelgradeTime.parseIsoDatePart(r['datum'] as String? ?? '');
-        final rowPutnikId = r['created_by']?.toString();
+        final rowPutnikId = V3PutnikIdResolver.fromRow(r);
         return rowPutnikId == putnikId && rDatum == datum && r['grad'] == grad && _isOperativnaAktivna(r);
       }).toList();
 

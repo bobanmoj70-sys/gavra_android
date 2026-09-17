@@ -28,6 +28,7 @@ import '../utils/v3_dialog_helper.dart';
 import '../utils/v3_error_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
+import '../utils/v3_putnik_id_resolver.dart';
 import '../utils/v3_safe_text.dart';
 import '../utils/v3_state_utils.dart';
 import '../utils/v3_status_policy.dart';
@@ -74,8 +75,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
   /// Debounce ključ za akcije otkazivanja/sačuvaj u profilu.
   String get _actionDebounceKey {
-    final putnikId = _putnikData['id']?.toString() ?? 'unknown';
+    final putnikId = _currentPutnikId() ?? 'unknown';
     return 'putnik_profil_${putnikId}_action_debounce';
+  }
+
+  String? _currentPutnikId() {
+    return V3PutnikIdResolver.fromPutnikData(_putnikData);
+  }
+
+  String _rowPutnikId(Map<String, dynamic> row) {
+    return V3PutnikIdResolver.fromRow(row);
   }
 
   // Prevodi za profil ekran (SR/EN/RU/DE) — isti obrazac kao welcome screen.
@@ -241,7 +250,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   void _refresh() {
-    final putnikId = _putnikData['id']?.toString();
+    final putnikId = _currentPutnikId();
     if (putnikId == null) return;
     // Osvježi putnik iz cache-a
     final cached = V3MasterRealtimeManager.instance.putniciCache[putnikId];
@@ -257,7 +266,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
 
       for (final grad in const ['BC', 'VS']) {
         final opRows = rm.operativnaNedeljaCache.values.where((e) {
-          return (e['created_by']?.toString() ?? '') == putnikId &&
+          return _rowPutnikId(e) == putnikId &&
               (e['datum'] as String? ?? '').startsWith(datumIso) &&
               (e['grad']?.toString().toUpperCase() ?? '') == grad;
         }).toList();
@@ -399,7 +408,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   /// Vraća datum za dati dan abbr u tekućoj sedmici.
   Future<void> _updatePolazak(String dan, String grad, String? novoVreme,
       {_ZahtevInfo? trenutniInfo, bool koristiSekundarnu = false}) async {
-    final putnikId = _putnikData['id']?.toString();
+    final putnikId = _currentPutnikId();
     if (putnikId == null) return;
 
     // Debounce: ignoriši dvostruki klik u roku od 500 ms
@@ -443,7 +452,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
       final datumIso = V3DanHelper.toIsoDate(datumPolaska);
       final vecPostojiUObradi = V3MasterRealtimeManager.instance.zahteviCache.values.any((z) {
         final status = V3StatusPolicy.normalizeStatus(z['status']?.toString());
-        return (z['created_by']?.toString() ?? '') == putnikId &&
+        return _rowPutnikId(z) == putnikId &&
             (z['datum'] as String? ?? '').startsWith(datumIso) &&
             (z['grad']?.toString().toUpperCase() ?? '') == grad &&
             (V3StatusPolicy.isPending(status) || V3StatusPolicy.isOfferLike(status));
@@ -488,7 +497,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   Future<void> _showTimePicker(BuildContext ctx, String dan, String grad, _ZahtevInfo? info) async {
-    final currentPutnikId = _putnikData['id']?.toString() ?? '';
+    final currentPutnikId = _currentPutnikId() ?? '';
     final previousMonthDebt = _historicalDebtAmountUntilPreviousMonth(currentPutnikId);
     if (previousMonthDebt > 0.009) {
       if (mounted) {
@@ -540,7 +549,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final hasActive =
         info != null && !V3StatusPolicy.isCanceledOrRejected(info.status) && !V3StatusPolicy.isOfferLike(info.status);
     // Provera da li putnik ima drugu adresu za ovaj grad
-    final putnikId = _putnikData['id']?.toString();
+    final putnikId = _currentPutnikId();
     final putnikCache = V3MasterRealtimeManager.instance.putniciCache[putnikId];
     final hasSecondary =
         grad == 'BC' ? (putnikCache?['adresa_bc_id_2'] != null) : (putnikCache?['adresa_vs_id_2'] != null);
@@ -941,7 +950,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     V3PutnikService.currentPutnik = null;
 
     // Oslobodi uređaj slot u bazi pre brisanja lokalne sesije
-    final putnikId = (_putnikData['id'] ?? '').toString().trim();
+    final putnikId = (_currentPutnikId() ?? '').trim();
     if (putnikId.isNotEmpty) {
       final deviceId = await V3DeviceIdentityService.getStableDeviceId();
       await V3PushTokenEdgeService.releaseDeviceSlot(
@@ -981,7 +990,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final putnikId = _putnikData['id']?.toString();
+    final putnikId = _currentPutnikId();
     final tip = _putnikData['tip_putnika'] as String? ?? 'radnik';
     final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
     final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
