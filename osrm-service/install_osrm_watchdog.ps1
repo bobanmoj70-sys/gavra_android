@@ -1,4 +1,4 @@
-# Registruje GavraOSRM_Watchdog: svaka 3 minuta proverava OSRM i Funnel DNS.
+# Registruje GavraOSRM_Watchdog: svaki 1 minut proverava OSRM i Funnel DNS.
 # Pokrenuti jednom kao isti korisnik (Bojan). Može da se ponavlja bez štete.
 
 $ErrorActionPreference = "Stop"
@@ -17,7 +17,7 @@ $action = New-ScheduledTaskAction `
     -WorkingDirectory $ServiceDir
 
 $repeat = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-    -RepetitionInterval (New-TimeSpan -Minutes 3) `
+    -RepetitionInterval (New-TimeSpan -Minutes 1) `
     -RepetitionDuration (New-TimeSpan -Days 9999)
 
 $logon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
@@ -50,7 +50,7 @@ foreach ($principal in @($principalHighest, $principalLimited)) {
             -Trigger @($repeat, $logon) `
             -Principal $principal `
             -Settings $settings `
-            -Description "Svaka 3 min proverava OSRM/proxy i javni Tailscale Funnel DNS. Reciklira Funnel ako 8.8.8.8 vrati NXDOMAIN." | Out-Null
+            -Description "Svaki 1 min proverava OSRM/proxy i javni Tailscale Funnel DNS. Reciklira Funnel ako 8.8.8.8 vrati NXDOMAIN, i proaktivno refresuje funnel svakih ~20 min." | Out-Null
         $registered = $true
         Write-Host "Task $TaskName je registrovan (RunLevel=$($principal.RunLevel))."
         break

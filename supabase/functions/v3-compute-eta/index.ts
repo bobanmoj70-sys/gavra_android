@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchOsrmWithRetry } from "../_shared/osrm_fetch.ts";
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
@@ -295,41 +296,12 @@ function getOsrmHttpClient(): ReturnType<typeof Deno.createHttpClient> | undefin
 }
 
 async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
-  let lastError: Error | null = null;
-  const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "User-Agent": "gavra-v3-compute-eta/1.0",
-    ...(apiKey ? { "X-API-Key": apiKey } : {}),
-  };
-  const client = getOsrmHttpClient();
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-        signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS),
-        ...(client ? { client } : {}),
-      });
-      if (response.ok) return response;
-      // 4xx greske su trajne (los zahtev) - nema smisla retrijovati, vrati odmah.
-      if (response.status >= 400 && response.status < 500) return response;
-      lastError = new Error(`HTTP ${response.status}`);
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
-      console.warn(
-        `[v3-compute-eta] osrm fetch attempt=${attempt + 1}/${maxRetries + 1} err=${lastError.message}`,
-      );
-    }
-
-    if (attempt < maxRetries) {
-      const delay = OSRM_BASE_DELAY_MS * Math.pow(2, attempt);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-
-  throw lastError || new Error("Max retries exceeded");
+  return await fetchOsrmWithRetry(url, {
+    maxRetries,
+    timeoutMs: OSRM_REQUEST_TIMEOUT_MS,
+    baseDelayMs: OSRM_BASE_DELAY_MS,
+    userAgent: "gavra-v3-compute-eta/1.0",
+  });
 }
 
 /// Vraća fallback response sa postojećim ETA redovima i poslednjim poznatim
@@ -638,7 +610,6 @@ Deno.serve(async (req) => {
     // optimized_order = putnik_id[] (usklađeno sa Flutter sort po putnik.id)
     const optimizedOrder = upsertRows.map((r) => r.putnik_id);
     const upsertRowsWithOrder = upsertRows.map((r) => ({ ...r, optimized_order: optimizedOrder }));
-
     const { error: upsertError } = await client
       .from("v3_eta_results")
       .upsert(upsertRowsWithOrder, { onConflict: "slot_id,putnik_id" });

@@ -56,6 +56,34 @@ function Test-FunnelPublicDns {
     return $false
 }
 
+function Get-FunnelPublicIpv4 {
+    param([string]$HostName)
+    $output = nslookup $HostName 8.8.8.8 2>&1 | Out-String
+    if ($output -match "Non-existent domain|NXDOMAIN|can't find") {
+        return $null
+    }
+    $ips = [regex]::Matches($output, '\b(?:\d{1,3}\.){3}\d{1,3}\b') | ForEach-Object { $_.Value } | Select-Object -Unique
+    foreach ($ip in $ips) {
+        if ($ip -eq "8.8.8.8") { continue }
+        if ($ip -match '^100\.') { continue }
+        if ($ip -match '^127\.') { continue }
+        return $ip
+    }
+    return $null
+}
+
+function Test-FunnelPublicHttps {
+    param([string]$HostName)
+    $ip = Get-FunnelPublicIpv4 -HostName $HostName
+    if (-not $ip) { return $false }
+    try {
+        $code = & curl.exe -sS -o NUL -w "%{http_code}" --http1.1 --connect-timeout 8 --max-time 12 --resolve "${HostName}:443:${ip}" "https://$HostName/" 2>$null
+        return ($code -eq "200")
+    } catch {
+        return $false
+    }
+}
+
 function Enable-Funnel {
     if (-not (Test-Path $TailscaleExe)) {
         Log "GREŠKA: Tailscale nije pronađen."
@@ -113,6 +141,13 @@ try {
     $dnsOk = Test-FunnelPublicDns -HostName $FunnelHost
 
     if ($osrmOk -and $proxyOk -and $dnsOk) {
+        $httpsOk = Test-FunnelPublicHttps -HostName $FunnelHost
+        if (-not $httpsOk) {
+            Log "PROBLEM: javni HTTPS/TLS za $FunnelHost nije OK. Recikliram Funnel..."
+            Recycle-Funnel
+            exit 0
+        }
+
         $now = Get-Date
         $lastOkStamp = Join-Path $ServiceDir ".osrm_watchdog_ok"
         $shouldLogOk = $true
@@ -123,7 +158,7 @@ try {
             }
         }
         if ($shouldLogOk) {
-            Log "OK: OSRM + proxy + javni DNS ($FunnelHost)"
+            Log "OK: OSRM + proxy + javni DNS + HTTPS ($FunnelHost)"
             Set-Content -Path $lastOkStamp -Value $now.ToString("o")
         }
         exit 0

@@ -350,7 +350,11 @@ class V3VozacLocationTrackingService with WidgetsBindingObserver {
       );
 
       _setRunning(true);
-      await _syncEngines(immediateTick: true);
+      try {
+        await _syncEngines(immediateTick: true);
+      } catch (e) {
+        debugPrint('$_tag start: engine/tick greška, tracking ostaje aktivan: $e');
+      }
       return V3TrackingStartResult.started;
     } catch (e) {
       debugPrint('$_tag start greška: $e');

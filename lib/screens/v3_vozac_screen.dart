@@ -175,9 +175,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       _allTerminToVozac = await V3TrenutnaDodelaService.loadActiveVozacByTerminId();
     } catch (e) {
       debugPrint('[V3VozacScreen] _reloadTrenutnaDodelaForVozac error: $e');
-      _assignedOperativnaIds = <String>{};
-      _assignedSlotRows = <Map<String, String>>[];
-      _allTerminToVozac = <String, String>{};
+      // Ne briši prethodnu dodelu — prazan spisak bi ugasio tracking (AKTIVNO→ČEKAM).
     } finally {
       _loadingDodela = false;
     }
@@ -206,13 +204,6 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       'v3_kapacitet_slots',
       'v3_app_settings',
       'v3_finansije',
-      // BG isolate (flutter_background_service) računa tickove u SVOJOJ
-      // instanci V3VozacLocationTrackingService dok je app u pozadini —
-      // onEtaTick stream u ovom (UI) isolate-u tada ne prima te rezultate.
-      // Bez ove tabele u listi, _rebuild() se ne bi pokrenuo kad BG upiše
-      // svež optimized_order u v3_eta_results, pa bi kartice ostale
-      // zaglavljene na redosledu iz poslednjeg FG ticka.
-      'v3_eta_results',
     ]).listen((tick) {
       if (!mounted || tick == _lastRealtimeTick) return;
       _lastRealtimeTick = tick;
@@ -385,21 +376,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         return rankA.compareTo(rankB);
       }
 
+      // Kartice koje su već na ekranu ostaju gde jesu — OSRM /trip ne sme
+      // da ih premešta na svaki tick.
+      final posA = prevPos[a.putnik.id];
+      final posB = prevPos[b.putnik.id];
+      if (posA != null && posB != null && posA != posB) {
+        return posA.compareTo(posB);
+      }
+
       if (osrmOrder.isNotEmpty) {
         final indexA = _osrmIndexOf(a, osrmOrder);
         final indexB = _osrmIndexOf(b, osrmOrder);
         if (indexA != indexB) return indexA.compareTo(indexB);
-
-        // Jednaki OSRM indeksi (oba 999 ili isti slot) — zadrži prethodni redosled.
-        final posA = prevPos[a.putnik.id] ?? 9999;
-        final posB = prevPos[b.putnik.id] ?? 9999;
-        return posA.compareTo(posB);
       }
 
-      // Nema OSRM redosleda — zadrži prethodni redosled.
-      final posA = prevPos[a.putnik.id] ?? 9999;
-      final posB = prevPos[b.putnik.id] ?? 9999;
-      return posA.compareTo(posB);
+      return (posA ?? 9999).compareTo(posB ?? 9999);
     });
 
     // Log sortirani redosled
@@ -607,8 +598,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     _startTablesRevisionRealtime();
     _etaTickSub = V3VozacLocationTrackingService.instance.onEtaTick.listen((result) {
       if (!mounted) return;
-      // Sort/mapa samo kad vozač gleda isti termin kao tracking sesija.
       if (!_isViewingTrackedTermin) return;
+      if (result.order.isEmpty && result.etaMap.isEmpty) return;
       debugPrint('[ETA_TICK] order=${result.order} etaKeys=${result.etaMap.length}');
       _refreshPutniciOrderFromEtaCache();
       unawaited(_syncMapRouteIfNeeded(reason: 'eta_tick_20s'));
@@ -784,7 +775,8 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final t = V3VozacLocationTrackingService.instance;
     if (!t.isRunning) return false;
 
-    if (_isViewingTrackedTermin && _mojiPutnici.isNotEmpty) {
+    if (_isViewingTrackedTermin) {
+      if (_mojiPutnici.isEmpty) return false;
       return _mojiPutnici.every(_isPutnikEntryCompleted);
     }
 
@@ -851,7 +843,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       }
       // Nema termina za ovaj dan — prikaži prazno
       V3StateUtils.safeSetState(this, () => _mojiPutnici = []);
-      _scheduleAutoStart();
+      if (!V3VozacLocationTrackingService.instance.isRunning) {
+        _scheduleAutoStart();
+      }
       return;
     }
 
@@ -950,7 +944,9 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       unawaited(_syncMapRouteIfNeeded(reason: 'realtime_refresh'));
     }
 
-    _scheduleAutoStart();
+    if (!V3VozacLocationTrackingService.instance.isRunning) {
+      _scheduleAutoStart();
+    }
   }
 
   void _selectFirstTermin() {
@@ -1538,7 +1534,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
   }) {
     final now = V3BelgradeTime.now();
     for (final c in _activeTerminCandidates()) {
-      final isLater = activePolazak == null || c.polazak.isAfter(activePolazak) || c.grad != activeGrad;
+      final isLater = activePolazak == null || c.polazak.isAfter(activePolazak);
       if (!isLater) continue;
       if (!now.isBefore(c.polazak.subtract(v3AutoStartLeadTime))) return c;
     }

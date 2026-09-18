@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchOsrmWithRetry } from "../_shared/osrm_fetch.ts";
 
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
@@ -113,43 +114,6 @@ function toBelgradeHHmm(date: Date): string {
   const map: Record<string, string> = {};
   for (const p of parts) map[p.type] = p.value;
   return `${map.hour}:${map.minute}`;
-}
-
-async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
-  let lastError: Error | null = null;
-  const apiKey = Deno.env.get("GAVRA013_API_KEY")?.trim() ?? "";
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "User-Agent": "gavra-v3-auto-prepare/1.0",
-    ...(apiKey ? { "X-API-Key": apiKey } : {}),
-  };
-  // HTTP/1.1 only — Deno HTTP/2 ALPN + Tailscale Funnel = tls handshake eof
-  let httpClient: ReturnType<typeof Deno.createHttpClient> | undefined;
-  try {
-    httpClient = Deno.createHttpClient({ http2: false });
-  } catch {
-    httpClient = undefined;
-  }
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers,
-        signal: AbortSignal.timeout(OSRM_REQUEST_TIMEOUT_MS),
-        ...(httpClient ? { client: httpClient } : {}),
-      });
-      if (response.ok) return response;
-      // 4xx greske su trajne (los zahtev) - nema smisla retrijovati, vrati odmah.
-      if (response.status >= 400 && response.status < 500) return response;
-      lastError = new Error(`HTTP ${response.status}`);
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
-    }
-    if (attempt < maxRetries) {
-      await new Promise((resolve) => setTimeout(resolve, OSRM_BASE_DELAY_MS * Math.pow(2, attempt)));
-    }
-  }
-  throw lastError || new Error("Max retries exceeded");
 }
 
 Deno.serve(async (req) => {
@@ -586,3 +550,12 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function fetchWithRetry(url: string, maxRetries: number = OSRM_MAX_RETRIES): Promise<Response> {
+  return await fetchOsrmWithRetry(url, {
+    maxRetries,
+    timeoutMs: OSRM_REQUEST_TIMEOUT_MS,
+    baseDelayMs: OSRM_BASE_DELAY_MS,
+    userAgent: "gavra-v3-auto-prepare/1.0",
+  });
+}
