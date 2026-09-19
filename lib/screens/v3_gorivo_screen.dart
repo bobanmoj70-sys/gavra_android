@@ -65,6 +65,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     final dugCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     var dugRucno = false;
+    final messenger = ScaffoldMessenger.of(context);
 
     void syncDugFromLitriCena(void Function(void Function()) setModal) {
       if (dugRucno) return;
@@ -86,9 +87,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
           child: V3ContainerUtils.styledContainer(
             backgroundColor: _sheetBg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -97,7 +98,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
             child: SafeArea(
               top: false,
               child: StatefulBuilder(
-                builder: (context, setModal) {
+                builder: (modalContext, setModal) {
                   final litriPreview = _toDoubleOrNull(dodatoCtrl.text);
                   final cenaPreview = _toDoubleOrNull(cenaCtrl.text);
                   final racunPreview =
@@ -192,7 +193,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                             confirmLabel: _GorTr.tr('dodaj'),
                             confirmColor: Colors.green,
                             loading: _isDodavanjeGoriva,
-                            onCancel: _isDodavanjeGoriva ? null : () => Navigator.of(context).pop(),
+                            onCancel: _isDodavanjeGoriva ? null : () => Navigator.of(sheetContext).pop(),
                             onConfirm: _isDodavanjeGoriva
                                 ? null
                                 : () async {
@@ -200,7 +201,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
                                     final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
                                     if (dodato <= 0) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(content: Text(_GorTr.tr('unesiPozitivanBrojLitara'))),
                                       );
                                       return;
@@ -211,7 +212,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     if (cenaText.isNotEmpty) {
                                       cenaUnos = _toDoubleOrNull(cenaText);
                                       if (cenaUnos == null || cenaUnos < 0) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        messenger.showSnackBar(
                                           SnackBar(content: Text(_GorTr.tr('unesiIspravnuCenu'))),
                                         );
                                         return;
@@ -223,7 +224,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     if (dugText.isNotEmpty) {
                                       dugDodato = _toDoubleOrNull(dugText);
                                       if (dugDodato == null || dugDodato < 0) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        messenger.showSnackBar(
                                           SnackBar(content: Text(_GorTr.tr('unesiIspravanIznosDuga'))),
                                         );
                                         return;
@@ -244,8 +245,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     if (!mounted) return;
 
                                     setState(() => _isDodavanjeGoriva = false);
-                                    Navigator.of(context).pop();
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    Navigator.of(sheetContext).pop();
+                                    messenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           success
@@ -304,14 +305,15 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       text: (stanje?.dugIznos ?? 0).toStringAsFixed(2),
     );
     final formKey = GlobalKey<FormState>();
+    final messenger = ScaffoldMessenger.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
           child: V3ContainerUtils.styledContainer(
             backgroundColor: _sheetBg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -372,7 +374,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                         confirmColor: _accent,
                         confirmForeground: Colors.black,
                         loading: _isSavingFuelData,
-                        onCancel: _isSavingFuelData ? null : () => Navigator.of(context).pop(),
+                        onCancel: _isSavingFuelData ? null : () => Navigator.of(sheetContext).pop(),
                         onConfirm: _isSavingFuelData
                             ? null
                             : () async {
@@ -391,21 +393,21 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     brojac < 0 ||
                                     cena < 0 ||
                                     dug < 0) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(content: Text(_GorTr.tr('vrednostiNeMoguBitiNegativne'))),
                                   );
                                   return;
                                 }
 
                                 if (kapacitet > 0 && trenutnoStanje > kapacitet) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(content: Text(_GorTr.tr('trenutnoStanjeNeMozePrekoKapaciteta'))),
                                   );
                                   return;
                                 }
 
                                 if (brojac < prethodniBrojac) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(content: Text(_GorTr.tr('brojacNeMozeBitiManji'))),
                                   );
                                   return;
@@ -424,8 +426,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                 if (!mounted) return;
 
                                 setState(() => _isSavingFuelData = false);
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                Navigator.of(sheetContext).pop();
+                                messenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
                                       success
