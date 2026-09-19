@@ -1852,7 +1852,7 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
   },
   'gorivoScreen': {
     'dodajGorivo': {'sr': 'Dodaj gorivo', 'en': 'Add fuel'},
-    'izmeniGorivo': {'sr': 'Izmeni gorivo', 'en': 'Edit fuel'},
+    'urediGorivo': {'sr': 'Uredi gorivo', 'en': 'Edit fuel'},
     'gorivo': {'sr': 'Gorivo', 'en': 'Fuel'},
     'odKapaciteta': {'sr': 'od kapaciteta', 'en': 'of capacity'},
     'maloGoriva': {'sr': 'Malo goriva', 'en': 'Low fuel'},
@@ -1865,11 +1865,9 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     'brojacPistoljaL': {'sr': 'Stanje brojača pištolja (L)', 'en': 'Nozzle meter reading (L)'},
     'stanjeBrojacaPistolja': {'sr': 'Stanje brojača pištolja', 'en': 'Nozzle meter reading'},
     'cenaPoLitru': {'sr': 'Cena po litru', 'en': 'Price per liter'},
-    'cenaPoLitruEmoji': {'sr': 'Cena po litru', 'en': 'Price per liter'},
     'dugRsd': {'sr': 'Dug (RSD)', 'en': 'Debt (RSD)'},
     'dugIznos': {'sr': 'Iznos duga', 'en': 'Debt amount'},
     'kolikoLitaraJeDopunjeno': {'sr': 'Dopunjena količina (L)', 'en': 'Refilled amount (L)'},
-    'iznosDugaOpciono': {'sr': 'Iznos duga (RSD) — opciono', 'en': 'Debt amount (RSD) — optional'},
     'iznosDugaOvaIsporuka': {'sr': 'Dug za ovu isporuku (RSD)', 'en': 'Debt for this delivery (RSD)'},
     'iznosDugaHint': {
       'sr': 'Po želji unesi dug za ovu isporuku. Ako ostaviš prazno, računa se iz litara i cene.',
@@ -1939,13 +1937,5 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'sr': 'Neuspešno kreiranje početnih podataka.',
       'en': 'Failed to create initial data.'
     },
-    'predlogCenaPoLitru': {'sr': 'Referentna cena: %CENA% RSD/L', 'en': 'Reference price: %CENA% RSD/L'},
-    'vrstaGoriva': {'sr': 'Vrsta goriva', 'en': 'Fuel type'},
-    'kolicina': {'sr': 'Količina', 'en': 'Quantity'},
-    'ukupnaCena': {'sr': 'Ukupna cena', 'en': 'Total price'},
-    'napomenaOpciono': {'sr': 'Napomena (opciono)', 'en': 'Note (optional)'},
-    'dodajGorivoSuccess': {'sr': '✅ Gorivo uspešno dodato', 'en': '✅ Fuel successfully added'},
-    'izmeniGorivoSuccess': {'sr': '✅ Gorivo uspešno izmenjeno', 'en': '✅ Fuel successfully updated'},
-    'greskaPriCuvanjuGoriva': {'sr': '❌ Greška pri čuvanju goriva', 'en': '❌ Error saving fuel'},
   },
 };

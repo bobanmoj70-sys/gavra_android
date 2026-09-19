@@ -916,7 +916,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
             Expanded(
               child: _StatTile(
                 icon: Icons.payments_outlined,
-                label: _GorTr.tr('cenaPoLitruEmoji'),
+                label: _GorTr.tr('cenaPoLitru'),
                 value: cena != null ? '${cena.toStringAsFixed(2)} RSD' : '—',
                 color: const Color(0xFFFFD54F),
                 isCompact: isCompact,
