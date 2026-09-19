@@ -126,6 +126,7 @@ class V3GorivoService {
   static Future<bool> updateAllFields({
     required String id,
     required double kapacitetLitri,
+    required double trenutnoStanjeLitri,
     required double alarmNivoLitri,
     required double brojacPistoljLitri,
     required double cenaPoLitru,
@@ -134,6 +135,7 @@ class V3GorivoService {
     try {
       final row = await _repo.updateByIdReturning(id, {
         'kapacitet_litri': kapacitetLitri,
+        'trenutno_stanje_litri': trenutnoStanjeLitri,
         'alarm_nivo_litri': alarmNivoLitri,
         'brojac_pistolj_litri': brojacPistoljLitri,
         'cena_po_litru': cenaPoLitru,

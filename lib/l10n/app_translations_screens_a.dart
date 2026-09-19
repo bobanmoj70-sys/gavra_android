@@ -1851,144 +1851,101 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     'vreme': {'sr': 'Vreme', 'en': 'Time', 'ru': 'Время', 'de': 'Zeit', 'zh': '时间'},
   },
   'gorivoScreen': {
-    'dodajGorivo': {
-      'sr': 'Dodaj gorivo',
-      'en': 'Add fuel',
-      'ru': 'Добавить топливо',
-      'de': 'Kraftstoff hinzufügen',
-      'zh': '添加燃料'
-    },
-    'izmeniGorivo': {
-      'sr': 'Izmeni gorivo',
-      'en': 'Edit fuel',
-      'ru': 'Изменить топливо',
-      'de': 'Kraftstoff bearbeiten',
-      'zh': '编辑燃料'
-    },
-    'vrstaGoriva': {
-      'sr': 'Vrsta goriva',
-      'en': 'Type of fuel',
-      'ru': 'Тип топлива',
-      'de': 'Art des Kraftstoffs',
-      'zh': '燃料类型'
-    },
-    'kolicina': {'sr': 'Količina', 'en': 'Quantity', 'ru': 'Количество', 'de': 'Menge', 'zh': '数量'},
-    'cenaPoLitru': {
-      'sr': 'Cena po litru',
-      'en': 'Price per liter',
-      'ru': 'Цена за литр',
-      'de': 'Preis pro Liter',
-      'zh': '每升价格'
-    },
-    'ukupnaCena': {'sr': 'Ukupna cena', 'en': 'Total price', 'ru': 'Итоговая цена', 'de': 'Gesamtpreis', 'zh': '总价'},
-    'napomenaOpciono': {
-      'sr': 'Napomena (opciono)',
-      'en': 'Note (optional)',
-      'ru': 'Примечание (опционально)',
-      'de': 'Notiz (optional)',
-      'zh': '备注（可选）',
-    },
-    'dodajGorivoSuccess': {
-      'sr': '✅ Gorivo uspešno dodato',
-      'en': '✅ Fuel successfully added',
-      'ru': '✅ Топливо успешно добавлено',
-      'de': '✅ Kraftstoff erfolgreich hinzugefügt',
-      'zh': '✅ 燃料添加成功',
-    },
-    'izmeniGorivoSuccess': {
-      'sr': '✅ Gorivo uspešno izmenjeno',
-      'en': '✅ Fuel successfully updated',
-      'ru': '✅ Топливо успешно изменено',
-      'de': '✅ Kraftstoff erfolgreich aktualisiert',
-      'zh': '✅ 燃料更新成功',
-    },
-    'greskaPriCuvanjuGoriva': {
-      'sr': '❌ Greška pri čuvanju goriva',
-      'en': '❌ Error saving fuel',
-      'ru': '❌ Ошибка при сохранении топлива',
-      'de': '❌ Fehler beim Speichern von Kraftstoff',
-      'zh': '❌ 保存燃料时出错',
-    },
-    'kolikoLitaraJeDopunjeno': {
-      'sr': 'Koliko litara je dopunjeno (L)',
-      'en': 'How many liters were refilled (L)',
-      'ru': 'Сколько литров было заправлено (л)',
-      'de': 'Wie viele Liter wurden nachgefüllt (L)',
-      'zh': '加油了多少升（L）',
-    },
-    'iznosDugaOpciono': {
-      'sr': 'Iznos duga (RSD) — opciono',
-      'en': 'Debt amount (RSD) — optional',
-      'ru': 'Сумма долга (RSD) — необязательно',
-      'de': 'Schuldenbetrag (RSD) — optional',
-      'zh': '欠款金额（RSD）— 可选',
-    },
-    'iznosDugaOvaIsporuka': {
-      'sr': 'Dug za ovu isporuku (RSD)',
-      'en': 'Debt for this delivery (RSD)',
-      'ru': 'Долг за эту поставку (RSD)',
-      'de': 'Schuld für diese Lieferung (RSD)',
-      'zh': '本次交货欠款（RSD）',
+    'dodajGorivo': {'sr': 'Dodaj gorivo', 'en': 'Add fuel'},
+    'izmeniGorivo': {'sr': 'Izmeni gorivo', 'en': 'Edit fuel'},
+    'gorivo': {'sr': 'Gorivo', 'en': 'Fuel'},
+    'odKapaciteta': {'sr': 'od kapaciteta', 'en': 'of capacity'},
+    'maloGoriva': {'sr': 'Malo goriva', 'en': 'Low fuel'},
+    'trenutnoKapacitet': {'sr': 'Trenutno / kapacitet', 'en': 'Current / capacity'},
+    'trenutniDug': {'sr': 'Trenutni dug', 'en': 'Current debt'},
+    'kapacitetRezervoaraL': {'sr': 'Kapacitet rezervoara (L)', 'en': 'Tank capacity (L)'},
+    'alarmNivoL': {'sr': 'Alarm nivo (L)', 'en': 'Alarm level (L)'},
+    'alarmNivoRezervoara': {'sr': 'Alarm nivo rezervoara', 'en': 'Tank alarm level'},
+    'trenutnoStanjeL': {'sr': 'Trenutno stanje (L)', 'en': 'Current fuel level (L)'},
+    'brojacPistoljaL': {'sr': 'Stanje brojača pištolja (L)', 'en': 'Nozzle meter reading (L)'},
+    'stanjeBrojacaPistolja': {'sr': 'Stanje brojača pištolja', 'en': 'Nozzle meter reading'},
+    'cenaPoLitru': {'sr': 'Cena po litru', 'en': 'Price per liter'},
+    'cenaPoLitruEmoji': {'sr': 'Cena po litru', 'en': 'Price per liter'},
+    'dugRsd': {'sr': 'Dug (RSD)', 'en': 'Debt (RSD)'},
+    'dugIznos': {'sr': 'Iznos duga', 'en': 'Debt amount'},
+    'kolikoLitaraJeDopunjeno': {'sr': 'Dopunjena količina (L)', 'en': 'Refilled amount (L)'},
+    'iznosDugaOpciono': {'sr': 'Iznos duga (RSD) — opciono', 'en': 'Debt amount (RSD) — optional'},
+    'iznosDugaOvaIsporuka': {'sr': 'Dug za ovu isporuku (RSD)', 'en': 'Debt for this delivery (RSD)'},
+    'iznosDugaHint': {
+      'sr': 'Po želji unesi dug za ovu isporuku. Ako ostaviš prazno, računa se iz litara i cene.',
+      'en': 'Optionally enter debt for this delivery. If empty, it is calculated from liters and price.',
     },
     'cenaPoLitruOvaIsporuka': {
       'sr': 'Cena po litru ove isporuke (RSD/L)',
-      'en': 'Price per liter for this delivery (RSD/L)',
-      'ru': 'Цена за литр этой поставки (RSD/л)',
-      'de': 'Preis pro Liter dieser Lieferung (RSD/L)',
-      'zh': '本次交货每升价格（RSD/L）',
+      'en': 'Price per liter for this delivery (RSD/L)'
     },
     'cenaPoLitruDopunaHint': {
-      'sr':
-          'Unesi cenu ove cisterne. Dug se računa kao litri × cena i DODAJE se na postojeći ukupan dug (uključujući stari dug).',
-      'en':
-          'Enter this delivery’s price. Debt is liters × price and is ADDED to the existing total debt (including old debt).',
-      'ru': 'Введите цену этой поставки. Долг = литры × цена и ДОБАВЛЯЕТСЯ к общему долгу (включая старый).',
-      'de':
-          'Preis dieser Lieferung eingeben. Schuld = Liter × Preis und wird zum Gesamtschuldenstand (inkl. alter Schuld) ADDIERT.',
-      'zh': '输入本次交货单价。欠款=升数×单价，并累加到总欠款（含旧欠）。',
+      'sr': 'Unesi cenu ove isporuke. Dug se računa kao litri × cena i dodaje na postojeći ukupan dug.',
+      'en': 'Enter this delivery price. Debt is calculated as liters × price and added to total debt.',
     },
     'racunLitriPutaCena': {
       'sr': 'Račun: %L% L × %CENA% RSD = %IZNOS% RSD',
-      'en': 'Calc: %L% L × %CENA% RSD = %IZNOS% RSD',
-      'ru': 'Расчёт: %L% л × %CENA% RSD = %IZNOS% RSD',
-      'de': 'Rechnung: %L% L × %CENA% RSD = %IZNOS% RSD',
-      'zh': '计算：%L% 升 × %CENA% RSD = %IZNOS% RSD',
+      'en': 'Calc: %L% L × %CENA% RSD = %IZNOS% RSD'
     },
     'dugPosleDopune': {
       'sr': 'Ukupan dug posle: %STARI% + %DODATO% = %NOVI% RSD',
-      'en': 'Total debt after: %STARI% + %DODATO% = %NOVI% RSD',
-      'ru': 'Общий долг после: %STARI% + %DODATO% = %NOVI% RSD',
-      'de': 'Gesamtschuld danach: %STARI% + %DODATO% = %NOVI% RSD',
-      'zh': '补货后总欠：%STARI% + %DODATO% = %NOVI% RSD',
+      'en': 'Total debt after: %STARI% + %DODATO% = %NOVI% RSD'
     },
     'unesiIspravnuCenu': {
       'sr': 'Unesi ispravan iznos po litru (ili ostavi prazno).',
-      'en': 'Enter a valid amount per liter (or leave empty).',
-      'ru': 'Введите корректную сумму за литр (или оставьте пустым).',
-      'de': 'Gültigen Betrag pro Liter eingeben (oder leer lassen).',
-      'zh': '请输入有效每升金额（或留空）。',
+      'en': 'Enter a valid amount per liter (or leave empty).'
     },
-    'predlogCenaPoLitru': {
-      'sr': 'Referentna cena: %CENA% RSD/L',
-      'en': 'Reference price: %CENA% RSD/L',
-      'ru': 'Справочная цена: %CENA% RSD/л',
-      'de': 'Referenzpreis: %CENA% RSD/L',
-      'zh': '参考单价：%CENA% RSD/升',
-    },
-    'trenutniDug': {
-      'sr': 'Trenutni dug',
-      'en': 'Current debt',
-      'ru': 'Текущий долг',
-      'de': 'Aktuelle Schulden',
-      'zh': '当前欠款',
-    },
+    'unesiPozitivanBrojLitara': {'sr': 'Unesi pozitivan broj litara.', 'en': 'Enter a positive number of liters.'},
     'unesiIspravanIznosDuga': {
       'sr': 'Unesi ispravan iznos duga (ili ostavi prazno).',
-      'en': 'Enter a valid debt amount (or leave empty).',
-      'ru': 'Введите корректную сумму долга (или оставьте пустым).',
-      'de': 'Gültigen Schuldenbetrag eingeben (oder leer lassen).',
-      'zh': '请输入有效欠款金额（或留空）。',
+      'en': 'Enter a valid debt amount (or leave empty).'
     },
-    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel', 'ru': 'Отмена', 'de': 'Abbrechen', 'zh': '取消'},
+    'trenutnoStanjeNeMozePrekoKapaciteta': {
+      'sr': 'Trenutno stanje ne može biti veće od kapaciteta.',
+      'en': 'Current fuel level cannot be greater than capacity.',
+    },
+    'vrednostiNeMoguBitiNegativne': {'sr': 'Vrednosti ne mogu biti negativne.', 'en': 'Values cannot be negative.'},
+    'brojacNeMozeBitiManji': {
+      'sr': 'Brojač ne može biti manji od prethodne vrednosti.',
+      'en': 'Meter reading cannot be lower than previous value.'
+    },
+    'nemaRedaZaDopunu': {'sr': 'Nema reda za dopunu goriva.', 'en': 'No fuel row available for refill.'},
+    'nemaRedaZaIzmenu': {'sr': 'Nema reda za izmenu podataka o gorivu.', 'en': 'No fuel row available for editing.'},
+    'gorivoDodatoNovoStanje': {
+      'sr': 'Gorivo je dodato. Novo stanje: %NOVO% L.',
+      'en': 'Fuel added. New level: %NOVO% L.'
+    },
+    'greskaPriDodavanjuGoriva': {'sr': 'Greška pri dodavanju goriva.', 'en': 'Error while adding fuel.'},
+    'podaciOGorivuSuSacuvani': {'sr': 'Podaci o gorivu su sačuvani.', 'en': 'Fuel data has been saved.'},
+    'greskaPriCuvanjuPodataka': {'sr': 'Greška pri čuvanju podataka.', 'en': 'Error while saving data.'},
+    'obaveznoPolje': {'sr': 'Obavezno polje.', 'en': 'Required field.'},
+    'unesiBroj': {'sr': 'Unesi broj.', 'en': 'Enter a number.'},
+    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save'},
+    'dodaj': {'sr': 'Dodaj', 'en': 'Add'},
+    'otkazi': {'sr': 'Otkaži', 'en': 'Cancel'},
+    'uneziIzmeniPodatke': {'sr': 'Unesi ili izmeni podatke', 'en': 'Enter or edit data'},
+    'dodavanjeDots': {'sr': 'Dodavanje...', 'en': 'Adding...'},
+    'kreiranjeDots': {'sr': 'Kreiranje...', 'en': 'Creating...'},
+    'dodajPocetnePodatke': {'sr': 'Dodaj početne podatke', 'en': 'Add initial data'},
+    'nemaPodatakaOGorivuUBazi': {
+      'sr': 'Nema podataka o gorivu u bazi. Dodaj početne vrednosti da započneš.',
+      'en': 'No fuel data in the database. Add initial values to get started.',
+    },
+    'pocetniPodaciZaGorivoSuKreirani': {
+      'sr': 'Početni podaci za gorivo su kreirani.',
+      'en': 'Initial fuel data has been created.'
+    },
+    'neuspesnoKreiranjePocetnihPodataka': {
+      'sr': 'Neuspešno kreiranje početnih podataka.',
+      'en': 'Failed to create initial data.'
+    },
+    'predlogCenaPoLitru': {'sr': 'Referentna cena: %CENA% RSD/L', 'en': 'Reference price: %CENA% RSD/L'},
+    'vrstaGoriva': {'sr': 'Vrsta goriva', 'en': 'Fuel type'},
+    'kolicina': {'sr': 'Količina', 'en': 'Quantity'},
+    'ukupnaCena': {'sr': 'Ukupna cena', 'en': 'Total price'},
+    'napomenaOpciono': {'sr': 'Napomena (opciono)', 'en': 'Note (optional)'},
+    'dodajGorivoSuccess': {'sr': '✅ Gorivo uspešno dodato', 'en': '✅ Fuel successfully added'},
+    'izmeniGorivoSuccess': {'sr': '✅ Gorivo uspešno izmenjeno', 'en': '✅ Fuel successfully updated'},
+    'greskaPriCuvanjuGoriva': {'sr': '❌ Greška pri čuvanju goriva', 'en': '❌ Error saving fuel'},
   },
 };

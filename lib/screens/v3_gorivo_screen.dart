@@ -290,6 +290,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     final alarmCtrl = TextEditingController(
       text: (stanje?.alarmNivoLitri ?? rezervoar?.alarmNivo ?? 500).toStringAsFixed(1),
     );
+    final trenutnoCtrl = TextEditingController(
+      text: (stanje?.trenutnoStanje ?? rezervoar?.trenutnoLitara ?? 0).toStringAsFixed(1),
+    );
     final prethodniBrojac = stanje?.stanjeBrojacPistolj ?? 0;
     final brojacCtrl = TextEditingController(
       text: prethodniBrojac.toStringAsFixed(1),
@@ -342,11 +345,15 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                         prefixIcon: Icons.warning_amber_rounded,
                       ),
                       _fuelField(
+                        controller: trenutnoCtrl,
+                        label: _GorTr.tr('trenutnoStanjeL'),
+                        prefixIcon: Icons.water_drop_outlined,
+                      ),
+                      _fuelField(
                         controller: brojacCtrl,
                         label: _GorTr.tr('brojacPistoljaL'),
                         prefixIcon: Icons.speed_rounded,
                       ),
-                      _hintText(_GorTr.tr('trenutnoStanjeSeRacunaAutomatski')),
                       const SizedBox(height: 10),
                       _fuelField(
                         controller: cenaCtrl,
@@ -373,13 +380,26 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
                                 final kapacitet = _toDoubleOrNull(kapacitetCtrl.text)!;
                                 final alarm = _toDoubleOrNull(alarmCtrl.text)!;
+                                final trenutnoStanje = _toDoubleOrNull(trenutnoCtrl.text)!;
                                 final brojac = _toDoubleOrNull(brojacCtrl.text)!;
                                 final cena = _toDoubleOrNull(cenaCtrl.text)!;
                                 final dug = _toDoubleOrNull(dugCtrl.text)!;
 
-                                if (kapacitet < 0 || alarm < 0 || brojac < 0 || cena < 0 || dug < 0) {
+                                if (kapacitet < 0 ||
+                                    alarm < 0 ||
+                                    trenutnoStanje < 0 ||
+                                    brojac < 0 ||
+                                    cena < 0 ||
+                                    dug < 0) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text(_GorTr.tr('vrednostiNeMoguBitiNegativne'))),
+                                  );
+                                  return;
+                                }
+
+                                if (kapacitet > 0 && trenutnoStanje > kapacitet) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(_GorTr.tr('trenutnoStanjeNeMozePrekoKapaciteta'))),
                                   );
                                   return;
                                 }
@@ -395,6 +415,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                 final success = await V3GorivoService.updateAllFields(
                                   id: id,
                                   kapacitetLitri: kapacitet,
+                                  trenutnoStanjeLitri: trenutnoStanje,
                                   alarmNivoLitri: alarm,
                                   brojacPistoljLitri: brojac,
                                   cenaPoLitru: cena,
@@ -427,6 +448,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
     kapacitetCtrl.dispose();
     alarmCtrl.dispose();
+    trenutnoCtrl.dispose();
     brojacCtrl.dispose();
     cenaCtrl.dispose();
     dugCtrl.dispose();
