@@ -42,8 +42,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     return double.tryParse(normalized);
   }
 
-  double _roundMoney(double v) => (v * 100).roundToDouble() / 100;
-
   void _showMessage(String message) {
     if (!mounted) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -77,6 +75,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       text: cenaPoLitruInit > 0 ? cenaPoLitruInit.toStringAsFixed(2) : '',
     );
     final dugCtrl = TextEditingController();
+    final uplataCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     var dugRucno = false;
 
@@ -84,10 +83,15 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       if (dugRucno) return;
       final litri = _toDoubleOrNull(dodatoCtrl.text);
       final cena = _toDoubleOrNull(cenaCtrl.text);
-      if (litri != null && litri > 0 && cena != null && cena > 0) {
-        final iznos = _roundMoney(litri * cena);
+      if (litri != null && litri > 0 && ((cena != null && cena > 0) || cenaPoLitruInit > 0)) {
+        final obracun = V3GorivoService.izracunajDopunuObracun(
+          trenutniDug: trenutniDug,
+          staraCenaPoLitru: cenaPoLitruInit,
+          dodatoLitara: litri,
+          novaCenaPoLitru: cena,
+        );
         setModal(() {
-          dugCtrl.text = iznos.toStringAsFixed(2);
+          dugCtrl.text = obracun.dodatiDug.toStringAsFixed(2);
         });
       } else if (!dugRucno) {
         setModal(() {
@@ -114,12 +118,25 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                 builder: (modalContext, setModal) {
                   final litriPreview = _toDoubleOrNull(dodatoCtrl.text);
                   final cenaPreview = _toDoubleOrNull(cenaCtrl.text);
-                  final racunPreview =
-                      (litriPreview != null && litriPreview > 0 && cenaPreview != null && cenaPreview > 0)
-                          ? _roundMoney(litriPreview * cenaPreview)
-                          : null;
+                  final obracunPreview = (litriPreview != null && litriPreview > 0)
+                      ? V3GorivoService.izracunajDopunuObracun(
+                          trenutniDug: trenutniDug,
+                          staraCenaPoLitru: cenaPoLitruInit,
+                          dodatoLitara: litriPreview,
+                          novaCenaPoLitru: cenaPreview,
+                          rucniDodatiDug: _toDoubleOrNull(dugCtrl.text),
+                        )
+                      : null;
+                  final racunPreview = obracunPreview?.dodatiDug;
                   final dugUnos = _toDoubleOrNull(dugCtrl.text);
-                  final dugPosle = trenutniDug + (dugUnos != null && dugUnos > 0 ? dugUnos : 0);
+                  final dugPosle = obracunPreview?.ukupanDugPosle ?? trenutniDug;
+                  final uplataUnos = _toDoubleOrNull(uplataCtrl.text);
+                  final uplataPreview = (uplataUnos != null && uplataUnos > 0 && obracunPreview != null)
+                      ? V3GorivoService.izracunajUplatuObracun(
+                          trenutniDug: obracunPreview.ukupanDugPosle,
+                          iznosUplate: uplataUnos,
+                        )
+                      : null;
 
                   return SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
@@ -166,6 +183,15 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                             onChanged: (_) => syncDugFromLitriCena(setModal),
                           ),
                           _hintText(_GorTr.tr('cenaPoLitruDopunaHint')),
+                          if (obracunPreview != null) ...[
+                            const SizedBox(height: 8),
+                            _previewBanner(
+                              color: Colors.blue,
+                              icon: Icons.price_change_outlined,
+                              text:
+                                  'Stara cena: ${obracunPreview.staraCenaPoLitru.toStringAsFixed(2)} RSD/L • Nova cena: ${obracunPreview.novaCenaPoLitru.toStringAsFixed(2)} RSD/L • Ukupan dug: ${obracunPreview.ukupanDugPosle.toStringAsFixed(2)} RSD',
+                            ),
+                          ],
                           if (racunPreview != null) ...[
                             const SizedBox(height: 10),
                             _previewBanner(
@@ -173,7 +199,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                               icon: Icons.calculate_outlined,
                               text: _GorTr.tr('racunLitriPutaCena')
                                   .replaceAll('%L%', V3FormatUtils.formatGorivo(litriPreview!))
-                                  .replaceAll('%CENA%', cenaPreview!.toStringAsFixed(2))
+                                  .replaceAll('%CENA%', (obracunPreview?.cenaZaObracun ?? 0).toStringAsFixed(2))
                                   .replaceAll('%IZNOS%', racunPreview.toStringAsFixed(2)),
                             ),
                           ],
@@ -198,6 +224,25 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                   .replaceAll('%STARI%', trenutniDug.toStringAsFixed(2))
                                   .replaceAll('%DODATO%', dugUnos.toStringAsFixed(2))
                                   .replaceAll('%NOVI%', dugPosle.toStringAsFixed(2)),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          _fuelField(
+                            controller: uplataCtrl,
+                            label: 'Uplata odmah (RSD) — opciono',
+                            prefixIcon: Icons.payments_rounded,
+                            requiredField: false,
+                            onChanged: (_) => setModal(() {}),
+                          ),
+                          _hintText(
+                              'Ako uneseš uplatu (npr. 30000), biće skinuta sa ukupnog duga (novo sipanje + stari dug).'),
+                          if (uplataPreview != null) ...[
+                            const SizedBox(height: 10),
+                            _previewBanner(
+                              color: Colors.teal,
+                              icon: Icons.account_balance_wallet_rounded,
+                              text:
+                                  'Uplata: ${uplataPreview.iznosUplate.toStringAsFixed(2)} RSD • Pokriveno: ${uplataPreview.pokrivenoDuga.toStringAsFixed(2)} RSD • Preostali dug: ${uplataPreview.noviDug.toStringAsFixed(2)} RSD',
                             ),
                           ],
                           const SizedBox(height: 20),
@@ -236,27 +281,52 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                         _showMessage(_GorTr.tr('unesiIspravanIznosDuga'));
                                         return;
                                       }
-                                    } else if (cenaUnos != null && cenaUnos > 0) {
-                                      dugDodato = _roundMoney(dodato * cenaUnos);
+                                    }
+
+                                    final obracun = V3GorivoService.izracunajDopunuObracun(
+                                      trenutniDug: trenutniDug,
+                                      staraCenaPoLitru: cenaPoLitruInit,
+                                      dodatoLitara: dodato,
+                                      novaCenaPoLitru: cenaUnos,
+                                      rucniDodatiDug: dugDodato,
+                                    );
+                                    dugDodato = obracun.dodatiDug;
+
+                                    final uplataText = uplataCtrl.text.trim();
+                                    final uplataOdmah =
+                                        uplataText.isEmpty ? 0.0 : (_toDoubleOrNull(uplataText) ?? -1.0);
+                                    if (uplataOdmah < 0) {
+                                      _showMessage('Unesi ispravan iznos uplate.');
+                                      return;
                                     }
 
                                     final novoStanje = trenutno + dodato;
 
                                     setState(() => _isDodavanjeGoriva = true);
-                                    final success = await V3GorivoService.dopuniRezervoar(
+                                    final successDopuna = await V3GorivoService.dopuniRezervoar(
                                       id: id,
                                       novoLitara: novoStanje,
                                       dugDodatoRsd: dugDodato,
                                       cenaPoLitru: cenaUnos,
                                     );
+                                    var successUplata = true;
+                                    V3GorivoUplataObracun? uplataObracun;
+                                    if (successDopuna && uplataOdmah > 0.009) {
+                                      uplataObracun = V3GorivoService.izracunajUplatuObracun(
+                                        trenutniDug: obracun.ukupanDugPosle,
+                                        iznosUplate: uplataOdmah,
+                                      );
+                                      successUplata = await V3GorivoService.smanjiDug(uplataOdmah);
+                                    }
                                     if (!mounted) return;
 
                                     setState(() => _isDodavanjeGoriva = false);
                                     _closeSheetIfOpen(sheetContext);
                                     _showMessage(
-                                      success
-                                          ? _GorTr.tr('gorivoDodatoNovoStanje')
-                                              .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
+                                      (successDopuna && successUplata)
+                                          ? (uplataObracun == null
+                                              ? '${_GorTr.tr('gorivoDodatoNovoStanje').replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))} • Dug: ${obracun.ukupanDugPosle.toStringAsFixed(2)} RSD'
+                                              : 'Dopuna evidentirana. Sipano: ${dodato.toStringAsFixed(1)} L, trošak: ${obracun.dodatiDug.toStringAsFixed(2)} RSD, uplata: ${uplataObracun.iznosUplate.toStringAsFixed(2)} RSD, preostali dug: ${uplataObracun.noviDug.toStringAsFixed(2)} RSD')
                                           : _GorTr.tr('greskaPriDodavanjuGoriva'),
                                     );
                                   },
@@ -276,6 +346,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     dodatoCtrl.dispose();
     cenaCtrl.dispose();
     dugCtrl.dispose();
+    uplataCtrl.dispose();
   }
 
   Future<void> _openEditFuelDataSheet({required V3PumpaRezervoar? rezervoar, required V3PumpaStanje? stanje}) async {

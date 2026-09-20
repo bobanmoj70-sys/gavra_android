@@ -4,10 +4,96 @@ import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart'
 
 import 'repositories/v3_gorivo_repository.dart';
 
+class V3GorivoDopunaObracun {
+  final double staraCenaPoLitru;
+  final double novaCenaPoLitru;
+  final double cenaZaObracun;
+  final double dodatiDug;
+  final double ukupanDugPosle;
+
+  const V3GorivoDopunaObracun({
+    required this.staraCenaPoLitru,
+    required this.novaCenaPoLitru,
+    required this.cenaZaObracun,
+    required this.dodatiDug,
+    required this.ukupanDugPosle,
+  });
+}
+
+class V3GorivoUplataObracun {
+  final double stariDug;
+  final double iznosUplate;
+  final double pokrivenoDuga;
+  final double preplata;
+  final double noviDug;
+
+  const V3GorivoUplataObracun({
+    required this.stariDug,
+    required this.iznosUplate,
+    required this.pokrivenoDuga,
+    required this.preplata,
+    required this.noviDug,
+  });
+}
+
 class V3GorivoService {
   V3GorivoService._();
 
   static final V3GorivoRepository _repo = V3GorivoRepository();
+
+  static double _roundMoney(double v) => (v * 100).roundToDouble() / 100;
+
+  static V3GorivoDopunaObracun izracunajDopunuObracun({
+    required double trenutniDug,
+    required double staraCenaPoLitru,
+    required double dodatoLitara,
+    double? novaCenaPoLitru,
+    double? rucniDodatiDug,
+  }) {
+    final safeTrenutniDug = trenutniDug < 0 ? 0.0 : trenutniDug;
+    final safeStaraCena = staraCenaPoLitru > 0 ? staraCenaPoLitru : 0.0;
+    final safeNovaCena = (novaCenaPoLitru != null && novaCenaPoLitru > 0) ? novaCenaPoLitru : safeStaraCena;
+    final safeLitri = dodatoLitara > 0 ? dodatoLitara : 0.0;
+
+    double dodatiDug;
+    if (rucniDodatiDug != null && rucniDodatiDug >= 0) {
+      dodatiDug = rucniDodatiDug;
+    } else if (safeLitri > 0 && safeNovaCena > 0) {
+      dodatiDug = safeLitri * safeNovaCena;
+    } else {
+      dodatiDug = 0.0;
+    }
+
+    final roundedDodatiDug = _roundMoney(dodatiDug);
+    final roundedUkupanDug = _roundMoney(safeTrenutniDug + roundedDodatiDug);
+
+    return V3GorivoDopunaObracun(
+      staraCenaPoLitru: _roundMoney(safeStaraCena),
+      novaCenaPoLitru: _roundMoney(safeNovaCena),
+      cenaZaObracun: _roundMoney(safeNovaCena),
+      dodatiDug: roundedDodatiDug,
+      ukupanDugPosle: roundedUkupanDug,
+    );
+  }
+
+  static V3GorivoUplataObracun izracunajUplatuObracun({
+    required double trenutniDug,
+    required double iznosUplate,
+  }) {
+    final stari = trenutniDug < 0 ? 0.0 : trenutniDug;
+    final uplata = iznosUplate < 0 ? 0.0 : iznosUplate;
+    final pokriveno = uplata <= stari ? uplata : stari;
+    final preplata = uplata > stari ? (uplata - stari) : 0.0;
+    final novi = stari - pokriveno;
+
+    return V3GorivoUplataObracun(
+      stariDug: _roundMoney(stari),
+      iznosUplate: _roundMoney(uplata),
+      pokrivenoDuga: _roundMoney(pokriveno),
+      preplata: _roundMoney(preplata),
+      noviDug: _roundMoney(novi < 0 ? 0.0 : novi),
+    );
+  }
 
   /// Kreira početni red u tabeli `v3_gorivo` ako tabela nema podataka
   static Future<bool> ensureInitialData() async {
@@ -105,8 +191,11 @@ class V3GorivoService {
       debugPrint('[V3GorivoService] smanjiDug: nema reda za gorivo');
       return false;
     }
-    final novo = stanje.dugIznos - iznos;
-    return _setDugIznos(stanje.id, novo < 0 ? 0.0 : novo);
+    final obracun = izracunajUplatuObracun(
+      trenutniDug: stanje.dugIznos,
+      iznosUplate: iznos,
+    );
+    return _setDugIznos(stanje.id, obracun.noviDug);
   }
 
   static Future<bool> _setDugIznos(String id, double dugIznos) async {
