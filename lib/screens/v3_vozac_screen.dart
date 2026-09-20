@@ -1590,7 +1590,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
     final vsVremenaToShow = vsVremenaSet.toList()..sort();
     final textScaleFactor = MediaQuery.textScalerOf(context).scale(1.0);
     final headerScaleExtra = (textScaleFactor - 1.0).clamp(0.0, 0.7).toDouble();
-    final appBarHeight = 98 + (headerScaleExtra * 18);
+    final appBarHeight = 122 + (headerScaleExtra * 20);
     final appBarButtonHeight = 30 + (headerScaleExtra * 6);
 
     return V3PazarListener(
@@ -1642,6 +1642,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // ── Red 1: Registracija kombija za selektovani slot ──
@@ -1941,13 +1942,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         Expanded(
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              dateStr,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Theme.of(context).colorScheme.onPrimary,
-                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                dateStr,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.fade,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                ),
               ),
             ),
           ),
@@ -1955,13 +1963,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         Expanded(
           child: Align(
             alignment: Alignment.center,
-            child: Text(
-              dayName,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: vozacBoja,
-                shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: Text(
+                dayName,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.fade,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: vozacBoja,
+                  shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                ),
               ),
             ),
           ),
@@ -1974,13 +1989,20 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
               initialData: 0,
               builder: (context, snapshot) {
                 final timeStr = DateFormat('HH:mm:ss').format(V3BelgradeTime.now());
-                return Text(
-                  timeStr,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    timeStr,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.fade,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      shadows: const [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
+                    ),
                   ),
                 );
               },
@@ -2003,21 +2025,28 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
 
     return Align(
       alignment: Alignment.center,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.airport_shuttle, size: 16, color: prikaznaBoja),
-          const SizedBox(width: 4),
-          Text(
-            registracija ?? _tr('kombiNijeDodeljen'),
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: prikaznaBoja,
-              letterSpacing: 0.5,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.airport_shuttle, size: 16, color: prikaznaBoja),
+            const SizedBox(width: 4),
+            Text(
+              registracija ?? _tr('kombiNijeDodeljen'),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: prikaznaBoja,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2040,13 +2069,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
         border: Border.all(color: color.withValues(alpha: 0.6)),
         padding: EdgeInsets.zero,
         child: Center(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
         ),
