@@ -651,8 +651,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     // "default" opcija — bez override
     items.add(DropdownMenuItem<V3Adresa?>(
       value: null,
-      child: Text(_tr('passengerAddressPlaceholder'),
-          style: const TextStyle(fontSize: 13, color: V3InputStyle.label)),
+      child: Text(_tr('passengerAddressPlaceholder'), style: const TextStyle(fontSize: 13, color: V3InputStyle.label)),
     ));
 
     if (adresa1 != null) {
@@ -675,8 +674,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     for (final a in ostale) {
       items.add(DropdownMenuItem<V3Adresa?>(
         value: a,
-        child: V3SafeText.userAddress(a.naziv,
-            style: const TextStyle(fontSize: 13, color: V3InputStyle.text)),
+        child: V3SafeText.userAddress(a.naziv, style: const TextStyle(fontSize: 13, color: V3InputStyle.text)),
       ));
     }
 
@@ -761,185 +759,296 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
     final opisCtrl = TextEditingController();
     final iznosCtrl = TextEditingController();
     final kolicinaCtrl = TextEditingController(text: '1');
+    final putnici = V3MasterRealtimeManager.instance.putniciCache.values.toList()
+      ..sort((a, b) => (a['ime_prezime'] ?? '').toString().compareTo((b['ime_prezime'] ?? '').toString()));
+    Map<String, dynamic>? selectedPutnik = putnici.isNotEmpty ? putnici.first : null;
     String jedMera = 'usluga';
     DateTime selectedMesec = DateTime(V3BelgradeTime.now().year, V3BelgradeTime.now().month, 1);
     DateTime datumPrometa = _lastDayOfMonth(selectedMesec);
     DateTime datumIzdavanja = V3BelgradeTime.now();
+    bool autoPredlogEnabled = true;
+
+    void applyPredlog() {
+      if (selectedPutnik == null) return;
+
+      final ime = (selectedPutnik?['ime_prezime'] ?? '').toString().trim();
+      if (ime.isNotEmpty) {
+        imeCtrl.text = ime;
+      }
+
+      final predlog = _racunPredlogZaPutnik(selectedPutnik, selectedMesec);
+      kolicinaCtrl.text = predlog.brojDana > 0 ? predlog.brojDana.toString() : '0';
+      iznosCtrl.text = predlog.cenaPoDanu > 0 ? predlog.cenaPoDanu.toStringAsFixed(0) : '0';
+
+      if (opisCtrl.text.trim().isEmpty) {
+        opisCtrl.text = 'Usluga prevoza putnika';
+      }
+    }
+
+    void onRucnaIzmena() {
+      autoPredlogEnabled = false;
+    }
+
+    iznosCtrl.addListener(onRucnaIzmena);
+    kolicinaCtrl.addListener(onRucnaIzmena);
+
+    applyPredlog();
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          backgroundColor: const Color(0xFF1A2035),
-          title: Text(_tr('noviRacun'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _dialogField(imeCtrl, _tr('imePrezimeKupca')),
-                const SizedBox(height: 8),
-                _dialogField(adresaCtrl, _tr('adresaKupca')),
-                const SizedBox(height: 8),
-                _dialogField(opisCtrl, _tr('opisUsluge')),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _dialogField(iznosCtrl, _tr('cena'), numeric: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _dialogField(kolicinaCtrl, _tr('kolicina'), numeric: true)),
-                ]),
-                const SizedBox(height: 8),
-                // Jedinica mjere
-                DropdownButtonFormField<String>(
-                  value: jedMera,
-                  dropdownColor: V3InputStyle.dropdownMenu,
-                  style: V3InputUtils.fieldTextStyle,
-                  decoration: V3InputUtils.dropdownDecoration(
-                    label: _tr('jedinicaMere'),
-                    icon: Icons.straighten_outlined,
-                  ),
-                  items: [
-                    DropdownMenuItem(value: 'usluga', child: Text(_tr('jmUsluga'))),
-                    DropdownMenuItem(value: 'dan', child: Text(_tr('jmDan'))),
-                    DropdownMenuItem(value: 'kom', child: Text(_tr('jmKom'))),
-                    DropdownMenuItem(value: 'sat', child: Text(_tr('jmSat'))),
-                    DropdownMenuItem(value: 'km', child: Text(_tr('jmKm'))),
-                  ],
-                  onChanged: (v) => setS(() => jedMera = v ?? 'usluga'),
-                ),
-                const SizedBox(height: 8),
-                // Mesec izdavanja
-                Row(children: [
-                  Text(_tr('mesecIzdavanja'), style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: V3ButtonUtils.textButton(
-                      onPressed: () async {
-                        final meseci = _racunMesecOptions();
-                        final initialDate = selectedMesec;
-                        final currentYear = V3BelgradeTime.now().year;
-                        final currentMonth = V3BelgradeTime.now().month;
+        builder: (ctx, setS) {
+          final predlog = _racunPredlogZaPutnik(selectedPutnik, selectedMesec);
+          final cenaZaStampu = double.tryParse(iznosCtrl.text.trim()) ?? 0;
+          final kolicinaZaStampu = double.tryParse(kolicinaCtrl.text.trim()) ?? 0;
+          final ukupno = cenaZaStampu * kolicinaZaStampu;
 
-                        // Prikazivanje dijaloga za izbor meseca
-                        final izabraniMesec = await showDialog<DateTime>(
-                          context: ctx,
-                          builder: (dialogCtx) {
-                            DateTime? privremeniIzbor = initialDate;
-                            return AlertDialog(
-                              backgroundColor: const Color(0xFF1A2035),
-                              title: Text(_tr('izaberiMesec'), style: const TextStyle(color: Colors.white)),
-                              content: SizedBox(
-                                width: double.maxFinite,
-                                child: SingleChildScrollView(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      for (final mesec in meseci)
-                                        ListTile(
-                                          title: Text(
-                                            _formatMesecRacuna(mesec),
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w500,
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1A2035),
+            title: Text(_tr('noviRacun'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedPutnik?['id']?.toString(),
+                    dropdownColor: V3InputStyle.dropdownMenu,
+                    style: V3InputUtils.fieldTextStyle,
+                    decoration: V3InputUtils.dropdownDecoration(
+                      label: _tr('odaberitePutnika'),
+                      icon: Icons.person,
+                    ),
+                    items: putnici
+                        .map(
+                          (p) => DropdownMenuItem<String>(
+                            value: p['id']?.toString(),
+                            child: Text(
+                              '${p['ime_prezime'] ?? '---'} (${p['tip_putnika'] ?? '-'})',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: putnici.isEmpty
+                        ? null
+                        : (id) {
+                            setS(() {
+                              selectedPutnik = putnici.firstWhere((p) => p['id']?.toString() == id);
+                              if (autoPredlogEnabled) {
+                                applyPredlog();
+                              } else {
+                                final ime = (selectedPutnik?['ime_prezime'] ?? '').toString().trim();
+                                if (ime.isNotEmpty) {
+                                  imeCtrl.text = ime;
+                                }
+                              }
+                            });
+                          },
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.35)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Broj putovanja (realno): ${predlog.brojDana}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Cena po putovanju: ${predlog.cenaPoDanu.toStringAsFixed(2)} RSD',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Za štampu ukupno: ${ukupno.toStringAsFixed(2)} RSD',
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w700, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _dialogField(imeCtrl, _tr('imePrezimeKupca')),
+                  const SizedBox(height: 8),
+                  _dialogField(adresaCtrl, _tr('adresaKupca')),
+                  const SizedBox(height: 8),
+                  _dialogField(opisCtrl, _tr('opisUsluge')),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Expanded(child: _dialogField(iznosCtrl, _tr('cena'), numeric: true)),
+                    const SizedBox(width: 8),
+                    Expanded(child: _dialogField(kolicinaCtrl, _tr('kolicina'), numeric: true)),
+                  ]),
+                  const SizedBox(height: 8),
+                  // Jedinica mjere
+                  DropdownButtonFormField<String>(
+                    value: jedMera,
+                    dropdownColor: V3InputStyle.dropdownMenu,
+                    style: V3InputUtils.fieldTextStyle,
+                    decoration: V3InputUtils.dropdownDecoration(
+                      label: _tr('jedinicaMere'),
+                      icon: Icons.straighten_outlined,
+                    ),
+                    items: [
+                      DropdownMenuItem(value: 'usluga', child: Text(_tr('jmUsluga'))),
+                      DropdownMenuItem(value: 'dan', child: Text(_tr('jmDan'))),
+                      DropdownMenuItem(value: 'kom', child: Text(_tr('jmKom'))),
+                      DropdownMenuItem(value: 'sat', child: Text(_tr('jmSat'))),
+                      DropdownMenuItem(value: 'km', child: Text(_tr('jmKm'))),
+                    ],
+                    onChanged: (v) => setS(() => jedMera = v ?? 'usluga'),
+                  ),
+                  const SizedBox(height: 8),
+                  // Mesec izdavanja
+                  Row(children: [
+                    Text(_tr('mesecIzdavanja'), style: const TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: V3ButtonUtils.textButton(
+                        onPressed: () async {
+                          final meseci = _racunMesecOptions();
+                          final initialDate = selectedMesec;
+                          final currentYear = V3BelgradeTime.now().year;
+                          final currentMonth = V3BelgradeTime.now().month;
+
+                          // Prikazivanje dijaloga za izbor meseca
+                          final izabraniMesec = await showDialog<DateTime>(
+                            context: ctx,
+                            builder: (dialogCtx) {
+                              DateTime? privremeniIzbor = initialDate;
+                              return AlertDialog(
+                                backgroundColor: const Color(0xFF1A2035),
+                                title: Text(_tr('izaberiMesec'), style: const TextStyle(color: Colors.white)),
+                                content: SizedBox(
+                                  width: double.maxFinite,
+                                  child: SingleChildScrollView(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        for (final mesec in meseci)
+                                          ListTile(
+                                            title: Text(
+                                              _formatMesecRacuna(mesec),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
+                                            trailing: privremeniIzbor != null &&
+                                                    mesec.year == privremeniIzbor!.year &&
+                                                    mesec.month == privremeniIzbor!.month
+                                                ? const Icon(Icons.check, color: Colors.green, size: 20)
+                                                : null,
+                                            onTap: () {
+                                              privremeniIzbor = mesec;
+                                              Navigator.pop(dialogCtx, mesec);
+                                            },
                                           ),
-                                          trailing: privremeniIzbor != null &&
-                                                  mesec.year == privremeniIzbor!.year &&
-                                                  mesec.month == privremeniIzbor!.month
-                                              ? const Icon(Icons.check, color: Colors.green, size: 20)
-                                              : null,
-                                          onTap: () {
-                                            privremeniIzbor = mesec;
-                                            Navigator.pop(dialogCtx, mesec);
-                                          },
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
+                              );
+                            },
+                          );
 
-                        if (izabraniMesec != null) {
-                          setState(() {
-                            selectedMesec = izabraniMesec;
-                            datumPrometa = _lastDayOfMonth(izabraniMesec);
-                          });
-                        }
-                      },
-                      text: _formatMesecRacuna(selectedMesec),
-                      foregroundColor: Colors.amber,
+                          if (izabraniMesec != null) {
+                            setS(() {
+                              selectedMesec = izabraniMesec;
+                              datumPrometa = _lastDayOfMonth(izabraniMesec);
+                              if (autoPredlogEnabled) {
+                                applyPredlog();
+                              }
+                            });
+                          }
+                        },
+                        text: _formatMesecRacuna(selectedMesec),
+                        foregroundColor: Colors.amber,
+                      ),
                     ),
-                  ),
-                ]),
-                const SizedBox(height: 8),
-                // Datum izdavanja
-                Row(children: [
-                  Text(_tr('datumIzdavanja'), style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: V3ButtonUtils.textButton(
-                      onPressed: () async {
-                        final d = await showDatePicker(
-                          context: ctx,
-                          initialDate: datumIzdavanja,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (d != null) setState(() => datumIzdavanja = d);
-                      },
-                      text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
-                      foregroundColor: Colors.amber,
+                  ]),
+                  const SizedBox(height: 8),
+                  // Datum izdavanja
+                  Row(children: [
+                    Text(_tr('datumIzdavanja'), style: const TextStyle(color: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: V3ButtonUtils.textButton(
+                        onPressed: () async {
+                          final d = await showDatePicker(
+                            context: ctx,
+                            initialDate: datumIzdavanja,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2030),
+                          );
+                          if (d != null) setState(() => datumIzdavanja = d);
+                        },
+                        text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
+                        foregroundColor: Colors.amber,
+                      ),
                     ),
-                  ),
-                ]),
-              ],
+                  ]),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            V3ButtonUtils.textButton(
-              onPressed: () => Navigator.pop(ctx),
-              text: _tr('otkazi'),
-              foregroundColor: Colors.red,
-            ),
-            V3ButtonUtils.successButton(
-              onPressed: () async {
-                if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
-                  V3AppSnackBar.error(ctx, _tr('popuniteImeOpis'));
-                  return;
-                }
-                final cena = double.tryParse(iznosCtrl.text.trim()) ?? 0;
-                final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
-                if (cena <= 0) {
-                  V3AppSnackBar.error(ctx, _tr('uneseiteIspravnuCenu'));
-                  return;
-                }
+            actions: [
+              V3ButtonUtils.textButton(
+                onPressed: () => Navigator.pop(ctx),
+                text: _tr('otkazi'),
+                foregroundColor: Colors.red,
+              ),
+              V3ButtonUtils.successButton(
+                onPressed: () async {
+                  if (selectedPutnik == null) {
+                    V3AppSnackBar.error(ctx, _tr('odaberitePutnika'));
+                    return;
+                  }
+                  if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
+                    V3AppSnackBar.error(ctx, _tr('popuniteImeOpis'));
+                    return;
+                  }
+                  final cena = double.tryParse(iznosCtrl.text.trim()) ?? 0;
+                  final kolicina = double.tryParse(kolicinaCtrl.text.trim()) ?? 1;
+                  if (cena <= 0) {
+                    V3AppSnackBar.error(ctx, _tr('uneseiteIspravnuCenu'));
+                    return;
+                  }
 
-                final broj = await V3RacunService.getNextBrojRacuna();
-                if (!ctx.mounted) return;
-                await V3RacunService.stampajRacun(
-                  brojRacuna: broj,
-                  imePrezimeKupca: imeCtrl.text.trim(),
-                  adresaKupca: adresaCtrl.text.trim(),
-                  opisUsluge: opisCtrl.text.trim(),
-                  cena: cena,
-                  kolicina: kolicina,
-                  jedinicaMere: jedMera,
-                  datumPrometa: datumPrometa,
-                  datumIzdavanja: datumIzdavanja,
-                  context: ctx,
-                );
+                  final broj = await V3RacunService.getNextBrojRacuna();
+                  if (!ctx.mounted) return;
+                  await V3RacunService.stampajRacun(
+                    brojRacuna: broj,
+                    imePrezimeKupca: imeCtrl.text.trim(),
+                    adresaKupca: adresaCtrl.text.trim(),
+                    opisUsluge: opisCtrl.text.trim(),
+                    cena: cena,
+                    kolicina: kolicina,
+                    jedinicaMere: jedMera,
+                    datumPrometa: datumPrometa,
+                    datumIzdavanja: datumIzdavanja,
+                    context: ctx,
+                  );
 
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-              },
-              text: _tr('stampaj'),
-            ),
-          ],
-        ),
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
+                },
+                text: _tr('stampaj'),
+              ),
+            ],
+          );
+        },
       ),
     ).then((_) {
+      iznosCtrl.removeListener(onRucnaIzmena);
+      kolicinaCtrl.removeListener(onRucnaIzmena);
       imeCtrl.dispose();
       adresaCtrl.dispose();
       opisCtrl.dispose();
@@ -1844,10 +1953,10 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
                       );
-                      if ( d != null) setState(() => datumIzdavanja = d);
+                      if (d != null) setState(() => datumIzdavanja = d);
                     },
                     child: Container(
-                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(
                         color: sectionBg,
                         borderRadius: BorderRadius.circular(8),
