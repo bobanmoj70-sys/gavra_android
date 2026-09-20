@@ -789,10 +789,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       autoPredlogEnabled = false;
     }
 
+    applyPredlog();
+
     iznosCtrl.addListener(onRucnaIzmena);
     kolicinaCtrl.addListener(onRucnaIzmena);
-
-    applyPredlog();
 
     V3DialogHelper.showDialogBuilder<void>(
       context: context,
@@ -812,6 +812,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                 children: [
                   DropdownButtonFormField<String>(
                     value: selectedPutnik?['id']?.toString(),
+                    isExpanded: true,
                     dropdownColor: V3InputStyle.dropdownMenu,
                     style: V3InputUtils.fieldTextStyle,
                     decoration: V3InputUtils.dropdownDecoration(
@@ -890,6 +891,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   // Jedinica mjere
                   DropdownButtonFormField<String>(
                     value: jedMera,
+                    isExpanded: true,
                     dropdownColor: V3InputStyle.dropdownMenu,
                     style: V3InputUtils.fieldTextStyle,
                     decoration: V3InputUtils.dropdownDecoration(
