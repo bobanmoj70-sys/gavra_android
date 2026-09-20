@@ -44,13 +44,27 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
   double _roundMoney(double v) => (v * 100).roundToDouble() / 100;
 
+  void _showMessage(String message) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _closeSheetIfOpen(BuildContext sheetContext) {
+    final navigator = Navigator.maybeOf(sheetContext);
+    if (navigator != null && navigator.canPop()) {
+      navigator.pop();
+    }
+  }
+
   Future<void> _openDopunaSheet({required V3PumpaRezervoar? rezervoar, required V3PumpaStanje? stanje}) async {
     final String? id =
         stanje?.id.isNotEmpty == true ? stanje!.id : (rezervoar?.id.isNotEmpty == true ? rezervoar!.id : null);
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_GorTr.tr('nemaRedaZaDopunu'))),
-      );
+      _showMessage(_GorTr.tr('nemaRedaZaDopunu'));
       return;
     }
 
@@ -65,7 +79,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     final dugCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     var dugRucno = false;
-    final messenger = ScaffoldMessenger.of(context);
 
     void syncDugFromLitriCena(void Function(void Function()) setModal) {
       if (dugRucno) return;
@@ -201,9 +214,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
                                     final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
                                     if (dodato <= 0) {
-                                      messenger.showSnackBar(
-                                        SnackBar(content: Text(_GorTr.tr('unesiPozitivanBrojLitara'))),
-                                      );
+                                      _showMessage(_GorTr.tr('unesiPozitivanBrojLitara'));
                                       return;
                                     }
 
@@ -212,9 +223,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     if (cenaText.isNotEmpty) {
                                       cenaUnos = _toDoubleOrNull(cenaText);
                                       if (cenaUnos == null || cenaUnos < 0) {
-                                        messenger.showSnackBar(
-                                          SnackBar(content: Text(_GorTr.tr('unesiIspravnuCenu'))),
-                                        );
+                                        _showMessage(_GorTr.tr('unesiIspravnuCenu'));
                                         return;
                                       }
                                     }
@@ -224,9 +233,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     if (dugText.isNotEmpty) {
                                       dugDodato = _toDoubleOrNull(dugText);
                                       if (dugDodato == null || dugDodato < 0) {
-                                        messenger.showSnackBar(
-                                          SnackBar(content: Text(_GorTr.tr('unesiIspravanIznosDuga'))),
-                                        );
+                                        _showMessage(_GorTr.tr('unesiIspravanIznosDuga'));
                                         return;
                                       }
                                     } else if (cenaUnos != null && cenaUnos > 0) {
@@ -245,16 +252,12 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     if (!mounted) return;
 
                                     setState(() => _isDodavanjeGoriva = false);
-                                    Navigator.of(sheetContext).pop();
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          success
-                                              ? _GorTr.tr('gorivoDodatoNovoStanje')
-                                                  .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
-                                              : _GorTr.tr('greskaPriDodavanjuGoriva'),
-                                        ),
-                                      ),
+                                    _closeSheetIfOpen(sheetContext);
+                                    _showMessage(
+                                      success
+                                          ? _GorTr.tr('gorivoDodatoNovoStanje')
+                                              .replaceAll('%NOVO%', V3FormatUtils.formatGorivo(novoStanje))
+                                          : _GorTr.tr('greskaPriDodavanjuGoriva'),
                                     );
                                   },
                           ),
@@ -279,9 +282,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     final String? id =
         stanje?.id.isNotEmpty == true ? stanje!.id : (rezervoar?.id.isNotEmpty == true ? rezervoar!.id : null);
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_GorTr.tr('nemaRedaZaIzmenu'))),
-      );
+      _showMessage(_GorTr.tr('nemaRedaZaIzmenu'));
       return;
     }
 
@@ -305,7 +306,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       text: (stanje?.dugIznos ?? 0).toStringAsFixed(2),
     );
     final formKey = GlobalKey<FormState>();
-    final messenger = ScaffoldMessenger.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -393,23 +393,17 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     brojac < 0 ||
                                     cena < 0 ||
                                     dug < 0) {
-                                  messenger.showSnackBar(
-                                    SnackBar(content: Text(_GorTr.tr('vrednostiNeMoguBitiNegativne'))),
-                                  );
+                                  _showMessage(_GorTr.tr('vrednostiNeMoguBitiNegativne'));
                                   return;
                                 }
 
                                 if (kapacitet > 0 && trenutnoStanje > kapacitet) {
-                                  messenger.showSnackBar(
-                                    SnackBar(content: Text(_GorTr.tr('trenutnoStanjeNeMozePrekoKapaciteta'))),
-                                  );
+                                  _showMessage(_GorTr.tr('trenutnoStanjeNeMozePrekoKapaciteta'));
                                   return;
                                 }
 
                                 if (brojac < prethodniBrojac) {
-                                  messenger.showSnackBar(
-                                    SnackBar(content: Text(_GorTr.tr('brojacNeMozeBitiManji'))),
-                                  );
+                                  _showMessage(_GorTr.tr('brojacNeMozeBitiManji'));
                                   return;
                                 }
 
@@ -426,15 +420,11 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                 if (!mounted) return;
 
                                 setState(() => _isSavingFuelData = false);
-                                Navigator.of(sheetContext).pop();
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      success
-                                          ? _GorTr.tr('podaciOGorivuSuSacuvani')
-                                          : _GorTr.tr('greskaPriCuvanjuPodataka'),
-                                    ),
-                                  ),
+                                _closeSheetIfOpen(sheetContext);
+                                _showMessage(
+                                  success
+                                      ? _GorTr.tr('podaciOGorivuSuSacuvani')
+                                      : _GorTr.tr('greskaPriCuvanjuPodataka'),
                                 );
                               },
                       ),
@@ -682,13 +672,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     if (!mounted) return;
 
     setState(() => _isCreatingInitialData = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          success ? _GorTr.tr('pocetniPodaciZaGorivoSuKreirani') : _GorTr.tr('neuspesnoKreiranjePocetnihPodataka'),
-        ),
-      ),
-    );
+    _showMessage(
+        success ? _GorTr.tr('pocetniPodaciZaGorivoSuKreirani') : _GorTr.tr('neuspesnoKreiranjePocetnihPodataka'));
   }
 
   @override
