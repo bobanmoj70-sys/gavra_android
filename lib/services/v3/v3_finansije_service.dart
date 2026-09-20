@@ -1461,6 +1461,7 @@ class V3FinansijeService {
       }).toList();
 
       final now = V3BelgradeTime.now();
+      final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
       final uplataStavka = <String, dynamic>{
         'uplata_id': 'upl:${_uuid.v4()}',
         'datum': V3BelgradeTime.toIsoUtc(now),
@@ -1479,17 +1480,23 @@ class V3FinansijeService {
         }
 
         final currentNenaplacene = _readNenaplaceneVoznje(latest);
-        final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
         final consumeResult = _consumeNenaplaceneVoznje(
           stavke: currentNenaplacene,
           uplacenIznos: iznos,
           defaultCena: cenaVoznje,
         );
         final updatedNenaplacene = consumeResult.stavke;
-        // Iznos uplate koji je premašio sve tekuće nenaplaćene vožnje se ne
-        // gubi — postaje višak (kredit) koji će pokriti naredne vožnje pre
-        // nego što se one uopšte upišu kao dug.
-        final updatedVisak = _readVisak(latest) + consumeResult.preostalo;
+        final hasNenaplaceneBezCene = currentNenaplacene.any((stavka) {
+          final cena = (stavka['cena'] as num?)?.toDouble() ?? 0.0;
+          return cena <= 0.009;
+        });
+        final shouldPretvoriPreostaloUVisak = !(cenaVoznje <= 0.009 && hasNenaplaceneBezCene);
+        final updatedVisak = _readVisak(latest) + (shouldPretvoriPreostaloUVisak ? consumeResult.preostalo : 0.0);
+        if (!shouldPretvoriPreostaloUVisak && consumeResult.preostalo > 0.009) {
+          debugPrint(
+            '[V3FinansijeService] Preostala uplata ne ide u visak: putnik ima nenaplacene stavke bez cene.',
+          );
+        }
         // Broj vožnji se izvodi isključivo iz realizovane_voznje_json, ne iz
         // skalarne kolone. Pri plaćanju se broj vožnji ne menja.
         final currentUplate = _readUplate(latest);
@@ -1536,10 +1543,15 @@ class V3FinansijeService {
           'naplaceno_by': initialNaplatioBy,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           _uplateKey: initialUplate,
-          'visak_iznos': prenetiVisak + iznos,
+          'visak_iznos': cenaVoznje > 0.009 ? (prenetiVisak + iznos) : prenetiVisak,
           'mesec': mesec,
           'godina': godina,
         });
+        if (cenaVoznje <= 0.009) {
+          debugPrint(
+            '[V3FinansijeService] Nova uplata nije pretvorena u visak jer putnik nema postavljenu cenu.',
+          );
+        }
       }
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
