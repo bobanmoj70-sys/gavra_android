@@ -988,7 +988,9 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                             firstDate: DateTime(2020),
                             lastDate: DateTime(2030),
                           );
-                          if (d != null) setState(() => datumIzdavanja = d);
+                          if (d != null) {
+                            setS(() => datumIzdavanja = d);
+                          }
                         },
                         text: '${datumIzdavanja.day}.${datumIzdavanja.month}.${datumIzdavanja.year}',
                         foregroundColor: Colors.amber,
@@ -1047,13 +1049,15 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         },
       ),
     ).then((_) {
-      iznosCtrl.removeListener(onRucnaIzmena);
-      kolicinaCtrl.removeListener(onRucnaIzmena);
-      imeCtrl.dispose();
-      adresaCtrl.dispose();
-      opisCtrl.dispose();
-      iznosCtrl.dispose();
-      kolicinaCtrl.dispose();
+      Future<void>.delayed(const Duration(milliseconds: 350), () {
+        iznosCtrl.removeListener(onRucnaIzmena);
+        kolicinaCtrl.removeListener(onRucnaIzmena);
+        imeCtrl.dispose();
+        adresaCtrl.dispose();
+        opisCtrl.dispose();
+        iznosCtrl.dispose();
+        kolicinaCtrl.dispose();
+      });
     });
   }
 
@@ -2183,11 +2187,13 @@ class _RacunFirmeDialogContentState extends State<_RacunFirmeDialogContent> {
         ],
       ),
     ).then((_) {
-      nazivCtrl.dispose();
-      adresaCtrl.dispose();
-      pibCtrl.dispose();
-      mbCtrl.dispose();
-      ziroCtrl.dispose();
+      Future<void>.delayed(const Duration(milliseconds: 350), () {
+        nazivCtrl.dispose();
+        adresaCtrl.dispose();
+        pibCtrl.dispose();
+        mbCtrl.dispose();
+        ziroCtrl.dispose();
+      });
     });
   }
 
