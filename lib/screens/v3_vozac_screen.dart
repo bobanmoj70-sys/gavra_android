@@ -1657,7 +1657,7 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
                               // STATUS: Tracking (samo auto-start, nema ručnog dugmeta)
                               Expanded(
                                 flex: 2,
-                                child: V3VozacLocationTrackingService.instance.isRunning
+                                child: _isViewingTrackedTermin
                                     ? GestureDetector(
                                         onTap: _isViewingTrackedTermin ? null : _jumpToTrackingTermin,
                                         child: _buildAppBarBtn(
