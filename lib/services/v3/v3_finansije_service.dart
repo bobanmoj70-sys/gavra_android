@@ -256,6 +256,52 @@ class V3FinansijeService {
     );
   }
 
+  static Future<void> freezeLegacyNenaplaceneWithOldCena({
+    required String putnikId,
+    required double oldCena,
+    required double newCena,
+  }) async {
+    final safePutnikId = putnikId.trim().toLowerCase();
+    if (safePutnikId.isEmpty) return;
+    if (oldCena <= 0.009) return;
+    if ((oldCena - newCena).abs() <= 0.009) return;
+
+    final nowIso = V3BelgradeTime.nowIsoUtc();
+    final targets = _naplataRows().where((row) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != safePutnikId) return false;
+      return (row['tip']?.toString().trim().toLowerCase() ?? '') == 'prihod';
+    }).toList(growable: false);
+
+    for (final row in targets) {
+      final rowId = (row['id']?.toString() ?? '').trim();
+      if (rowId.isEmpty) continue;
+
+      final currentNenaplacene = _readNenaplaceneVoznje(row);
+      if (currentNenaplacene.isEmpty) continue;
+
+      var changed = false;
+      final updatedNenaplacene = currentNenaplacene.map((stavka) {
+        final cena = (stavka['cena'] as num?)?.toDouble() ?? 0.0;
+        if (cena > 0.009) return stavka;
+
+        changed = true;
+        return {
+          ...stavka,
+          'cena': oldCena,
+        };
+      }).toList(growable: false);
+
+      if (!changed) continue;
+
+      final updated = await _repo.updateByIdReturning(rowId, {
+        _nenaplaceneVoznjeKey: updatedNenaplacene,
+        'updated_at': nowIso,
+      });
+      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updated);
+    }
+  }
+
   static String _resolveOperativnaStavkaId({
     required String putnikId,
     required DateTime datum,

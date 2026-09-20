@@ -7,6 +7,7 @@ import '../../utils/v3_putnik_id_resolver.dart';
 import '../../utils/v3_uuid_utils.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_putnik_repository.dart';
+import 'v3_finansije_service.dart';
 import 'v3_push_token_edge_service.dart';
 
 /// Service for V3 passengers (logical `v3_putnici` cache backed by `v3_auth`).
@@ -16,6 +17,44 @@ class V3PutnikService {
 
   static V3Vozac? currentVozac;
   static Map<String, dynamic>? currentPutnik;
+
+  static bool _isPoDanuTip(String tip) {
+    final normalized = tip.trim().toLowerCase();
+    return normalized == 'radnik' || normalized == 'ucenik';
+  }
+
+  static double _effectiveCena({
+    required String tip,
+    required double cenaPoDanu,
+    required double cenaPoPokupljenju,
+  }) {
+    return _isPoDanuTip(tip) ? cenaPoDanu : cenaPoPokupljenju;
+  }
+
+  static Map<String, dynamic>? _getCurrentPutnikRow(String putnikId) {
+    final safeId = putnikId.trim();
+    if (safeId.isEmpty) return null;
+
+    final rm = V3MasterRealtimeManager.instance;
+    final fromPutnici = rm.putniciCache[safeId] ??
+        rm.putniciCache[safeId.toLowerCase()] ??
+        rm.putniciCache.entries
+            .where((e) => e.key.toLowerCase() == safeId.toLowerCase())
+            .map((e) => e.value)
+            .firstOrNull;
+    if (fromPutnici != null && fromPutnici.isNotEmpty) {
+      return Map<String, dynamic>.from(fromPutnici);
+    }
+
+    final fromAuth = rm.authCache[safeId] ??
+        rm.authCache[safeId.toLowerCase()] ??
+        rm.authCache.entries.where((e) => e.key.toLowerCase() == safeId.toLowerCase()).map((e) => e.value).firstOrNull;
+    if (fromAuth != null && fromAuth.isNotEmpty) {
+      return Map<String, dynamic>.from(fromAuth);
+    }
+
+    return null;
+  }
 
   static List<V3Putnik> getPutniciByTip(String tip) {
     final cache = V3MasterRealtimeManager.instance.putniciCache.values;
@@ -57,6 +96,34 @@ class V3PutnikService {
       final data = putnik.toJson();
       final createdByUuid = V3UuidUtils.normalizeUuid(createdBy);
       final updatedByUuid = V3UuidUtils.normalizeUuid(updatedBy, fallback: createdByUuid);
+
+      final existingId = putnik.id.trim();
+      final existingRow = existingId.isNotEmpty ? _getCurrentPutnikRow(existingId) : null;
+
+      final oldTip = (existingRow?['tip_putnika']?.toString() ?? existingRow?['tip']?.toString() ?? '').trim();
+      final oldCenaPoDanu = (existingRow?['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+      final oldCenaPoPokupljenju = (existingRow?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+      final oldEffectiveCena = oldTip.isNotEmpty
+          ? _effectiveCena(
+              tip: oldTip,
+              cenaPoDanu: oldCenaPoDanu,
+              cenaPoPokupljenju: oldCenaPoPokupljenju,
+            )
+          : 0.0;
+
+      final newEffectiveCena = _effectiveCena(
+        tip: putnik.tipPutnika,
+        cenaPoDanu: putnik.cenaPoDanu,
+        cenaPoPokupljenju: putnik.cenaPoPokupljenju,
+      );
+
+      if (existingRow != null && oldTip.isNotEmpty && (oldEffectiveCena - newEffectiveCena).abs() > 0.009) {
+        await V3FinansijeService.freezeLegacyNenaplaceneWithOldCena(
+          putnikId: existingId,
+          oldCena: oldEffectiveCena,
+          newCena: newEffectiveCena,
+        );
+      }
 
       if (putnik.id.isEmpty) data.remove('id');
       if (putnik.id.isEmpty && createdByUuid != null) data['created_by'] = createdByUuid;
