@@ -192,11 +192,14 @@ class V3PutnikService {
         })
         .map((row) {
           final pid = V3PutnikIdResolver.fromRow(row);
-          final pData = rm.putniciCache[pid];
+          final pData = _getCurrentPutnikRow(pid);
+          final imePrezime =
+              (pData?['ime_prezime']?.toString() ?? pData?['imePrezime']?.toString() ?? pData?['ime']?.toString() ?? '')
+                  .trim();
           return {
             'id': pid,
             'putnik_id': pid,
-            'ime_prezime': pData?['ime'] ?? '',
+            'ime_prezime': imePrezime,
             'operativna_row': row,
             if (pData != null) 'putnik': V3Putnik.fromJson(pData),
           };
