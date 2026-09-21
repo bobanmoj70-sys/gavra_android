@@ -173,12 +173,19 @@ class V3PutnikService {
   }) {
     final rm = V3MasterRealtimeManager.instance;
     final vremeNorm = V3BelgradeTime.normalizeToHHmm(vreme);
+    final targetGrad = grad.trim().toUpperCase();
 
     return rm.operativnaNedeljaCache.values
         .where((row) {
-          if ((row['datum']?.toString() ?? '') != datumIso) return false;
-          if ((row['grad']?.toString() ?? '') != grad) return false;
-          if (V3BelgradeTime.normalizeToHHmm(row['polazak_at']) != vremeNorm) return false;
+          final rowDatum = V3BelgradeTime.parseIsoDatePart(row['datum'] as String? ?? '');
+          if (rowDatum != datumIso) return false;
+
+          final rowGrad = (row['grad']?.toString() ?? '').trim().toUpperCase();
+          if (rowGrad != targetGrad) return false;
+
+          final rowVreme = V3BelgradeTime.normalizeToHHmm(row['polazak_at']?.toString() ?? '');
+          if (rowVreme != vremeNorm) return false;
+
           if (row['otkazano_at'] != null) return false;
           if (V3PutnikIdResolver.fromRow(row).isEmpty) return false;
           return true;
