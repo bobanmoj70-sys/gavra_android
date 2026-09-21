@@ -375,11 +375,21 @@ class _V3VozacScreenState extends State<V3VozacScreen> with WidgetsBindingObserv
       if (rankA != rankB) {
         return rankA.compareTo(rankB);
       }
-
-      // Kartice koje su već na ekranu ostaju gde jesu — OSRM /trip ne sme
-      // da ih premešta na svaki tick.
       final posA = prevPos[a.putnik.id];
       final posB = prevPos[b.putnik.id];
+
+      // Aktivni putnici prate optimizovani redosled striktno.
+      if (rankA == 0) {
+        if (osrmOrder.isNotEmpty) {
+          final indexA = _osrmIndexOf(a, osrmOrder);
+          final indexB = _osrmIndexOf(b, osrmOrder);
+          if (indexA != indexB) return indexA.compareTo(indexB);
+        }
+        return (posA ?? 9999).compareTo(posB ?? 9999);
+      }
+
+      // Stabilizacija za završene kartice (pokupljeni/otkazani):
+      // kartice koje su već na ekranu ostaju gde jesu.
       if (posA != null && posB != null && posA != posB) {
         return posA.compareTo(posB);
       }
