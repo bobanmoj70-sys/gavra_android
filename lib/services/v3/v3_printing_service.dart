@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -14,9 +15,6 @@ import '../../utils/v3_dan_helper.dart';
 /// V3 servis za generisanje PDF spiska putnika za dati polazak.
 class V3PrintingService {
   V3PrintingService._();
-
-  static pw.Font get _regular => pw.Font.helvetica();
-  static pw.Font get _bold => pw.Font.helveticaBold();
 
   // ─── Podaci o firmi ───────────────────────────────────────────────
   static const String _firmaIme = 'PR Limo Servis Gavra 013';
@@ -81,6 +79,11 @@ class V3PrintingService {
   }) async {
     final pdf = pw.Document();
 
+    final regularFontData = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf');
+    final boldFontData = await rootBundle.load('assets/fonts/NotoSans-Bold.ttf');
+    final regularFont = pw.Font.ttf(regularFontData);
+    final boldFont = pw.Font.ttf(boldFontData);
+
     final imeList = putnici.map((p) => p['ime_prezime']?.toString() ?? p['imePrezime']?.toString() ?? '---').toList()
       ..sort();
 
@@ -88,10 +91,10 @@ class V3PrintingService {
     final danas = V3DanHelper.formatDatumPuni(V3BelgradeTime.now());
 
     final theme = pw.ThemeData.withFont(
-      base: _regular,
-      bold: _bold,
-      italic: _regular,
-      boldItalic: _bold,
+      base: regularFont,
+      bold: boldFont,
+      italic: regularFont,
+      boldItalic: boldFont,
     );
 
     pdf.addPage(
@@ -183,31 +186,8 @@ class V3PrintingService {
                       child: pw.SizedBox(height: 40),
                     ),
                     pw.SizedBox(height: 4),
-                    pw.Text('Potpis narucioca', style: const pw.TextStyle(fontSize: 10)),
+                    pw.Text('Potpis naručioca', style: const pw.TextStyle(fontSize: 10)),
                   ]),
-                  // Pečat
-                  pw.Container(
-                    width: 80,
-                    height: 80,
-                    decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.blue, width: 2),
-                      borderRadius: pw.BorderRadius.circular(40),
-                    ),
-                    child: pw.Center(
-                      child: pw.Column(
-                        mainAxisAlignment: pw.MainAxisAlignment.center,
-                        children: [
-                          pw.Text('Bojan Gavrilovic',
-                              style: pw.TextStyle(fontSize: 6, fontWeight: pw.FontWeight.bold, color: PdfColors.blue),
-                              textAlign: pw.TextAlign.center),
-                          pw.Text('LIMO', style: pw.TextStyle(fontSize: 5, color: PdfColors.blue)),
-                          pw.Text('GAVRA 013',
-                              style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blue)),
-                          pw.Text('Bela Crkva', style: pw.TextStyle(fontSize: 6, color: PdfColors.blue)),
-                        ],
-                      ),
-                    ),
-                  ),
                   pw.Column(children: [
                     pw.Container(
                       width: 120,
@@ -232,8 +212,8 @@ class V3PrintingService {
 
   static String _relacija(String grad, String vreme) {
     final g = grad.toUpperCase();
-    if (g == 'BC') return 'Bela Crkva - Vrsac';
-    if (g == 'VS') return 'Vrsac - Bela Crkva';
+    if (g == 'BC') return 'Bela Crkva - Vršac';
+    if (g == 'VS') return 'Vršac - Bela Crkva';
     return '$grad - ______';
   }
 
