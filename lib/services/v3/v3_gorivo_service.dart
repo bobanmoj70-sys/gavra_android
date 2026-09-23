@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
+import 'package:gavra_android/utils/v3_belgrade_time.dart';
+import 'package:gavra_android/utils/v3_dan_helper.dart';
 
 import 'repositories/v3_gorivo_repository.dart';
 
@@ -242,5 +244,66 @@ class V3GorivoService {
   static void _upsertCache(Map<String, dynamic> row) {
     if (row.isEmpty) return;
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_gorivo', row);
+  }
+
+  static Future<V3GorivoPotrosnjaPregled> getPotrosnjaPregled() async {
+    final now = V3BelgradeTime.now();
+    final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
+    final sutra = danas.add(const Duration(days: 1));
+
+    final aktivnaNedelja = V3DanHelper.schedulingWeekRange(now: now);
+    final nedeljaStart = aktivnaNedelja.start;
+    final nedeljaEnd = aktivnaNedelja.end;
+    final nedeljaEndExclusive = nedeljaEnd.add(const Duration(days: 1));
+
+    final mesStart = V3DanHelper.dateOnlyFrom(now.year, now.month, 1);
+    final mesEnd = V3DanHelper.dateOnlyFrom(now.year, now.month + 1, 1);
+
+    final godStart = V3DanHelper.dateOnlyFrom(now.year, 1, 1);
+    final godEnd = V3DanHelper.dateOnlyFrom(now.year + 1, 1, 1);
+
+    double dan = 0;
+    double ned = 0;
+    double mes = 0;
+    double god = 0;
+
+    try {
+      final rows = await _repo.selectPotrosnjaBetween(
+        startIsoUtc: godStart.toUtc().toIso8601String(),
+        endIsoUtc: godEnd.toUtc().toIso8601String(),
+      );
+
+      for (final raw in rows) {
+        final row = (raw as Map).cast<String, dynamic>();
+        final dt = V3BelgradeTime.parseTs(row['created_at']?.toString());
+        if (dt == null) continue;
+        final litri = (row['litri'] as num?)?.toDouble() ?? 0.0;
+        if (litri <= 0) continue;
+
+        if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
+          dan += litri;
+        }
+        if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
+          ned += litri;
+        }
+        if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
+          mes += litri;
+        }
+        if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
+          god += litri;
+        }
+      }
+    } catch (e) {
+      debugPrint('[V3GorivoService] getPotrosnjaPregled error: $e');
+    }
+
+    return V3GorivoPotrosnjaPregled(
+      danasLitri: dan,
+      nedeljaLitri: ned,
+      mesecLitri: mes,
+      godinaLitri: god,
+      danasPeriod: V3DanHelper.formatDanMesec(danas),
+      nedeljaPeriod: '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}',
+    );
   }
 }

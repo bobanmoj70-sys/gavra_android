@@ -1867,6 +1867,35 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     'cenaPoLitru': {'sr': 'Cena po litru', 'en': 'Price per liter'},
     'dugRsd': {'sr': 'Dug (RSD)', 'en': 'Debt (RSD)'},
     'dugIznos': {'sr': 'Iznos duga', 'en': 'Debt amount'},
+    'potrosnjaGorivaPoPeriodima': {'sr': 'Potrošnja goriva po periodima', 'en': 'Fuel consumption by periods'},
+    'periodikaKaoFinansije': {
+      'sr': 'Dnevno, nedeljno, mesečno i godišnje (kao Finansije).',
+      'en': 'Daily, weekly, monthly, and yearly (like Finance).'
+    },
+    'danas': {'sr': 'Danas', 'en': 'Today'},
+    'nedelja': {'sr': 'Nedelja', 'en': 'Week'},
+    'mesec': {'sr': 'Mesec', 'en': 'Month'},
+    'godina': {'sr': 'Godina', 'en': 'Year'},
+    'tekuciMesec': {'sr': 'Tekući mesec', 'en': 'Current month'},
+    'tekucaGodina': {'sr': 'Tekuća godina', 'en': 'Current year'},
+    'dinamikaIsplateGoriva': {'sr': 'Dinamika isplate goriva', 'en': 'Fuel debt repayment dynamics'},
+    'simulacijaMesecneRateGoriva': {
+      'sr': 'Simulacija otplate po mesecima (kao kredit).',
+      'en': 'Monthly repayment simulation (similar to a loan).'
+    },
+    'mesecnaUplata': {'sr': 'Mesečna uplata', 'en': 'Monthly payment'},
+    'procenjeniNoviMesecniDug': {'sr': 'Procenjeni novi mesečni dug', 'en': 'Estimated new monthly debt'},
+    'idealnaKriva': {'sr': 'Idealna kriva', 'en': 'Ideal curve'},
+    'realnaKriva': {'sr': 'Realna kriva', 'en': 'Real curve'},
+    'idealnaIsplata': {'sr': 'Idealna isplata', 'en': 'Ideal payoff'},
+    'realnaIsplata': {'sr': 'Realna isplata', 'en': 'Real payoff'},
+    'tempoNeZatvaraDug': {
+      'sr': 'U ovom tempu dug se ne zatvara u narednih 36 meseci.',
+      'en': 'At this pace, debt does not close within the next 36 months.'
+    },
+    'meseciDoNule': {'sr': 'Meseci do nule', 'en': 'Months to zero'},
+    'okvirniDatumZatvaranja': {'sr': 'Okvirni datum zatvaranja', 'en': 'Estimated payoff date'},
+    'preostaliDugPoMesecima': {'sr': 'Preostali dug po mesecima', 'en': 'Remaining debt by month'},
     'kolikoLitaraJeDopunjeno': {'sr': 'Dopunjena količina (L)', 'en': 'Refilled amount (L)'},
     'iznosDugaOvaIsporuka': {'sr': 'Dug za ovu isporuku (RSD)', 'en': 'Debt for this delivery (RSD)'},
     'iznosDugaHint': {

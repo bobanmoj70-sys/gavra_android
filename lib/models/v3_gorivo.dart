@@ -81,3 +81,44 @@ class V3PumpaRezervoar {
 
   double get procentPunjenosti => kapacitetMax > 0 ? (trenutnoLitara / kapacitetMax * 100).clamp(0, 100) : 0;
 }
+
+class V3GorivoIstorijaEntry {
+  final String id;
+  final String vrsta;
+  final double litri;
+  final DateTime createdAt;
+
+  const V3GorivoIstorijaEntry({
+    required this.id,
+    required this.vrsta,
+    required this.litri,
+    required this.createdAt,
+  });
+
+  factory V3GorivoIstorijaEntry.fromJson(Map<String, dynamic> json, DateTime createdAt) {
+    return V3GorivoIstorijaEntry(
+      id: json['id']?.toString() ?? '',
+      vrsta: (json['vrsta']?.toString() ?? '').toLowerCase(),
+      litri: (json['litri'] as num?)?.toDouble() ?? 0,
+      createdAt: createdAt,
+    );
+  }
+}
+
+class V3GorivoPotrosnjaPregled {
+  final double danasLitri;
+  final double nedeljaLitri;
+  final double mesecLitri;
+  final double godinaLitri;
+  final String danasPeriod;
+  final String nedeljaPeriod;
+
+  const V3GorivoPotrosnjaPregled({
+    required this.danasLitri,
+    required this.nedeljaLitri,
+    required this.mesecLitri,
+    required this.godinaLitri,
+    required this.danasPeriod,
+    required this.nedeljaPeriod,
+  });
+}
