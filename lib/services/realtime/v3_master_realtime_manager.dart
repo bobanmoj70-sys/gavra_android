@@ -41,7 +41,8 @@ class V3MasterRealtimeManager {
   static final V3RealtimeBootstrapRepository _bootstrapRepository = V3RealtimeBootstrapRepository();
 
   static final DateTime _defaultPazarPolicyStartDate = V3BelgradeTime.dateTime(2026, 9, 4);
-  static const Duration _pazarAutoDelayAfterLastRide = Duration(minutes: 90);
+  static const int _pazarDailyTriggerHour = 16;
+  static const int _pazarDailyTriggerMinute = 30;
   static const Duration _pazarAutoCheckInterval = Duration(minutes: 1);
 
   final V3CacheStore _cacheStore = V3CacheStore();
@@ -854,62 +855,6 @@ class V3MasterRealtimeManager {
     return !dayOnly.isBefore(effectiveStart);
   }
 
-  DateTime? _parseBelgradeDateTimeFromIsoAndHHmm({
-    required String datumIso,
-    required String hhmm,
-  }) {
-    if (datumIso.length < 10) return null;
-    final year = int.tryParse(datumIso.substring(0, 4));
-    final month = int.tryParse(datumIso.substring(5, 7));
-    final day = int.tryParse(datumIso.substring(8, 10));
-    final parts = hhmm.split(':');
-    if (year == null || month == null || day == null || parts.length < 2) return null;
-
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return null;
-
-    return V3BelgradeTime.dateTime(year, month, day, hour, minute);
-  }
-
-  DateTime? _findLastAssignedRideForToday({
-    required String vozacId,
-    required DateTime nowBelgrade,
-  }) {
-    final todayIso = V3BelgradeTime.toIsoDate(nowBelgrade);
-    DateTime? latest;
-
-    for (final assignment in trenutnaDodelaCache.values) {
-      final assignedVozacId = (assignment['vozac_v3_auth_id']?.toString() ?? '').trim();
-      if (assignedVozacId != vozacId) continue;
-
-      final terminId = (assignment['termin_id']?.toString() ?? '').trim();
-      if (terminId.isEmpty) continue;
-
-      final row = operativnaNedeljaCache[terminId] ?? operativnaAssignedCache[terminId];
-      if (row == null) continue;
-      if (V3StatusPolicy.isTimestampSet(row['otkazano_at'])) continue;
-
-      final datumIso = V3BelgradeTime.parseIsoDatePart(row['datum']?.toString() ?? '');
-      if (datumIso != todayIso) continue;
-
-      final vreme = V3BelgradeTime.normalizeToHHmm(row['polazak_at']?.toString() ?? row['vreme']?.toString());
-      if (vreme.isEmpty) continue;
-
-      final departure = _parseBelgradeDateTimeFromIsoAndHHmm(
-        datumIso: datumIso,
-        hhmm: vreme,
-      );
-      if (departure == null) continue;
-
-      if (latest == null || departure.isAfter(latest)) {
-        latest = departure;
-      }
-    }
-
-    return latest;
-  }
-
   bool _isDailyPazarAlreadySubmitted(V3DnevnaUplataPazara? dnevna) {
     if (dnevna == null) return false;
     return dnevna.zahtevanUnos == false;
@@ -924,13 +869,13 @@ class V3MasterRealtimeManager {
     if (dnevna?.zahtevanUnos == true) return;
     if (_isDailyPazarAlreadySubmitted(dnevna)) return;
 
-    final lastRide = _findLastAssignedRideForToday(
-      vozacId: vozacId,
-      nowBelgrade: nowBelgrade,
+    final dueAt = V3BelgradeTime.dateTime(
+      nowBelgrade.year,
+      nowBelgrade.month,
+      nowBelgrade.day,
+      _pazarDailyTriggerHour,
+      _pazarDailyTriggerMinute,
     );
-    if (lastRide == null) return;
-
-    final dueAt = lastRide.add(_pazarAutoDelayAfterLastRide);
     if (nowBelgrade.isBefore(dueAt)) return;
 
     final pazarMap = V3FinansijeService.getPazarPoVozacuZaDan(nowBelgrade);
@@ -945,7 +890,7 @@ class V3MasterRealtimeManager {
         ukupno: ukupno,
         zahtevanUnos: true,
       );
-      debugPrint('[V3MasterRealtimeManager] auto zahtev unosa aktiviran (90min posle poslednje vožnje)');
+      debugPrint('[V3MasterRealtimeManager] auto zahtev unosa aktiviran (svakog dana u 16:30 Europe/Belgrade)');
     } catch (e) {
       debugPrint('[V3MasterRealtimeManager] auto zahtev unosa error: $e');
     } finally {
