@@ -33,6 +33,16 @@ class V3PazarPromptEvent {
   });
 }
 
+class _V3PendingPazarEntry {
+  final DateTime datum;
+  final double ukupno;
+
+  const _V3PendingPazarEntry({
+    required this.datum,
+    required this.ukupno,
+  });
+}
+
 /// V3MasterRealtimeManager - Centralized cache and realtime manager for v3 tables.
 class V3MasterRealtimeManager {
   V3MasterRealtimeManager._internal();
@@ -860,6 +870,37 @@ class V3MasterRealtimeManager {
     return dnevna.zahtevanUnos == false;
   }
 
+  _V3PendingPazarEntry? _findOldestPendingPazarFromCache({
+    required String vozacId,
+    required DateTime nowBelgrade,
+  }) {
+    final today = V3BelgradeTime.dateTime(nowBelgrade.year, nowBelgrade.month, nowBelgrade.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    _V3PendingPazarEntry? oldest;
+
+    for (final row in uplataPazaraCache.values) {
+      if ((row['vozac_id']?.toString() ?? '').trim() != vozacId) continue;
+
+      final uplata = V3UplataPazara.fromJson(row);
+      for (final dnevna in uplata.dnevneUplate) {
+        if (dnevna.zahtevanUnos != true) continue;
+
+        final datum = V3BelgradeTime.dateTime(uplata.godina, uplata.mesec, dnevna.dan);
+        if (datum.isAfter(today)) continue;
+        if (datum.isBefore(yesterday)) continue;
+
+        if (oldest == null || datum.isBefore(oldest.datum)) {
+          oldest = _V3PendingPazarEntry(
+            datum: datum,
+            ukupno: dnevna.ukupno,
+          );
+        }
+      }
+    }
+
+    return oldest;
+  }
+
   Future<void> _autoRequestIfPazarDue({
     required DateTime nowBelgrade,
     required String vozacId,
@@ -910,6 +951,20 @@ class V3MasterRealtimeManager {
 
       final today = V3BelgradeTime.now();
       if (!_isPazarPolicyActiveFor(today)) return;
+
+      final pendingFromEarlierDays = _findOldestPendingPazarFromCache(
+        vozacId: vozacId,
+        nowBelgrade: today,
+      );
+      if (pendingFromEarlierDays != null) {
+        _pazarPromptController.add(
+          V3PazarPromptEvent(
+            datum: pendingFromEarlierDays.datum,
+            ukupno: pendingFromEarlierDays.ukupno,
+          ),
+        );
+        return;
+      }
 
       Map<String, dynamic>? targetRow;
       for (final row in uplataPazaraCache.values) {
