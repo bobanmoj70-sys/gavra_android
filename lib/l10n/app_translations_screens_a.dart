@@ -1883,6 +1883,17 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'sr': 'Simulacija otplate po mesecima (kao kredit).',
       'en': 'Monthly repayment simulation (similar to a loan).'
     },
+    'stvarnoUplacenoZaGorivoMesec': {
+      'sr': 'Stvarno uplaćeno za gorivo (tekući mesec).',
+      'en': 'Actual amount paid for fuel (current month).'
+    },
+    'uplacenoOvogMeseca': {'sr': 'Uplaćeno ovog meseca', 'en': 'Paid this month'},
+    'brojUplata': {'sr': 'Broj uplata', 'en': 'Number of payments'},
+    'poslednjaUplata': {'sr': 'Poslednja uplata', 'en': 'Last payment'},
+    'josNemaUplataMesec': {
+      'sr': 'Još nema evidentiranih uplata za gorivo ovog meseca.',
+      'en': 'No fuel payments have been recorded this month yet.'
+    },
     'mesecnaUplata': {'sr': 'Mesečna uplata', 'en': 'Monthly payment'},
     'procenjeniNoviMesecniDug': {'sr': 'Procenjeni novi mesečni dug', 'en': 'Estimated new monthly debt'},
     'idealnaKriva': {'sr': 'Idealna kriva', 'en': 'Ideal curve'},

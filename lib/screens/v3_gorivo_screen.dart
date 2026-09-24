@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:gavra_android/models/v3_gorivo.dart';
 import 'package:gavra_android/services/realtime/v3_master_realtime_manager.dart';
+import 'package:gavra_android/services/v3/v3_finansije_service.dart';
 import 'package:gavra_android/services/v3/v3_gorivo_service.dart';
 import 'package:gavra_android/theme.dart';
 
@@ -1651,17 +1651,7 @@ class _PotrosnjaPeriodTile extends StatelessWidget {
   }
 }
 
-class _FuelDebtProjectionPoint {
-  final int monthIndex;
-  final double remainingDebt;
-
-  const _FuelDebtProjectionPoint({
-    required this.monthIndex,
-    required this.remainingDebt,
-  });
-}
-
-class _FuelDebtDynamicsCard extends StatefulWidget {
+class _FuelDebtDynamicsCard extends StatelessWidget {
   const _FuelDebtDynamicsCard({
     required this.currentDebt,
     required this.isCompact,
@@ -1669,83 +1659,6 @@ class _FuelDebtDynamicsCard extends StatefulWidget {
 
   final double currentDebt;
   final bool isCompact;
-
-  @override
-  State<_FuelDebtDynamicsCard> createState() => _FuelDebtDynamicsCardState();
-}
-
-class _FuelDebtDynamicsCardState extends State<_FuelDebtDynamicsCard> {
-  late double _monthlyPayment;
-  late double _monthlyNewDebt;
-
-  @override
-  void initState() {
-    super.initState();
-    _monthlyPayment = _initialPayment(widget.currentDebt);
-    _monthlyNewDebt = _initialMonthlyNewDebt(widget.currentDebt);
-  }
-
-  @override
-  void didUpdateWidget(covariant _FuelDebtDynamicsCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentDebt != widget.currentDebt) {
-      _monthlyPayment = _initialPayment(widget.currentDebt);
-      _monthlyNewDebt = _initialMonthlyNewDebt(widget.currentDebt);
-    }
-  }
-
-  double _initialPayment(double debt) {
-    if (debt <= 0) return 0;
-    final min = _minMonthlyPayment(debt);
-    final target = debt / 6;
-    return target.clamp(min, debt).toDouble();
-  }
-
-  double _minMonthlyPayment(double debt) {
-    if (debt <= 1000) return debt;
-    return 1000;
-  }
-
-  double _initialMonthlyNewDebt(double debt) {
-    if (debt <= 0) return 0;
-    return (debt / 12).clamp(0.0, math.max(1000.0, debt)).toDouble();
-  }
-
-  List<_FuelDebtProjectionPoint> _buildProjection({
-    required double debt,
-    required double monthlyPayment,
-    required double monthlyNewDebt,
-  }) {
-    if (debt <= 0 || monthlyPayment <= 0) {
-      return const [
-        _FuelDebtProjectionPoint(monthIndex: 0, remainingDebt: 0),
-      ];
-    }
-
-    final result = <_FuelDebtProjectionPoint>[
-      _FuelDebtProjectionPoint(monthIndex: 0, remainingDebt: debt),
-    ];
-    var remaining = debt;
-    var month = 0;
-
-    while (remaining > 0.009 && month < 36) {
-      month += 1;
-      final delta = monthlyPayment - monthlyNewDebt;
-      if (delta <= 0) {
-        result.add(_FuelDebtProjectionPoint(monthIndex: month, remainingDebt: remaining));
-        continue;
-      }
-      remaining = (remaining - delta).clamp(0.0, double.infinity);
-      result.add(_FuelDebtProjectionPoint(monthIndex: month, remainingDebt: remaining));
-    }
-
-    return result;
-  }
-
-  bool _isClosed(List<_FuelDebtProjectionPoint> points) {
-    if (points.isEmpty) return false;
-    return points.last.remainingDebt <= 0.009;
-  }
 
   String _formatDate(DateTime date) {
     final d = date.day.toString().padLeft(2, '0');
@@ -1755,41 +1668,21 @@ class _FuelDebtDynamicsCardState extends State<_FuelDebtDynamicsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final debt = widget.currentDebt;
-    final minPayment = _minMonthlyPayment(debt);
-    final maxPayment = debt;
-    final payment = _monthlyPayment.clamp(minPayment, maxPayment).toDouble();
-    final maxNewDebt = math.max(1000.0, debt);
-    final monthlyNewDebt = _monthlyNewDebt.clamp(0.0, maxNewDebt).toDouble();
+    final fuelPaymentsThisMonth = V3FinansijeService.getTroskoviMesec().where((entry) {
+      return (entry.kategorija ?? '').trim().toLowerCase() == 'gorivo' && entry.iznos > 0;
+    }).toList(growable: false);
 
-    final idealProjection = _buildProjection(
-      debt: debt,
-      monthlyPayment: payment,
-      monthlyNewDebt: 0,
-    );
-    final realProjection = _buildProjection(
-      debt: debt,
-      monthlyPayment: payment,
-      monthlyNewDebt: monthlyNewDebt,
-    );
-
-    final idealClosed = _isClosed(idealProjection);
-    final realClosed = _isClosed(realProjection);
-    final idealMonths = idealProjection.length > 1 ? idealProjection.length - 1 : 0;
-    final realMonths = realProjection.length > 1 ? realProjection.length - 1 : 0;
-    final idealDate = DateTime.now().add(Duration(days: idealMonths * 30));
-    final realDate = DateTime.now().add(Duration(days: realMonths * 30));
-
-    final maxYIdeal = idealProjection.fold<double>(1.0, (maxValue, p) => math.max(maxValue, p.remainingDebt));
-    final maxYReal = realProjection.fold<double>(1.0, (maxValue, p) => math.max(maxValue, p.remainingDebt));
-    final maxY = math.max(maxYIdeal, maxYReal) * 1.1;
-    final maxMonth = math.max(
-      idealProjection.isNotEmpty ? idealProjection.last.monthIndex : 0,
-      realProjection.isNotEmpty ? realProjection.last.monthIndex : 0,
-    );
+    final paidThisMonth = fuelPaymentsThisMonth.fold<double>(0, (sum, entry) => sum + entry.iznos);
+    final paymentCount = fuelPaymentsThisMonth.length;
+    final lastPaymentAt = fuelPaymentsThisMonth.fold<DateTime?>(null, (latest, entry) {
+      final createdAt = entry.createdAt;
+      if (createdAt == null) return latest;
+      if (latest == null || createdAt.isAfter(latest)) return createdAt;
+      return latest;
+    });
 
     return Container(
-      padding: EdgeInsets.all(widget.isCompact ? 12 : 14),
+      padding: EdgeInsets.all(isCompact ? 12 : 14),
       decoration: BoxDecoration(
         color: const Color(0xFF1E2235),
         borderRadius: BorderRadius.circular(16),
@@ -1815,18 +1708,18 @@ class _FuelDebtDynamicsCardState extends State<_FuelDebtDynamicsCard> {
           ),
           const SizedBox(height: 6),
           Text(
-            _GorTr.tr('simulacijaMesecneRateGoriva'),
+            _GorTr.tr('stvarnoUplacenoZaGorivoMesec'),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.65),
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  '${_GorTr.tr('mesecnaUplata')}: ${V3FormatUtils.formatBroj(payment.round())} RSD',
+                  _GorTr.tr('uplacenoOvogMeseca'),
                   style: const TextStyle(
                     color: Color(0xFFB9F6CA),
                     fontWeight: FontWeight.w700,
@@ -1835,173 +1728,52 @@ class _FuelDebtDynamicsCardState extends State<_FuelDebtDynamicsCard> {
                 ),
               ),
               Text(
-                '${V3FormatUtils.formatBroj(debt.round())} RSD',
+                '${V3FormatUtils.formatBroj(paidThisMonth.round())} RSD',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Color(0xFFB9F6CA),
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: 14,
                 ),
               ),
             ],
           ),
-          Slider(
-            value: payment,
-            min: minPayment,
-            max: maxPayment,
-            divisions: maxPayment > minPayment ? 20 : null,
-            activeColor: const Color(0xFF66BB6A),
-            inactiveColor: Colors.white24,
-            label: V3FormatUtils.formatBroj(payment.round()),
-            onChanged: maxPayment <= minPayment
-                ? null
-                : (value) {
-                    setState(() {
-                      _monthlyPayment = value;
-                    });
-                  },
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${_GorTr.tr('procenjeniNoviMesecniDug')}: ${V3FormatUtils.formatBroj(monthlyNewDebt.round())} RSD',
-                  style: const TextStyle(
-                    color: Color(0xFF81D4FA),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Slider(
-            value: monthlyNewDebt,
-            min: 0,
-            max: maxNewDebt,
-            divisions: maxNewDebt > 0 ? 20 : null,
-            activeColor: const Color(0xFF4FC3F7),
-            inactiveColor: Colors.white24,
-            label: V3FormatUtils.formatBroj(monthlyNewDebt.round()),
-            onChanged: (value) {
-              setState(() {
-                _monthlyNewDebt = value;
-              });
-            },
-          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: _FuelDebtChip(
-                  label: _GorTr.tr('idealnaIsplata'),
-                  value: idealClosed ? '${idealMonths}m • ${_formatDate(idealDate)}' : '36m+',
+                  label: _GorTr.tr('brojUplata'),
+                  value: '$paymentCount',
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _FuelDebtChip(
-                  label: _GorTr.tr('realnaIsplata'),
-                  value: realClosed ? '${realMonths}m • ${_formatDate(realDate)}' : '36m+',
+                  label: _GorTr.tr('preostaliDugPoMesecima'),
+                  value: '${V3FormatUtils.formatBroj(currentDebt.round())} RSD',
                 ),
               ),
             ],
           ),
-          if (!realClosed) ...[
-            const SizedBox(height: 8),
+          const SizedBox(height: 8),
+          if (lastPaymentAt != null)
             Text(
-              _GorTr.tr('tempoNeZatvaraDug'),
-              style: const TextStyle(
-                color: Color(0xFFFFAB91),
+              '${_GorTr.tr('poslednjaUplata')}: ${_formatDate(lastPaymentAt)}',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
-            ),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            _GorTr.tr('preostaliDugPoMesecima'),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _LegendDot(color: const Color(0xFF66BB6A), text: _GorTr.tr('idealnaKriva')),
-              const SizedBox(width: 12),
-              _LegendDot(color: const Color(0xFF4FC3F7), text: _GorTr.tr('realnaKriva')),
-            ],
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: widget.isCompact ? 120 : 140,
-            child: LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: maxMonth.toDouble(),
-                minY: 0,
-                maxY: maxY,
-                lineTouchData: LineTouchData(enabled: false),
-                gridData: FlGridData(show: true, horizontalInterval: maxY / 4),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 34,
-                      getTitlesWidget: (value, meta) {
-                        if (value == 0) return const SizedBox.shrink();
-                        return Text(
-                          value >= 1000 ? '${(value / 1000).toStringAsFixed(0)}k' : value.toStringAsFixed(0),
-                          style: const TextStyle(fontSize: 9, color: Colors.white54),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 20,
-                      getTitlesWidget: (value, meta) {
-                        final month = value.toInt();
-                        if (month < 0 || month > maxMonth) return const SizedBox.shrink();
-                        final shouldShow = month == 0 || month == maxMonth || month % 3 == 0;
-                        if (!shouldShow) return const SizedBox.shrink();
-                        return Text(
-                          '$month',
-                          style: const TextStyle(fontSize: 9, color: Colors.white54),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: idealProjection
-                        .map((p) => FlSpot(p.monthIndex.toDouble(), p.remainingDebt))
-                        .toList(growable: false),
-                    isCurved: true,
-                    color: const Color(0xFF66BB6A),
-                    barWidth: 2.4,
-                    dotData: FlDotData(show: false),
-                  ),
-                  LineChartBarData(
-                    spots: realProjection
-                        .map((p) => FlSpot(p.monthIndex.toDouble(), p.remainingDebt))
-                        .toList(growable: false),
-                    isCurved: true,
-                    color: const Color(0xFF4FC3F7),
-                    barWidth: 2.4,
-                    dotData: FlDotData(show: false),
-                  ),
-                ],
+            )
+          else
+            Text(
+              _GorTr.tr('josNemaUplataMesec'),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
         ],
       ),
     );
@@ -2047,42 +1819,6 @@ class _FuelDebtChip extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  const _LegendDot({
-    required this.color,
-    required this.text,
-  });
-
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }
