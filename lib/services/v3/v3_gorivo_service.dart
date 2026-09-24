@@ -156,6 +156,27 @@ class V3GorivoService {
     );
   }
 
+  static Future<V3PumpaStanje?> _getStanjeForWrite() async {
+    final cached = getStanjeSync();
+    if (cached != null && cached.id.isNotEmpty) return cached;
+
+    try {
+      await ensureInitialData();
+      final rows = await _repo.selectFirst();
+      if (rows.isEmpty) return null;
+
+      final row = (rows.first as Map).cast<String, dynamic>();
+      _upsertCache(row);
+
+      final refreshed = getStanjeSync();
+      if (refreshed != null && refreshed.id.isNotEmpty) return refreshed;
+      return V3PumpaStanje.fromJson(row);
+    } catch (e) {
+      debugPrint('[V3GorivoService] _getStanjeForWrite error: $e');
+      return null;
+    }
+  }
+
   /// Dopuna: trenutno += litri, opciono dug += iznos, opciono nova cena/L.
   static Future<bool> dopuniRezervoar({
     required String id,
@@ -169,7 +190,8 @@ class V3GorivoService {
       };
       final dodato = dugDodatoRsd ?? 0;
       if (dodato > 0) {
-        final trenutniDug = getStanjeSync()?.dugIznos ?? 0;
+        final stanje = await _getStanjeForWrite();
+        final trenutniDug = stanje?.dugIznos ?? 0;
         payload['dug_iznos'] = trenutniDug + dodato;
       }
       if (cenaPoLitru != null && cenaPoLitru > 0) {
@@ -188,7 +210,7 @@ class V3GorivoService {
   /// Ne ide ispod 0.
   static Future<bool> smanjiDug(double iznos) async {
     if (iznos <= 0) return true;
-    final stanje = getStanjeSync();
+    final stanje = await _getStanjeForWrite();
     if (stanje == null || stanje.id.isEmpty) {
       debugPrint('[V3GorivoService] smanjiDug: nema reda za gorivo');
       return false;
