@@ -8,6 +8,8 @@ import '../../utils/v3_belgrade_time.dart';
 class V3UplataPazaraService {
   V3UplataPazaraService._();
 
+  static final Map<String, Future<void>> _saveQueueByKey = {};
+
   /// Ucitava mesecnu evidenciju za vozaca i datum.
   static Future<V3UplataPazara?> getZaVozacaIMesec({
     required String vozacId,
@@ -48,57 +50,72 @@ class V3UplataPazaraService {
     final mesec = datum.month;
     final godina = datum.year;
     final dan = datum.day;
+    final saveKey = '$id-$godina-$mesec-$dan';
 
-    debugPrint(
-        '[V3UplataPazaraService] sacuvajDnevnuUplatu: vozacId=$id, dan=$dan.$mesec.$godina, predao=$predao, ukupno=$ukupno, zahtevanUnos=$zahtevanUnos, saberiSaPostojecimPredao=$saberiSaPostojecimPredao');
+    final previous = _saveQueueByKey[saveKey] ?? Future.value();
+    final completer = Future<void>.sync(() async {
+      await previous;
 
-    try {
-      final existing = await supabase
-          .from('v3_uplata_pazara')
-          .select('id, dnevne_uplate_json')
-          .eq('vozac_id', id)
-          .eq('mesec', mesec)
-          .eq('godina', godina)
-          .maybeSingle();
+      debugPrint(
+          '[V3UplataPazaraService] sacuvajDnevnuUplatu: vozacId=$id, dan=$dan.$mesec.$godina, predao=$predao, ukupno=$ukupno, zahtevanUnos=$zahtevanUnos, saberiSaPostojecimPredao=$saberiSaPostojecimPredao');
 
-      if (existing != null) {
-        final uplata = V3UplataPazara.fromJson(existing);
-        final prethodnaZaDan = uplata.uplataZaDan(dan);
-        final efektivniPredao = saberiSaPostojecimPredao ? (prethodnaZaDan?.predao ?? 0) + predao : predao;
-        final novaUplata = V3DnevnaUplataPazara(
-          dan: dan,
-          predao: efektivniPredao,
-          ukupno: ukupno,
-          razlika: efektivniPredao - ukupno,
-          zahtevanUnos: zahtevanUnos,
-        );
-        final updated = uplata.withUplata(novaUplata);
+      try {
+        final existing = await supabase
+            .from('v3_uplata_pazara')
+            .select('id, dnevne_uplate_json')
+            .eq('vozac_id', id)
+            .eq('mesec', mesec)
+            .eq('godina', godina)
+            .maybeSingle();
 
-        debugPrint('[V3UplataPazaraService] ažuriram postojeći zapis id=${uplata.id}');
-        await supabase.from('v3_uplata_pazara').update({
-          'dnevne_uplate_json': updated.dnevneUplate.map((e) => e.toJson()).toList(),
-          'updated_at': V3BelgradeTime.nowIsoUtc(),
-        }).eq('id', uplata.id);
-      } else {
-        final novaUplata = V3DnevnaUplataPazara(
-          dan: dan,
-          predao: predao,
-          ukupno: ukupno,
-          razlika: predao - ukupno,
-          zahtevanUnos: zahtevanUnos,
-        );
-        debugPrint('[V3UplataPazaraService] kreiram novi zapis');
-        await supabase.from('v3_uplata_pazara').insert({
-          'vozac_id': id,
-          'mesec': mesec,
-          'godina': godina,
-          'dnevne_uplate_json': [novaUplata.toJson()],
-        });
+        if (existing != null) {
+          final uplata = V3UplataPazara.fromJson(existing);
+          final prethodnaZaDan = uplata.uplataZaDan(dan);
+          final efektivniPredao = saberiSaPostojecimPredao ? (prethodnaZaDan?.predao ?? 0) + predao : predao;
+          final novaUplata = V3DnevnaUplataPazara(
+            dan: dan,
+            predao: efektivniPredao,
+            ukupno: ukupno,
+            razlika: efektivniPredao - ukupno,
+            zahtevanUnos: zahtevanUnos,
+          );
+          final updated = uplata.withUplata(novaUplata);
+
+          debugPrint('[V3UplataPazaraService] ažuriram postojeći zapis id=${uplata.id}');
+          await supabase.from('v3_uplata_pazara').update({
+            'dnevne_uplate_json': updated.dnevneUplate.map((e) => e.toJson()).toList(),
+            'updated_at': V3BelgradeTime.nowIsoUtc(),
+          }).eq('id', uplata.id);
+        } else {
+          final novaUplata = V3DnevnaUplataPazara(
+            dan: dan,
+            predao: predao,
+            ukupno: ukupno,
+            razlika: predao - ukupno,
+            zahtevanUnos: zahtevanUnos,
+          );
+          debugPrint('[V3UplataPazaraService] kreiram novi zapis');
+          await supabase.from('v3_uplata_pazara').insert({
+            'vozac_id': id,
+            'mesec': mesec,
+            'godina': godina,
+            'dnevne_uplate_json': [novaUplata.toJson()],
+          });
+        }
+        debugPrint('[V3UplataPazaraService] sacuvajDnevnuUplatu: uspešno');
+      } catch (e) {
+        debugPrint('[V3UplataPazaraService] sacuvajDnevnuUplatu error: $e');
+        rethrow;
       }
-      debugPrint('[V3UplataPazaraService] sacuvajDnevnuUplatu: uspešno');
-    } catch (e) {
-      debugPrint('[V3UplataPazaraService] sacuvajDnevnuUplatu error: $e');
-      rethrow;
+    });
+
+    _saveQueueByKey[saveKey] = completer;
+    try {
+      await completer;
+    } finally {
+      if (identical(_saveQueueByKey[saveKey], completer)) {
+        _saveQueueByKey.remove(saveKey);
+      }
     }
   }
 

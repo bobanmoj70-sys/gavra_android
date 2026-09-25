@@ -1,4 +1,4 @@
-# Registruje GavraOSRM_Watchdog: svaki 1 minut proverava OSRM i Funnel DNS.
+# Registruje GavraOSRM_Watchdog: svakih 5 minuta proverava OSRM i Funnel DNS.
 # Pokrenuti jednom kao isti korisnik (Bojan). Može da se ponavlja bez štete.
 
 $ErrorActionPreference = "Stop"
@@ -11,21 +11,18 @@ if (-not (Test-Path $Watchdog)) {
     throw "Nedostaje $Watchdog"
 }
 
+$taskArgs = '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $Watchdog
+
 $action = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
-    -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Watchdog`"" `
+    -Argument $taskArgs `
     -WorkingDirectory $ServiceDir
 
 $repeat = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-    -RepetitionInterval (New-TimeSpan -Minutes 1) `
+    -RepetitionInterval (New-TimeSpan -Minutes 5) `
     -RepetitionDuration (New-TimeSpan -Days 9999)
 
 $logon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-
-$principalHighest = New-ScheduledTaskPrincipal `
-    -UserId $env:USERNAME `
-    -LogonType Interactive `
-    -RunLevel Highest
 
 $principalLimited = New-ScheduledTaskPrincipal `
     -UserId $env:USERNAME `
@@ -39,23 +36,40 @@ $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 8)
 
-Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
-
 $registered = $false
-foreach ($principal in @($principalHighest, $principalLimited)) {
+foreach ($principal in @($principalLimited, $null)) {
     try {
-        Register-ScheduledTask `
-            -TaskName $TaskName `
-            -Action $action `
-            -Trigger @($repeat, $logon) `
-            -Principal $principal `
-            -Settings $settings `
-            -Description "Svaki 1 min proverava OSRM/proxy i javni Tailscale Funnel DNS. Reciklira Funnel ako 8.8.8.8 vrati NXDOMAIN, i proaktivno refresuje funnel svakih ~20 min." | Out-Null
+        if ($null -ne $principal) {
+            Register-ScheduledTask `
+                -TaskName $TaskName `
+                -Action $action `
+                -Trigger @($repeat, $logon) `
+                -Principal $principal `
+                -Settings $settings `
+                -Description "Svaki 5 min proverava OSRM/proxy i javni Tailscale Funnel DNS. Reciklira Funnel ako 8.8.8.8 vrati NXDOMAIN, i proaktivno refresuje funnel svakih ~20 min." `
+                -Force | Out-Null
+        } else {
+            Register-ScheduledTask `
+                -TaskName $TaskName `
+                -Action $action `
+                -Trigger @($repeat, $logon) `
+                -Settings $settings `
+                -Description "Svaki 5 min proverava OSRM/proxy i javni Tailscale Funnel DNS. Reciklira Funnel ako 8.8.8.8 vrati NXDOMAIN, i proaktivno refresuje funnel svakih ~20 min." `
+                -Force | Out-Null
+        }
         $registered = $true
-        Write-Host "Task $TaskName je registrovan (RunLevel=$($principal.RunLevel))."
+        if ($null -ne $principal) {
+            Write-Host "Task $TaskName je registrovan (RunLevel=$($principal.RunLevel))."
+        } else {
+            Write-Host "Task $TaskName je registrovan (fallback bez eksplicitnog principal-a)."
+        }
         break
     } catch {
-        Write-Host "Register sa RunLevel=$($principal.RunLevel) nije uspeo: $($_.Exception.Message)"
+        if ($null -ne $principal) {
+            Write-Host "Register sa RunLevel=$($principal.RunLevel) nije uspeo: $($_.Exception.Message)"
+        } else {
+            Write-Host "Fallback register nije uspeo: $($_.Exception.Message)"
+        }
     }
 }
 

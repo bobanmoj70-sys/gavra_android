@@ -40,6 +40,7 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
   bool _isSaving = false;
 
   Future<void> _save() async {
+    if (_isSaving) return;
     final vozacId = V3VozacService.currentVozac?.id;
     if (vozacId == null) return;
 
@@ -57,7 +58,7 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
         predao: predaoVal,
         ukupno: widget.ukupno,
         zahtevanUnos: false, // gasimo popup jer je ukucao!
-        saberiSaPostojecimPredao: true,
+        saberiSaPostojecimPredao: false,
       );
       final noviPredao = await V3UplataPazaraService.getPredaoZaDan(
         vozacId: vozacId,

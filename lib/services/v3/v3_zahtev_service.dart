@@ -21,6 +21,30 @@ class V3ZahtevService {
   static final V3ZahtevRepository _repository = V3ZahtevRepository();
   static final V3OperativnaNedeljaRepository _operativnaRepository = V3OperativnaNedeljaRepository();
   static final V3ZahtevDomainService _domain = V3ZahtevDomainService(_repository);
+  static final Map<String, Future<void>> _cancelQueueByKey = {};
+
+  static Future<T> _runInCancellationQueue<T>(String key, Future<T> Function() action) async {
+    final previous = _cancelQueueByKey[key];
+    final future = Future<T>.sync(() async {
+      if (previous != null) {
+        try {
+          await previous;
+        } catch (_) {}
+      }
+      return action();
+    });
+
+    final queuedFuture = future.then((_) {}, onError: (_) {});
+    _cancelQueueByKey[key] = queuedFuture;
+
+    try {
+      return await future;
+    } finally {
+      if (identical(_cancelQueueByKey[key], queuedFuture)) {
+        _cancelQueueByKey.remove(key);
+      }
+    }
+  }
 
   static String _datumKey(DateTime datum) => V3BelgradeTime.parseIsoDatePart(datum.toIso8601String());
 
@@ -182,71 +206,75 @@ class V3ZahtevService {
     required String grad,
     String? otkazaoPutnikId,
   }) async {
+    final datumIso = _datumKey(datum);
     final targetGrad = grad.trim().toUpperCase();
-    final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
-    if (aktivni.isNotEmpty) {
-      final row = aktivni.first;
-      final rowKey = (row['id']?.toString() ?? '').trim();
-      if (rowKey.isNotEmpty) {
-        final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
-        final updated = await _repository.updateRawMaybeSingle(
-          rowKey,
-          {
-            'status': 'otkazano',
-            if (updBy != null) 'updated_by': updBy,
-          },
-        );
-        if (updated != null) {
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', updated);
+    final queueKey = 'putnik_ctx|$putnikId|$datumIso|$targetGrad';
+
+    await _runInCancellationQueue<void>(queueKey, () async {
+      final aktivni = _vidljiviRedoviPoKontekstu(putnikId: putnikId, datum: datum, grad: grad);
+      if (aktivni.isNotEmpty) {
+        final row = aktivni.first;
+        final rowKey = (row['id']?.toString() ?? '').trim();
+        if (rowKey.isNotEmpty) {
+          final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
+          final updated = await _repository.updateRawMaybeSingle(
+            rowKey,
+            {
+              'status': 'otkazano',
+              if (updBy != null) 'updated_by': updBy,
+            },
+          );
+          if (updated != null) {
+            V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', updated);
+          }
         }
       }
-    }
 
-    final datumIso = _datumKey(datum);
-    final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
-    final otkazanoAt = V3BelgradeTime.nowIsoUtc();
+      final updBy = V3UuidUtils.normalizeUuid(otkazaoPutnikId);
+      final otkazanoAt = V3BelgradeTime.nowIsoUtc();
 
-    // Pre nego što ažuriramo, proverimo da li uopšte ima aktivnih redova.
-    // Ako ih nema, verovatno je već otkazano u međuvremenu — ne radimo ništa.
-    final aktivniOperativni = await _operativnaRepository.selectByPutnikDatumGradAktivni(
-      putnikId: putnikId,
-      datumIso: datumIso,
-      grad: targetGrad,
-    );
-    if (aktivniOperativni.isEmpty) {
-      debugPrint('[V3ZahtevService] Preskačem otkazivanje — nema aktivnih operativnih redova za '
-          'putnikId=$putnikId, datum=$datumIso, grad=$targetGrad.');
-      return;
-    }
+      // Pre nego što ažuriramo, proverimo da li uopšte ima aktivnih redova.
+      // Ako ih nema, verovatno je već otkazano u međuvremenu — ne radimo ništa.
+      final aktivniOperativni = await _operativnaRepository.selectByPutnikDatumGradAktivni(
+        putnikId: putnikId,
+        datumIso: datumIso,
+        grad: targetGrad,
+      );
+      if (aktivniOperativni.isEmpty) {
+        debugPrint('[V3ZahtevService] Preskačem otkazivanje — nema aktivnih operativnih redova za '
+            'putnikId=$putnikId, datum=$datumIso, grad=$targetGrad.');
+        return;
+      }
 
-    final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
-      putnikId: putnikId,
-      datumIso: datumIso,
-      grad: targetGrad,
-      payload: {
-        if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
-        'otkazano_at': otkazanoAt,
-        if (updBy != null) 'updated_by': updBy,
-      },
-    );
-
-    for (final row in updatedOperativni) {
-      V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
-
-      await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
-        operativnaRow: row,
-        updatedBy: updBy,
+      final updatedOperativni = await _operativnaRepository.updateByPutnikDatumGradAktivniReturningList(
+        putnikId: putnikId,
+        datumIso: datumIso,
+        grad: targetGrad,
+        payload: {
+          if (otkazaoPutnikId != null) 'otkazano_by': otkazaoPutnikId,
+          'otkazano_at': otkazanoAt,
+          if (updBy != null) 'updated_by': updBy,
+        },
       );
 
-      // Trigger v3_sync_otkazane_voznje_to_finansije automatski ažurira arhivu.
-    }
+      for (final row in updatedOperativni) {
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
 
-    await _syncOperativnaAssignmentsForContext(
-      putnikId: putnikId,
-      datum: datum,
-      grad: targetGrad,
-      updatedBy: otkazaoPutnikId,
-    );
+        await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+          operativnaRow: row,
+          updatedBy: updBy,
+        );
+
+        // Trigger v3_sync_otkazane_voznje_to_finansije automatski ažurira arhivu.
+      }
+
+      await _syncOperativnaAssignmentsForContext(
+        putnikId: putnikId,
+        datum: datum,
+        grad: targetGrad,
+        updatedBy: otkazaoPutnikId,
+      );
+    });
   }
 
   static Future<void> updateStatus(String id, String newStatus, {String? updatedBy}) async {
@@ -278,55 +306,23 @@ class V3ZahtevService {
       }
 
       final otkazanoAt = V3BelgradeTime.nowIsoUtc();
+      final queueKey = hasPutnikActor
+          ? 'putnik_req|${id.trim()}|${(operativnaId ?? '').trim()}'
+          : 'vozac_req|${(operativnaId ?? '').trim()}';
 
-      if (hasVozacActor) {
-        // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
-        final String? updBy = V3UuidUtils.normalizeUuid(safeVozacId);
-        final payload = {
-          'otkazano_by': safeVozacId,
-          'otkazano_at': otkazanoAt,
-          if (updBy != null) 'updated_by': updBy,
-        };
-        if (operativnaId == null || operativnaId.isEmpty) {
-          throw Exception('operativnaId je obavezan za otkazivanje');
-        }
-
-        // Sigurnosna provera: ne dozvoli duplo otkazivanje istog operativnog reda
-        final existingOperativna =
-            await supabase.from('v3_operativna_nedelja').select('otkazano_at').eq('id', operativnaId).maybeSingle();
-        if (existingOperativna != null && existingOperativna['otkazano_at'] != null) {
-          debugPrint('[V3ZahtevService] Preskačem otkazivanje — operativnaId=$operativnaId je već otkazana.');
-          return;
-        }
-
-        final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
-        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
-        await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
-          operativnaRow: row,
-          updatedBy: updBy,
-        );
-      } else {
-        // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovde
-        final safeZahtevId = id.trim();
-        if (safeZahtevId.isEmpty) {
-          throw Exception('id zahteva je obavezan kada putnik otkazuje');
-        }
-
-        final String? updBy = V3UuidUtils.normalizeUuid(safePutnikOtkazaoId);
-        final row = await _repository.updateRaw(
-          safeZahtevId,
-          {
-            'status': 'otkazano',
+      await _runInCancellationQueue<void>(queueKey, () async {
+        if (hasVozacActor) {
+          // Vozač otkazuje — piše samo u v3_operativna_nedelja (jedini izvor istine za vozača)
+          final String? updBy = V3UuidUtils.normalizeUuid(safeVozacId);
+          final payload = {
+            'otkazano_by': safeVozacId,
+            'otkazano_at': otkazanoAt,
             if (updBy != null) 'updated_by': updBy,
-          },
-        );
-        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
-        final payload2 = {
-          'otkazano_by': safePutnikOtkazaoId,
-          'otkazano_at': otkazanoAt,
-          if (updBy != null) 'updated_by': updBy,
-        };
-        if (operativnaId != null && operativnaId.isNotEmpty) {
+          };
+          if (operativnaId == null || operativnaId.isEmpty) {
+            throw Exception('operativnaId je obavezan za otkazivanje');
+          }
+
           // Sigurnosna provera: ne dozvoli duplo otkazivanje istog operativnog reda
           final existingOperativna =
               await supabase.from('v3_operativna_nedelja').select('otkazano_at').eq('id', operativnaId).maybeSingle();
@@ -335,16 +331,61 @@ class V3ZahtevService {
             return;
           }
 
-          final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row2);
+          final row = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload);
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row);
           await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
-            operativnaRow: row2,
+            operativnaRow: row,
             updatedBy: updBy,
           );
         } else {
-          throw Exception('operativnaId je obavezan za otkazivanje');
+          // Putnik otkazuje — piše u v3_zahtevi, operativna se propagira triggerom ili ovde
+          final safeZahtevId = id.trim();
+          if (safeZahtevId.isEmpty) {
+            throw Exception('id zahteva je obavezan kada putnik otkazuje');
+          }
+
+          final String? updBy = V3UuidUtils.normalizeUuid(safePutnikOtkazaoId);
+          final postojeciZahtev =
+              await supabase.from('v3_zahtevi').select('status').eq('id', safeZahtevId).maybeSingle();
+          final postojeciStatus = V3StatusPolicy.normalizeStatus(postojeciZahtev?['status']?.toString());
+          if (V3StatusPolicy.isCanceled(postojeciStatus)) {
+            debugPrint('[V3ZahtevService] Preskačem otkazivanje — zahtev id=$safeZahtevId je već otkazan.');
+            return;
+          }
+
+          final row = await _repository.updateRaw(
+            safeZahtevId,
+            {
+              'status': 'otkazano',
+              if (updBy != null) 'updated_by': updBy,
+            },
+          );
+          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_zahtevi', row);
+          final payload2 = {
+            'otkazano_by': safePutnikOtkazaoId,
+            'otkazano_at': otkazanoAt,
+            if (updBy != null) 'updated_by': updBy,
+          };
+          if (operativnaId != null && operativnaId.isNotEmpty) {
+            // Sigurnosna provera: ne dozvoli duplo otkazivanje istog operativnog reda
+            final existingOperativna =
+                await supabase.from('v3_operativna_nedelja').select('otkazano_at').eq('id', operativnaId).maybeSingle();
+            if (existingOperativna != null && existingOperativna['otkazano_at'] != null) {
+              debugPrint('[V3ZahtevService] Preskačem otkazivanje — operativnaId=$operativnaId je već otkazana.');
+              return;
+            }
+
+            final row2 = await _operativnaRepository.updateByIdReturningSingle(operativnaId, payload2);
+            V3MasterRealtimeManager.instance.v3UpsertToCache('v3_operativna_nedelja', row2);
+            await V3OperativnaNedeljaService.syncTerminDodelaFromSlotForRow(
+              operativnaRow: row2,
+              updatedBy: updBy,
+            );
+          } else {
+            throw Exception('operativnaId je obavezan za otkazivanje');
+          }
         }
-      }
+      });
     } catch (e) {
       debugPrint('[V3ZahtevService] Otkazi error: $e');
       rethrow;

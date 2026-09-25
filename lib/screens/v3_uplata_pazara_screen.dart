@@ -101,6 +101,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
   }
 
   Future<void> _save() async {
+    if (_isSaving) return;
     final vozac = _selectedVozac;
     if (vozac == null) return;
 
@@ -117,7 +118,7 @@ class _V3UplataPazaraScreenState extends State<V3UplataPazaraScreen> {
         datum: _selectedDate,
         predao: predaoVal,
         ukupno: _ukupnoNaplaceno,
-        saberiSaPostojecimPredao: true,
+        saberiSaPostojecimPredao: false,
       );
       final noviPredao = await V3UplataPazaraService.getPredaoZaDan(
         vozacId: vozac.id,

@@ -114,7 +114,10 @@ function Invoke-FullStart {
         $script:taken = $false
     }
     Log "Pokrećem full start_osrm_server.ps1..."
-    & powershell.exe -ExecutionPolicy Bypass -File $StartScript
+    Start-Process -FilePath "powershell.exe" `
+        -ArgumentList @("-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", $StartScript) `
+        -WindowStyle Hidden `
+        -WorkingDirectory $ServiceDir | Out-Null
 }
 
 Rotate-LogIfNeeded
