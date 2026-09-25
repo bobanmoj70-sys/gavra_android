@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_translations.dart';
 import '../services/v3_locale_manager.dart';
 import 'v3_app_snack_bar.dart';
-import '../l10n/app_translations.dart';
+import 'v3_error_utils.dart';
 
 /// Shortcut metode za česte snackbar poruke u odrzavanje screenu.
 class V3UIUtils {
@@ -26,10 +27,15 @@ class V3UIUtils {
   static void showSaveSuccess(BuildContext context) => V3AppSnackBar.success(context, _tr('saved'));
 
   static void showSaveError(BuildContext context, [Object? error]) {
-    final msg = error != null ? '${_tr('saveError')}: $error' : _tr('saveError');
+    final msg = error != null
+        ? V3ErrorUtils.toUserMessage('${_tr('saveError')}: $error')
+        : _tr('saveError');
     V3AppSnackBar.error(context, msg);
   }
 
   static void showCatchError(BuildContext context, String action, Object error) =>
-      V3AppSnackBar.error(context, _trf('errorDuring', {'ACTION': action, 'ERROR': error.toString()}));
+      V3AppSnackBar.error(
+        context,
+        V3ErrorUtils.toUserMessage(_trf('errorDuring', {'ACTION': action, 'ERROR': error.toString()})),
+      );
 }

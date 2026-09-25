@@ -10,10 +10,50 @@ import 'v3_app_snack_bar.dart';
 class V3ErrorUtils {
   V3ErrorUtils._();
 
-  static String _normalizeErrorMessage(String message) {
+  static const String _fallbackError = 'Greška';
+  static const String _networkErrorMessage = '📶 Internet je slab ili nedostupan. Proverite vezu i pokušajte ponovo.';
+  static const String _genericServerErrorMessage = '⚠️ Trenutno ne možemo da obradimo zahtev. Pokušajte ponovo.';
+
+  static bool _isConnectivityError(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('socketexception') ||
+        lower.contains('timeoutexception') ||
+        lower.contains('timed out') ||
+        lower.contains('connection closed') ||
+        lower.contains('connection reset') ||
+        lower.contains('connection refused') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('clientexception') ||
+        lower.contains('http exception') ||
+        lower.contains('network request failed') ||
+        lower.contains('temporary failure in name resolution');
+  }
+
+  static bool _isTechnicalBackendError(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('postgrestexception') ||
+        lower.contains('postgres') ||
+        lower.contains('supabase') ||
+        lower.contains('sqlstate') ||
+        lower.contains('function_response') ||
+        lower.contains('grpc') ||
+        lower.contains('statuscode(') ||
+        lower.contains('status code');
+  }
+
+  static String toUserMessage(String message) {
     final trimmed = message.trim();
     if (trimmed.isEmpty) {
-      return 'Greška';
+      return _fallbackError;
+    }
+
+    if (_isConnectivityError(trimmed)) {
+      return _networkErrorMessage;
+    }
+
+    if (_isTechnicalBackendError(trimmed)) {
+      return _genericServerErrorMessage;
     }
 
     if (trimmed.startsWith('❌')) {
@@ -24,20 +64,34 @@ class V3ErrorUtils {
     return trimmed;
   }
 
+  static String _normalizeErrorMessage(String message) {
+    return toUserMessage(message);
+  }
+
   /// Safely show error message with mounted check
   ///
   /// **Koristi umesto:** if (mounted) V3AppSnackBar.error(context, 'message');
   /// **Primjer:** V3ErrorUtils.safeError(this, context, 'Greška: $e');
   static void safeError(State state, BuildContext context, String message) {
     if (state.mounted) {
-      V3AppSnackBar.error(context, _normalizeErrorMessage(message));
+      final normalized = _normalizeErrorMessage(message);
+      if (_isConnectivityError(message)) {
+        V3AppSnackBar.warning(context, normalized);
+        return;
+      }
+      V3AppSnackBar.error(context, normalized);
     }
   }
 
   /// Safely show error using BuildContext.mounted (for non-State callers)
   static void safeErrorContext(BuildContext context, String message) {
     if (context.mounted) {
-      V3AppSnackBar.error(context, _normalizeErrorMessage(message));
+      final normalized = _normalizeErrorMessage(message);
+      if (_isConnectivityError(message)) {
+        V3AppSnackBar.warning(context, normalized);
+        return;
+      }
+      V3AppSnackBar.error(context, normalized);
     }
   }
 
