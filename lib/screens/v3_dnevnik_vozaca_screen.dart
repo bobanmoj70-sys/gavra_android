@@ -9,6 +9,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../l10n/app_translations.dart';
+import '../models/v3_uplata_pazara.dart';
 import '../services/realtime/v3_master_realtime_manager.dart';
 import '../services/v3/v3_finansije_service.dart';
 import '../services/v3/v3_uplata_pazara_service.dart';
@@ -887,6 +888,8 @@ class _PredajaFooter extends StatefulWidget {
 class _PredajaFooterState extends State<_PredajaFooter> {
   bool _isLoading = true;
   double? _predaoIznos;
+  double _mesecPredaoUkupno = 0;
+  double _mesecNaplacenoUkupno = 0;
   StreamSubscription<int>? _uplataRevisionSub;
   bool _loadInFlight = false;
 
@@ -908,15 +911,35 @@ class _PredajaFooterState extends State<_PredajaFooter> {
   Future<void> _loadPredaja() async {
     if (_loadInFlight) return;
     _loadInFlight = true;
-    final predaoIznos = await V3UplataPazaraService.getPredaoZaDan(
-      vozacId: widget.vozacId,
-      datum: widget.datum,
-    );
+    final results = await Future.wait<dynamic>([
+      V3UplataPazaraService.getPredaoZaDan(
+        vozacId: widget.vozacId,
+        datum: widget.datum,
+      ),
+      V3UplataPazaraService.getZaVozacaIMesec(
+        vozacId: widget.vozacId,
+        datum: widget.datum,
+      ),
+    ]);
+    final predaoIznos = results[0] as double?;
+    final uplataMesec = results[1] as V3UplataPazara?;
+    final mesecPredaoUkupno = uplataMesec?.dnevneUplate.fold<double>(
+          0,
+          (sum, dnevna) => sum + dnevna.predao,
+        ) ??
+        0;
+    final mesecNaplacenoUkupno = uplataMesec?.dnevneUplate.fold<double>(
+          0,
+          (sum, dnevna) => sum + dnevna.ukupno,
+        ) ??
+        0;
     _loadInFlight = false;
     if (!mounted) return;
     widget.onPredaoChanged?.call(predaoIznos);
     setState(() {
       _predaoIznos = predaoIznos;
+      _mesecPredaoUkupno = mesecPredaoUkupno;
+      _mesecNaplacenoUkupno = mesecNaplacenoUkupno;
       _isLoading = false;
     });
   }
@@ -925,6 +948,7 @@ class _PredajaFooterState extends State<_PredajaFooter> {
   Widget build(BuildContext context) {
     final predaoVal = _predaoIznos;
     final razlika = predaoVal != null ? predaoVal - widget.ukupnoIznos : null;
+    final mesecRazlika = _mesecPredaoUkupno - _mesecNaplacenoUkupno;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -993,6 +1017,63 @@ class _PredajaFooterState extends State<_PredajaFooter> {
               ],
             ),
           ],
+
+          const SizedBox(height: 10),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 10),
+
+          // Mesečni zbir predaje pazara
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(_DnevTr.tr('ukupnoPredatoMesec'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
+              Text(
+                _isLoading ? '...' : '${_mesecPredaoUkupno.toStringAsFixed(0)} din',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(_DnevTr.tr('ukupnoNaplacenoMesec'), style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              Text(
+                _isLoading ? '...' : '${_mesecNaplacenoUkupno.toStringAsFixed(0)} din',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                mesecRazlika >= 0 ? _DnevTr.tr('visakMesec') : _DnevTr.tr('manjakMesec'),
+                style: TextStyle(
+                  color: mesecRazlika >= 0 ? Colors.greenAccent : Colors.redAccent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                _isLoading ? '...' : '${mesecRazlika.abs().toStringAsFixed(0)} din',
+                style: TextStyle(
+                  color: mesecRazlika >= 0 ? Colors.greenAccent : Colors.redAccent,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
