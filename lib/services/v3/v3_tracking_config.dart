@@ -338,7 +338,8 @@ Future<bool> v3AllPassengersCompleted({
         .where((tid) => tid != null && tid.isNotEmpty)
         .toSet();
 
-    if (slotTerminIds == null || slotTerminIds.isEmpty) return false;
+    // Ako nema dodeljenih putnika, tracking se gasi.
+    if (slotTerminIds == null || slotTerminIds.isEmpty) return true;
 
     final rows = await client
         .from('v3_operativna_nedelja')
