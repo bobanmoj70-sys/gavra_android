@@ -463,6 +463,147 @@ class V3FinansijeService {
   /// pre nego što se generiše nova stavka duga za narednu vožnju.
   static double _readVisak(Map<String, dynamic> row) => (row['visak_iznos'] as num?)?.toDouble() ?? 0.0;
 
+  static double _readPrenetiUlaz(Map<String, dynamic> row) => (row['preneti_visak_ulaz'] as num?)?.toDouble() ?? 0.0;
+
+  static double _readPrenetiIzlaz(Map<String, dynamic> row) => (row['preneti_visak_izlaz'] as num?)?.toDouble() ?? 0.0;
+
+  static double _rawPrenetiUlazZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    var ulaz = 0.0;
+    for (final row in _naplataRowsForPutnikMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    )) {
+      ulaz += _readPrenetiUlaz(row);
+    }
+    return ulaz;
+  }
+
+  static double _rawPrenetiIzlazZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    var izlaz = 0.0;
+    for (final row in _naplataRowsForPutnikMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    )) {
+      izlaz += _readPrenetiIzlaz(row);
+    }
+    return izlaz;
+  }
+
+  /// Višak prenet U mesec: sačuvani ulaz + pending prenos sa prethodnog reda.
+  static double getPrenetiVisakUlazZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0.0;
+    return _rawPrenetiUlazZaMesec(putnikId: putnik, godina: godina, mesec: mesec) +
+        _pendingPrenetiVisakZaMesec(putnikId: putnik, godina: godina, mesec: mesec);
+  }
+
+  /// Višak već prenet IZ meseca u kasniji mesec.
+  static double getPrenetiVisakIzlazZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0.0;
+    return _rawPrenetiIzlazZaMesec(putnikId: putnik, godina: godina, mesec: mesec);
+  }
+
+  /// Stvarna vrednost vožnji za mesec (stabilna pre i posle permanentnog prenosa).
+  ///
+  /// `obaveza = uplaceno - visak + dug + prenetiUlaz - prenetiIzlaz`
+  static double getMesecnaObaveza({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+    required double uplaceno,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0.0;
+
+    final resolved = _resolveDugIVIsakSaPrenosom(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
+    final ulaz = getPrenetiVisakUlazZaMesec(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
+    final izlaz = getPrenetiVisakIzlazZaMesec(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    return (uplaceno - resolved.visak + resolved.dug + ulaz - izlaz).clamp(0.0, double.infinity).toDouble();
+  }
+
+  /// Hronološki prethodni mesec sa master redom (isti izvor kao prenos pri upisu).
+  static ({int godina, int mesec})? getPrethodniMesecSaPodacima({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return null;
+    final prethodni = _findPrethodniRed(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
+    if (prethodni == null) return null;
+    final g = _parseInternalInt(prethodni['godina']);
+    final m = _parseInternalInt(prethodni['mesec']);
+    if (g == null || m == null) return null;
+    return (godina: g, mesec: m);
+  }
+
+  /// Neto prenos u mesec: ulazni višak minus dug na prethodnom mesecu sa podacima.
+  static double getPrenosIznosZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return 0.0;
+
+    final ulaz = getPrenetiVisakUlazZaMesec(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
+
+    final prev = getPrethodniMesecSaPodacima(
+      putnikId: putnik,
+      godina: godina,
+      mesec: mesec,
+    );
+    final prethodniDug = prev == null
+        ? 0.0
+        : getNenaplacenIznosForPutnik(
+            putnikId: putnik,
+            godina: prev.godina,
+            mesec: prev.mesec,
+          );
+
+    return ulaz - prethodniDug;
+  }
+
   /// Rezultat trošenja nenaplaćenih stavki nakon uplate: preostale nenaplaćene
   /// stavke i eventualan "preostatak" uplate koji nije mogao da se iskoristi
   /// (jer je iznos veći od svih nenaplaćenih vožnji) — taj preostatak postaje
@@ -938,16 +1079,20 @@ class V3FinansijeService {
     );
 
     final noviVisakTekuci = _readVisak(tekuciRed) + potrosenoNaDug.preostalo;
+    final noviUlazTekuci = _readPrenetiUlaz(tekuciRed) + prenetiVisak;
+    final noviIzlazPrethodni = _readPrenetiIzlaz(prethodniRed) + prenetiVisak;
     final nowIso = V3BelgradeTime.nowIsoUtc();
 
     final azuriranTekuci = await _repo.updateByIdReturning(tekuciId, {
       _nenaplaceneVoznjeKey: potrosenoNaDug.stavke,
       'visak_iznos': noviVisakTekuci,
+      'preneti_visak_ulaz': noviUlazTekuci,
       'updated_at': nowIso,
     });
 
     final azuriranPrethodni = await _repo.updateByIdReturning(prethodniId, {
       'visak_iznos': 0,
+      'preneti_visak_izlaz': noviIzlazPrethodni,
       'updated_at': nowIso,
     });
 
@@ -1109,6 +1254,7 @@ class V3FinansijeService {
         if (prethodniId.isNotEmpty) {
           final updatedPrethodni = await _repo.updateByIdReturning(prethodniId, {
             'visak_iznos': 0,
+            'preneti_visak_izlaz': _readPrenetiIzlaz(prethodniRed) + prenetiVisak,
             'updated_at': V3BelgradeTime.nowIsoUtc(),
           });
           V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updatedPrethodni);
@@ -1131,6 +1277,7 @@ class V3FinansijeService {
               ]
             : <Map<String, dynamic>>[],
         'visak_iznos': noviVisakNoviMesec,
+        'preneti_visak_ulaz': prenetiVisak > 0.009 ? prenetiVisak : 0.0,
         'mesec': datum.month,
         'godina': datum.year,
       });
@@ -1519,14 +1666,13 @@ class V3FinansijeService {
       }
 
       final uplaceno = summary.ukupanIznos;
-      final visak = getVisakIznosForPutnik(
+      // Ista formula kao getMesecniObracun.
+      final ukupnaObaveza = getMesecnaObaveza(
         putnikId: putnikId,
         godina: godina,
         mesec: mesec,
+        uplaceno: uplaceno,
       );
-      // Ista formula kao u getMesecniObracun: obaveza = stvarna vrednost vožnji
-      // (uplaćeno što je potrošeno na vožnje + preostali dug).
-      final ukupnaObaveza = (uplaceno - visak + dugIznos).clamp(0.0, double.infinity);
 
       dugovi.add(
         V3Dug(
@@ -1682,6 +1828,7 @@ class V3FinansijeService {
           if (prethodniId.isNotEmpty) {
             final updatedPrethodni = await _repo.updateByIdReturning(prethodniId, {
               'visak_iznos': 0,
+              'preneti_visak_izlaz': _readPrenetiIzlaz(prethodniRed) + prenetiVisak,
               'updated_at': V3BelgradeTime.toIsoUtc(now),
             });
             V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updatedPrethodni);
@@ -1698,6 +1845,7 @@ class V3FinansijeService {
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           _uplateKey: initialUplate,
           'visak_iznos': cenaVoznje > 0.009 ? (prenetiVisak + iznos) : prenetiVisak,
+          'preneti_visak_ulaz': prenetiVisak > 0.009 ? prenetiVisak : 0.0,
           'mesec': mesec,
           'godina': godina,
         });

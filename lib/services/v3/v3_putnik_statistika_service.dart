@@ -66,6 +66,8 @@ class V3PutnikMesecnaStatistika {
   final double visakIznos;
   final double cena;
   final double ukupnaObaveza;
+  final double brutoObaveza;
+  final double prenosIznos;
   final int brojUplata;
   final DateTime? poslednjaUplata;
   final String? poslednjaUplataVozac;
@@ -84,6 +86,8 @@ class V3PutnikMesecnaStatistika {
     this.visakIznos = 0,
     this.cena = 0,
     this.ukupnaObaveza = 0,
+    this.brutoObaveza = 0,
+    this.prenosIznos = 0,
     this.brojUplata = 0,
     this.poslednjaUplata,
     this.poslednjaUplataVozac,
@@ -186,16 +190,6 @@ class V3PutnikDnevnaStavka {
 class V3PutnikStatistikaService {
   V3PutnikStatistikaService._();
 
-  static ({int godina, int mesec}) _prethodniMesec({
-    required int godina,
-    required int mesec,
-  }) {
-    if (mesec > 1) {
-      return (godina: godina, mesec: mesec - 1);
-    }
-    return (godina: godina - 1, mesec: 12);
-  }
-
   static bool _isPoDanuTip(String tip) {
     final normalized = tip.trim().toLowerCase();
     return normalized == 'radnik' || normalized == 'ucenik';
@@ -281,24 +275,15 @@ class V3PutnikStatistikaService {
       mesec: mesec,
     );
 
-    final prev = _prethodniMesec(godina: godina, mesec: mesec);
-    final prethodniDug = V3FinansijeService.getNenaplacenIznosForPutnik(
-      putnikId: safePutnikId,
-      godina: prev.godina,
-      mesec: prev.mesec,
-    );
-    final prethodniVisak = V3FinansijeService.getVisakIznosForPutnik(
-      putnikId: safePutnikId,
-      godina: prev.godina,
-      mesec: prev.mesec,
-    );
-
-    final saldoPocetakMeseca = prethodniVisak - prethodniDug;
-    final saldoKrajMeseca = visak - dug;
-
     final bool imaAktivnostUNaplati = brojVoznji > 0 || uplaceno > 0.009 || dug > 0.009 || visak > 0.009;
+    // Jedinstvena formula sa V3FinansijeService — stabilna pre/posle permanentnog prenosa.
     final double obaveza = imaAktivnostUNaplati
-        ? (saldoPocetakMeseca + uplaceno - saldoKrajMeseca).clamp(0.0, double.infinity).toDouble()
+        ? V3FinansijeService.getMesecnaObaveza(
+            putnikId: safePutnikId,
+            godina: godina,
+            mesec: mesec,
+            uplaceno: uplaceno,
+          )
         : 0.0;
 
     return V3MesecniObracun(
@@ -580,6 +565,10 @@ class V3PutnikStatistikaService {
           godina: stavka.godina,
           mesec: stavka.mesec,
         );
+
+        final brutoObaveza = stavka.brojVoznji * stavka.cena;
+        final prenosIznos = stavka.saldoPocetak;
+
         return V3PutnikMesecnaStatistika(
           godina: stavka.godina,
           mesec: stavka.mesec,
@@ -594,6 +583,8 @@ class V3PutnikStatistikaService {
           visakIznos: mesecniObracun.visak,
           cena: stavka.cena,
           ukupnaObaveza: stavka.obaveza,
+          brutoObaveza: brutoObaveza,
+          prenosIznos: prenosIznos,
           brojUplata: uplate.length,
           poslednjaUplata: uplate.isNotEmpty ? (uplate.last.naplatioAt ?? uplate.last.datum) : null,
           poslednjaUplataVozac: uplate.isNotEmpty ? _imeVozaca(uplate.last.naplatioBy) : null,
@@ -761,6 +752,14 @@ class V3PutnikStatistikaService {
       mesec: mesec,
     );
 
+    final brutoObaveza = obracun.brojVoznji * obracun.cena;
+    // Isti izvor kao prenos pri upisu (_findPrethodniRed), ne kalendarski mesec-1.
+    final prenosIznos = V3FinansijeService.getPrenosIznosZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+
     return V3PutnikMesecnaStatistika(
       godina: godina,
       mesec: mesec,
@@ -775,6 +774,8 @@ class V3PutnikStatistikaService {
       visakIznos: obracun.visak,
       cena: obracun.cena,
       ukupnaObaveza: obracun.obaveza,
+      brutoObaveza: brutoObaveza,
+      prenosIznos: prenosIznos,
       brojUplata: uplate.length,
       poslednjaUplata: uplate.isNotEmpty ? (uplate.last.naplatioAt ?? uplate.last.datum) : null,
       poslednjaUplataVozac: uplate.isNotEmpty ? _imeVozaca(uplate.last.naplatioBy) : null,

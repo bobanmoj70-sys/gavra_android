@@ -196,24 +196,39 @@ class _MesecCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
-                      if ((stats.ukupnoVoznji * stats.cena - stats.ukupnaObaveza).abs() > 0.009) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          '(${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)})',
-                          style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11),
-                        ),
-                      ],
-                    ],
-                  ),
+                  Text(_StatTr.tr('obaveza'), style: TextStyle(color: V3StyleHelper.whiteAlpha75, fontSize: 13)),
                   Text(
                     '${stats.ukupnaObaveza.toStringAsFixed(0)} RSD',
                     style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Bruto: ${stats.brutoObaveza.toStringAsFixed(0)} RSD (${stats.ukupnoVoznji} × ${stats.cena.toStringAsFixed(0)})',
+                    style: TextStyle(color: V3StyleHelper.whiteAlpha5, fontSize: 11),
+                  ),
+                ],
+              ),
+              if (stats.prenosIznos.abs() > 0.009) ...[
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Prenos: ${stats.prenosIznos > 0 ? "+" : ""}${stats.prenosIznos.toStringAsFixed(0)} RSD',
+                      style: TextStyle(
+                        color: stats.prenosIznos > 0 ? Colors.greenAccent : Colors.orangeAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 4),
             ],
             Row(
