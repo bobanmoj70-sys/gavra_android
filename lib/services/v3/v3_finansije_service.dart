@@ -387,6 +387,78 @@ class V3FinansijeService {
     });
   }
 
+  static ({double dug, double visak}) _rawDugIVIsakZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    var dug = 0.0;
+    var visak = 0.0;
+
+    for (final row in _naplataRowsForPutnikMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    )) {
+      for (final stavka in _readNenaplaceneVoznje(row)) {
+        dug += (stavka['cena'] as num?)?.toDouble() ?? 0.0;
+      }
+      visak += _readVisak(row);
+    }
+
+    return (dug: dug, visak: visak);
+  }
+
+  static double _pendingPrenetiVisakZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final hasRowForTarget = _naplataRowsForPutnikMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    ).isNotEmpty;
+    if (!hasRowForTarget) return 0.0;
+
+    final prethodniRed = _findPrethodniRed(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+    if (prethodniRed == null) return 0.0;
+
+    final prenetiVisak = _readVisak(prethodniRed);
+    if (prenetiVisak <= 0.009) return 0.0;
+
+    return prenetiVisak;
+  }
+
+  static ({double dug, double visak}) _resolveDugIVIsakSaPrenosom({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final raw = _rawDugIVIsakZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+    final pendingPrenos = _pendingPrenetiVisakZaMesec(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+    if (pendingPrenos <= 0.009) {
+      return raw;
+    }
+
+    final pokriceDuga = pendingPrenos >= raw.dug ? raw.dug : pendingPrenos;
+    final dug = (raw.dug - pokriceDuga).clamp(0.0, double.infinity).toDouble();
+    final visak = raw.visak + (pendingPrenos - pokriceDuga);
+    return (dug: dug, visak: visak);
+  }
+
   /// Iznos trenutnog "viška" (kredita/preplate) na master redu, koji se troši
   /// pre nego što se generiše nova stavka duga za narednu vožnju.
   static double _readVisak(Map<String, dynamic> row) => (row['visak_iznos'] as num?)?.toDouble() ?? 0.0;
@@ -669,6 +741,15 @@ class V3FinansijeService {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return 0.0;
 
+    if (godina != null && mesec != null) {
+      final resolved = _resolveDugIVIsakSaPrenosom(
+        putnikId: putnik,
+        godina: godina,
+        mesec: mesec,
+      );
+      return resolved.dug;
+    }
+
     final naplataRows = _naplataRows().where((row) {
       final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
       if (rPutnikId != putnik.toLowerCase()) return false;
@@ -735,6 +816,15 @@ class V3FinansijeService {
   }) {
     final putnik = putnikId.trim();
     if (putnik.isEmpty) return 0.0;
+
+    if (godina != null && mesec != null) {
+      final resolved = _resolveDugIVIsakSaPrenosom(
+        putnikId: putnik,
+        godina: godina,
+        mesec: mesec,
+      );
+      return resolved.visak;
+    }
 
     final naplataRows = _naplataRows().where((row) {
       final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
@@ -819,6 +909,54 @@ class V3FinansijeService {
     return best;
   }
 
+  static Future<Map<String, dynamic>> _primeniPrenetiVisakNaPostojeciRed({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+    required Map<String, dynamic> tekuciRed,
+    required double defaultCena,
+  }) async {
+    final prethodniRed = _findPrethodniRed(
+      putnikId: putnikId,
+      godina: godina,
+      mesec: mesec,
+    );
+    if (prethodniRed == null) return tekuciRed;
+
+    final prenetiVisak = _readVisak(prethodniRed);
+    if (prenetiVisak <= 0.009) return tekuciRed;
+
+    final tekuciId = (tekuciRed['id']?.toString() ?? '').trim();
+    final prethodniId = (prethodniRed['id']?.toString() ?? '').trim();
+    if (tekuciId.isEmpty || prethodniId.isEmpty) return tekuciRed;
+
+    final trenutneNenaplacene = _readNenaplaceneVoznje(tekuciRed);
+    final potrosenoNaDug = _consumeNenaplaceneVoznje(
+      stavke: trenutneNenaplacene,
+      uplacenIznos: prenetiVisak,
+      defaultCena: defaultCena,
+    );
+
+    final noviVisakTekuci = _readVisak(tekuciRed) + potrosenoNaDug.preostalo;
+    final nowIso = V3BelgradeTime.nowIsoUtc();
+
+    final azuriranTekuci = await _repo.updateByIdReturning(tekuciId, {
+      _nenaplaceneVoznjeKey: potrosenoNaDug.stavke,
+      'visak_iznos': noviVisakTekuci,
+      'updated_at': nowIso,
+    });
+
+    final azuriranPrethodni = await _repo.updateByIdReturning(prethodniId, {
+      'visak_iznos': 0,
+      'updated_at': nowIso,
+    });
+
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', azuriranTekuci);
+    V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', azuriranPrethodni);
+
+    return azuriranTekuci;
+  }
+
   static Future<void> evidentirajRealizacijuPriPokupljanju({
     required String putnikId,
     required String tipPutnika,
@@ -864,8 +1002,16 @@ class V3FinansijeService {
 
       if (existingMesecna.isNotEmpty) {
         _sortByCreatedAtDesc(existingMesecna);
-        final latest = existingMesecna.first;
+        var latest = existingMesecna.first;
         final latestId = (latest['id'] ?? '').toString();
+
+        latest = await _primeniPrenetiVisakNaPostojeciRed(
+          putnikId: safePutnikId,
+          godina: datum.year,
+          mesec: datum.month,
+          tekuciRed: latest,
+          defaultCena: cenaVoznje,
+        );
 
         if (isPoDanu) {
           final danIso = V3BelgradeTime.toIsoDate(datum);
@@ -1473,11 +1619,19 @@ class V3FinansijeService {
       Map<String, dynamic> row;
       if (existing.isNotEmpty) {
         _sortByCreatedAtDesc(existing);
-        final latest = existing.first;
+        var latest = existing.first;
         final existingId = (latest['id']?.toString() ?? '').trim();
         if (existingId.isEmpty) {
           throw StateError('Master red za finansije nema validan ID');
         }
+
+        latest = await _primeniPrenetiVisakNaPostojeciRed(
+          putnikId: safePutnikId,
+          godina: godina,
+          mesec: mesec,
+          tekuciRed: latest,
+          defaultCena: cenaVoznje,
+        );
 
         final currentNenaplacene = _readNenaplaceneVoznje(latest);
         final consumeResult = _consumeNenaplaceneVoznje(
