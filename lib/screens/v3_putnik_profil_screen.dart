@@ -991,6 +991,8 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   @override
   Widget build(BuildContext context) {
     final putnikId = _currentPutnikId();
+    final previousMonthDebt = _historicalDebtAmountUntilPreviousMonth(putnikId ?? '');
+    final hasPreviousMonthDebtLock = previousMonthDebt > 0.009;
     final tip = _putnikData['tip_putnika'] as String? ?? 'radnik';
     final cenaPoDanu = (_putnikData['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
     final cenaPoPokupljenju = (_putnikData['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
@@ -1051,47 +1053,50 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                 body: SafeArea(
                   child: Stack(
                     children: [
-                      SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Forced update gate
-                            const V3UpdateBanner(),
-                            // ── HEADER CARD ──────────────────────────────────────
-                            _buildHeaderCard(
-                              tip: tip,
-                              imePrezime: imePrezime,
-                              telefon: telefon,
-                              telefon2: telefon2,
-                              adresaBcNaziv: adresaBcNaziv,
-                              adresaVsNaziv: adresaVsNaziv,
-                              adresaBcNaziv2: adresaBcNaziv2,
-                              adresaVsNaziv2: adresaVsNaziv2,
-                            ),
-                            if (putnikId != null && putnikId.isNotEmpty) ...[
+                      AbsorbPointer(
+                        absorbing: hasPreviousMonthDebtLock,
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Forced update gate
+                              const V3UpdateBanner(),
+                              // ── HEADER CARD ──────────────────────────────────────
+                              _buildHeaderCard(
+                                tip: tip,
+                                imePrezime: imePrezime,
+                                telefon: telefon,
+                                telefon2: telefon2,
+                                adresaBcNaziv: adresaBcNaziv,
+                                adresaVsNaziv: adresaVsNaziv,
+                                adresaBcNaziv2: adresaBcNaziv2,
+                                adresaVsNaziv2: adresaVsNaziv2,
+                              ),
+                              if (putnikId != null && putnikId.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                V3VremeDolaskaWidget(putnikId: putnikId),
+                              ],
+                              const SizedBox(height: 16),
+                              _buildStatistikaCard(
+                                tip: tip,
+                                stats: stats,
+                                cenaInfo: cenaInfo,
+                                ukupanDug: ukupanDug,
+                                ukupanVisak: ukupanVisak,
+                              ),
                               const SizedBox(height: 10),
-                              V3VremeDolaskaWidget(putnikId: putnikId),
+                              _buildDetaljneStatistikeSection(
+                                putnikId: putnikId,
+                                imePrezime: imePrezime,
+                                tipPutnika: tip,
+                              ),
+                              const SizedBox(height: 16),
+                              // ── RASPORED TERMINA ─────────────────────────────────
+                              _buildRasporedCard(nedeljaInfo: nedeljaInfo),
+                              const SizedBox(height: 16),
                             ],
-                            const SizedBox(height: 16),
-                            _buildStatistikaCard(
-                              tip: tip,
-                              stats: stats,
-                              cenaInfo: cenaInfo,
-                              ukupanDug: ukupanDug,
-                              ukupanVisak: ukupanVisak,
-                            ),
-                            const SizedBox(height: 10),
-                            _buildDetaljneStatistikeSection(
-                              putnikId: putnikId,
-                              imePrezime: imePrezime,
-                              tipPutnika: tip,
-                            ),
-                            const SizedBox(height: 16),
-                            // ── RASPORED TERMINA ─────────────────────────────────
-                            _buildRasporedCard(nedeljaInfo: nedeljaInfo),
-                            const SizedBox(height: 16),
-                          ],
+                          ),
                         ),
                       ),
                       Positioned(
@@ -1100,6 +1105,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                         right: 16,
                         child: const V3InfoBanner(),
                       ),
+                      if (hasPreviousMonthDebtLock)
+                        Positioned.fill(
+                          child: _buildPreviousMonthDebtLockOverlay(previousMonthDebt),
+                        ),
                     ],
                   ),
                 ),
@@ -1114,6 +1123,87 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // ─────────────────────────────────────────────────────────────────
   // WIDGETS
   // ─────────────────────────────────────────────────────────────────
+  Widget _buildPreviousMonthDebtLockOverlay(double dugIznos) {
+    final formatiranIznos = _formatWholeRsd(dugIznos);
+    return Container(
+      color: Colors.black.withValues(alpha: 0.72),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: V3ContainerUtils.styledContainer(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            backgroundColor: const Color(0xFF1F2430).withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.45), width: 1.2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.lock_outline, color: Colors.orange, size: 22),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        V3PutnikProfilMessages.previousMonthDebtTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  V3PutnikProfilMessages.previousMonthDebtLocked(_giroRacun),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.92), fontSize: 13.5, height: 1.3),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  V3PutnikProfilMessages.previousMonthDebtAmount(formatiranIznos),
+                  style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                V3ContainerUtils.styledContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  backgroundColor: Colors.black.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _giroRacun,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            letterSpacing: 0.3,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      V3ButtonUtils.textButton(
+                        onPressed: () {
+                          Clipboard.setData(const ClipboardData(text: _giroRacun));
+                          if (!mounted) return;
+                          V3AppSnackBar.success(context, V3PutnikProfilMessages.giroAccountCopied);
+                        },
+                        text: V3PutnikProfilMessages.copyGiroAccount,
+                        foregroundColor: Colors.amber,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeaderCard({
     required String tip,
     required String imePrezime,
