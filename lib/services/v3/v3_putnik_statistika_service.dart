@@ -186,6 +186,16 @@ class V3PutnikDnevnaStavka {
 class V3PutnikStatistikaService {
   V3PutnikStatistikaService._();
 
+  static ({int godina, int mesec}) _prethodniMesec({
+    required int godina,
+    required int mesec,
+  }) {
+    if (mesec > 1) {
+      return (godina: godina, mesec: mesec - 1);
+    }
+    return (godina: godina - 1, mesec: 12);
+  }
+
   static bool _isPoDanuTip(String tip) {
     final normalized = tip.trim().toLowerCase();
     return normalized == 'radnik' || normalized == 'ucenik';
@@ -263,18 +273,33 @@ class V3PutnikStatistikaService {
       godina: godina,
       mesec: mesec,
     );
-    // Višak (kredit) — deo uplaćenog novca koji još nije iskorišćen ni na
-    // jednu vožnju (npr. putnik je platio unapred pre nego što su sve
-    // vožnje meseca evidentirane). Obaveza se računa kao stvarna vrednost
-    // vožnji koje su se desile do sada (uplaćeno - višak + preostali dug),
-    // umesto uplaceno + dug — tako saldo (uplaceno - obaveza) može da bude i
-    // pozitivan (višak), a ne samo nula ili negativan (dug).
+    // Višak (kredit) — deo sredstava koji je ostao nakon poravnanja duga,
+    // uključujući i prenos iz prethodnog meseca kada postoji master red.
     final visak = V3FinansijeService.getVisakIznosForPutnik(
       putnikId: safePutnikId,
       godina: godina,
       mesec: mesec,
     );
-    final obaveza = (uplaceno - visak + dug).clamp(0.0, double.infinity).toDouble();
+
+    final prev = _prethodniMesec(godina: godina, mesec: mesec);
+    final prethodniDug = V3FinansijeService.getNenaplacenIznosForPutnik(
+      putnikId: safePutnikId,
+      godina: prev.godina,
+      mesec: prev.mesec,
+    );
+    final prethodniVisak = V3FinansijeService.getVisakIznosForPutnik(
+      putnikId: safePutnikId,
+      godina: prev.godina,
+      mesec: prev.mesec,
+    );
+
+    final saldoPocetakMeseca = prethodniVisak - prethodniDug;
+    final saldoKrajMeseca = visak - dug;
+
+    final bool imaAktivnostUNaplati = brojVoznji > 0 || uplaceno > 0.009 || dug > 0.009 || visak > 0.009;
+    final double obaveza = imaAktivnostUNaplati
+        ? (saldoPocetakMeseca + uplaceno - saldoKrajMeseca).clamp(0.0, double.infinity).toDouble()
+        : 0.0;
 
     return V3MesecniObracun(
       godina: godina,
@@ -534,6 +559,11 @@ class V3PutnikStatistikaService {
 
     return poravnanje.meseci.map(
       (stavka) {
+        final mesecniObracun = getMesecniObracun(
+          putnikId: putnikId,
+          godina: stavka.godina,
+          mesec: stavka.mesec,
+        );
         final neplaceno = V3FinansijeService.getNenaplacenBrojVoznjiForPutnik(
           putnikId: putnikId,
           godina: stavka.godina,
@@ -560,7 +590,8 @@ class V3PutnikStatistikaService {
           otkazano: otkazano,
           neplaceno: neplaceno,
           naplacenoIznos: stavka.uplata,
-          dugIznos: stavka.obaveza > stavka.uplata ? stavka.obaveza - stavka.uplata : 0,
+          dugIznos: mesecniObracun.dug,
+          visakIznos: mesecniObracun.visak,
           cena: stavka.cena,
           ukupnaObaveza: stavka.obaveza,
           brojUplata: uplate.length,
