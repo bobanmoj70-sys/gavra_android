@@ -1045,6 +1045,24 @@ class V3FinansijeService {
       if (key > bestKey) {
         bestKey = key;
         best = row;
+        continue;
+      }
+
+      if (key == bestKey && best != null) {
+        final currentVisak = _readVisak(row);
+        final bestVisak = _readVisak(best);
+        if (currentVisak > bestVisak + 0.009) {
+          best = row;
+          continue;
+        }
+
+        if ((currentVisak - bestVisak).abs() <= 0.009) {
+          final currentCreatedAt = _createdAtOrEpoch(row);
+          final bestCreatedAt = _createdAtOrEpoch(best);
+          if (currentCreatedAt.isAfter(bestCreatedAt)) {
+            best = row;
+          }
+        }
       }
     }
     return best;
