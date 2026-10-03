@@ -235,7 +235,11 @@ class V3GorivoService {
     }
   }
 
-  /// Ažurira sva polja goriva koja se uređuju iz UI forme
+  /// Ažurira polja goriva iz UI forme.
+  ///
+  /// Ako poraste brojač pištolja (potrošnja), **ne šaljemo** `trenutno_stanje_litri` —
+  /// BEFORE trigger na bazi skida litre sa rezervoara. Ručna korekcija nivoa ide samo
+  /// kad brojač nije porastao u istom snimanju (inače bi se gubila dopuna/korekcija).
   static Future<bool> updateAllFields({
     required String id,
     required double kapacitetLitri,
@@ -246,14 +250,24 @@ class V3GorivoService {
     required double dugIznos,
   }) async {
     try {
-      final row = await _repo.updateByIdReturning(id, {
+      final current = await _getStanjeForWrite();
+      final stariBrojac = current?.stanjeBrojacPistolj ?? 0;
+      final brojacPorastao = brojacPistoljLitri > stariBrojac + 0.0005;
+
+      final payload = <String, dynamic>{
         'kapacitet_litri': kapacitetLitri,
-        'trenutno_stanje_litri': trenutnoStanjeLitri,
         'alarm_nivo_litri': alarmNivoLitri,
         'brojac_pistolj_litri': brojacPistoljLitri,
         'cena_po_litru': cenaPoLitru,
         'dug_iznos': dugIznos,
-      });
+      };
+
+      // Potrošnja: trigger računa pad rezervoara. Korekcija nivoa: samo bez potrošnje.
+      if (!brojacPorastao) {
+        payload['trenutno_stanje_litri'] = trenutnoStanjeLitri;
+      }
+
+      final row = await _repo.updateByIdReturning(id, payload);
       _upsertCache(row);
       return true;
     } catch (e) {
@@ -268,42 +282,43 @@ class V3GorivoService {
     V3MasterRealtimeManager.instance.v3UpsertToCache('v3_gorivo', row);
   }
 
+  /// Beograd ponoć za Y-M-D (DST-safe granice perioda).
+  static DateTime _bgMidnight(int y, int m, int d) => V3BelgradeTime.dateTime(y, m, d);
+
+  static DateTime _bgMidnightOf(DateTime d) => _bgMidnight(d.year, d.month, d.day);
+
+  static DateTime _addCalendarDays(DateTime day, int days) {
+    final plain = DateTime(day.year, day.month, day.day).add(Duration(days: days));
+    return _bgMidnight(plain.year, plain.month, plain.day);
+  }
+
+  /// Potrošnja danas / operativna nedelja (pon–pet) / tekući mesec / tekuća godina.
+  /// Iste granice perioda kao Finansije, sve u Europe/Belgrade.
   static Future<V3GorivoPotrosnjaPregled> getPotrosnjaPregled() async {
     final now = V3BelgradeTime.now();
 
-    // Sve granice perioda moraju biti Europe/Belgrade ponoć (ne DateTime "local"
-    // uređaja) — inače .toUtc() i poređenje sa parseTs pomeraju dan/nedelju.
-    DateTime bgDay(int y, int m, int d) => V3BelgradeTime.dateTime(y, m, d);
-
-    final danas = bgDay(now.year, now.month, now.day);
-    final sutraDate = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
-    final sutra = bgDay(sutraDate.year, sutraDate.month, sutraDate.day);
+    final danas = _bgMidnight(now.year, now.month, now.day);
+    final sutra = _addCalendarDays(danas, 1);
 
     // Operativna nedelja (pon–pet), ista kao Finansije.
     final aktivnaNedelja = V3DanHelper.schedulingWeekRange(now: now);
-    final nedeljaStart = bgDay(
-      aktivnaNedelja.start.year,
-      aktivnaNedelja.start.month,
-      aktivnaNedelja.start.day,
-    );
-    final nedeljaEnd = bgDay(
-      aktivnaNedelja.end.year,
-      aktivnaNedelja.end.month,
-      aktivnaNedelja.end.day,
-    );
-    final nedeljaEndNext = DateTime(nedeljaEnd.year, nedeljaEnd.month, nedeljaEnd.day).add(const Duration(days: 1));
-    final nedeljaEndExclusive = bgDay(
-      nedeljaEndNext.year,
-      nedeljaEndNext.month,
-      nedeljaEndNext.day,
-    );
+    final nedeljaStart = _bgMidnightOf(aktivnaNedelja.start);
+    final nedeljaEnd = _bgMidnightOf(aktivnaNedelja.end);
+    final nedeljaEndExclusive = _addCalendarDays(nedeljaEnd, 1);
 
-    final mesStart = bgDay(now.year, now.month, 1);
-    final mesEndDate = DateTime(now.year, now.month + 1, 1);
-    final mesEnd = bgDay(mesEndDate.year, mesEndDate.month, mesEndDate.day);
+    final mesStart = _bgMidnight(now.year, now.month, 1);
+    final mesEndPlain = DateTime(now.year, now.month + 1, 1);
+    final mesEnd = _bgMidnight(mesEndPlain.year, mesEndPlain.month, mesEndPlain.day);
 
-    final godStart = bgDay(now.year, 1, 1);
-    final godEnd = bgDay(now.year + 1, 1, 1);
+    final godStart = _bgMidnight(now.year, 1, 1);
+    final godEnd = _bgMidnight(now.year + 1, 1, 1);
+
+    Future<double> sumRange(DateTime start, DateTime endExclusive) {
+      return _repo.sumPotrosnjaBetween(
+        startIsoUtc: V3BelgradeTime.toIsoUtc(start),
+        endIsoUtc: V3BelgradeTime.toIsoUtc(endExclusive),
+      );
+    }
 
     double dan = 0;
     double ned = 0;
@@ -311,32 +326,17 @@ class V3GorivoService {
     double god = 0;
 
     try {
-      final rows = await _repo.selectPotrosnjaBetween(
-        startIsoUtc: V3BelgradeTime.toIsoUtc(godStart),
-        endIsoUtc: V3BelgradeTime.toIsoUtc(godEnd),
-      );
-
-      for (final raw in rows) {
-        final row = (raw as Map).cast<String, dynamic>();
-        final dt = V3BelgradeTime.parseTs(row['created_at']?.toString());
-        if (dt == null) continue;
-        final litri = (row['litri'] as num?)?.toDouble() ?? 0.0;
-        if (litri <= 0) continue;
-
-        // created_at je već u Beograd zoni preko parseTs — poredi sa BG granicama.
-        if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
-          dan += litri;
-        }
-        if (!dt.isBefore(nedeljaStart) && dt.isBefore(nedeljaEndExclusive)) {
-          ned += litri;
-        }
-        if (!dt.isBefore(mesStart) && dt.isBefore(mesEnd)) {
-          mes += litri;
-        }
-        if (!dt.isBefore(godStart) && dt.isBefore(godEnd)) {
-          god += litri;
-        }
-      }
+      // Četiri server-side SUM-a (bez 1000-row limita i bez greške TZ pri filteru u Dart-u).
+      final results = await Future.wait<double>([
+        sumRange(danas, sutra),
+        sumRange(nedeljaStart, nedeljaEndExclusive),
+        sumRange(mesStart, mesEnd),
+        sumRange(godStart, godEnd),
+      ]);
+      dan = results[0];
+      ned = results[1];
+      mes = results[2];
+      god = results[3];
     } catch (e) {
       debugPrint('[V3GorivoService] getPotrosnjaPregled error: $e');
     }
