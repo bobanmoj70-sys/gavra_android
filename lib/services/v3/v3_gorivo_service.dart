@@ -270,19 +270,40 @@ class V3GorivoService {
 
   static Future<V3GorivoPotrosnjaPregled> getPotrosnjaPregled() async {
     final now = V3BelgradeTime.now();
-    final danas = V3DanHelper.dateOnlyFrom(now.year, now.month, now.day);
-    final sutra = danas.add(const Duration(days: 1));
 
+    // Sve granice perioda moraju biti Europe/Belgrade ponoć (ne DateTime "local"
+    // uređaja) — inače .toUtc() i poređenje sa parseTs pomeraju dan/nedelju.
+    DateTime bgDay(int y, int m, int d) => V3BelgradeTime.dateTime(y, m, d);
+
+    final danas = bgDay(now.year, now.month, now.day);
+    final sutraDate = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    final sutra = bgDay(sutraDate.year, sutraDate.month, sutraDate.day);
+
+    // Operativna nedelja (pon–pet), ista kao Finansije.
     final aktivnaNedelja = V3DanHelper.schedulingWeekRange(now: now);
-    final nedeljaStart = aktivnaNedelja.start;
-    final nedeljaEnd = aktivnaNedelja.end;
-    final nedeljaEndExclusive = nedeljaEnd.add(const Duration(days: 1));
+    final nedeljaStart = bgDay(
+      aktivnaNedelja.start.year,
+      aktivnaNedelja.start.month,
+      aktivnaNedelja.start.day,
+    );
+    final nedeljaEnd = bgDay(
+      aktivnaNedelja.end.year,
+      aktivnaNedelja.end.month,
+      aktivnaNedelja.end.day,
+    );
+    final nedeljaEndNext = DateTime(nedeljaEnd.year, nedeljaEnd.month, nedeljaEnd.day).add(const Duration(days: 1));
+    final nedeljaEndExclusive = bgDay(
+      nedeljaEndNext.year,
+      nedeljaEndNext.month,
+      nedeljaEndNext.day,
+    );
 
-    final mesStart = V3DanHelper.dateOnlyFrom(now.year, now.month, 1);
-    final mesEnd = V3DanHelper.dateOnlyFrom(now.year, now.month + 1, 1);
+    final mesStart = bgDay(now.year, now.month, 1);
+    final mesEndDate = DateTime(now.year, now.month + 1, 1);
+    final mesEnd = bgDay(mesEndDate.year, mesEndDate.month, mesEndDate.day);
 
-    final godStart = V3DanHelper.dateOnlyFrom(now.year, 1, 1);
-    final godEnd = V3DanHelper.dateOnlyFrom(now.year + 1, 1, 1);
+    final godStart = bgDay(now.year, 1, 1);
+    final godEnd = bgDay(now.year + 1, 1, 1);
 
     double dan = 0;
     double ned = 0;
@@ -291,8 +312,8 @@ class V3GorivoService {
 
     try {
       final rows = await _repo.selectPotrosnjaBetween(
-        startIsoUtc: godStart.toUtc().toIso8601String(),
-        endIsoUtc: godEnd.toUtc().toIso8601String(),
+        startIsoUtc: V3BelgradeTime.toIsoUtc(godStart),
+        endIsoUtc: V3BelgradeTime.toIsoUtc(godEnd),
       );
 
       for (final raw in rows) {
@@ -302,6 +323,7 @@ class V3GorivoService {
         final litri = (row['litri'] as num?)?.toDouble() ?? 0.0;
         if (litri <= 0) continue;
 
+        // created_at je već u Beograd zoni preko parseTs — poredi sa BG granicama.
         if (!dt.isBefore(danas) && dt.isBefore(sutra)) {
           dan += litri;
         }
