@@ -10,8 +10,10 @@ on:
         type: choice
         options:
           - android
+          - huawei
           - ios
           - both
+          - all
 
 permissions:
   contents: write
@@ -24,7 +26,7 @@ env:
 
 jobs:
   version-bump:
-    if: ${{ github.event.inputs.target == 'android' || github.event.inputs.target == 'ios' || github.event.inputs.target == 'both' }}
+    if: ${{ github.event.inputs.target == 'android' || github.event.inputs.target == 'huawei' || github.event.inputs.target == 'ios' || github.event.inputs.target == 'both' || github.event.inputs.target == 'all' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -77,7 +79,7 @@ jobs:
 
   android-release:
     needs: version-bump
-    if: ${{ github.event.inputs.target == 'android' || github.event.inputs.target == 'both' }}
+    if: ${{ github.event.inputs.target == 'android' || github.event.inputs.target == 'both' || github.event.inputs.target == 'all' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -261,9 +263,162 @@ jobs:
           name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
 
+  huawei-release:
+    needs: version-bump
+    if: ${{ github.event.inputs.target == 'huawei' || github.event.inputs.target == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Dkotlin.compiler.execution.strategy=in-process
+
+    steps:
+      - name: Checkout bumped commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.version-bump.outputs.new_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Debug pubspec version
+        run: cat pubspec.yaml | grep '^version:'
+
+      - name: Extract version info
+        shell: bash
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          echo "VERSION_NAME=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          echo "Version name: $VERSION"
+          echo "Version code: $VERSION_CODE"
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+      - name: Prepare env file
+        shell: bash
+        run: |
+          normalize() {
+            printf "%s" "$1" | tr -d '\r\n\t '
+          }
+
+          decode_required_base64() {
+            local secret_name="$1"
+            local secret_value="$2"
+            local output_file="$3"
+            local normalized
+
+            normalized="$(normalize "$secret_value")"
+            if [ -z "$normalized" ]; then
+              echo "Missing required secret: $secret_name"
+              exit 1
+            fi
+
+            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
+              echo "Invalid base64 in required secret: $secret_name"
+              exit 1
+            fi
+          }
+
+          decode_required_base64 "APP_ENV_BASE64" "${{ secrets.APP_ENV_BASE64 }}" ".env"
+
+          if ! grep -q '^SUPABASE_URL=' .env; then
+            echo "APP_ENV_BASE64 must contain SUPABASE_URL"
+            exit 1
+          fi
+
+          if ! grep -q '^SUPABASE_ANON_KEY=' .env; then
+            echo "APP_ENV_BASE64 must contain SUPABASE_ANON_KEY"
+            exit 1
+          fi
+
+      - name: Restore Android credentials from secrets
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/assets
+          mkdir -p android/app
+
+          trim_ws() {
+            printf "%s" "$1" | tr -d '\r\n\t '
+          }
+
+          decode_required_base64() {
+            local secret_name="$1"
+            local secret_value="$2"
+            local output_file="$3"
+            local normalized
+
+            normalized="$(trim_ws "$secret_value")"
+            if [ -z "$normalized" ]; then
+              echo "Missing required secret: $secret_name"
+              exit 1
+            fi
+
+            if ! printf "%s" "$normalized" | base64 -d > "$output_file" 2>/dev/null; then
+              echo "Invalid base64 in required secret: $secret_name"
+              exit 1
+            fi
+
+            if [ ! -s "$output_file" ]; then
+              echo "Decoded file is empty: $secret_name -> $output_file"
+              exit 1
+            fi
+          }
+
+          KEYSTORE_OUT="android/app/release-keystore.jks"
+          decode_required_base64 "ANDROID_KEYSTORE_BASE64" "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" "$KEYSTORE_OUT"
+
+          printf '%s\n' \
+            "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" \
+            "storeFile=app/release-keystore.jks" \
+            > android/key.properties
+
+          keytool -list \
+            -keystore "$KEYSTORE_OUT" \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            >/dev/null
+
+          decode_required_base64 "ANDROID_GOOGLE_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}" "android/app/google-services.json"
+          decode_required_base64 "ANDROID_AGCONNECT_SERVICES_JSON_BASE64" "${{ secrets.ANDROID_AGCONNECT_SERVICES_JSON_BASE64 }}" "android/app/agconnect-services.json"
+
+      - name: Enable Huawei Gradle mode for this run
+        shell: bash
+        run: |
+          sed -i 's/^app\.enableHuawei=.*/app.enableHuawei=true/' android/gradle.properties
+          sed -i 's/^app\.enableHuaweiFlavorSplit=.*/app.enableHuaweiFlavorSplit=false/' android/gradle.properties
+          grep '^app.enableHuawei' android/gradle.properties
+          grep '^app.enableHuaweiFlavorSplit' android/gradle.properties
+
+      - name: Build Huawei release AAB
+        run: flutter build appbundle --release --build-number ${{ env.VERSION_CODE }} --build-name ${{ env.VERSION_NAME }}
+
+      - name: Upload Huawei AAB artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab-huawei
+          path: build/app/outputs/bundle/release/app-release.aab
+
   ios-release:
     needs: version-bump
-    if: ${{ github.event.inputs.target == 'ios' || github.event.inputs.target == 'both' }}
+    if: ${{ github.event.inputs.target == 'ios' || github.event.inputs.target == 'both' || github.event.inputs.target == 'all' }}
     runs-on: macos-latest
     timeout-minutes: 90
     env:

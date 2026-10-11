@@ -81,6 +81,7 @@ temp_secrets.env
 *.jks
 key.properties
 android/app/google-services.json
+android/app/agconnect-services.json
 
 # ML trained models (binary, large, regenerated on every train)
 models/saved/

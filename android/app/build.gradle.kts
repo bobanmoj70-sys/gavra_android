@@ -21,6 +21,26 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val huaweiEnabled =
+    providers.gradleProperty("app.enableHuawei")
+        .orNull
+        ?.trim()
+        ?.equals("true", ignoreCase = true)
+        ?: false
+val huaweiFlavorSplitEnabled =
+    providers.gradleProperty("app.enableHuaweiFlavorSplit")
+        .orNull
+        ?.trim()
+        ?.equals("true", ignoreCase = true)
+        ?: false
+val agconnectServicesFile = project.file("agconnect-services.json")
+
+if (huaweiEnabled && !agconnectServicesFile.isFile) {
+    throw GradleException(
+        "Huawei is enabled (app.enableHuawei=true), but android/app/agconnect-services.json is missing.",
+    )
+}
+
 /**
  * Resolve release keystore from key.properties storeFile.
  * Tries several locations because CI and local historically used different paths:
@@ -76,6 +96,21 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["huaweiEnabled"] = huaweiEnabled.toString()
+    }
+
+    if (huaweiEnabled && huaweiFlavorSplitEnabled) {
+        flavorDimensions += "services"
+        productFlavors {
+            create("gms") {
+                dimension = "services"
+                manifestPlaceholders["huaweiEnabled"] = "false"
+            }
+            create("hms") {
+                dimension = "services"
+                manifestPlaceholders["huaweiEnabled"] = "true"
+            }
+        }
     }
 
     compileOptions {
