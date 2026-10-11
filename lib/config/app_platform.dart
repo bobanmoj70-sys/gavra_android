@@ -33,6 +33,7 @@ class AppPlatform {
 
   static const String methodWakeScreen = 'wakeScreen';
   static const String methodIsGmsAvailable = 'isGmsAvailable';
+  static const String methodGetHmsPushToken = 'getHmsPushToken';
   static const String methodGetAndroidId = 'getAndroidId';
   static const String methodGetPendingPushAction = 'getPendingAction';
 }

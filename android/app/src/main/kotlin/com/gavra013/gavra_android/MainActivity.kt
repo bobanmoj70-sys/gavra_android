@@ -67,6 +67,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(messenger, PUSH_TOKEN_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isGmsAvailable" -> result.success(isGmsAvailable())
+                "getHmsPushToken" -> result.success(getHmsPushToken())
                 "getAndroidId" -> result.success(getAndroidId())
                 else -> result.notImplemented()
             }
@@ -138,6 +139,40 @@ class MainActivity : FlutterActivity() {
                 ?.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
             Log.w(TAG, "getAndroidId: ${e.message}")
+            null
+        }
+    }
+
+    private fun getHmsPushToken(): String? {
+        return try {
+            val appId = getHuaweiAppId()
+            if (appId.isNullOrBlank()) {
+                Log.w(TAG, "getHmsPushToken: appId missing")
+                null
+            } else {
+                val hmsInstanceIdClass = Class.forName("com.huawei.hms.aaid.HmsInstanceId")
+                val getInstanceMethod = hmsInstanceIdClass.getMethod("getInstance", Context::class.java)
+                val instance = getInstanceMethod.invoke(null, this)
+                val getTokenMethod = hmsInstanceIdClass.getMethod("getToken", String::class.java, String::class.java)
+                val token = getTokenMethod.invoke(instance, appId, "HCM") as? String
+                token?.trim()?.takeIf { it.isNotEmpty() }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "getHmsPushToken: ${e.message}")
+            null
+        }
+    }
+
+    private fun getHuaweiAppId(): String? {
+        return try {
+            val configClass = Class.forName("com.huawei.agconnect.config.AGConnectServicesConfig")
+            val fromContext = configClass.getMethod("fromContext", Context::class.java)
+            val config = fromContext.invoke(null, this)
+            val getString = configClass.getMethod("getString", String::class.java)
+            val raw = getString.invoke(config, "client/app_id") as? String
+            raw?.trim()?.removePrefix("appid=")?.takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Log.w(TAG, "getHuaweiAppId: ${e.message}")
             null
         }
     }

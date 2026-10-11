@@ -3,10 +3,19 @@ import com.android.build.gradle.LibraryExtension
 // Root: repos + Flutter plugin compatibility.
 // Plugin versions live only in settings.gradle.kts.
 
+val huaweiEnabledInRoot =
+    (findProperty("app.enableHuawei") as String?)
+        ?.trim()
+        ?.equals("true", ignoreCase = true)
+        ?: false
+
 allprojects {
     repositories {
         google()
         mavenCentral()
+        if (huaweiEnabledInRoot) {
+            maven("https://developer.huawei.com/repo/")
+        }
     }
 }
 
