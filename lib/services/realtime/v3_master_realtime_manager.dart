@@ -922,6 +922,12 @@ class V3MasterRealtimeManager {
     final pazarMap = V3FinansijeService.getPazarPoVozacuZaDan(nowBelgrade);
     final ukupno = dnevna?.ukupno ?? (pazarMap[vozacId] ?? 0.0);
 
+    // Ne zahtevaj unos ako nema stvarnog pazara (nema uplata vozaca)
+    if (ukupno <= 0) {
+      debugPrint('[V3MasterRealtimeManager] nema pazara (ukupno=$ukupno), preskacem auto zahtev unosa');
+      return;
+    }
+
     _pazarAutoTriggerInFlight = true;
     try {
       await V3UplataPazaraService.sacuvajDnevnuUplatu(
@@ -1030,7 +1036,7 @@ class V3MasterRealtimeManager {
         debugPrint('[V3MasterRealtimeManager] reblokada pazara: detektovana naknadna naplata');
       }
 
-      if (effectiveDnevna.zahtevanUnos == true) {
+      if (effectiveDnevna.zahtevanUnos == true && effectiveDnevna.ukupno > 0) {
         _pazarPromptController.add(
           V3PazarPromptEvent(
             datum: today,
