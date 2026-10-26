@@ -35,8 +35,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
   static const Color _sheetBg = Color(0xFF161A28);
 
   bool _isCreatingInitialData = false;
-  bool _isSavingFuelData = false;
-  bool _isDodavanjeGoriva = false;
 
   double? _toDoubleOrNull(String input) {
     final normalized = input.trim().replaceAll(',', '.');
@@ -53,6 +51,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
   }
 
   void _closeSheetIfOpen(BuildContext sheetContext) {
+    if (!sheetContext.mounted) return;
     final navigator = Navigator.maybeOf(sheetContext);
     if (navigator != null && navigator.canPop()) {
       navigator.pop();
@@ -79,6 +78,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
     final uplataCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     var dugRucno = false;
+    var saving = false;
 
     void syncDugFromLitriCena(void Function(void Function()) setModal) {
       if (dugRucno) return;
@@ -106,9 +106,12 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-          child: V3ContainerUtils.styledContainer(
+        return _FrozenSheet(
+          child: _SheetControllerDisposer(
+          controllers: [dodatoCtrl, cenaCtrl, dugCtrl, uplataCtrl],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+            child: V3ContainerUtils.styledContainer(
             backgroundColor: _sheetBg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             border: Border.all(color: Colors.green.withValues(alpha: 0.25)),
@@ -251,9 +254,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                             cancelLabel: _GorTr.tr('otkazi'),
                             confirmLabel: _GorTr.tr('dodaj'),
                             confirmColor: Colors.green,
-                            loading: _isDodavanjeGoriva,
-                            onCancel: _isDodavanjeGoriva ? null : () => Navigator.of(sheetContext).pop(),
-                            onConfirm: _isDodavanjeGoriva
+                            loading: saving,
+                            onCancel: saving ? null : () => Navigator.of(sheetContext).pop(),
+                            onConfirm: saving
                                 ? null
                                 : () async {
                                     if (formKey.currentState?.validate() != true) {
@@ -306,7 +309,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
                                     final novoStanje = trenutno + dodato;
 
-                                    setState(() => _isDodavanjeGoriva = true);
+                                    setModal(() => saving = true);
                                     final successDopuna = await V3GorivoService.dopuniRezervoar(
                                       id: id,
                                       novoLitara: novoStanje,
@@ -324,7 +327,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                     }
                                     if (!mounted) return;
 
-                                    setState(() => _isDodavanjeGoriva = false);
                                     _closeSheetIfOpen(sheetContext);
                                     _showMessage(
                                       (successDopuna && successUplata)
@@ -343,14 +345,11 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
               ),
             ),
           ),
+        ),
+          ),
         );
       },
     );
-
-    dodatoCtrl.dispose();
-    cenaCtrl.dispose();
-    dugCtrl.dispose();
-    uplataCtrl.dispose();
   }
 
   Future<void> _openEditFuelDataSheet({required V3PumpaRezervoar? rezervoar, required V3PumpaStanje? stanje}) async {
@@ -381,22 +380,28 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
       text: (stanje?.dugIznos ?? 0).toStringAsFixed(2),
     );
     final formKey = GlobalKey<FormState>();
+    var saving = false;
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-          child: V3ContainerUtils.styledContainer(
+        return _FrozenSheet(
+          child: _SheetControllerDisposer(
+          controllers: [kapacitetCtrl, alarmCtrl, trenutnoCtrl, brojacCtrl, cenaCtrl, dugCtrl],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+            child: V3ContainerUtils.styledContainer(
             backgroundColor: _sheetBg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             border: Border.all(color: _accent.withValues(alpha: 0.3)),
             padding: EdgeInsets.zero,
             child: SafeArea(
               top: false,
-              child: SingleChildScrollView(
+              child: StatefulBuilder(
+                builder: (modalContext, setModal) {
+                  return SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
                 child: Form(
                   key: formKey,
@@ -448,9 +453,9 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                         confirmLabel: _GorTr.tr('sacuvaj'),
                         confirmColor: _accent,
                         confirmForeground: Colors.black,
-                        loading: _isSavingFuelData,
-                        onCancel: _isSavingFuelData ? null : () => Navigator.of(sheetContext).pop(),
-                        onConfirm: _isSavingFuelData
+                        loading: saving,
+                        onCancel: saving ? null : () => Navigator.of(sheetContext).pop(),
+                        onConfirm: saving
                             ? null
                             : () async {
                                 if (formKey.currentState?.validate() != true) return;
@@ -482,7 +487,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                   return;
                                 }
 
-                                setState(() => _isSavingFuelData = true);
+                                setModal(() => saving = true);
                                 final success = await V3GorivoService.updateAllFields(
                                   id: id,
                                   kapacitetLitri: kapacitet,
@@ -494,7 +499,6 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                                 );
                                 if (!mounted) return;
 
-                                setState(() => _isSavingFuelData = false);
                                 _closeSheetIfOpen(sheetContext);
                                 _showMessage(
                                   success
@@ -506,19 +510,16 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                     ],
                   ),
                 ),
+              );
+                },
               ),
             ),
+          ),
+        ),
           ),
         );
       },
     );
-
-    kapacitetCtrl.dispose();
-    alarmCtrl.dispose();
-    trenutnoCtrl.dispose();
-    brojacCtrl.dispose();
-    cenaCtrl.dispose();
-    dugCtrl.dispose();
   }
 
   Widget _sheetHandle() {
@@ -859,17 +860,15 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
             ],
             SizedBox(height: isCompact ? 16 : 18),
             _buildPrimaryAction(
-              onPressed: _isDodavanjeGoriva ? null : () => _openDopunaSheet(rezervoar: r, stanje: stanje),
-              loading: _isDodavanjeGoriva,
-              label: _isDodavanjeGoriva ? _GorTr.tr('dodavanjeDots') : _GorTr.tr('dodajGorivo'),
+              onPressed: () => _openDopunaSheet(rezervoar: r, stanje: stanje),
+              label: _GorTr.tr('dodajGorivo'),
               icon: Icons.add_circle_rounded,
               colors: [Colors.green.shade700, Colors.green.shade500],
             ),
             if (stanje != null || r != null) ...[
               const SizedBox(height: 10),
               _buildSecondaryAction(
-                onPressed: _isSavingFuelData ? null : () => _openEditFuelDataSheet(rezervoar: r, stanje: stanje),
-                loading: _isSavingFuelData,
+                onPressed: () => _openEditFuelDataSheet(rezervoar: r, stanje: stanje),
                 label: _GorTr.tr('uneziIzmeniPodatke'),
                 icon: Icons.edit_rounded,
               ),
@@ -1012,7 +1011,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
   Widget _buildPrimaryAction({
     required VoidCallback? onPressed,
-    required bool loading,
+    bool loading = false,
     required String label,
     required IconData icon,
     required List<Color> colors,
@@ -1072,7 +1071,7 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
 
   Widget _buildSecondaryAction({
     required VoidCallback? onPressed,
-    required bool loading,
+    bool loading = false,
     required String label,
     required IconData icon,
   }) {
@@ -1830,4 +1829,68 @@ class _GorivoData {
   final V3PumpaStanje? stanje;
   final V3PumpaRezervoar? rezervoar;
   _GorivoData({required this.stanje, required this.rezervoar});
+}
+
+/// Vlasnik TextEditingController-a za bottom sheet.
+///
+/// `await showModalBottomSheet` se završava čim se pop zatraži, dok se sheet-ovo
+/// stablo još uvek demontira kroz exit animaciju. Ako se kontroleri dispose-uju
+/// odmah posle await-a, TextField-ovi koji još žive u animaciji pokupe
+/// "used after being disposed" crash. Disposal se ovde vezuje za unmount
+/// podstabla — deca se unmount-uju pre State.dispose, pa su listeneri već skinuti.
+class _SheetControllerDisposer extends StatefulWidget {
+  const _SheetControllerDisposer({required this.controllers, required this.child});
+
+  final List<TextEditingController> controllers;
+  final Widget child;
+
+  @override
+  State<_SheetControllerDisposer> createState() => _SheetControllerDisposerState();
+}
+
+class _SheetControllerDisposerState extends State<_SheetControllerDisposer> {
+  @override
+  void dispose() {
+    // Polja moraju prvo da skinu listenere. dispose() roditelja ide pre
+    // deactivate/unmount dece, pa odlaganje za kraj frame-a čeka da
+    // TextFormField otpusti kontroler pre nego što ga ugasimo.
+    final controllers = widget.controllers;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final controller in controllers) {
+        controller.dispose();
+      }
+    });
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Sprečava da InheritedWidget/setState na ekranu ispod rebuild-uje sheet.
+/// Realtime stream na gorivo ekranu inače ponovo gradi TextFormField dok se
+/// ruta zatvara i kontroler više nije upotrebljiv.
+class _FrozenSheet extends StatefulWidget {
+  const _FrozenSheet({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FrozenSheet> createState() => _FrozenSheetState();
+}
+
+class _FrozenSheetState extends State<_FrozenSheet> {
+  late Widget _child = widget.child;
+
+  @override
+  void didUpdateWidget(covariant _FrozenSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return;
+    _child = widget.child;
+  }
+
+  @override
+  Widget build(BuildContext context) => _child;
 }
