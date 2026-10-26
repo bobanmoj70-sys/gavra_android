@@ -38,6 +38,38 @@ class V3GorivoUplataObracun {
   });
 }
 
+class V3GorivoIstorijaStavka {
+  final String id;
+  final String vrsta; // 'dopuna' | 'uplata' | 'potrosnja'
+  final double litri;
+  final double? cenaPoLitru;
+  final double? dugPromena;
+  final String? napomena;
+  final DateTime? createdAt;
+
+  const V3GorivoIstorijaStavka({
+    required this.id,
+    required this.vrsta,
+    required this.litri,
+    this.cenaPoLitru,
+    this.dugPromena,
+    this.napomena,
+    this.createdAt,
+  });
+
+  static V3GorivoIstorijaStavka fromJson(Map<String, dynamic> json) {
+    return V3GorivoIstorijaStavka(
+      id: json['id']?.toString() ?? '',
+      vrsta: json['vrsta']?.toString() ?? '',
+      litri: (json['litri'] as num?)?.toDouble() ?? 0,
+      cenaPoLitru: (json['cena_po_litru'] as num?)?.toDouble(),
+      dugPromena: (json['dug_promena'] as num?)?.toDouble(),
+      napomena: json['napomena']?.toString(),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '')?.toLocal(),
+    );
+  }
+}
+
 class V3GorivoService {
   V3GorivoService._();
 
@@ -273,6 +305,19 @@ class V3GorivoService {
     } catch (e) {
       debugPrint('[V3GorivoService] updateAllFields error: $e');
       return false;
+    }
+  }
+
+  /// Istorija dopuna goriva i uplata duga (tabela: v3_gorivo_istorija), najnovije prvo.
+  static Future<List<V3GorivoIstorijaStavka>> getDopuneIUplate({int limit = 100}) async {
+    try {
+      final rows = await _repo.selectDopuneIUplate(limit: limit);
+      return rows
+          .map((r) => V3GorivoIstorijaStavka.fromJson(Map<String, dynamic>.from(r as Map)))
+          .toList(growable: false);
+    } catch (e) {
+      debugPrint('[V3GorivoService] getDopuneIUplate error: $e');
+      return const [];
     }
   }
 

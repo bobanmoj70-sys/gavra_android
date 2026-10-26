@@ -873,6 +873,8 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                 icon: Icons.edit_rounded,
               ),
             ],
+            SizedBox(height: isCompact ? 12 : 14),
+            _FuelHistoryCard(isCompact: isCompact),
           ] else ...[
             _buildEmptyState(isCompact),
           ],
@@ -1829,6 +1831,159 @@ class _GorivoData {
   final V3PumpaStanje? stanje;
   final V3PumpaRezervoar? rezervoar;
   _GorivoData({required this.stanje, required this.rezervoar});
+}
+
+class _FuelHistoryCard extends StatelessWidget {
+  const _FuelHistoryCard({required this.isCompact});
+
+  final bool isCompact;
+
+  static String _formatDatumVreme(DateTime d) {
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mi = d.minute.toString().padLeft(2, '0');
+    return '$dd.$mm.${d.year} $hh:$mi';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_gorivo'),
+      builder: (context, _) {
+        return FutureBuilder<List<V3GorivoIstorijaStavka>>(
+          future: V3GorivoService.getDopuneIUplate(limit: 50),
+          builder: (context, snapshot) {
+            final stavke = snapshot.data ?? const <V3GorivoIstorijaStavka>[];
+            final loading = snapshot.connectionState == ConnectionState.waiting && snapshot.data == null;
+
+            return Container(
+              padding: EdgeInsets.all(isCompact ? 12 : 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2235),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFA5D6A7).withValues(alpha: 0.3), width: 1.2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _GorTr.tr('istorijaDopunaIUplata'),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else if (stavke.isEmpty)
+                    Text(
+                      _GorTr.tr('nemaZabelezenihDopunaIUplata'),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 12,
+                      ),
+                    )
+                  else
+                    ...stavke.map((s) => _FuelHistoryTile(stavka: s)),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FuelHistoryTile extends StatelessWidget {
+  const _FuelHistoryTile({required this.stavka});
+
+  final V3GorivoIstorijaStavka stavka;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDopuna = stavka.vrsta == 'dopuna';
+    final color = isDopuna ? const Color(0xFF81C784) : const Color(0xFF64B5F6);
+    final icon = isDopuna ? Icons.local_gas_station_rounded : Icons.payments_rounded;
+    final naslov = _GorTr.tr(isDopuna ? 'dopunaGoriva' : 'uplataDuga');
+
+    final detalji = <String>[];
+    if (isDopuna && (stavka.cenaPoLitru ?? 0) > 0) {
+      detalji.add('${V3FormatUtils.formatNovac(stavka.cenaPoLitru ?? 0)} RSD/L');
+    }
+    if (isDopuna && (stavka.dugPromena ?? 0) > 0) {
+      detalji.add('${_GorTr.tr('dugIznos')} +${V3FormatUtils.formatNovac(stavka.dugPromena ?? 0)} RSD');
+    }
+    if (stavka.createdAt != null) {
+      detalji.add(_FuelHistoryCard._formatDatumVreme(stavka.createdAt!));
+    }
+
+    final vrednost = isDopuna
+        ? '+${V3FormatUtils.formatGorivo(stavka.litri)} L'
+        : '-${V3FormatUtils.formatNovac(stavka.dugPromena ?? 0)} RSD';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Icon(icon, color: color, size: 17),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  naslov,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (detalji.isNotEmpty)
+                  Text(
+                    detalji.join(' • '),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 10.5,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Text(
+            vrednost,
+            style: TextStyle(
+              color: color,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Vlasnik TextEditingController-a za bottom sheet.

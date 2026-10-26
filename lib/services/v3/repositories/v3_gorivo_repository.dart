@@ -41,6 +41,16 @@ class V3GorivoRepository {
     }
   }
 
+  /// Istorija dopuna i uplata, najnovije prvo.
+  Future<List<dynamic>> selectDopuneIUplate({int limit = 100}) {
+    return supabase
+        .from('v3_gorivo_istorija')
+        .select('id, vrsta, litri, cena_po_litru, dug_promena, napomena, source, created_at')
+        .inFilter('vrsta', ['dopuna', 'uplata'])
+        .order('created_at', ascending: false)
+        .limit(limit);
+  }
+
   /// Fallback: redovi potrošnje (za starije klijente / debug). Preferirati [sumPotrosnjaBetween].
   Future<List<dynamic>> selectPotrosnjaBetween({
     required String startIsoUtc,

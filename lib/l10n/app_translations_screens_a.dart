@@ -2005,5 +2005,12 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'sr': 'Neuspešno kreiranje početnih podataka.',
       'en': 'Failed to create initial data.'
     },
+    'istorijaDopunaIUplata': {'sr': 'Istorija dopuna i uplata', 'en': 'Refill and payment history'},
+    'nemaZabelezenihDopunaIUplata': {
+      'sr': 'Još nema zabeleženih dopuna ili uplata.',
+      'en': 'No refills or payments recorded yet.'
+    },
+    'dopunaGoriva': {'sr': 'Dopuna goriva', 'en': 'Fuel refill'},
+    'uplataDuga': {'sr': 'Uplata duga', 'en': 'Debt payment'},
   },
 };
