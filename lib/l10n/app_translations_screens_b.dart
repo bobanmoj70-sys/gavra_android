@@ -1101,64 +1101,6 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'putnik': {'sr': 'Putnik', 'en': 'Passenger', 'ru': 'Пассажир', 'de': 'Fahrgast', 'zh': '乘客'},
     'ucenik': {'sr': 'Učenik', 'en': 'Student', 'ru': 'Ученик', 'de': 'Schüler', 'zh': '学生'},
   },
-  'uplataPazaraScreen': {
-    'uplataPazara': {
-      'sr': 'Uplata pazara',
-      'en': 'Cash payment',
-      'ru': 'Оплата выручки',
-      'de': 'Kassenzahlung',
-      'zh': '现金付款'
-    },
-    'vozac': {'sr': 'Vozač', 'en': 'Driver', 'ru': 'Водитель', 'de': 'Fahrer', 'zh': '司机'},
-    'datum': {'sr': 'Datum', 'en': 'Date', 'ru': 'Дата', 'de': 'Datum', 'zh': '日期'},
-    'predao': {'sr': 'Predao', 'en': 'Handed over', 'ru': 'Сдал', 'de': 'Übergeben', 'zh': '已交款'},
-    'visak': {'sr': 'Višak:', 'en': 'Surplus:', 'ru': 'Излишек:', 'de': 'Überschuss:', 'zh': '盈余：'},
-    'manjak': {'sr': 'Manjak:', 'en': 'Shortage:', 'ru': 'Недостача:', 'de': 'Fehlbetrag:', 'zh': '不足：'},
-    'cuvanje': {'sr': 'Čuvanje...', 'en': 'Saving...', 'ru': 'Сохранение...', 'de': 'Speichern...', 'zh': '保存中...'},
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
-    'greskaPriUcitavanju': {
-      'sr': 'Greška pri učitavanju',
-      'en': 'Error loading',
-      'ru': 'Ошибка загрузки',
-      'de': 'Fehler beim Laden',
-      'zh': '加载错误'
-    },
-    'unesiteIznosVeciOd0': {
-      'sr': 'Unesite iznos veći od 0 din.',
-      'en': 'Enter an amount greater than 0.',
-      'ru': 'Введите сумму больше 0.',
-      'de': 'Geben Sie einen Betrag größer als 0 ein.',
-      'zh': '请输入大于0的金额。'
-    },
-    'uplataPazaraSacuvana': {
-      'sr': 'Uplata pazara sačuvana',
-      'en': 'Cash payment saved',
-      'ru': 'Оплата выручки сохранена',
-      'de': 'Kassenzahlung gespeichert',
-      'zh': '现金付款已保存'
-    },
-    'uplataPazaraSacuvanaSabrana': {
-      'sr': 'Uplata sačuvana i dodata na postojeći iznos',
-      'en': 'Payment saved and added to existing amount',
-      'ru': 'Платеж сохранен и добавлен к существующей сумме',
-      'de': 'Zahlung gespeichert und zum bestehenden Betrag addiert',
-      'zh': '付款已保存并添加到现有金额'
-    },
-    'uplataPazaraSacuvanaSaUkupnim': {
-      'sr': 'Uplata sačuvana. Novi ukupno predato: {iznos} din',
-      'en': 'Payment saved. New total handed over: {iznos} RSD',
-      'ru': 'Платеж сохранен. Новый итог сдано: {iznos} дин',
-      'de': 'Zahlung gespeichert. Neuer insgesamt übergebener Betrag: {iznos} RSD',
-      'zh': '付款已保存。新的已交总额：{iznos} 第纳尔'
-    },
-    'greskaPriCuvanju': {
-      'sr': 'Greška pri čuvanju',
-      'en': 'Error saving',
-      'ru': 'Ошибка сохранения',
-      'de': 'Fehler beim Speichern',
-      'zh': '保存错误'
-    },
-  },
   'vozacPazarPopup': {
     'unesiteIspravanIznos': {
       'sr': 'Unesite ispravan iznos stotino nula',

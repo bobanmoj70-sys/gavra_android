@@ -31,7 +31,6 @@ import 'v3_posiljke_zahtevi_screen.dart';
 import 'v3_putnici_screen.dart';
 import 'v3_radnici_zahtevi_screen.dart';
 import 'v3_ucenici_zahtevi_screen.dart';
-import 'v3_uplata_pazara_screen.dart';
 import 'v3_zahtevi_dnevni_screen.dart';
 
 class V3AdminScreen extends StatefulWidget {
@@ -1349,31 +1348,6 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                           fit: BoxFit.scaleDown,
                           child: Text(
                             '📒',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Colors.white,
-                              shadows: [Shadow(offset: Offset(1, 1), blurRadius: 3, color: Colors.black54)],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Uplata pazara
-                    Expanded(
-                      flex: 1,
-                      child: _NavBtn(
-                        color: Colors.teal,
-                        height: V3ContainerUtils.responsiveHeight(context, 50),
-                        onTap: () => V3NavigationUtils.pushScreen<void>(
-                          context,
-                          const V3UplataPazaraScreen(),
-                        ),
-                        child: const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            '💰',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
