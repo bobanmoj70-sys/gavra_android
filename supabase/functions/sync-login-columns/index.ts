@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     const { data: existing, error: existingError } = await client
       .from("v3_auth")
-      .select("id, installation_id, installation_id_2, push_token, push_token_2, hardware_id, hardware_id_2, locale_code, last_seen_at, last_seen_at_2")
+      .select("id, installation_id, installation_id_2, push_token, push_token_2, push_token_hms, push_token_hms_2, push_token_provider, hardware_id, hardware_id_2, locale_code, last_seen_at, last_seen_at_2")
       .eq("id", userId)
       .maybeSingle();
 
@@ -77,6 +77,11 @@ Deno.serve(async (req) => {
       payload.incoming_push_token,
       payload.push_token,
     );
+    const incomingPushProvider = firstNonEmpty(
+      payload.incoming_push_provider,
+      payload.push_provider,
+      "fcm",
+    ).toLowerCase();
     const incomingInstallationId = firstNonEmpty(
       payload.incoming_installation_id,
       payload.installation_id,
@@ -106,6 +111,8 @@ Deno.serve(async (req) => {
     const slot2Installation = String(existing.installation_id_2 ?? "").trim();
     const slot1Token = String(existing.push_token ?? "").trim();
     const slot2Token = String(existing.push_token_2 ?? "").trim();
+    const slot1HmsToken = String(existing.push_token_hms ?? "").trim();
+    const slot2HmsToken = String(existing.push_token_hms_2 ?? "").trim();
     const slot1Hardware = String(existing.hardware_id ?? "").trim();
     const slot2Hardware = String(existing.hardware_id_2 ?? "").trim();
 
@@ -124,10 +131,16 @@ Deno.serve(async (req) => {
     } else if (incomingHardwareId && slot2Hardware && incomingHardwareId === slot2Hardware) {
       slot = 2;
       reason = "hardware_matched";
-    } else if (incomingPushToken && slot1Token && incomingPushToken === slot1Token) {
+    } else if (incomingPushToken && incomingPushProvider === "fcm" && slot1Token && incomingPushToken === slot1Token) {
       slot = 1;
       reason = "token_matched";
-    } else if (incomingPushToken && slot2Token && incomingPushToken === slot2Token) {
+    } else if (incomingPushToken && incomingPushProvider === "fcm" && slot2Token && incomingPushToken === slot2Token) {
+      slot = 2;
+      reason = "token_matched";
+    } else if (incomingPushToken && incomingPushProvider === "hms" && slot1HmsToken && incomingPushToken === slot1HmsToken) {
+      slot = 1;
+      reason = "token_matched";
+    } else if (incomingPushToken && incomingPushProvider === "hms" && slot2HmsToken && incomingPushToken === slot2HmsToken) {
       slot = 2;
       reason = "token_matched";
     } else if (!slot1Installation) {
@@ -157,14 +170,27 @@ Deno.serve(async (req) => {
     // Ako se slot prepisuje zbog PIN potvrde (oba slota su bila puna), zabelezi audit
     // dogadjaj i pokusaj da obavestis izbaceni uredjaj push notifikacijom (best effort).
     let replacedPushToken = "";
+    let replacedPushProvider = "fcm";
     let replacedInstallationId = "";
     if (reason === "slot_replaced_pin_verified") {
       replacedPushToken = slot === 1 ? slot1Token : slot2Token;
+      replacedPushProvider = slot === 1
+        ? (String(existing.push_token_provider ?? "fcm").trim() || "fcm")
+        : (String(existing.push_token_provider ?? "fcm").trim() || "fcm");
       replacedInstallationId = slot === 1 ? slot1Installation : slot2Installation;
     }
 
     if (slot === 1) {
-      if (incomingPushToken) patch.push_token = incomingPushToken;
+      if (incomingPushToken) {
+        if (incomingPushProvider === "hms") {
+          patch.push_token_hms = incomingPushToken;
+          patch.push_token = null;
+        } else {
+          patch.push_token = incomingPushToken;
+          patch.push_token_hms = null;
+        }
+      }
+      patch.push_token_provider = incomingPushProvider;
       patch.installation_id = incomingInstallationIdResolved;
       if (incomingHardwareId) patch.hardware_id = incomingHardwareId;
       if (incomingLocaleCode) patch.locale_code = incomingLocaleCode;
@@ -174,7 +200,15 @@ Deno.serve(async (req) => {
     }
 
     if (slot === 2) {
-      if (incomingPushToken) patch.push_token_2 = incomingPushToken;
+      if (incomingPushToken) {
+        if (incomingPushProvider === "hms") {
+          patch.push_token_hms_2 = incomingPushToken;
+          patch.push_token_2 = null;
+        } else {
+          patch.push_token_2 = incomingPushToken;
+          patch.push_token_hms_2 = null;
+        }
+      }
       patch.installation_id_2 = incomingInstallationIdResolved;
       if (incomingHardwareId) patch.hardware_id_2 = incomingHardwareId;
       if (incomingLocaleCode) patch.locale_code = incomingLocaleCode;

@@ -256,7 +256,10 @@ class _V3GorivoScreenState extends State<V3GorivoScreen> {
                             onConfirm: _isDodavanjeGoriva
                                 ? null
                                 : () async {
-                                    if (formKey.currentState?.validate() != true) return;
+                                    if (formKey.currentState?.validate() != true) {
+                                      _showMessage('Molim te popuni sva obavezna polja ispravno.');
+                                      return;
+                                    }
 
                                     final dodato = _toDoubleOrNull(dodatoCtrl.text)!;
                                     if (dodato <= 0) {

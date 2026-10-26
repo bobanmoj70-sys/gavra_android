@@ -14,11 +14,13 @@ class V3PushTokenResult {
   final String token;
   final String? installationId;
   final String? apnsToken;
+  final String provider; // 'fcm' ili 'hms'
 
   const V3PushTokenResult({
     required this.token,
     this.installationId,
     this.apnsToken,
+    this.provider = 'fcm',
   });
 }
 
@@ -33,16 +35,60 @@ class V3PushTokenProvider {
   );
   static const String _lastFcmTokenStorageKey = 'v3_last_known_fcm_token';
   static const String _lastApnsTokenStorageKey = 'v3_last_known_apns_token';
+  static const String _lastHmsTokenStorageKey = 'v3_last_known_hms_token';
 
   static Future<V3PushTokenResult?> getBestToken() async {
-    final result = await _tryGetFcmToken();
-    final fcmToken = result?.token ?? '';
-    if (fcmToken.isNotEmpty) {
+    if (!Platform.isAndroid) {
+      final result = await _tryGetFcmToken();
+      final fcmToken = result?.token ?? '';
+      if (fcmToken.isNotEmpty) {
+        final installationId = await getInstallationId();
+        return V3PushTokenResult(
+          token: fcmToken,
+          installationId: installationId,
+          apnsToken: result?.apnsToken,
+          provider: 'fcm',
+        );
+      }
+      return null;
+    }
+
+    // Android: prvo pokušaj FCM ako je GMS dostupan
+    final gmsAvailable = await _isGmsAvailable();
+    if (gmsAvailable) {
+      final result = await _tryGetFcmToken();
+      final fcmToken = result?.token ?? '';
+      if (fcmToken.isNotEmpty) {
+        final installationId = await getInstallationId();
+        return V3PushTokenResult(
+          token: fcmToken,
+          installationId: installationId,
+          apnsToken: result?.apnsToken,
+          provider: 'fcm',
+        );
+      }
+    }
+
+    // Android bez GMS: pokušaj HMS
+    final hmsToken = await _tryGetHmsToken();
+    if (hmsToken != null && hmsToken.isNotEmpty) {
       final installationId = await getInstallationId();
       return V3PushTokenResult(
-        token: fcmToken,
+        token: hmsToken,
         installationId: installationId,
-        apnsToken: result?.apnsToken,
+        provider: 'hms',
+      );
+    }
+
+    // Fallback na poslednji poznati FCM token
+    final result = await _fallbackToken();
+    if (result != null) {
+      final installationId = await getInstallationId();
+      return V3PushTokenResult(
+        token: result.token,
+        installationId: installationId,
+        apnsToken: result.apnsToken,
+        provider: 'fcm',
       );
     }
 
@@ -64,20 +110,39 @@ class V3PushTokenProvider {
     }
     if (!Platform.isAndroid) return null;
 
-    // Android without GMS cannot use FCM.
+    return _fetchFcmToken(isIos: false);
+  }
+
+  static Future<bool> _isGmsAvailable() async {
+    if (!Platform.isAndroid) return false;
     try {
       final available = await _channel
           .invokeMethod<bool>(AppPlatform.methodIsGmsAvailable)
           .timeout(const Duration(seconds: 2), onTimeout: () => false);
-      if (available != true) {
-        debugPrint('[PushTokenProvider] GMS unavailable — skip FCM token.');
-        return _fallbackToken();
-      }
+      return available == true;
     } catch (e) {
       debugPrint('[PushTokenProvider] isGmsAvailable failed: $e');
+      return false;
     }
+  }
 
-    return _fetchFcmToken(isIos: false);
+  static Future<String?> _tryGetHmsToken() async {
+    if (!Platform.isAndroid) return null;
+    try {
+      final token = await _channel
+          .invokeMethod<String>('getHmsPushToken')
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
+      final safeToken = (token ?? '').trim();
+      if (safeToken.isNotEmpty) {
+        await _writeTokenSafely(_lastHmsTokenStorageKey, safeToken);
+        debugPrint('[PushTokenProvider] HMS token obtained: ${safeToken.substring(0, 8)}...');
+        return safeToken;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[PushTokenProvider] HMS token unavailable: $e');
+      return null;
+    }
   }
 
   static Future<V3PushTokenResult?> _fetchFcmToken({required bool isIos}) async {
@@ -138,6 +203,18 @@ class V3PushTokenProvider {
   }
 
   static Future<V3PushTokenResult?> _fallbackToken({bool isIos = false}) async {
+    // Prvo pokušaj HMS fallback za Android
+    if (!isIos && Platform.isAndroid) {
+      final hmsFallback = (await _storage.read(key: _lastHmsTokenStorageKey) ?? '').trim();
+      if (hmsFallback.isNotEmpty) {
+        debugPrint('[PushTokenProvider] Using last known HMS token fallback.');
+        return V3PushTokenResult(
+          token: hmsFallback,
+          provider: 'hms',
+        );
+      }
+    }
+
     final fallbackToken = (await _storage.read(key: _lastFcmTokenStorageKey) ?? '').trim();
     if (fallbackToken.isEmpty) return null;
     debugPrint('[PushTokenProvider] Using last known FCM token fallback.');
@@ -145,6 +222,7 @@ class V3PushTokenProvider {
     return V3PushTokenResult(
       token: fallbackToken,
       apnsToken: apns.isEmpty ? null : apns,
+      provider: 'fcm',
     );
   }
 
