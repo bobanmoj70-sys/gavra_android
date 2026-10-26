@@ -13,22 +13,32 @@ class V3GorivoRepository {
     return supabase.from('v3_gorivo').update(payload).eq('id', id).select().single();
   }
 
-  /// Suma potrošnje (L) u [start, end) — server-side agregat, bez limita od 1000 redova.
+  /// Suma potrošnje (L) u [start, end) — RPC agregat, bez limita od 1000 redova.
+  /// (PostgREST `.sum()` u select-u je isključen na projektu — PGRST123.)
   Future<double> sumPotrosnjaBetween({
     required String startIsoUtc,
     required String endIsoUtc,
   }) async {
-    final rows = await supabase
-        .from('v3_gorivo_istorija')
-        .select('litri.sum()')
-        .eq('vrsta', 'potrosnja')
-        .gte('created_at', startIsoUtc)
-        .lt('created_at', endIsoUtc);
-
-    if (rows.isEmpty) return 0;
-    final map = Map<String, dynamic>.from(rows.first as Map);
-    final sum = map['sum'] ?? map['litri'];
-    return (sum as num?)?.toDouble() ?? 0;
+    try {
+      final res = await supabase.rpc(
+        'v3_gorivo_sum_potrosnja',
+        params: {'p_start': startIsoUtc, 'p_end': endIsoUtc},
+      );
+      return (res as num?)?.toDouble() ?? 0;
+    } catch (_) {
+      final rows = await selectPotrosnjaBetween(
+        startIsoUtc: startIsoUtc,
+        endIsoUtc: endIsoUtc,
+      );
+      var sum = 0.0;
+      for (final row in rows) {
+        final map = Map<String, dynamic>.from(row as Map);
+        if (map['source'] == 'inicijalni_import') continue;
+        final litri = map['litri'];
+        if (litri is num) sum += litri;
+      }
+      return sum;
+    }
   }
 
   /// Fallback: redovi potrošnje (za starije klijente / debug). Preferirati [sumPotrosnjaBetween].
@@ -38,7 +48,7 @@ class V3GorivoRepository {
   }) {
     return supabase
         .from('v3_gorivo_istorija')
-        .select('id, vrsta, litri, created_at')
+        .select('id, vrsta, litri, source, created_at')
         .eq('vrsta', 'potrosnja')
         .gte('created_at', startIsoUtc)
         .lt('created_at', endIsoUtc)
