@@ -35,6 +35,8 @@
     <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification" />
     <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_color" />
     <meta-data android:name="flutterEmbedding" android:value="2" />
+    <!-- appid iz agconnect-services.json (placeholder popunjava gradle; prazan u GMS buildu) -->
+    <meta-data android:name="com.huawei.hms.client.appid" android:value="${huaweiAppId}" />
 
     <activity
       android:name=".MainActivity"
@@ -68,6 +70,12 @@
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="gavra" />
+      </intent-filter>
+
+      <!-- Tap na FCM/HMS sistemsku notifikaciju sa click_action=FLUTTER_NOTIFICATION_CLICK. -->
+      <intent-filter>
+        <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+        <category android:name="android.intent.category.DEFAULT" />
       </intent-filter>
     </activity>
 

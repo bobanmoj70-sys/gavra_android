@@ -161,6 +161,19 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // GMS check in MainActivity (FCM gate)
     implementation("com.google.android.gms:play-services-base:18.5.0")
+
+    // HMS Push Kit — bez njega Class.forName("...HmsInstanceId") u MainActivity
+    // uvek pada i Huawei build nema push token. Kod pristupa preko refleksije,
+    // pa SDK ulazi u build samo kad je Huawei ukljucen (u GMS APK ne ide).
+    if (huaweiEnabled) {
+        if (huaweiFlavorSplitEnabled) {
+            "hmsImplementation"("com.huawei.hms:push:6.13.0.301")
+            "hmsImplementation"("com.huawei.agconnect:agconnect-core:1.9.6.300")
+        } else {
+            implementation("com.huawei.hms:push:6.13.0.301")
+            implementation("com.huawei.agconnect:agconnect-core:1.9.6.300")
+        }
+    }
 }
 
 // 16 KB page size fix: transitive androidx.datastore libs pulled in by Firebase/
@@ -188,4 +201,30 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+// Bez agcp plugina: jedino sto nam treba je app_id iz agconnect-services.json
+// kao manifest meta-data (isto sto plugin ugradjuje — com.huawei.hms.client.appid).
+// Per-variant: sa flavor split-om gms APK dobija prazan placeholder (appid ne
+// ulazi u GMS build), hms varijanta dobija pravu vrednost.
+val huaweiAppIdValue: String =
+    if (huaweiEnabled) {
+        val parsed =
+            Regex("""\bapp_id"\s*:\s*"(\d+)"""")
+                .find(agconnectServicesFile.readText())
+                ?.groupValues
+                ?.get(1)
+        require(!parsed.isNullOrBlank()) {
+            "app_id not found in android/app/agconnect-services.json"
+        }
+        "appid=$parsed"
+    } else {
+        ""
+    }
+
+androidComponents {
+    onVariants { variant ->
+        val isHmsVariant = huaweiEnabled && (!huaweiFlavorSplitEnabled || variant.flavorName == "hms")
+        variant.manifestPlaceholders.put("huaweiAppId", if (isHmsVariant) huaweiAppIdValue else "")
+    }
 }

@@ -77,7 +77,8 @@ class V3RolePermissionService {
 
     try {
       var status = await Permission.notification.status;
-      if (status.isDenied || status.isPermanentlyDenied) {
+      // permanentlyDenied: request() je no-op na Androidu — odmah nudimo Settings.
+      if (status.isDenied) {
         status = await Permission.notification.request();
       }
       if (!status.isGranted && status.isPermanentlyDenied && context.mounted) {

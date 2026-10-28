@@ -67,7 +67,11 @@ class MainActivity : FlutterActivity() {
         MethodChannel(messenger, PUSH_TOKEN_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isGmsAvailable" -> result.success(isGmsAvailable())
-                "getHmsPushToken" -> result.success(getHmsPushToken())
+                // HmsInstanceId.getToken() je blokirajuci network poziv — ne sme na UI thread.
+                "getHmsPushToken" ->
+                    Thread {
+                        result.success(getHmsPushToken())
+                    }.start()
                 "getAndroidId" -> result.success(getAndroidId())
                 else -> result.notImplemented()
             }
@@ -164,6 +168,39 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun getHuaweiAppId(): String? {
+        // Primarno: manifest meta-data (injektovano gradle placeholder-om iz
+        // agconnect-services.json). Fallback: AGConnectServicesConfig ako
+        // agconnect-core prisutan na classpath-u.
+        return try {
+            val appInfo =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    packageManager.getApplicationInfo(
+                        packageName,
+                        android.content.pm.PackageManager.ApplicationInfoFlags.of(
+                            android.content.pm.PackageManager.GET_META_DATA.toLong(),
+                        ),
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getApplicationInfo(
+                        packageName,
+                        android.content.pm.PackageManager.GET_META_DATA,
+                    )
+                }
+            val meta = appInfo.metaData?.getString("com.huawei.hms.client.appid")
+            val fromMeta = meta?.trim()?.removePrefix("appid=")
+            if (!fromMeta.isNullOrEmpty()) {
+                fromMeta
+            } else {
+                appIdFromAgConnect()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "getHuaweiAppId: ${e.message}")
+            appIdFromAgConnect()
+        }
+    }
+
+    private fun appIdFromAgConnect(): String? {
         return try {
             val configClass = Class.forName("com.huawei.agconnect.config.AGConnectServicesConfig")
             val fromContext = configClass.getMethod("fromContext", Context::class.java)
@@ -172,7 +209,7 @@ class MainActivity : FlutterActivity() {
             val raw = getString.invoke(config, "client/app_id") as? String
             raw?.trim()?.removePrefix("appid=")?.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
-            Log.w(TAG, "getHuaweiAppId: ${e.message}")
+            Log.w(TAG, "appIdFromAgConnect: ${e.message}")
             null
         }
     }

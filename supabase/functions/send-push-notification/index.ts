@@ -340,18 +340,34 @@ async function sendHms(
     if (title) messageData.title = title;
     if (body) messageData.body = body;
 
+    // HMS v1 API: token je array, collapse_key je integer (-1..100), ne string.
+    // Hash zahtev_id-ja u int opseg da collapse bude po zahtevu (paritet sa FCM).
+    let collapseHash = 1;
+    const zahtevId = String(data.zahtev_id ?? '').trim();
+    if (zahtevId) {
+      for (let i = 0; i < zahtevId.length; i++) {
+        collapseHash = ((collapseHash * 31 + zahtevId.charCodeAt(i)) % 100 + 100) % 100;
+      }
+    }
+
     const message: Record<string, unknown> = {
-      token,
-      data: messageData,
+      token: [token],
+      // HMS v1: data je JSON string (ne objekat).
+      data: JSON.stringify(messageData),
       android: {
-        collapse_key: String(data.zahtev_id ?? 'default'),
+        collapse_key: collapseHash,
         priority: 'high',
         ttl: '3600s',
         notification: {
           title,
           body,
           sound: 'default',
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+          // Isti kanal koji app kreira lokalno (gavra_push_v2, importance=max).
+          channel_id: 'gavra_push_v2',
+          // HMS click_action je objekat: type 1 = custom intent (action mora
+          // postojati kao intent-filter — FLUTTER_NOTIFICATION_CLICK je dodat
+          // u manifestu, isti kao FCM konvencija).
+          click_action: { type: 1, intent: '#Intent;action=FLUTTER_NOTIFICATION_CLICK;end' },
         },
       },
     };
@@ -431,8 +447,12 @@ async function sendFcm(
       token,
       data: messageData,
       android: {
+        // Paritet sa HMS granom: collapse po zahtevu + 1h TTL da se ne isporuče
+        // zastarele alternative nakon dužeg offline perioda. `android.data` se ne
+        // šalje — top-level `data` važi i za Android (override je bio identičan).
+        collapse_key: zahtevId || 'default',
         priority: 'high',
-        data: messageData,
+        ttl: '3600s',
       },
       apns: {
         headers: apnsHeaders,

@@ -630,11 +630,27 @@ String _encodeTapPayload(String type, Map<String, String> data) {
   return (type: payload.trim(), data: <String, String>{});
 }
 
+/// Stabilan ID notifikacije iz FCM messageId-ja (fallback zahtev_id).
+/// Ako FCM isporuči istu poruku dvaput (ACK retry), druga isporuka zameni
+/// postojeću notifikaciju umesto da se nagomilaju duplikati.
+int _stableNotificationId(String seed) {
+  final trimmed = seed.trim();
+  if (trimmed.isEmpty) {
+    return DateTime.now().millisecondsSinceEpoch.remainder(100000);
+  }
+  var hash = 0;
+  for (var i = 0; i < trimmed.length; i++) {
+    hash = (hash * 31 + trimmed.codeUnitAt(i)) & 0x7fffffff;
+  }
+  return hash % 100000;
+}
+
 Future<void> _showForegroundPushNotification({
   required String title,
   required String body,
   required String payload,
   Map<String, String> data = const <String, String>{},
+  int? notificationId,
 }) async {
   if (title.isEmpty && body.isEmpty) return;
 
@@ -664,7 +680,7 @@ Future<void> _showForegroundPushNotification({
   );
 
   await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    notificationId ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
     title,
     body,
     NotificationDetails(
@@ -679,6 +695,7 @@ Future<void> _showAlternativaFromData(
   Map<String, String> data, {
   String? title,
   String? body,
+  int? notificationId,
 }) async {
   final zahtevId = (data['zahtev_id'] ?? '').trim();
   final altPre = V3BelgradeTime.normalizeToHHmm((data['alt_pre'] ?? '').trim());
@@ -704,6 +721,7 @@ Future<void> _showAlternativaFromData(
             ? 'Oslobodilo se mesto. Prihvati ili odbij.'
             : 'Trenutno nema slobodnih mesta u željenom terminu. Izaberite dostupni termin.')
         : body,
+    notificationId: notificationId,
   );
 }
 
@@ -920,6 +938,16 @@ Future<void> _handleIncomingFcmMessage(
   final title = message.notification?.title ?? message.data['title']?.toString() ?? '';
   final body = message.notification?.body ?? message.data['body']?.toString() ?? '';
   final data = _messageDataToStringMap(message.data);
+  // Alternativa se deduplikuje po zahtevu (nova ponuda za isti zahtev zamenjuje
+  // staru notifikaciju), ostale poruke po messageId-ju (FCM ACK retry),
+  // uz timestamp fallback kada oba ID-ja nedostaju.
+  final zahtevSeed = (data['zahtev_id'] ?? '').trim();
+  final messageSeed = (message.messageId ?? '').trim();
+  final notificationId = _stableNotificationId(
+    type == 'v3_alternativa' && zahtevSeed.isNotEmpty
+        ? 'alternativa:$zahtevSeed'
+        : (messageSeed.isNotEmpty ? messageSeed : zahtevSeed),
+  );
 
   debugPrint('[FCM][$source] type=$type title=$title id=${message.messageId}');
 
@@ -934,6 +962,7 @@ Future<void> _handleIncomingFcmMessage(
         data,
         title: title,
         body: body,
+        notificationId: notificationId,
       );
     }
     return;
@@ -947,6 +976,7 @@ Future<void> _handleIncomingFcmMessage(
       body: body,
       payload: type,
       data: data,
+      notificationId: notificationId,
     );
     return;
   }
@@ -970,7 +1000,7 @@ Future<void> _handleIncomingFcmMessage(
     ),
   );
   await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    notificationId,
     title,
     body,
     NotificationDetails(
@@ -1115,6 +1145,7 @@ Future<void> showAlternativaNotification({
   String offerKind = '',
   String title = '🕒 Predlog alternativnog termina',
   String body = 'Nema slobodnih mesta u traženom terminu. Izaberi dostupnu opciju.',
+  int? notificationId,
 }) async {
   await _ensureLocalNotificationsInitialized();
 
@@ -1192,7 +1223,7 @@ Future<void> showAlternativaNotification({
   );
 
   await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    notificationId ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
     title,
     finalBody,
     NotificationDetails(
