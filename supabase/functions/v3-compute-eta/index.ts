@@ -171,16 +171,24 @@ async function fillMissingPassengerGps(
   const terminIds = missing.map((m) => m.termin_id);
   const putnikIds = [...new Set(missing.map((m) => m.putnik_id))];
 
-  const [{ data: operativnaRows }, { data: authRows }] = await Promise.all([
-    client
-      .from("v3_operativna_nedelja")
-      .select("id, adresa_override_id, koristi_sekundarnu")
-      .in("id", terminIds),
-    client
-      .from("v3_auth")
-      .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
-      .in("id", putnikIds),
-  ]);
+  const [{ data: operativnaRows, error: operativnaLookupError }, { data: authRows, error: authLookupError }] =
+    await Promise.all([
+      client
+        .from("v3_operativna_nedelja")
+        .select("id, adresa_override_id, koristi_sekundarnu")
+        .in("id", terminIds),
+      client
+        .from("v3_auth")
+        .select("id, adresa_primary_bc_id, adresa_primary_vs_id, adresa_secondary_bc_id, adresa_secondary_vs_id")
+        .in("id", putnikIds),
+    ]);
+
+  if (operativnaLookupError || authLookupError) {
+    console.warn(
+      `[v3-compute-eta] missing_gps lookup error op=${operativnaLookupError?.message ?? "ok"} ` +
+        `auth=${authLookupError?.message ?? "ok"} unresolved=${missing.length}`,
+    );
+  }
 
   const operativnaById = new Map((operativnaRows ?? []).map((row: any) => [String(row.id), row]));
   const authById = new Map((authRows ?? []).map((row: any) => [String(row.id), row as AuthAddressRow]));
@@ -205,10 +213,14 @@ async function fillMissingPassengerGps(
     return result;
   }
 
-  const { data: adresaRows } = await client
+  const { data: adresaRows, error: adresaLookupError } = await client
     .from("v3_adrese")
     .select("id, gps_lat, gps_lng")
     .in("id", [...new Set(adresaIds)]);
+
+  if (adresaLookupError) {
+    console.warn(`[v3-compute-eta] adrese lookup error: ${adresaLookupError.message}`);
+  }
 
   const gpsByAdresa = new Map<string, { lat: number; lng: number }>();
   for (const a of adresaRows ?? []) {
@@ -411,12 +423,13 @@ Deno.serve(async (req) => {
     }
 
     // Više redova (format time vs text): preferiraj slot sa putnicima ovog vozača.
+    // PK v3_trenutna_dodela je termin_id — tabela NEMA kolonu `id`.
     let activeSlot = matchingSlots[0];
     if (matchingSlots.length > 1) {
       for (const candidate of matchingSlots) {
         const { count } = await client
           .from("v3_trenutna_dodela")
-          .select("id", { count: "exact", head: true })
+          .select("termin_id", { count: "exact", head: true })
           .eq("slot_id", candidate.id)
           .eq("vozac_v3_auth_id", vozacId);
         if ((count ?? 0) > 0) {
@@ -428,6 +441,9 @@ Deno.serve(async (req) => {
         `[v3-compute-eta] multiple slots for slotKey=${activeGrad} ${activeVreme}: ${matchingSlots.length}, using=${activeSlot.id}`,
       );
     }
+    const matchingSlotIds = matchingSlots
+      .map((s: any) => String(s?.id ?? "").trim())
+      .filter((id: string) => id.length > 0);
 
     // 2a. Lokacija: payload (isti tick) > sveža tabela.
     const driverLocation = await resolveDriverLocation(client, vozacId, payload.lat, payload.lng);
@@ -441,10 +457,13 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
 
     // 2.5. Putnici ovog vozača na slotu. Ako dodela nema GPS, uzmi iz adrese.
+    // Dodele mogu biti raspoređene na više format-duplikata istog fizičkog
+    // slota (vreme "15:25" vs "15:25:00") — .eq() na samo activeSlot.id bi
+    // tiho isključio putnike sa ostalih duplikata.
     const { data: dodelaRows, error: dodelaError } = await client
       .from("v3_trenutna_dodela")
       .select("termin_id, putnik_v3_auth_id, adresa_gps_lat, adresa_gps_lng")
-      .eq("slot_id", activeSlot.id)
+      .in("slot_id", matchingSlotIds)
       .eq("vozac_v3_auth_id", vozacId);
 
     if (dodelaError) {
@@ -601,6 +620,17 @@ Deno.serve(async (req) => {
       if (entry) tripOrdered.push(entry);
     }
     upsertRows = etaRowsFromFixedOrder(tripOrdered, legs, upsertCtx);
+
+    // Isti putnik može imati više termina na slotu (2+ reda u dodeli) —
+    // upsert sa onConflict "slot_id,putnik_id" pada na duplikatu
+    // ("cannot affect row a second time") i ceo odgovor propadne.
+    // Zadrži prvi (najraniji) unos po putniku.
+    const seenPutnikIds = new Set<string>();
+    upsertRows = upsertRows.filter((r) => {
+      if (seenPutnikIds.has(r.putnik_id)) return false;
+      seenPutnikIds.add(r.putnik_id);
+      return true;
+    });
 
     if (upsertRows.length === 0) {
       return await buildOsrmFallbackResponse(client, activeSlot.id, vozacId, "no_eta_rows");

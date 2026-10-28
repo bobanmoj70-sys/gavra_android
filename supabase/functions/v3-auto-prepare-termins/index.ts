@@ -317,7 +317,10 @@ Deno.serve(async (req) => {
 
       const authById = new Map((authRows ?? []).map((a) => [a.id, a]));
       const adresaIds: string[] = [];
-      const adresaMap = new Map<string, { terminId: string; putnikId: string }>();
+      // adresaId -> SVI termini na toj adresi. Više putnika može deliti istu
+      // adresu (porodica/komšije) — mapiranje na jedan termin bi ostale
+      // tiho izbacilo iz passengers[] i optimized_order.
+      const adresaMap = new Map<string, Array<{ terminId: string; putnikId: string }>>();
 
       for (const t of slotTermins) {
         const auth = authById.get(t.created_by);
@@ -334,7 +337,9 @@ Deno.serve(async (req) => {
 
         if (adresaId) {
           adresaIds.push(adresaId);
-          adresaMap.set(adresaId, { terminId: t.id, putnikId: t.created_by });
+          const list = adresaMap.get(adresaId) ?? [];
+          list.push({ terminId: t.id, putnikId: t.created_by });
+          adresaMap.set(adresaId, list);
         }
       }
 
@@ -350,17 +355,19 @@ Deno.serve(async (req) => {
         }
 
         for (const a of adresaRows ?? []) {
-          const mapping = adresaMap.get(a.id);
-          if (!mapping) continue;
+          const mappings = adresaMap.get(a.id);
+          if (!mappings || mappings.length === 0) continue;
           const lat = Number(a.gps_lat);
           const lng = Number(a.gps_lng);
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-          passengers.push({
-            putnik_id: mapping.putnikId,
-            termin_id: mapping.terminId,
-            lat,
-            lng,
-          });
+          for (const mapping of mappings) {
+            passengers.push({
+              putnik_id: mapping.putnikId,
+              termin_id: mapping.terminId,
+              lat,
+              lng,
+            });
+          }
         }
       }
 
@@ -508,7 +515,9 @@ Deno.serve(async (req) => {
       }
       const myPutnikSet = new Set(passengers.map((p) => p.putnik_id));
       const othersOrder = baseOrder.filter((id) => !myPutnikSet.has(id));
-      const mergedOrder = [...othersOrder, ...optimizedOrder];
+      // Jedan putnik može imati više termina na slotu — order je po putnik_id,
+      // pa dedup da ne bi isti putnik figurirao dvaput.
+      const mergedOrder = [...new Set([...othersOrder, ...optimizedOrder])];
 
       // Update slot optimized_order and mark prepared
       const nowIso = new Date().toISOString();
