@@ -47,7 +47,9 @@ final Map<String, DateTime> _canceledStatusPushSeenAt = <String, DateTime>{};
 String _lastProcessedPushActionKey = '';
 DateTime? _lastProcessedPushActionAt;
 const MethodChannel _iosPushActionsChannel = MethodChannel(AppPlatform.pushActionsChannel);
+const MethodChannel _pushTokenChannel = MethodChannel(AppPlatform.pushTokenChannel);
 bool _iosPushActionsBridgeInitialized = false;
+bool _pushLaunchChannelInitialized = false;
 const Duration _canceledStatusPushDedupWindow = Duration(seconds: 20);
 
 bool _isCanceledZahtevStatusPush({
@@ -559,6 +561,14 @@ Future<void> _doStartupTasks() async {
     timeout: const Duration(seconds: 8),
     retries: 2,
   );
+  if (Platform.isAndroid) {
+    _startBackgroundTask(
+      label: 'push launch channel init',
+      task: _initPushLaunchChannel,
+      timeout: const Duration(seconds: 8),
+      retries: 1,
+    );
+  }
   if (Platform.isIOS) {
     _startBackgroundTask(
       label: 'iOS push action bridge',
@@ -738,6 +748,8 @@ Future<void> _syncRefreshedPushToken(String token) async {
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: putnikId,
         pushToken: safeToken,
+        // FCM onTokenRefresh -> uvek fcm provider.
+        pushProvider: 'fcm',
         installationId: installationId,
         hardwareId: hardwareId,
       );
@@ -749,6 +761,7 @@ Future<void> _syncRefreshedPushToken(String token) async {
       await V3VozacService.writePushTokenOnLogin(
         vozacId: vozacId,
         pushToken: safeToken,
+        pushProvider: 'fcm',
         installationId: installationId,
         hardwareId: hardwareId,
       );
@@ -811,18 +824,21 @@ Future<void> _syncLocaleOnResume({bool force = false}) async {
     final hardwareId = await V3DeviceIdentityService.getHardwareId();
 
     String pushToken = '';
+    String? pushProvider;
     if (needsPushToken) {
       final tokenResult = await V3PushTokenProvider.getBestToken().timeout(
         const Duration(seconds: 18),
         onTimeout: () => null,
       );
       pushToken = tokenResult?.token.trim() ?? '';
+      pushProvider = tokenResult?.provider;
     }
 
     if (putnikId.isNotEmpty) {
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: putnikId,
         pushToken: pushToken,
+        pushProvider: pushProvider,
         installationId: installationId,
         hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 5));
@@ -830,6 +846,7 @@ Future<void> _syncLocaleOnResume({bool force = false}) async {
       await V3VozacService.writePushTokenOnLogin(
         vozacId: vozacId,
         pushToken: pushToken,
+        pushProvider: pushProvider,
         installationId: installationId,
         hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 5));
@@ -1053,6 +1070,37 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
     default:
       debugPrint('[FCM launch] Nepoznat type=$type, ignoriši');
       return;
+  }
+}
+
+/// Android: tap na HMS sistemsku notifikaciju stize kao launch intent sa
+/// data payload-om u extras (HMS nema callback kao firebase_messaging).
+/// MainActivity salje 'onPushLaunchData' (warm tap) ili cuva pending dok se
+/// ovaj handler ne registruje (cold start) — isti routing kao FCM launch.
+Future<void> _initPushLaunchChannel() async {
+  if (!Platform.isAndroid || _pushLaunchChannelInitialized) return;
+  _pushLaunchChannelInitialized = true;
+
+  Future<void> handle(Map<dynamic, dynamic> raw) async {
+    final data = raw.map((key, value) => MapEntry(key.toString(), value?.toString() ?? ''));
+    final type = data['type'] ?? '';
+    debugPrint('[HMS] push launch type=$type data=$data');
+    await _handleFcmLaunch(type, data);
+  }
+
+  _pushTokenChannel.setMethodCallHandler((call) async {
+    if (call.method == AppPlatform.methodOnPushLaunchData && call.arguments is Map) {
+      await handle(call.arguments as Map);
+      return true;
+    }
+    return null;
+  });
+
+  try {
+    final pending = await _pushTokenChannel.invokeMethod<dynamic>(AppPlatform.methodConsumePushLaunchData);
+    if (pending is Map) await handle(pending);
+  } catch (e) {
+    debugPrint('[HMS] consumePushLaunchData error: $e');
   }
 }
 

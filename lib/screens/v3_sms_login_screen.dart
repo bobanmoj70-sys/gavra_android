@@ -536,6 +536,7 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
       await V3PushTokenEdgeService.writeLoginColumns(
         v3AuthId: authId,
         pushToken: pushToken,
+        pushProvider: pushTokenResult?.provider,
         installationId: resolvedInstallationId,
         hardwareId: hardwareId,
         pinVerified: true,

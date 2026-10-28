@@ -76,6 +76,7 @@ class V3VozacService {
   static Future<void> writePushTokenOnLogin({
     required String vozacId,
     required String pushToken,
+    String? pushProvider,
     String? installationId,
     String? hardwareId,
   }) async {
@@ -88,6 +89,7 @@ class V3VozacService {
       await V3PushTokenEdgeService.writeLoginColumns(
         v3AuthId: safeId,
         pushToken: safeToken,
+        pushProvider: pushProvider,
         installationId: safeInstallationId,
         hardwareId: hardwareId,
       );

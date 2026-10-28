@@ -145,6 +145,7 @@ class V3PutnikService {
   static Future<void> writePushTokenOnLogin({
     required String putnikId,
     required String pushToken,
+    String? pushProvider,
     String? installationId,
     String? hardwareId,
   }) async {
@@ -157,6 +158,7 @@ class V3PutnikService {
       await V3PushTokenEdgeService.writeLoginColumns(
         v3AuthId: safeId,
         pushToken: safeToken,
+        pushProvider: pushProvider,
         installationId: safeInstallationId,
         hardwareId: hardwareId,
       );

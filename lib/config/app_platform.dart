@@ -36,4 +36,7 @@ class AppPlatform {
   static const String methodGetHmsPushToken = 'getHmsPushToken';
   static const String methodGetAndroidId = 'getAndroidId';
   static const String methodGetPendingPushAction = 'getPendingAction';
+  // HMS notification tap: native->Dart 'onPushLaunchData', Dart->native 'consumePushLaunchData'
+  static const String methodOnPushLaunchData = 'onPushLaunchData';
+  static const String methodConsumePushLaunchData = 'consumePushLaunchData';
 }

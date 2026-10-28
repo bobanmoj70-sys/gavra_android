@@ -255,8 +255,10 @@ async function getHmsAccessToken(payload: PushPayload): Promise<string> {
     return cachedHmsToken.token;
   }
 
-  const clientId = envOrPayload('HMS_CLIENT_ID', payload);
-  const clientSecret = envOrPayload('HMS_CLIENT_SECRET', payload);
+  // notify_push prosledjuje vault secrete kao huawei_* u _secrets; env varijante
+  // (HMS_CLIENT_ID itd.) ostaju podrzane za deploy-ovane edge secrets.
+  const clientId = envOrPayload('HMS_CLIENT_ID', payload) ?? envOrPayload('huawei_client_id', payload);
+  const clientSecret = envOrPayload('HMS_CLIENT_SECRET', payload) ?? envOrPayload('huawei_client_secret', payload);
 
   if (!clientId || !clientSecret) {
     throw new Error('Missing HMS client credentials');
@@ -331,7 +333,7 @@ async function sendHms(
 ): Promise<PushResult> {
   try {
     const accessToken = await getHmsAccessToken(payload);
-    const appId = envOrPayload('HMS_APP_ID', payload);
+    const appId = envOrPayload('HMS_APP_ID', payload) ?? envOrPayload('huawei_app_id', payload);
     if (!appId) {
       throw new Error('HMS app ID missing');
     }
@@ -495,6 +497,13 @@ function isDeadFcmToken(status: number | undefined, error: string | undefined): 
   return false;
 }
 
+// HMS v1 greške koje znače trajno nevažeći token (app deinstalirana / token rotiran):
+// 80200001 = invalid token, 80300007 = all tokens invalid.
+function isDeadHmsToken(error: string | undefined): boolean {
+  const text = String(error ?? '');
+  return text.includes('80200001') || text.includes('80300007') || /invalid token/i.test(text);
+}
+
 async function clearDeadTokens(tokens: string[]): Promise<void> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? '';
@@ -509,6 +518,8 @@ async function clearDeadTokens(tokens: string[]): Promise<void> {
       try {
         await client.from('v3_auth').update({ push_token: null }).eq('push_token', token);
         await client.from('v3_auth').update({ push_token_2: null }).eq('push_token_2', token);
+        await client.from('v3_auth').update({ push_token_hms: null }).eq('push_token_hms', token);
+        await client.from('v3_auth').update({ push_token_hms_2: null }).eq('push_token_hms_2', token);
       } catch (e) {
         console.error('clearDeadTokens per-token failed', e);
       }
@@ -544,9 +555,11 @@ async function resolveLocalesByToken(
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const [{ data: rows1 }, { data: rows2 }] = await Promise.all([
+    const [{ data: rows1 }, { data: rows2 }, { data: rows3 }, { data: rows4 }] = await Promise.all([
       client.from('v3_auth').select('push_token, locale_code').in('push_token', tokens),
       client.from('v3_auth').select('push_token_2, locale_code').in('push_token_2', tokens),
+      client.from('v3_auth').select('push_token_hms, locale_code').in('push_token_hms', tokens),
+      client.from('v3_auth').select('push_token_hms_2, locale_code').in('push_token_hms_2', tokens),
     ]);
 
     for (const row of rows1 ?? []) {
@@ -555,6 +568,14 @@ async function resolveLocalesByToken(
     }
     for (const row of rows2 ?? []) {
       const token = String(row?.push_token_2 ?? '').trim();
+      if (token) localeByToken.set(token, normalizeLocaleCode(row?.locale_code));
+    }
+    for (const row of rows3 ?? []) {
+      const token = String(row?.push_token_hms ?? '').trim();
+      if (token) localeByToken.set(token, normalizeLocaleCode(row?.locale_code));
+    }
+    for (const row of rows4 ?? []) {
+      const token = String(row?.push_token_hms_2 ?? '').trim();
       if (token) localeByToken.set(token, normalizeLocaleCode(row?.locale_code));
     }
   } catch {
@@ -622,7 +643,11 @@ Deno.serve(async (req) => {
     // iz baze da se u budućnosti ne pokušava slanje na mrtav token i da app pri sledećem
     // pokretanju upiše svež FCM token bez konflikta.
     const deadTokens = results
-      .filter((entry) => !entry.ok && isDeadFcmToken(entry.status, entry.error))
+      .filter((entry) =>
+        !entry.ok &&
+        (entry.provider === 'hms'
+          ? isDeadHmsToken(entry.error)
+          : isDeadFcmToken(entry.status, entry.error)))
       .map((entry) => entry.token);
     if (deadTokens.length > 0) {
       await clearDeadTokens(deadTokens);

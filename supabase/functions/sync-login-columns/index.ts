@@ -173,10 +173,14 @@ Deno.serve(async (req) => {
     let replacedPushProvider = "fcm";
     let replacedInstallationId = "";
     if (reason === "slot_replaced_pin_verified") {
-      replacedPushToken = slot === 1 ? slot1Token : slot2Token;
+      // Izbaceni uredjaj moze biti HMS (Huawei) — uzmi bilo koji token iz slota
+      // i prosledi odgovarajuci provider da push stigne i na HMS.
+      replacedPushToken = slot === 1
+        ? (slot1Token || slot1HmsToken)
+        : (slot2Token || slot2HmsToken);
       replacedPushProvider = slot === 1
-        ? (String(existing.push_token_provider ?? "fcm").trim() || "fcm")
-        : (String(existing.push_token_provider ?? "fcm").trim() || "fcm");
+        ? (slot1Token ? "fcm" : "hms")
+        : (slot2Token ? "fcm" : "hms");
       replacedInstallationId = slot === 1 ? slot1Installation : slot2Installation;
     }
 
@@ -189,8 +193,8 @@ Deno.serve(async (req) => {
           patch.push_token = incomingPushToken;
           patch.push_token_hms = null;
         }
+        patch.push_token_provider = incomingPushProvider;
       }
-      patch.push_token_provider = incomingPushProvider;
       patch.installation_id = incomingInstallationIdResolved;
       if (incomingHardwareId) patch.hardware_id = incomingHardwareId;
       if (incomingLocaleCode) patch.locale_code = incomingLocaleCode;
@@ -246,7 +250,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
           body: JSON.stringify({
-            tokens: [{ token: replacedPushToken, provider: "fcm" }],
+            tokens: [{ token: replacedPushToken, provider: replacedPushProvider }],
             recipient_id: userId,
             title: "Bezbednosno obaveštenje",
             body: "Vaš uređaj je odjavljen jer je prijavljen novi uređaj potvrđen PIN kodom.",

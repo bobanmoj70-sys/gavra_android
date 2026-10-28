@@ -424,6 +424,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
         await V3VozacService.writePushTokenOnLogin(
           vozacId: v3AuthId,
           pushToken: token,
+          pushProvider: tokenResult?.provider,
           installationId: resolvedInstallationId,
           hardwareId: hardwareId,
         ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());
@@ -433,6 +434,7 @@ class _V3WelcomeScreenState extends State<V3WelcomeScreen> with TickerProviderSt
       await V3PutnikService.writePushTokenOnLogin(
         putnikId: v3AuthId,
         pushToken: token,
+        pushProvider: tokenResult?.provider,
         installationId: resolvedInstallationId,
         hardwareId: hardwareId,
       ).timeout(const Duration(seconds: 4), onTimeout: () => Future.value());

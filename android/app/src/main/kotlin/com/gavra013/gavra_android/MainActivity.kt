@@ -1,6 +1,7 @@
 package com.gavra013.gavra_android
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -32,6 +33,13 @@ class MainActivity : FlutterActivity() {
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
+    private var pushChannel: MethodChannel? = null
+
+    // HMS tap na sistemsku notifikaciju stigne kao launch intent sa data
+    // payload-om u extras (click_action = FLUTTER_NOTIFICATION_CLICK). Ako
+    // Dart strana jos nije spremna, cuva se ovde dok je Dart ne pokupi preko
+    // 'consumePushLaunchData'.
+    private var pendingPushLaunchData: Map<String, String>? = null
 
     // Android 15 (SDK 35) prikazuje aplikaciju edge-to-edge po difoltu.
     // FlutterActivity nasledjuje android.app.Activity (ne ComponentActivity),
@@ -44,6 +52,13 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
+        capturePushLaunchData(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        capturePushLaunchData(intent)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -64,18 +79,66 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        MethodChannel(messenger, PUSH_TOKEN_CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "isGmsAvailable" -> result.success(isGmsAvailable())
-                // HmsInstanceId.getToken() je blokirajuci network poziv — ne sme na UI thread.
-                "getHmsPushToken" ->
-                    Thread {
-                        result.success(getHmsPushToken())
-                    }.start()
-                "getAndroidId" -> result.success(getAndroidId())
-                else -> result.notImplemented()
+        pushChannel =
+            MethodChannel(messenger, PUSH_TOKEN_CHANNEL).also { channel ->
+                channel.setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        "isGmsAvailable" -> result.success(isGmsAvailable())
+                        // HmsInstanceId.getToken() je blokirajuci network poziv — ne sme na UI thread.
+                        "getHmsPushToken" ->
+                            Thread {
+                                result.success(getHmsPushToken())
+                            }.start()
+                        "getAndroidId" -> result.success(getAndroidId())
+                        "consumePushLaunchData" -> {
+                            val data = pendingPushLaunchData
+                            pendingPushLaunchData = null
+                            result.success(data)
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
             }
+    }
+
+    // HMS Push Kit nema callback za tap na notifikaciju — podaci stizu kao
+    // extras launch intenta. Extras se brisu iz intenta da se pri recreation
+    // activity-ja ne bi obradili dvaput.
+    private fun capturePushLaunchData(launchIntent: Intent?) {
+        if (launchIntent == null) return
+        val extras = launchIntent.extras ?: return
+        val keys = extras.keySet()
+        val isPushIntent =
+            launchIntent.action == "FLUTTER_NOTIFICATION_CLICK" ||
+                keys.any { it == "type" || it == "zahtev_id" || it == "event_id" }
+        if (!isPushIntent) return
+
+        val data = HashMap<String, String>()
+        for (key in keys) {
+            extras.get(key)?.let { data[key] = it.toString() }
         }
+        extras.clear()
+        if (data.isEmpty()) return
+
+        pendingPushLaunchData = data
+        val channel = pushChannel ?: return
+        channel.invokeMethod(
+            "onPushLaunchData",
+            data,
+            object : MethodChannel.Result {
+                override fun success(result: Any?) {
+                    // Dart je obradio — skloni iz pending-a da 'consumePushLaunchData'
+                    // ne vrati istu poruku dvaput.
+                    if (pendingPushLaunchData == data) pendingPushLaunchData = null
+                }
+
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {}
+
+                override fun notImplemented() {
+                    // Dart handler jos nije registrovan — ostaje u pending-u.
+                }
+            },
+        )
     }
 
     private fun wakeScreen(duration: Long): Boolean {

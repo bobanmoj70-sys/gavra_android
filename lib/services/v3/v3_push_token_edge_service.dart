@@ -32,12 +32,16 @@ class V3PushTokenEdgeService {
   static Future<void> writeLoginColumns({
     required String v3AuthId,
     String? pushToken,
+    String? pushProvider,
     String? installationId,
     String? hardwareId,
     bool pinVerified = false,
   }) async {
     final targetId = v3AuthId.trim();
     final safePushToken = (pushToken ?? '').trim();
+    // Provider se salje samo uz token — login sync bez tokena ne sme da
+    // prepise postojeci push_token_provider na 'fcm' default-u.
+    final safePushProvider = (pushProvider ?? '').trim().toLowerCase();
     final incomingInstallationId = (installationId ?? '').trim();
     final incomingHardwareId = (hardwareId ?? '').trim();
     final incomingPlatform = _resolvePlatform();
@@ -57,6 +61,8 @@ class V3PushTokenEdgeService {
         'v3_auth_id': targetId,
         'incoming_installation_id': incomingInstallationId,
         if (safePushToken.isNotEmpty) 'incoming_push_token': safePushToken,
+        if (safePushToken.isNotEmpty && (safePushProvider == 'hms' || safePushProvider == 'fcm'))
+          'incoming_push_provider': safePushProvider,
         if (incomingLocaleCode.isNotEmpty) 'incoming_locale_code': incomingLocaleCode,
         if (incomingHardwareId.isNotEmpty) 'incoming_hardware_id': incomingHardwareId,
         if (incomingPlatform.isNotEmpty) 'incoming_platform': incomingPlatform,
