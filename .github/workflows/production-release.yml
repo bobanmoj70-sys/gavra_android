@@ -409,6 +409,13 @@ jobs:
       - name: Build Huawei release AAB
         run: flutter build appbundle --release --build-number ${{ env.VERSION_CODE }} --build-name ${{ env.VERSION_NAME }}
 
+      - name: Publish to AppGallery Connect
+        env:
+          HUAWEI_CLIENT_ID: ${{ secrets.HUAWEI_CLIENT_ID }}
+          HUAWEI_CLIENT_SECRET: ${{ secrets.HUAWEI_CLIENT_SECRET }}
+          HUAWEI_APP_ID: ${{ secrets.HUAWEI_APP_ID }}
+        run: bash scripts/huawei_publish.sh build/app/outputs/bundle/release/app-release.aab true
+
       - name: Upload Huawei AAB artifact
         if: always()
         uses: actions/upload-artifact@v4
