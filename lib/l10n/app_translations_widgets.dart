@@ -541,5 +541,12 @@ const Map<String, Map<String, Map<String, String>>> _widgetsAndUtils = {
           'Benachrichtigungen sind aus. Ohne sie erhalten Sie keine Nachrichten zu Fahrten und Anfragestatus.\n\nÖffnen Sie die Einstellungen und aktivieren Sie Benachrichtigungen.',
       'zh': '通知已关闭。关闭后将无法收到行程和请求状态消息。\n\n请打开设置并开启通知权限。',
     },
+    'continueAnyway': {
+      'sr': 'Nastavi bez obaveštenja',
+      'en': 'Continue without notifications',
+      'ru': 'Продолжить без уведомлений',
+      'de': 'Ohne Benachrichtigungen fortfahren',
+      'zh': '不使用通知继续',
+    },
   },
 };

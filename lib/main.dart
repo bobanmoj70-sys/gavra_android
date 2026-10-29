@@ -1634,7 +1634,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       unawaited(_syncLocaleOnResume());
       unawaited(_consumePendingIosPushAction());
+      unawaited(_recheckPushGateOnResume());
     }
+  }
+
+  /// Ako je korisnik usred sesije ugasio notifikacije u Settings → ponovo gate.
+  Future<void> _recheckPushGateOnResume() async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await V3RolePermissionService.promptPushGateIfNeeded(ctx);
   }
 
   Future<void> _initializeApp() async {}

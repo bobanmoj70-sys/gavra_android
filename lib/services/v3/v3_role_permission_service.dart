@@ -31,13 +31,13 @@ class V3RolePermissionService {
   /// Vozač: push + **obavezna** Always lokacija.
   /// Vraća true samo ako je Always odobren — inače vozač NE sme u app.
   static Future<bool> ensureDriverPermissionsOnLogin(BuildContext context) async {
-    await _requestPushOnce(context);
+    await enforcePushPermission(context);
     if (!context.mounted) return false;
     return enforceDriverAlwaysLocation(context);
   }
 
   static Future<void> ensurePassengerPermissionsOnLogin(BuildContext context) async {
-    await _requestPushOnce(context);
+    await enforcePushPermission(context);
   }
 
   /// Android: budi ekran na dolazni push.
@@ -53,39 +53,81 @@ class V3RolePermissionService {
     }
   }
 
-  static Future<void> _requestPushOnce(BuildContext context) async {
-    if (Platform.isIOS) {
-      try {
-        var settings = await FirebaseMessaging.instance.getNotificationSettings();
-        if (settings.authorizationStatus == AuthorizationStatus.notDetermined ||
-            settings.authorizationStatus == AuthorizationStatus.denied) {
-          settings = await FirebaseMessaging.instance.requestPermission(
+  static bool _pushGateShowing = false;
+
+  /// true samo ako je push permission odobren (iOS provisional/ephemeral = isključeno).
+  static Future<bool> isPushPermissionGranted() async {
+    try {
+      if (Platform.isIOS) {
+        final s = await FirebaseMessaging.instance.getNotificationSettings();
+        return s.authorizationStatus == AuthorizationStatus.authorized;
+      }
+      return (await Permission.notification.status).isGranted;
+    } catch (e) {
+      debugPrint('[Permissions] isPushPermissionGranted greška: $e');
+      return true; // fail-open: ne blokiraj app na grešku servisa
+    }
+  }
+
+  /// Push gate sa izlazom: blokirajući dijalog → Settings → re-check, uz
+  /// "Nastavi bez obaveštenja" kao jedini izlaz (App Store 4.5.4 zahteva da
+  /// push ne bude uslov za rad app-a, pa escape mora postojati).
+  /// Vraća true ako je permission odobren na kraju toka.
+  static Future<bool> enforcePushPermission(BuildContext context) async {
+    if (!context.mounted) return false;
+    try {
+      if (await isPushPermissionGranted()) return true;
+
+      // Sistemski request samo dok status nije "denied" — na iOS denied više
+      // nikad ne prikazuje dijalog, jedini put je Settings.
+      if (Platform.isIOS) {
+        final s = await FirebaseMessaging.instance.getNotificationSettings();
+        if (s.authorizationStatus == AuthorizationStatus.notDetermined) {
+          await FirebaseMessaging.instance.requestPermission(
             alert: true,
             badge: true,
             sound: true,
           );
         }
-        debugPrint('[Permissions][iOS] Push: ${settings.authorizationStatus}');
-        if (settings.authorizationStatus == AuthorizationStatus.denied && context.mounted) {
-          await _offerOpenSettingsForNotifications(context);
+      } else {
+        final status = await Permission.notification.status;
+        if (status.isDenied) {
+          await Permission.notification.request();
         }
-      } catch (e) {
-        debugPrint('[Permissions][iOS] Push greška: $e');
       }
-      return;
-    }
+      var granted = await isPushPermissionGranted();
 
-    try {
-      var status = await Permission.notification.status;
-      // permanentlyDenied: request() je no-op na Androidu — odmah nudimo Settings.
-      if (status.isDenied) {
-        status = await Permission.notification.request();
+      while (context.mounted && !granted) {
+        final openSettings = await _showPushGateDialog(context);
+        if (!context.mounted) return false;
+        if (!openSettings) return false; // "Nastavi bez obaveštenja"
+        await _openAppSettingsAndWaitForResume();
+        granted = await isPushPermissionGranted();
       }
-      if (!status.isGranted && status.isPermanentlyDenied && context.mounted) {
-        await _offerOpenSettingsForNotifications(context);
-      }
+      return granted;
     } catch (e) {
-      debugPrint('[Permissions] Push greška: $e');
+      debugPrint('[Permissions] enforcePushPermission greška: $e');
+      return true; // fail-open
+    }
+  }
+
+  /// Re-check na resume: gate samo kad je korisnik aktivno odbio/ugasio
+  /// dozvolu u Settings (iOS denied / Android permanentlyDenied).
+  /// notDetermined rešava login flow kroz OS request.
+  static Future<void> promptPushGateIfNeeded(BuildContext context) async {
+    if (!context.mounted) return;
+    try {
+      if (Platform.isIOS) {
+        final s = await FirebaseMessaging.instance.getNotificationSettings();
+        if (s.authorizationStatus != AuthorizationStatus.denied) return;
+      } else {
+        final status = await Permission.notification.status;
+        if (!status.isPermanentlyDenied) return;
+      }
+      if (!context.mounted) return;
+      await enforcePushPermission(context);
+    } catch (e) {
+      debugPrint('[Permissions] promptPushGateIfNeeded greška: $e');
     }
   }
 
@@ -239,30 +281,35 @@ class V3RolePermissionService {
     return result ?? false;
   }
 
-  static Future<void> _offerOpenSettingsForNotifications(BuildContext context) async {
-    if (!context.mounted) return;
-    final opened = await V3DialogHelper.showBasicDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      title: _trNotification('title'),
-      content: _trNotification('message'),
-      titleIcon: Icons.notifications_off,
-      titleIconColor: Colors.amber,
-      actions: [
-        V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, false),
-          text: _trLocation('notNow'),
-          foregroundColor: Colors.grey,
-        ),
-        V3ButtonUtils.textButton(
-          onPressed: () => Navigator.pop(context, true),
-          text: _trLocation('openSettings'),
-          foregroundColor: Colors.amber,
-        ),
-      ],
-    );
-    if (opened == true) {
-      await _openAppSettingsAndWaitForResume();
+  /// true = otvori settings, false = nastavi bez notifikacija.
+  static Future<bool> _showPushGateDialog(BuildContext context) async {
+    if (!context.mounted) return false;
+    if (_pushGateShowing) return false;
+    _pushGateShowing = true;
+    try {
+      final result = await V3DialogHelper.showBasicDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        title: _trNotification('title'),
+        content: _trNotification('message'),
+        titleIcon: Icons.notifications_off,
+        titleIconColor: Colors.amber,
+        actions: [
+          V3ButtonUtils.textButton(
+            onPressed: () => Navigator.pop(context, false),
+            text: _trNotification('continueAnyway'),
+            foregroundColor: Colors.grey,
+          ),
+          V3ButtonUtils.textButton(
+            onPressed: () => Navigator.pop(context, true),
+            text: _trLocation('openSettings'),
+            foregroundColor: Colors.amber,
+          ),
+        ],
+      );
+      return result ?? false;
+    } finally {
+      _pushGateShowing = false;
     }
   }
 
