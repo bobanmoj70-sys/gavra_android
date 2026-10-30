@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/v3_dug.dart';
@@ -243,12 +244,11 @@ class V3FinansijeService {
   }
 
   static double _resolveCenaZaPutnik(String putnikId, {String? fallbackTip}) {
-    final rm = V3MasterRealtimeManager.instance;
-    final putnik = rm.putniciCache[putnikId];
+    final putnik = _lookupPutnikData(putnikId);
     final tip =
-        (putnik?['tip_putnika']?.toString() ?? putnik?['tip']?.toString() ?? fallbackTip ?? '').trim().toLowerCase();
-    final cenaPoDanu = (putnik?['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
-    final cenaPoPokupljenju = (putnik?['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
+        (putnik['tip_putnika']?.toString() ?? putnik['tip']?.toString() ?? fallbackTip ?? '').trim().toLowerCase();
+    final cenaPoDanu = (putnik['cena_po_danu'] as num?)?.toDouble() ?? 0.0;
+    final cenaPoPokupljenju = (putnik['cena_po_pokupljenju'] as num?)?.toDouble() ?? 0.0;
     return _cenaZaTip(
       tip: tip,
       cenaPoDanu: cenaPoDanu,
@@ -421,7 +421,7 @@ class V3FinansijeService {
     ).isNotEmpty;
     if (!hasRowForTarget) return 0.0;
 
-    final prethodniRed = _findPrethodniRed(
+    final prethodniRed = _findPrethodniRedSaVisakom(
       putnikId: putnikId,
       godina: godina,
       mesec: mesec,
@@ -1068,6 +1068,51 @@ class V3FinansijeService {
     return best;
   }
 
+  /// Hronološki poslednji prethodni master red koji JOŠ UVEK nosi višak —
+  /// višak "preskače" mesece bez kredita (npr. uplata za jul uneta tek u
+  /// avgustu ostane zaglavljena na julskom redu ako bi se gledao samo
+  /// neposredno prethodni mesec) i prenosi se u prvi mesec sa aktivnošću.
+  static Map<String, dynamic>? _findPrethodniRedSaVisakom({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final target = godina * 12 + mesec;
+    Map<String, dynamic>? best;
+    var bestKey = -1;
+    for (final row in _naplataRows()) {
+      final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
+      if (rPutnikId != putnikId.trim().toLowerCase()) continue;
+      final rG = _parseInternalInt(row['godina']);
+      final rM = _parseInternalInt(row['mesec']);
+      if (rG == null || rM == null) continue;
+      final key = rG * 12 + rM;
+      if (key >= target) continue;
+      if (_readVisak(row) <= 0.009) continue;
+      if (key > bestKey) {
+        bestKey = key;
+        best = row;
+        continue;
+      }
+      if (key == bestKey && best != null) {
+        final currentVisak = _readVisak(row);
+        final bestVisak = _readVisak(best);
+        if (currentVisak > bestVisak + 0.009) {
+          best = row;
+          continue;
+        }
+        if ((currentVisak - bestVisak).abs() <= 0.009) {
+          final currentCreatedAt = _createdAtOrEpoch(row);
+          final bestCreatedAt = _createdAtOrEpoch(best);
+          if (currentCreatedAt.isAfter(bestCreatedAt)) {
+            best = row;
+          }
+        }
+      }
+    }
+    return best;
+  }
+
   static Future<Map<String, dynamic>> _primeniPrenetiVisakNaPostojeciRed({
     required String putnikId,
     required int godina,
@@ -1075,7 +1120,7 @@ class V3FinansijeService {
     required Map<String, dynamic> tekuciRed,
     required double defaultCena,
   }) async {
-    final prethodniRed = _findPrethodniRed(
+    final prethodniRed = _findPrethodniRedSaVisakom(
       putnikId: putnikId,
       godina: godina,
       mesec: mesec,
@@ -1148,10 +1193,64 @@ class V3FinansijeService {
     }
     _mesecnaNaplataLocks.add(lockKey);
 
-    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
     final cenaVoznje = _resolveCenaZaPutnik(safePutnikId, fallbackTip: tip);
 
     try {
+      // Do 2 pokusaja: ako master red nastane u trci sa DB triggerom
+      // (unique index na putnik+mesec+godina), osvezi kes iz baze i upisi
+      // na postojeci red umesto da nastane duplikat.
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          await _evidentirajRealizacijuPriPokupljanjuOnce(
+            safePutnikId: safePutnikId,
+            isPoDanu: isPoDanu,
+            safeOperativnaId: safeOperativnaId,
+            datum: datum,
+            cenaVoznje: cenaVoznje,
+          );
+          return;
+        } on PostgrestException catch (e) {
+          if (e.code != '23505' || attempt == 1) rethrow;
+          await _refreshMesecnaEvidencijaIzBaze(
+            putnikId: safePutnikId,
+            mesec: datum.month,
+            godina: datum.year,
+          );
+        }
+      }
+    } finally {
+      _mesecnaNaplataLocks.remove(lockKey);
+    }
+  }
+
+  static Future<void> _refreshMesecnaEvidencijaIzBaze({
+    required String putnikId,
+    required int mesec,
+    required int godina,
+  }) async {
+    try {
+      final rows = await _repo.fetchMesecnaEvidencija(
+        putnikId: putnikId,
+        mesec: mesec,
+        godina: godina,
+      );
+      for (final row in rows) {
+        V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
+      }
+    } catch (e) {
+      debugPrint('[V3FinansijeService] refreshMesecnaEvidencija error: $e');
+    }
+  }
+
+  static Future<void> _evidentirajRealizacijuPriPokupljanjuOnce({
+    required String safePutnikId,
+    required bool isPoDanu,
+    required String safeOperativnaId,
+    required DateTime datum,
+    required double cenaVoznje,
+  }) async {
+    final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
+    {
       // 1. Pronađi postojeći master red za ovaj mesec
       final existingMesecna = cache.where((row) {
         final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
@@ -1258,7 +1357,7 @@ class V3FinansijeService {
       // Prenesi eventualni višak (kredit) iz prethodnog meseca — ako je
       // putnik preplatio prošli mesec, taj višak prvo pokriva ovu (prvu)
       // vožnju novog meseca pre nego što se ona upiše kao dug.
-      final prethodniRed = _findPrethodniRed(
+      final prethodniRed = _findPrethodniRedSaVisakom(
         putnikId: safePutnikId,
         godina: datum.year,
         mesec: datum.month,
@@ -1300,8 +1399,6 @@ class V3FinansijeService {
         'godina': datum.year,
       });
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
-    } finally {
-      _mesecnaNaplataLocks.remove(lockKey);
     }
   }
 
@@ -1758,7 +1855,59 @@ class V3FinansijeService {
     }
     _mesecnaNaplataLocks.add(lockKey);
 
+    final now = V3BelgradeTime.now();
+    final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
+    final uplataStavka = <String, dynamic>{
+      'uplata_id': 'upl:${_uuid.v4()}',
+      'datum': V3BelgradeTime.toIsoUtc(now),
+      'iznos': iznos,
+      'naplatio_by': naplacenoBy,
+      'naplatio_at': V3BelgradeTime.toIsoUtc(now),
+    };
+
     try {
+      // Do 2 pokusaja: ako master red nastane u trci sa DB triggerom
+      // (unique index na putnik+mesec+godina), osvezi kes iz baze i primeni
+      // uplatu na postojeci red umesto da nastane duplikat.
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          await _sacuvajMesecnuNaplatuOnce(
+            safePutnikId: safePutnikId,
+            iznos: iznos,
+            mesec: mesec,
+            godina: godina,
+            now: now,
+            cenaVoznje: cenaVoznje,
+            uplataStavka: uplataStavka,
+          );
+          return;
+        } on PostgrestException catch (e) {
+          if (e.code != '23505' || attempt == 1) rethrow;
+          await _refreshMesecnaEvidencijaIzBaze(
+            putnikId: safePutnikId,
+            mesec: mesec,
+            godina: godina,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[V3FinansijeService] sacuvajMesecnuNaplatu error: $e');
+      rethrow;
+    } finally {
+      _mesecnaNaplataLocks.remove(lockKey);
+    }
+  }
+
+  static Future<void> _sacuvajMesecnuNaplatuOnce({
+    required String safePutnikId,
+    required double iznos,
+    required int mesec,
+    required int godina,
+    required DateTime now,
+    required double cenaVoznje,
+    required Map<String, dynamic> uplataStavka,
+  }) async {
+    {
       final cache = V3MasterRealtimeManager.instance.getCache('v3_finansije').values;
       final existing = cache.where((row) {
         final rPutnikId = (row['putnik_v3_auth_id']?.toString() ?? '').trim().toLowerCase();
@@ -1769,16 +1918,6 @@ class V3FinansijeService {
         // Širimo pretragu na bilo koji prihodni red za ovog putnika/mesec
         return (row['tip']?.toString().toLowerCase() ?? '') == 'prihod';
       }).toList();
-
-      final now = V3BelgradeTime.now();
-      final cenaVoznje = _resolveCenaZaPutnik(safePutnikId);
-      final uplataStavka = <String, dynamic>{
-        'uplata_id': 'upl:${_uuid.v4()}',
-        'datum': V3BelgradeTime.toIsoUtc(now),
-        'iznos': iznos,
-        'naplatio_by': naplacenoBy,
-        'naplatio_at': V3BelgradeTime.toIsoUtc(now),
-      };
 
       Map<String, dynamic> row;
       if (existing.isNotEmpty) {
@@ -1839,7 +1978,7 @@ class V3FinansijeService {
 
         // Prenesi eventualni višak iz prethodnog meseca, ako postoji —
         // uplata se prvo primenjuje na taj preneti višak.
-        final prethodniRed = _findPrethodniRed(putnikId: safePutnikId, godina: godina, mesec: mesec);
+        final prethodniRed = _findPrethodniRedSaVisakom(putnikId: safePutnikId, godina: godina, mesec: mesec);
         final prenetiVisak = prethodniRed != null ? _readVisak(prethodniRed) : 0.0;
         if (prethodniRed != null && prenetiVisak > 0.009) {
           final prethodniId = (prethodniRed['id'] ?? '').toString();
@@ -1875,11 +2014,6 @@ class V3FinansijeService {
       }
 
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
-    } catch (e) {
-      debugPrint('[V3FinansijeService] sacuvajMesecnuNaplatu error: $e');
-      rethrow;
-    } finally {
-      _mesecnaNaplataLocks.remove(lockKey);
     }
   }
 

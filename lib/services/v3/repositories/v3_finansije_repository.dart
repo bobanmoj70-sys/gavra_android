@@ -9,6 +9,22 @@ class V3FinansijeRepository {
     return supabase.from('v3_finansije').update(payload).eq('id', id).select().single();
   }
 
+  Future<List<Map<String, dynamic>>> fetchMesecnaEvidencija({
+    required String putnikId,
+    required int mesec,
+    required int godina,
+  }) {
+    return supabase
+        .from('v3_finansije')
+        .select()
+        .eq('tip', 'prihod')
+        .inFilter('kategorija', ['operativna_naplata', 'operativna_realizacija'])
+        .eq('putnik_v3_auth_id', putnikId)
+        .eq('mesec', mesec)
+        .eq('godina', godina)
+        .order('created_at', ascending: false);
+  }
+
   Future<Map<String, dynamic>?> findMesecnuNaplatu({
     required String putnikId,
     required int mesec,
