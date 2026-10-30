@@ -124,11 +124,7 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
   }
 
   V3SaldoInfo _resolveSaldoInfo() {
-    final datumRef = widget.entry?.datum ?? widget.zahtev?.datum ?? V3BelgradeTime.now();
-    return V3FinansijeService.resolveSaldoInfo(
-      putnikId: widget.putnik.id,
-      datumRef: datumRef,
-    );
+    return V3FinansijeService.resolveSaldoInfoUkupno(putnikId: widget.putnik.id);
   }
 
   bool _isPlacenBySaldo(V3NaplataInfo? naplataInfo, V3SaldoInfo saldoInfo) {
@@ -565,8 +561,8 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
     final DateTime? poslednjaDopunaAt = naplataInfo?.uplataAt;
     final double ukupanIznos = naplataInfo?.ukupanIznos ?? 0;
     final double poslednjaDopuna = naplataInfo?.poslednjaDopuna ?? 0;
-    final double dugIznos = naplataInfo?.dug ?? saldoInfo.dug;
-    final double visakIznos = naplataInfo?.visak ?? saldoInfo.visak;
+    final double dugIznos = saldoInfo.dug;
+    final double visakIznos = saldoInfo.visak;
     final bool saldoMinus = dugIznos > 0.009;
     final bool saldoPlus = !saldoMinus && visakIznos > 0.009;
     final bool saldoNula = !saldoMinus && !saldoPlus;
@@ -825,10 +821,9 @@ class _V3PutnikCardState extends State<V3PutnikCard> {
                           stream:
                               V3MasterRealtimeManager.instance.tablesRevisionStream(const ['v3_finansije', 'v3_auth']),
                           builder: (context, __) {
-                            final _naplataInfo = _resolveNaplataInfo();
                             final _saldoInfo = _resolveSaldoInfo();
-                            final double _dugIznos = _naplataInfo?.dug ?? _saldoInfo.dug;
-                            final double _visakIznos = _naplataInfo?.visak ?? _saldoInfo.visak;
+                            final double _dugIznos = _saldoInfo.dug;
+                            final double _visakIznos = _saldoInfo.visak;
                             final bool _saldoMinus = _dugIznos > 0.009;
                             final bool _saldoPlus = !_saldoMinus && _visakIznos > 0.009;
 

@@ -149,15 +149,18 @@ class V3PlacanjeDialogHelper {
               mesec: mesec,
               godina: _selectedYear,
             );
-
-            switch (saldo.status) {
-              case V3SaldoStatus.minus:
-                return (color: const Color(0xFFFF6D00), weight: FontWeight.w700);
-              case V3SaldoStatus.plus:
-                return (color: const Color(0xFF00C853), weight: FontWeight.w700);
-              case V3SaldoStatus.nula:
-                return (color: V3InputStyle.text, weight: FontWeight.w500);
+            if (saldo.status == V3SaldoStatus.minus) {
+              return (color: Colors.red, weight: FontWeight.w700);
             }
+            final imaEvidenciju = V3FinansijeService.imaEvidencijuZaMesec(
+              putnikId: putnikId,
+              mesec: mesec,
+              godina: _selectedYear,
+            );
+            if (imaEvidenciju) {
+              return (color: const Color(0xFF00C853), weight: FontWeight.w700);
+            }
+            return (color: V3InputStyle.text, weight: FontWeight.w500);
           }
 
           return StreamBuilder<int>(

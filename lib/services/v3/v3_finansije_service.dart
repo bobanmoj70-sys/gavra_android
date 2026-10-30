@@ -1024,6 +1024,32 @@ class V3FinansijeService {
     );
   }
 
+  /// Ukupan (neto) saldo putnika kroz sve mesece evidencije:
+  /// Σ visak_iznos minus Σ nenaplaćenih stavki. Pozitivan rezultat znači
+  /// kredit/preplatu, negativan dug — nezavisno od meseca vožnje.
+  static V3SaldoInfo resolveSaldoInfoUkupno({required String putnikId}) {
+    final neto =
+        getVisakIznosForPutnik(putnikId: putnikId) - getNenaplacenIznosForPutnik(putnikId: putnikId);
+    if (neto < -0.009) {
+      return V3SaldoInfo(status: V3SaldoStatus.minus, dug: -neto, visak: 0.0);
+    }
+    if (neto > 0.009) {
+      return V3SaldoInfo(status: V3SaldoStatus.plus, dug: 0.0, visak: neto);
+    }
+    return const V3SaldoInfo(status: V3SaldoStatus.nula, dug: 0.0, visak: 0.0);
+  }
+
+  /// Da li za putnika postoji mesečna evidencija za (godina, mesec).
+  static bool imaEvidencijuZaMesec({
+    required String putnikId,
+    required int godina,
+    required int mesec,
+  }) {
+    final putnik = putnikId.trim();
+    if (putnik.isEmpty) return false;
+    return _naplataRowsForPutnikMesec(putnikId: putnik, godina: godina, mesec: mesec).isNotEmpty;
+  }
+
   /// Pronalazi hronološki poslednji master red za putnika STROGO pre
   /// zadatog (godina, mesec) — koristi se za prenos viška u novi mesec.
   static Map<String, dynamic>? _findPrethodniRed({
