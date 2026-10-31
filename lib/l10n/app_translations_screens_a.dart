@@ -1103,40 +1103,12 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Liste drucken',
       'zh': '打印列表',
     },
-    'racunPostojeci': {
-      'sr': 'Račun - postojeći',
-      'en': 'Invoice - existing',
-      'ru': 'Счёт - существующий',
-      'de': 'Rechnung - vorhanden',
-      'zh': '发票 - 现有',
-    },
     'racunNovi': {
       'sr': 'Račun - novi',
       'en': 'Invoice - new',
       'ru': 'Счёт - новый',
       'de': 'Rechnung - neu',
       'zh': '发票 - 新建',
-    },
-    'racunFirma': {
-      'sr': 'Račun — firma',
-      'en': 'Invoice — company',
-      'ru': 'Счёт — компания',
-      'de': 'Rechnung — Firma',
-      'zh': '发票 — 公司'
-    },
-    'novaFirma': {
-      'sr': 'Nova firma?',
-      'en': 'New company?',
-      'ru': 'Новая компания?',
-      'de': 'Neue Firma?',
-      'zh': '新公司？'
-    },
-    'nemaRezultata': {
-      'sr': 'Nema rezultata',
-      'en': 'No results',
-      'ru': 'Нет результатов',
-      'de': 'Keine Ergebnisse',
-      'zh': '无结果'
     },
     'adresaOpciono': {
       'sr': 'Adresa (opciono)',
@@ -1145,36 +1117,12 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': 'Adresse (optional)',
       'zh': '地址（可选）',
     },
-    'nemaFirmiUBazi': {
-      'sr': '⚠️ Nema firmi u bazi (v3_racuni je prazan)',
-      'en': '⚠️ No companies in database (v3_racuni is empty)',
-      'ru': '⚠️ Нет компаний в базе (v3_racuni пуст)',
-      'de': '⚠️ Keine Firmen in der Datenbank (v3_racuni ist leer)',
-      'zh': '⚠️ 数据库中没有公司（v3_racuni 为空）',
-    },
     'odaberitePutnika': {
       'sr': '⚠️ Odaberite putnika',
       'en': '⚠️ Select a passenger',
       'ru': '⚠️ Выберите пассажира',
       'de': '⚠️ Fahrgast auswählen',
       'zh': '⚠️ 请选择乘客',
-    },
-    'sekcijaFirma': {'sr': 'FIRMA', 'en': 'COMPANY', 'ru': 'КОМПАНИЯ', 'de': 'FIRMA', 'zh': '公司'},
-    'sekcijaPutnik': {'sr': 'PUTNIK', 'en': 'PASSENGER', 'ru': 'ПАССАЖИР', 'de': 'FAHRGAST', 'zh': '乘客'},
-    'sekcijaMesecIDatumi': {
-      'sr': 'MESEC I DATUMI',
-      'en': 'MONTH AND DATES',
-      'ru': 'МЕСЯЦ И ДАТЫ',
-      'de': 'MONAT UND DATEN',
-      'zh': '月份与日期'
-    },
-    'sekcijaIznos': {'sr': 'IZNOS', 'en': 'AMOUNT', 'ru': 'СУММА', 'de': 'BETRAG', 'zh': '金额'},
-    'dodajNovuFirmu': {
-      'sr': 'Dodaj novu firmu',
-      'en': 'Add new company',
-      'ru': 'Добавить новую компанию',
-      'de': 'Neue Firma hinzufügen',
-      'zh': '添加新公司',
     },
     'nepoznatPutnik': {
       'sr': 'Nepoznat putnik',
@@ -1185,47 +1133,6 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
     'ja': {'sr': 'Ja', 'en': 'Me', 'ru': 'Я', 'de': 'Ich', 'zh': '我'},
     'admin': {'sr': 'Admin', 'en': 'Admin', 'ru': 'Админ', 'de': 'Admin', 'zh': '管理员'},
-    'pibPrefix': {'sr': 'PIB:', 'en': 'Tax ID:', 'ru': 'ИНН:', 'de': 'St.-Nr.:', 'zh': '税号：'},
-    'mbPrefix': {'sr': 'MB:', 'en': 'Reg. no.:', 'ru': 'Рег. №:', 'de': 'HR-Nr.:', 'zh': '注册号：'},
-    'ziroPrefix': {'sr': 'Žiro:', 'en': 'Account:', 'ru': 'Счёт:', 'de': 'Konto:', 'zh': '账户：'},
-    'mesecPrefix': {'sr': 'Mesec:', 'en': 'Month:', 'ru': 'Месяц:', 'de': 'Monat:', 'zh': '月份：'},
-    'izdavanjePrefix': {'sr': 'Izdavanje:', 'en': 'Issued:', 'ru': 'Выставлено:', 'de': 'Ausgestellt:', 'zh': '开具：'},
-    'prometPrefix': {'sr': 'Promet:', 'en': 'Turnover:', 'ru': 'Оборот:', 'de': 'Umsatz:', 'zh': '交易：'},
-    'danaLabel': {'sr': 'Dana', 'en': 'Days', 'ru': 'Дней', 'de': 'Tage', 'zh': '天数'},
-    'cenaPoDanLabel': {'sr': 'Cena/dan', 'en': 'Price/day', 'ru': 'Цена/день', 'de': 'Preis/Tag', 'zh': '每日价格'},
-    'ukupnoPrefix': {'sr': 'Ukupno:', 'en': 'Total:', 'ru': 'Итого:', 'de': 'Gesamt:', 'zh': '总计：'},
-    'nazivFirme': {
-      'sr': 'Naziv firme',
-      'en': 'Company name',
-      'ru': 'Название компании',
-      'de': 'Firmenname',
-      'zh': '公司名称'
-    },
-    'adresa': {'sr': 'Adresa', 'en': 'Address', 'ru': 'Адрес', 'de': 'Adresse', 'zh': '地址'},
-    'pib': {'sr': 'PIB', 'en': 'Tax ID', 'ru': 'ИНН', 'de': 'St.-Nr.', 'zh': '税号'},
-    'maticniBroj': {
-      'sr': 'Matični broj',
-      'en': 'Registration number',
-      'ru': 'Регистрационный номер',
-      'de': 'Handelsregisternummer',
-      'zh': '注册号'
-    },
-    'ziroRacun': {'sr': 'Žiro račun', 'en': 'Bank account', 'ru': 'Расчётный счёт', 'de': 'Girokonto', 'zh': '银行账户'},
-    'sacuvaj': {'sr': 'Sačuvaj', 'en': 'Save', 'ru': 'Сохранить', 'de': 'Speichern', 'zh': '保存'},
-    'uneseiteNazivFirme': {
-      'sr': '⚠️ Unesite naziv firme',
-      'en': '⚠️ Enter company name',
-      'ru': '⚠️ Введите название компании',
-      'de': '⚠️ Firmenname eingeben',
-      'zh': '⚠️ 请输入公司名称',
-    },
-    'greskaPriUpisuPrefix': {
-      'sr': '❌ Greška pri upisu:',
-      'en': '❌ Error while saving:',
-      'ru': '❌ Ошибка записи:',
-      'de': '❌ Fehler beim Speichern:',
-      'zh': '❌ 保存时出错：',
-    },
   },
   'kapacitetScreen': {
     'kapacitetPolazaka': {
