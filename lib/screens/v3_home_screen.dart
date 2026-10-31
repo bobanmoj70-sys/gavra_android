@@ -754,11 +754,10 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
   // ─── Dialog: Novi račun za fizičko lice ───────────────────────────
   void _showNoviRacunDialog() {
-    final imeCtrl = TextEditingController();
-    final adresaCtrl = TextEditingController();
     final opisCtrl = TextEditingController();
     final iznosCtrl = TextEditingController();
     final kolicinaCtrl = TextEditingController(text: '1');
+    final searchCtrl = TextEditingController();
     final putnici = V3MasterRealtimeManager.instance.putniciCache.values.toList()
       ..sort((a, b) => (a['ime_prezime'] ?? '').toString().compareTo((b['ime_prezime'] ?? '').toString()));
     Map<String, dynamic>? selectedPutnik = putnici.isNotEmpty ? putnici.first : null;
@@ -770,11 +769,6 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
 
     void applyPredlog() {
       if (selectedPutnik == null) return;
-
-      final ime = (selectedPutnik?['ime_prezime'] ?? '').toString().trim();
-      if (ime.isNotEmpty) {
-        imeCtrl.text = ime;
-      }
 
       final predlog = _racunPredlogZaPutnik(selectedPutnik, selectedMesec);
       kolicinaCtrl.text = predlog.brojDana > 0 ? predlog.brojDana.toString() : '0';
@@ -810,14 +804,45 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField2<String>(
                     value: selectedPutnik?['id']?.toString(),
                     isExpanded: true,
-                    dropdownColor: V3InputStyle.dropdownMenu,
                     style: V3InputUtils.fieldTextStyle,
                     decoration: V3InputUtils.dropdownDecoration(
                       label: _tr('odaberitePutnika'),
                       icon: Icons.person,
+                    ),
+                    dropdownStyleData: DropdownStyleData(
+                      maxHeight: V3ContainerUtils.responsiveHeight(ctx, 280),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(V3InputStyle.radius),
+                        color: V3InputStyle.dropdownMenu,
+                      ),
+                    ),
+                    dropdownSearchData: DropdownSearchData(
+                      searchController: searchCtrl,
+                      searchInnerWidgetHeight: V3ContainerUtils.responsiveHeight(ctx, 50),
+                      searchInnerWidget: SizedBox(
+                        height: V3ContainerUtils.responsiveHeight(ctx, 50),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                          child: V3InputUtils.searchField(
+                            controller: searchCtrl,
+                            hint: _tr('pretrazi'),
+                            expands: true,
+                          ),
+                        ),
+                      ),
+                      searchMatchFn: (item, val) {
+                        final p = putnici.firstWhere(
+                          (e) => e['id']?.toString() == item.value,
+                          orElse: () => <String, dynamic>{},
+                        );
+                        return V3StringUtils.containsSearch(
+                          '${p['ime_prezime'] ?? ''} ${p['tip_putnika'] ?? ''}',
+                          val,
+                        );
+                      },
                     ),
                     items: putnici
                         .map(
@@ -833,15 +858,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     onChanged: putnici.isEmpty
                         ? null
                         : (id) {
+                            searchCtrl.clear();
                             setS(() {
                               selectedPutnik = putnici.firstWhere((p) => p['id']?.toString() == id);
                               if (autoPredlogEnabled) {
                                 applyPredlog();
-                              } else {
-                                final ime = (selectedPutnik?['ime_prezime'] ?? '').toString().trim();
-                                if (ime.isNotEmpty) {
-                                  imeCtrl.text = ime;
-                                }
                               }
                             });
                           },
@@ -876,17 +897,11 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _dialogField(imeCtrl, _tr('imePrezimeKupca')),
-                  const SizedBox(height: 8),
-                  _dialogField(adresaCtrl, _tr('adresaKupca')),
-                  const SizedBox(height: 8),
                   _dialogField(opisCtrl, _tr('opisUsluge')),
                   const SizedBox(height: 8),
-                  Row(children: [
-                    Expanded(child: _dialogField(iznosCtrl, _tr('cena'), numeric: true)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _dialogField(kolicinaCtrl, _tr('kolicina'), numeric: true)),
-                  ]),
+                  _dialogField(iznosCtrl, _tr('cena'), numeric: true),
+                  const SizedBox(height: 8),
+                  _dialogField(kolicinaCtrl, _tr('kolicina'), numeric: true),
                   const SizedBox(height: 8),
                   // Jedinica mjere
                   DropdownButtonFormField<String>(
@@ -1014,7 +1029,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                     V3AppSnackBar.error(ctx, _tr('odaberitePutnika'));
                     return;
                   }
-                  if (imeCtrl.text.trim().isEmpty || opisCtrl.text.trim().isEmpty) {
+                  final imeKupca = (selectedPutnik?['ime_prezime'] ?? '').toString().trim();
+                  if (imeKupca.isEmpty || opisCtrl.text.trim().isEmpty) {
                     V3AppSnackBar.error(ctx, _tr('popuniteImeOpis'));
                     return;
                   }
@@ -1029,8 +1045,8 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
                   if (!ctx.mounted) return;
                   await V3RacunService.stampajRacun(
                     brojRacuna: broj,
-                    imePrezimeKupca: imeCtrl.text.trim(),
-                    adresaKupca: adresaCtrl.text.trim(),
+                    imePrezimeKupca: imeKupca,
+                    adresaKupca: '',
                     opisUsluge: opisCtrl.text.trim(),
                     cena: cena,
                     kolicina: kolicina,
@@ -1054,8 +1070,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
       Future<void>.delayed(const Duration(milliseconds: 350), () {
         iznosCtrl.removeListener(onRucnaIzmena);
         kolicinaCtrl.removeListener(onRucnaIzmena);
-        imeCtrl.dispose();
-        adresaCtrl.dispose();
+        searchCtrl.dispose();
         opisCtrl.dispose();
         iznosCtrl.dispose();
         kolicinaCtrl.dispose();
@@ -1068,6 +1083,7 @@ class _V3HomeScreenState extends State<V3HomeScreen> with TickerProviderStateMix
         ? V3InputUtils.numberField(
             controller: ctrl,
             label: label,
+            showPaste: false,
           )
         : V3InputUtils.textField(
             controller: ctrl,
