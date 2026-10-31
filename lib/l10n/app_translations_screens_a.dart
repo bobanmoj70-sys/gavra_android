@@ -1906,6 +1906,8 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     'godina': {'sr': 'Godina', 'en': 'Year'},
     'tekuciMesec': {'sr': 'Tekući mesec', 'en': 'Current month'},
     'tekucaGodina': {'sr': 'Tekuća godina', 'en': 'Current year'},
+    'dnevniProsek': {'sr': 'Dnevni prosek', 'en': 'Daily average'},
+    'radnihDana': {'sr': 'radnih dana (pon–pet)', 'en': 'working days (Mon–Fri)'},
     'dinamikaIsplateGoriva': {'sr': 'Dinamika isplate goriva', 'en': 'Fuel debt repayment dynamics'},
     'simulacijaMesecneRateGoriva': {
       'sr': 'Simulacija otplate po mesecima (kao kredit).',

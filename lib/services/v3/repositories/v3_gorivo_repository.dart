@@ -41,6 +41,41 @@ class V3GorivoRepository {
     }
   }
 
+  /// Dnevni prosek potrošnje po radnim danima (pon–pet) — RPC agregat.
+  /// Vraća jedan red: prosek_litri, radnih_dana, ukupno_litri.
+  Future<dynamic> selectDnevniProsek() {
+    return supabase.rpc('v3_gorivo_dnevni_prosek');
+  }
+
+  /// Najraniji created_at evidentiranog sipanja/potrošnje (bez inicijalnog importa).
+  Future<String?> selectPrviDatumGoriva() async {
+    final rows = await supabase
+        .from('v3_gorivo_istorija')
+        .select('created_at')
+        .inFilter('vrsta', ['potrosnja', 'dopuna'])
+        .or('source.is.null,source.neq.inicijalni_import')
+        .order('created_at', ascending: true)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    return rows.first['created_at']?.toString();
+  }
+
+  /// Fallback za [selectDnevniProsek]: svi redovi potrošnje, straničeno.
+  Future<List<dynamic>> selectPotrosnjaSve({int pageSize = 1000, int maxPages = 30}) async {
+    final all = <dynamic>[];
+    for (var page = 0; page < maxPages; page++) {
+      final rows = await supabase
+          .from('v3_gorivo_istorija')
+          .select('litri, source, created_at')
+          .eq('vrsta', 'potrosnja')
+          .order('created_at', ascending: true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+      all.addAll(rows);
+      if (rows.length < pageSize) break;
+    }
+    return all;
+  }
+
   /// Istorija dopuna i uplata, najnovije prvo.
   Future<List<dynamic>> selectDopuneIUplate({int limit = 100}) {
     return supabase

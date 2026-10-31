@@ -337,6 +337,51 @@ class V3GorivoService {
     return _bgMidnight(plain.year, plain.month, plain.day);
   }
 
+  /// Dnevni prosek potrošnje: ukupna potrošnja ÷ radni dani (pon–pet)
+  /// od prvog evidentiranog sipanja do danas.
+  /// RPC agregat; ako funkcija ne postoji/failuje, računa isto u Dart-u.
+  static Future<({double prosekLitri, int radnihDana})> getDnevniProsek() async {
+    try {
+      final res = await _repo.selectDnevniProsek();
+      final rows = res as List;
+      final row = rows.isEmpty ? const <String, dynamic>{} : Map<String, dynamic>.from(rows.first as Map);
+      return (
+        prosekLitri: (row['prosek_litri'] as num?)?.toDouble() ?? 0,
+        radnihDana: (row['radnih_dana'] as num?)?.toInt() ?? 0,
+      );
+    } catch (_) {
+      try {
+        final prviIso = await _repo.selectPrviDatumGoriva();
+        final prviTs = V3BelgradeTime.parseTs(prviIso);
+        if (prviTs == null) return (prosekLitri: 0.0, radnihDana: 0);
+
+        final rows = await _repo.selectPotrosnjaSve();
+        var ukupno = 0.0;
+        for (final r in rows) {
+          final map = Map<String, dynamic>.from(r as Map);
+          if (map['source'] == 'inicijalni_import') continue;
+          ukupno += (map['litri'] as num?)?.toDouble() ?? 0;
+        }
+
+        final pocetak = V3BelgradeTime.dateOnly(prviTs);
+        final kraj = V3BelgradeTime.today();
+        var radnih = 0;
+        for (var i = 0;; i++) {
+          final dan = DateTime(pocetak.year, pocetak.month, pocetak.day + i);
+          if (dan.isAfter(kraj)) break;
+          if (dan.weekday <= DateTime.friday) radnih++;
+        }
+        return (
+          prosekLitri: radnih == 0 ? 0.0 : ukupno / radnih,
+          radnihDana: radnih,
+        );
+      } catch (e) {
+        debugPrint('[V3GorivoService] getDnevniProsek error: $e');
+        return (prosekLitri: 0.0, radnihDana: 0);
+      }
+    }
+  }
+
   /// Potrošnja danas / operativna nedelja (pon–pet) / tekući mesec / tekuća godina.
   /// Iste granice perioda kao Finansije, sve u Europe/Belgrade.
   static Future<V3GorivoPotrosnjaPregled> getPotrosnjaPregled() async {
@@ -369,19 +414,23 @@ class V3GorivoService {
     double ned = 0;
     double mes = 0;
     double god = 0;
+    var prosek = (prosekLitri: 0.0, radnihDana: 0);
 
     try {
       // Četiri server-side SUM-a (bez 1000-row limita i bez greške TZ pri filteru u Dart-u).
-      final results = await Future.wait<double>([
+      final sumsFuture = Future.wait<double>([
         sumRange(danas, sutra),
         sumRange(nedeljaStart, nedeljaEndExclusive),
         sumRange(mesStart, mesEnd),
         sumRange(godStart, godEnd),
       ]);
+      final prosekFuture = getDnevniProsek();
+      final results = await sumsFuture;
       dan = results[0];
       ned = results[1];
       mes = results[2];
       god = results[3];
+      prosek = await prosekFuture;
     } catch (e) {
       debugPrint('[V3GorivoService] getPotrosnjaPregled error: $e');
     }
@@ -391,6 +440,8 @@ class V3GorivoService {
       nedeljaLitri: ned,
       mesecLitri: mes,
       godinaLitri: god,
+      dnevniProsekLitri: prosek.prosekLitri,
+      dnevniProsekRadnihDana: prosek.radnihDana,
       danasPeriod: V3DanHelper.formatDanMesec(danas),
       nedeljaPeriod: '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}',
     );
