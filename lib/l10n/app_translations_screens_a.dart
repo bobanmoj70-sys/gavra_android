@@ -2014,5 +2014,10 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
     'dopunaGoriva': {'sr': 'Dopuna goriva', 'en': 'Fuel refill'},
     'uplataDuga': {'sr': 'Uplata duga', 'en': 'Debt payment'},
+    'korekcijaDuga': {'sr': 'Korekcija duga', 'en': 'Debt adjustment'},
+    'ukupnoSipano': {'sr': 'Ukupno sipano', 'en': 'Total refilled'},
+    'vrednostSipanja': {'sr': 'Vrednost sipanja', 'en': 'Refill cost'},
+    'ukupnoUplaceno': {'sr': 'Ukupno uplaćeno', 'en': 'Total paid'},
+    'preostaloZaUplatu': {'sr': 'Za uplatu', 'en': 'To pay'},
   },
 };

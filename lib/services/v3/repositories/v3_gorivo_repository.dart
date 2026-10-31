@@ -76,12 +76,12 @@ class V3GorivoRepository {
     return all;
   }
 
-  /// Istorija dopuna i uplata, najnovije prvo.
+  /// Istorija dopuna, uplata i korekcija duga, najnovije prvo.
   Future<List<dynamic>> selectDopuneIUplate({int limit = 100}) {
     return supabase
         .from('v3_gorivo_istorija')
         .select('id, vrsta, litri, cena_po_litru, dug_promena, napomena, source, created_at')
-        .inFilter('vrsta', ['dopuna', 'uplata'])
+        .inFilter('vrsta', ['dopuna', 'uplata', 'korekcija'])
         .order('created_at', ascending: false)
         .limit(limit);
   }

@@ -40,7 +40,7 @@ class V3GorivoUplataObracun {
 
 class V3GorivoIstorijaStavka {
   final String id;
-  final String vrsta; // 'dopuna' | 'uplata' | 'potrosnja'
+  final String vrsta; // 'dopuna' | 'uplata' | 'korekcija' | 'potrosnja'
   final double litri;
   final double? cenaPoLitru;
   final double? dugPromena;
@@ -308,7 +308,7 @@ class V3GorivoService {
     }
   }
 
-  /// Istorija dopuna goriva i uplata duga (tabela: v3_gorivo_istorija), najnovije prvo.
+  /// Istorija dopuna goriva, uplata i korekcija duga (tabela: v3_gorivo_istorija), najnovije prvo.
   static Future<List<V3GorivoIstorijaStavka>> getDopuneIUplate({int limit = 100}) async {
     try {
       final rows = await _repo.selectDopuneIUplate(limit: limit);

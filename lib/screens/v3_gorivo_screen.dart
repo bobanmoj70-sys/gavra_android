@@ -1863,10 +1863,23 @@ class _FuelHistoryCard extends StatelessWidget {
       stream: V3MasterRealtimeManager.instance.tableRevisionStream('v3_gorivo'),
       builder: (context, _) {
         return FutureBuilder<List<V3GorivoIstorijaStavka>>(
-          future: V3GorivoService.getDopuneIUplate(limit: 50),
+          future: V3GorivoService.getDopuneIUplate(limit: 200),
           builder: (context, snapshot) {
             final stavke = snapshot.data ?? const <V3GorivoIstorijaStavka>[];
             final loading = snapshot.connectionState == ConnectionState.waiting && snapshot.data == null;
+
+            var sipanoLitri = 0.0;
+            var vrednostSipanja = 0.0;
+            var uplaceno = 0.0;
+            for (final s in stavke) {
+              if (s.vrsta == 'dopuna') {
+                sipanoLitri += s.litri;
+                vrednostSipanja += s.dugPromena ?? (s.cenaPoLitru ?? 0) * s.litri;
+              } else if (s.vrsta == 'uplata') {
+                uplaceno += s.dugPromena ?? 0;
+              }
+            }
+            final zaUplatu = V3GorivoService.getDugIznos();
 
             return Container(
               padding: EdgeInsets.all(isCompact ? 12 : 14),
@@ -1906,8 +1919,45 @@ class _FuelHistoryCard extends StatelessWidget {
                         fontSize: 12,
                       ),
                     )
-                  else
+                  else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FuelDebtChip(
+                            label: _GorTr.tr('ukupnoSipano'),
+                            value: '${V3FormatUtils.formatGorivo(sipanoLitri)} L',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _FuelDebtChip(
+                            label: _GorTr.tr('vrednostSipanja'),
+                            value: V3FormatUtils.formatNovacRsd(vrednostSipanja),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FuelDebtChip(
+                            label: _GorTr.tr('ukupnoUplaceno'),
+                            value: V3FormatUtils.formatNovacRsd(uplaceno),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _FuelDebtChip(
+                            label: _GorTr.tr('preostaloZaUplatu'),
+                            value: V3FormatUtils.formatNovacRsd(zaUplatu),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     ...stavke.map((s) => _FuelHistoryTile(stavka: s)),
+                  ],
                 ],
               ),
             );
@@ -1926,15 +1976,28 @@ class _FuelHistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDopuna = stavka.vrsta == 'dopuna';
-    final color = isDopuna ? const Color(0xFF81C784) : const Color(0xFF64B5F6);
-    final icon = isDopuna ? Icons.local_gas_station_rounded : Icons.payments_rounded;
-    final naslov = _GorTr.tr(isDopuna ? 'dopunaGoriva' : 'uplataDuga');
+    final isUplata = stavka.vrsta == 'uplata';
+    final color = isDopuna
+        ? const Color(0xFF81C784)
+        : isUplata
+            ? const Color(0xFF64B5F6)
+            : const Color(0xFFFFB74D);
+    final icon = isDopuna
+        ? Icons.local_gas_station_rounded
+        : isUplata
+            ? Icons.payments_rounded
+            : Icons.tune_rounded;
+    final naslov = _GorTr.tr(isDopuna
+        ? 'dopunaGoriva'
+        : isUplata
+            ? 'uplataDuga'
+            : 'korekcijaDuga');
 
     final detalji = <String>[];
     if (isDopuna && (stavka.cenaPoLitru ?? 0) > 0) {
       detalji.add('${V3FormatUtils.formatNovac(stavka.cenaPoLitru ?? 0)} RSD/L');
     }
-    if (isDopuna && (stavka.dugPromena ?? 0) > 0) {
+    if (!isUplata && (stavka.dugPromena ?? 0) > 0) {
       detalji.add('${_GorTr.tr('dugIznos')} +${V3FormatUtils.formatNovac(stavka.dugPromena ?? 0)} RSD');
     }
     if (stavka.createdAt != null) {
@@ -1943,7 +2006,9 @@ class _FuelHistoryTile extends StatelessWidget {
 
     final vrednost = isDopuna
         ? '+${V3FormatUtils.formatGorivo(stavka.litri)} L'
-        : '-${V3FormatUtils.formatNovac(stavka.dugPromena ?? 0)} RSD';
+        : isUplata
+            ? '-${V3FormatUtils.formatNovac(stavka.dugPromena ?? 0)} RSD'
+            : '+${V3FormatUtils.formatNovac(stavka.dugPromena ?? 0)} RSD';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
