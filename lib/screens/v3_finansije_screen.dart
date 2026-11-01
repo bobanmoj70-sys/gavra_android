@@ -848,8 +848,9 @@ class _TroskoviBottomSheetState extends State<_TroskoviBottomSheet> {
                         flex: 3,
                         child: V3InputUtils.numberField(
                           controller: _ctrls[s.$1]!,
-                          label: _FinTr.tr('dodajDots'),
+                          hint: _FinTr.tr('dodajDots'),
                           suffixText: 'din',
+                          isDense: true,
                         ),
                       ),
                     ],
