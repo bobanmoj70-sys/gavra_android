@@ -61,6 +61,9 @@ class _V3IzvestajData {
   final double prihodGodina;
   final double trosakGodina;
   final int voznjiGodina;
+  final double prosekPrihodDan;
+  final double prosekTrosakDan;
+  final int radnihDanaGodina;
   final Map<String, double> troskoviPoKategoriji;
   final String danasPeriod;
   final String nedeljaPeriod;
@@ -82,6 +85,9 @@ class _V3IzvestajData {
     required this.prihodGodina,
     required this.trosakGodina,
     required this.voznjiGodina,
+    required this.prosekPrihodDan,
+    required this.prosekTrosakDan,
+    required this.radnihDanaGodina,
     required this.troskoviPoKategoriji,
     required this.danasPeriod,
     required this.nedeljaPeriod,
@@ -210,6 +216,14 @@ _V3IzvestajData _buildIzvestaj() {
   final danPeriod = V3DanHelper.formatDanMesec(danas);
   final nedeljaPeriod = '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}';
 
+  // Prosek po radnom danu (pon–pet): godišnji zbir (uklj. vikend) ÷ protekli radni dani
+  int radnihDana = 0;
+  for (var d = godStart; !d.isAfter(danas); d = d.add(const Duration(days: 1))) {
+    if (d.weekday >= DateTime.monday && d.weekday <= DateTime.friday) radnihDana++;
+  }
+  final prosekPrihod = radnihDana > 0 ? prihodGod / radnihDana : 0.0;
+  final prosekTrosak = radnihDana > 0 ? trosakGod / radnihDana : 0.0;
+
   return _V3IzvestajData(
     potrazivanjaIznos: potr,
     kreditiIznos: kreditiIznos,
@@ -226,6 +240,9 @@ _V3IzvestajData _buildIzvestaj() {
     prihodGodina: prihodGod,
     trosakGodina: trosakGod,
     voznjiGodina: voznjiGod,
+    prosekPrihodDan: prosekPrihod,
+    prosekTrosakDan: prosekTrosak,
+    radnihDanaGodina: radnihDana,
     troskoviPoKategoriji: poKat,
     danasPeriod: danPeriod,
     nedeljaPeriod: nedeljaPeriod,
@@ -322,6 +339,16 @@ class _V3FinansijeScreenState extends State<V3FinansijeScreen> {
                       troskovi: iz.trosakGodina,
                       voznjiLabel: '${iz.voznjiGodina} ${_FinTr.tr('uplata')}',
                       color: Colors.grey,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildPeriodCard(
+                      icon: '⚖️',
+                      naslov: _FinTr.tr('prosecanRadniDan'),
+                      podnaslov: _FinTr.tr('ponPetOvaGodina'),
+                      prihod: iz.prosekPrihodDan,
+                      troskovi: iz.prosekTrosakDan,
+                      voznjiLabel: '${iz.radnihDanaGodina} ${_FinTr.tr('radnihDana')}',
+                      color: Colors.teal,
                     ),
                     const SizedBox(height: 16),
                     _buildTroskoviDetailsList(iz.troskoviPoKategoriji),
