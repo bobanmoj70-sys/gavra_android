@@ -1380,51 +1380,39 @@ class V3FinansijeService {
         isPoDanu: isPoDanu,
       );
 
-      // Prenesi eventualni višak (kredit) iz prethodnog meseca — ako je
-      // putnik preplatio prošli mesec, taj višak prvo pokriva ovu (prvu)
-      // vožnju novog meseca pre nego što se ona upiše kao dug.
-      final prethodniRed = _findPrethodniRedSaVisakom(
-        putnikId: safePutnikId,
-        godina: datum.year,
-        mesec: datum.month,
-      );
-      final prenetiVisak = prethodniRed != null ? _readVisak(prethodniRed) : 0.0;
-      final preostalaCenaNoviMesec = (cenaVoznje - prenetiVisak) > 0.009 ? cenaVoznje - prenetiVisak : 0.0;
-      final noviVisakNoviMesec = (prenetiVisak - cenaVoznje) > 0.009 ? prenetiVisak - cenaVoznje : 0.0;
-
-      if (prethodniRed != null && prenetiVisak > 0.009) {
-        final prethodniId = (prethodniRed['id'] ?? '').toString();
-        if (prethodniId.isNotEmpty) {
-          final updatedPrethodni = await _repo.updateByIdReturning(prethodniId, {
-            'visak_iznos': 0,
-            'preneti_visak_izlaz': _readPrenetiIzlaz(prethodniRed) + prenetiVisak,
-            'updated_at': V3BelgradeTime.nowIsoUtc(),
-          });
-          V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updatedPrethodni);
-        }
-      }
-
+      // Novi red se prvo upisuje sa punom cenom vožnje i bez prenosa, pa se
+      // tek onda primenjuje preneti višak iz prethodnog meseca kroz
+      // _primeniPrenetiVisakNaPostojeciRed (kreditira cilj pa prazni donora).
+      // Obrnutim redosledom bi unique_violation na insertu (trka sa DB
+      // triggerom koji pravi mesečni red) ostavila ispražnjenog donora bez
+      // kreditiranog cilja — preneti višak bi se tiho izgubio.
       final row = await _repo.insertReturning({
         'naziv': 'Evidencija prevoza ${datum.month}/${datum.year}',
         'kategorija': _masterKategorija(),
         'tip': 'prihod',
         'iznos': 0,
         'putnik_v3_auth_id': safePutnikId,
-        _nenaplaceneVoznjeKey: preostalaCenaNoviMesec > 0.009
-            ? [
-                {
-                  'operativna_id': operativnaId,
-                  'datum': V3BelgradeTime.toIsoDate(datum),
-                  'cena': preostalaCenaNoviMesec,
-                }
-              ]
-            : <Map<String, dynamic>>[],
-        'visak_iznos': noviVisakNoviMesec,
-        'preneti_visak_ulaz': prenetiVisak > 0.009 ? prenetiVisak : 0.0,
+        _nenaplaceneVoznjeKey: [
+          {
+            'operativna_id': operativnaId,
+            'datum': V3BelgradeTime.toIsoDate(datum),
+            'cena': cenaVoznje,
+          }
+        ],
+        'visak_iznos': 0.0,
+        'preneti_visak_ulaz': 0.0,
         'mesec': datum.month,
         'godina': datum.year,
       });
       V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', row);
+
+      await _primeniPrenetiVisakNaPostojeciRed(
+        putnikId: safePutnikId,
+        godina: datum.year,
+        mesec: datum.month,
+        tekuciRed: row,
+        defaultCena: cenaVoznje,
+      );
     }
   }
 
@@ -2002,22 +1990,11 @@ class V3FinansijeService {
         final initialIznos = _getUkupanIznosUplata(<String, dynamic>{_uplateKey: initialUplate});
         final initialNaplatioBy = _getNaplatioBy(<String, dynamic>{_uplateKey: initialUplate});
 
-        // Prenesi eventualni višak iz prethodnog meseca, ako postoji —
-        // uplata se prvo primenjuje na taj preneti višak.
-        final prethodniRed = _findPrethodniRedSaVisakom(putnikId: safePutnikId, godina: godina, mesec: mesec);
-        final prenetiVisak = prethodniRed != null ? _readVisak(prethodniRed) : 0.0;
-        if (prethodniRed != null && prenetiVisak > 0.009) {
-          final prethodniId = (prethodniRed['id'] ?? '').toString();
-          if (prethodniId.isNotEmpty) {
-            final updatedPrethodni = await _repo.updateByIdReturning(prethodniId, {
-              'visak_iznos': 0,
-              'preneti_visak_izlaz': _readPrenetiIzlaz(prethodniRed) + prenetiVisak,
-              'updated_at': V3BelgradeTime.toIsoUtc(now),
-            });
-            V3MasterRealtimeManager.instance.v3UpsertToCache('v3_finansije', updatedPrethodni);
-          }
-        }
-
+        // Novi red se prvo upisuje sa uplatom (kao višak), pa se tek onda
+        // primenjuje preneti višak iz prethodnog meseca kroz
+        // _primeniPrenetiVisakNaPostojeciRed. Isti razlog kao kod pokupljanja:
+        // praznjenje donora pre inserta bi pri unique_violation trci sa
+        // triggerom izgubilo preneti višak.
         row = await _repo.insertReturning({
           'naziv': 'Evidencija prevoza $mesec/$godina',
           'kategorija': _masterKategorija(),
@@ -2027,11 +2004,19 @@ class V3FinansijeService {
           'naplaceno_by': initialNaplatioBy,
           _nenaplaceneVoznjeKey: <Map<String, dynamic>>[],
           _uplateKey: initialUplate,
-          'visak_iznos': cenaVoznje > 0.009 ? (prenetiVisak + iznos) : prenetiVisak,
-          'preneti_visak_ulaz': prenetiVisak > 0.009 ? prenetiVisak : 0.0,
+          'visak_iznos': cenaVoznje > 0.009 ? iznos : 0.0,
+          'preneti_visak_ulaz': 0.0,
           'mesec': mesec,
           'godina': godina,
         });
+
+        row = await _primeniPrenetiVisakNaPostojeciRed(
+          putnikId: safePutnikId,
+          godina: godina,
+          mesec: mesec,
+          tekuciRed: row,
+          defaultCena: cenaVoznje,
+        );
         if (cenaVoznje <= 0.009) {
           debugPrint(
             '[V3FinansijeService] Nova uplata nije pretvorena u visak jer putnik nema postavljenu cenu.',
