@@ -111,6 +111,7 @@ class V3GorivoPotrosnjaPregled {
   final double mesecLitri;
   final double godinaLitri;
   final double dnevniProsekLitri;
+  final double dnevniProsekUplataRsd;
   final int dnevniProsekRadnihDana;
   final String danasPeriod;
   final String nedeljaPeriod;
@@ -121,6 +122,7 @@ class V3GorivoPotrosnjaPregled {
     required this.mesecLitri,
     required this.godinaLitri,
     required this.dnevniProsekLitri,
+    required this.dnevniProsekUplataRsd,
     required this.dnevniProsekRadnihDana,
     required this.danasPeriod,
     required this.nedeljaPeriod,

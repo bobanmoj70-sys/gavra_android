@@ -47,6 +47,12 @@ class V3GorivoRepository {
     return supabase.rpc('v3_gorivo_dnevni_prosek');
   }
 
+  /// Dnevni prosek uplata za gorivo (RSD) po radnim danima — RPC agregat.
+  /// Vraća jedan red: prosek_rsd, radnih_dana, ukupno_rsd.
+  Future<dynamic> selectDnevniProsekUplata() {
+    return supabase.rpc('v3_gorivo_dnevni_prosek_uplata');
+  }
+
   /// Najraniji created_at evidentiranog sipanja/potrošnje (bez inicijalnog importa).
   Future<String?> selectPrviDatumGoriva() async {
     final rows = await supabase
@@ -68,6 +74,22 @@ class V3GorivoRepository {
           .from('v3_gorivo_istorija')
           .select('litri, source, created_at')
           .eq('vrsta', 'potrosnja')
+          .order('created_at', ascending: true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+      all.addAll(rows);
+      if (rows.length < pageSize) break;
+    }
+    return all;
+  }
+
+  /// Fallback za [selectDnevniProsekUplata]: svi redovi uplata, straničeno.
+  Future<List<dynamic>> selectUplateSve({int pageSize = 1000, int maxPages = 30}) async {
+    final all = <dynamic>[];
+    for (var page = 0; page < maxPages; page++) {
+      final rows = await supabase
+          .from('v3_gorivo_istorija')
+          .select('dug_promena')
+          .eq('vrsta', 'uplata')
           .order('created_at', ascending: true)
           .range(page * pageSize, (page + 1) * pageSize - 1);
       all.addAll(rows);

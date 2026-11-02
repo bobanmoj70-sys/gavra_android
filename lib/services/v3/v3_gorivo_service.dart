@@ -382,6 +382,38 @@ class V3GorivoService {
     }
   }
 
+  /// Dnevni prosek uplata za gorivo: ukupne uplate (RSD) ÷ radni dani (pon–pet),
+  /// isti imenilac kao [getDnevniProsek] da bi proseci bili uporedivi.
+  /// RPC agregat; ako funkcija ne postoji/failuje, računa isto u Dart-u.
+  static Future<({double prosekRsd, int radnihDana})> getDnevniProsekUplata() async {
+    try {
+      final res = await _repo.selectDnevniProsekUplata();
+      final rows = res as List;
+      final row = rows.isEmpty ? const <String, dynamic>{} : Map<String, dynamic>.from(rows.first as Map);
+      return (
+        prosekRsd: (row['prosek_rsd'] as num?)?.toDouble() ?? 0,
+        radnihDana: (row['radnih_dana'] as num?)?.toInt() ?? 0,
+      );
+    } catch (_) {
+      try {
+        final prosekLitri = await getDnevniProsek();
+        final rows = await _repo.selectUplateSve();
+        var ukupno = 0.0;
+        for (final r in rows) {
+          final map = Map<String, dynamic>.from(r as Map);
+          ukupno += (map['dug_promena'] as num?)?.toDouble() ?? 0;
+        }
+        return (
+          prosekRsd: prosekLitri.radnihDana == 0 ? 0.0 : ukupno / prosekLitri.radnihDana,
+          radnihDana: prosekLitri.radnihDana,
+        );
+      } catch (e) {
+        debugPrint('[V3GorivoService] getDnevniProsekUplata error: $e');
+        return (prosekRsd: 0.0, radnihDana: 0);
+      }
+    }
+  }
+
   /// Potrošnja danas / operativna nedelja (pon–pet) / tekući mesec / tekuća godina.
   /// Iste granice perioda kao Finansije, sve u Europe/Belgrade.
   static Future<V3GorivoPotrosnjaPregled> getPotrosnjaPregled() async {
@@ -415,6 +447,7 @@ class V3GorivoService {
     double mes = 0;
     double god = 0;
     var prosek = (prosekLitri: 0.0, radnihDana: 0);
+    var prosekUplata = (prosekRsd: 0.0, radnihDana: 0);
 
     try {
       // Četiri server-side SUM-a (bez 1000-row limita i bez greške TZ pri filteru u Dart-u).
@@ -425,12 +458,14 @@ class V3GorivoService {
         sumRange(godStart, godEnd),
       ]);
       final prosekFuture = getDnevniProsek();
+      final prosekUplataFuture = getDnevniProsekUplata();
       final results = await sumsFuture;
       dan = results[0];
       ned = results[1];
       mes = results[2];
       god = results[3];
       prosek = await prosekFuture;
+      prosekUplata = await prosekUplataFuture;
     } catch (e) {
       debugPrint('[V3GorivoService] getPotrosnjaPregled error: $e');
     }
@@ -441,6 +476,7 @@ class V3GorivoService {
       mesecLitri: mes,
       godinaLitri: god,
       dnevniProsekLitri: prosek.prosekLitri,
+      dnevniProsekUplataRsd: prosekUplata.prosekRsd,
       dnevniProsekRadnihDana: prosek.radnihDana,
       danasPeriod: V3DanHelper.formatDanMesec(danas),
       nedeljaPeriod: '${V3DanHelper.formatDanMesec(nedeljaStart)} - ${V3DanHelper.formatDanMesec(nedeljaEnd)}',

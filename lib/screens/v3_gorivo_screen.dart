@@ -1587,15 +1587,28 @@ class _FuelConsumptionPeriodCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _PotrosnjaPeriodTile(
-                        label: _GorTr.tr('dnevniProsek'),
-                        value: '${V3FormatUtils.formatGorivo(data?.dnevniProsekLitri ?? 0)} L',
-                        subtitle: '${data?.dnevniProsekRadnihDana ?? 0} ${_GorTr.tr('radnihDana')}',
-                        color: const Color(0xFF4DB6AC),
-                        isCompact: isCompact,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _PotrosnjaPeriodTile(
+                            label: _GorTr.tr('dnevniProsek'),
+                            value: '${V3FormatUtils.formatGorivo(data?.dnevniProsekLitri ?? 0)} L',
+                            subtitle: '${data?.dnevniProsekRadnihDana ?? 0} ${_GorTr.tr('radnihDana')}',
+                            color: const Color(0xFF4DB6AC),
+                            isCompact: isCompact,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _PotrosnjaPeriodTile(
+                            label: _GorTr.tr('dnevniProsekUplata'),
+                            value: '${V3FormatUtils.formatNovacKratko(data?.dnevniProsekUplataRsd ?? 0)} RSD',
+                            subtitle: '${data?.dnevniProsekRadnihDana ?? 0} ${_GorTr.tr('radnihDana')}',
+                            color: const Color(0xFFFFD54F),
+                            isCompact: isCompact,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
