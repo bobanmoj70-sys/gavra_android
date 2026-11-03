@@ -1631,6 +1631,14 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'zh': '保养里程'
     },
     'trenutno': {'sr': 'Trenutno', 'en': 'Current', 'ru': 'Текущий', 'de': 'Aktuell', 'zh': '当前'},
+    'prosek': {'sr': 'Prosek', 'en': 'Average', 'ru': 'Среднее', 'de': 'Durchschnitt', 'zh': '平均'},
+    'protekloOdServisa': {
+      'sr': 'Proteklo od servisa',
+      'en': 'Since service',
+      'ru': 'С последнего ТО',
+      'de': 'Seit Service',
+      'zh': '距上次保养'
+    },
     'tipGuma': {'sr': 'Tip guma:', 'en': 'Tire type:', 'ru': 'Тип шин:', 'de': 'Reifentyp:', 'zh': '轮胎类型：'},
     'letnje': {'sr': '☀️ Letnje', 'en': '☀️ Summer', 'ru': '☀️ Летние', 'de': '☀️ Sommer', 'zh': '☀️ 夏季'},
     'zimske': {'sr': '❄️ Zimske', 'en': '❄️ Winter', 'ru': '❄️ Зимние', 'de': '❄️ Winter', 'zh': '❄️ 冬季'},

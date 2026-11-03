@@ -387,45 +387,63 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           _SectionDivider(),
 
           // Servisi
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'mali_servis',
             icon: '🔧',
             label: _OdrTr.tr('maliServis'),
-            value: _formatServis(v.maliServisDatum, v.maliServisKm),
+            datum: v.maliServisDatum,
+            km: v.maliServisKm,
             onEdit: () => _editServis(
                 'mali_servis', _OdrTr.tr('maliServis'), v.maliServisDatum, v.maliServisKm, v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'veliki_servis',
             icon: '🛠️',
             label: _OdrTr.tr('velikiServis'),
-            value: _formatServis(v.velikiServisDatum, v.velikiServisKm),
+            datum: v.velikiServisDatum,
+            km: v.velikiServisKm,
             onEdit: () => _editServis('veliki_servis', _OdrTr.tr('velikiServis'), v.velikiServisDatum, v.velikiServisKm,
                 v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'alternator',
             icon: '⚡',
             label: _OdrTr.tr('alternator'),
-            value: _formatServis(v.alternatorDatum, v.alternatorKm),
+            datum: v.alternatorDatum,
+            km: v.alternatorKm,
             onEdit: () => _editServis(
                 'alternator', _OdrTr.tr('alternator'), v.alternatorDatum, v.alternatorKm, v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'akumulator',
             icon: '🔋',
             label: _OdrTr.tr('akumulator'),
-            value: _formatServis(v.akumulatorDatum, v.akumulatorKm),
+            datum: v.akumulatorDatum,
+            km: v.akumulatorKm,
             onEdit: () => _editServis(
                 'akumulator', _OdrTr.tr('akumulator'), v.akumulatorDatum, v.akumulatorKm, v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'plocice_prednje',
             icon: '🛑',
             label: _OdrTr.tr('plocicePrednje'),
-            value: _formatServis(v.plocicePrednjeDatum, v.plocicePrednjeKm),
+            datum: v.plocicePrednjeDatum,
+            km: v.plocicePrednjeKm,
             onEdit: () => _editServis('plocice_prednje', _OdrTr.tr('plocicePrednje'), v.plocicePrednjeDatum,
                 v.plocicePrednjeKm, v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'plocice_zadnje',
             icon: '🛑',
             label: _OdrTr.tr('plociceZadnje'),
-            value: _formatServis(v.plociceZadnjeDatum, v.plociceZadnjeKm),
+            datum: v.plociceZadnjeDatum,
+            km: v.plociceZadnjeKm,
             onEdit: () => _editServis('plocice_zadnje', _OdrTr.tr('plociceZadnje'), v.plociceZadnjeDatum,
                 v.plociceZadnjeKm, v.trenutnaKm.toInt()),
           ),
@@ -439,19 +457,27 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
           _SectionDivider(),
 
           // Gume
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'gume_prednje',
             icon: '🛞',
             label: _OdrTr.tr('gumePrednje'),
+            datum: v.gumePrednjeDatum,
+            km: v.gumePrednjeKm,
             value: v.gumePrednjeOpis ?? '-',
-            subtitle: _formatGumeSubtitle(v.gumePrednjeDatum, v.gumePrednjeKm),
+            subtitlePrefix: _formatGumeSubtitle(v.gumePrednjeDatum, v.gumePrednjeKm),
             onEdit: () =>
                 _editGume('prednje', v.gumePrednjeDatum, v.gumePrednjeOpis, v.gumePrednjeKm, v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'gume_zadnje',
             icon: '🛞',
             label: _OdrTr.tr('gumeZadnje'),
+            datum: v.gumeZadnjeDatum,
+            km: v.gumeZadnjeKm,
             value: v.gumeZadnjeOpis ?? '-',
-            subtitle: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
+            subtitlePrefix: _formatGumeSubtitle(v.gumeZadnjeDatum, v.gumeZadnjeKm),
             onEdit: () =>
                 _editGume('zadnje', v.gumeZadnjeDatum, v.gumeZadnjeOpis, v.gumeZadnjeKm, v.trenutnaKm.toInt()),
           ),
@@ -708,6 +734,92 @@ class _EditableField extends StatelessWidget {
   }
 }
 
+// ─── Servis sa prosekom ──────────────────────────────────────────────────────
+
+class _ServisProsekField extends StatefulWidget {
+  final V3Vozilo vozilo;
+  final String tip;
+  final String icon;
+  final String label;
+  final DateTime? datum;
+  final int? km;
+  final String? value;
+  final String? subtitlePrefix;
+  final VoidCallback onEdit;
+
+  const _ServisProsekField({
+    required this.vozilo,
+    required this.tip,
+    required this.icon,
+    required this.label,
+    required this.datum,
+    required this.km,
+    required this.onEdit,
+    this.value,
+    this.subtitlePrefix,
+  });
+
+  @override
+  State<_ServisProsekField> createState() => _ServisProsekFieldState();
+}
+
+class _ServisProsekFieldState extends State<_ServisProsekField> {
+  late Future<V3ServisProsek?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _fetch();
+  }
+
+  @override
+  void didUpdateWidget(_ServisProsekField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final o = oldWidget;
+    final n = widget;
+    if (o.vozilo.id != n.vozilo.id ||
+        o.tip != n.tip ||
+        o.datum != n.datum ||
+        o.km != n.km ||
+        o.vozilo.trenutnaKm != n.vozilo.trenutnaKm) {
+      _future = _fetch();
+    }
+  }
+
+  Future<V3ServisProsek?> _fetch() =>
+      V3VoziloService.getServisProsek(widget.vozilo.id, widget.tip, trenutnaKm: widget.vozilo.trenutnaKm);
+
+  String? _subtitle(V3ServisProsek? p) {
+    final lines = <String>[if (widget.subtitlePrefix != null) widget.subtitlePrefix!];
+    if (p == null) return lines.isEmpty ? null : lines.join('\n');
+    final odServisa = <String>[
+      if (p.danaOdPoslednjeg != null) '${p.danaOdPoslednjeg} ${_OdrTr.tr('dana')}',
+      if (p.kmOdPoslednjeg != null) '${V3FormatUtils.formatBroj(p.kmOdPoslednjeg!)} km',
+    ];
+    if (odServisa.isNotEmpty) lines.add('${_OdrTr.tr('protekloOdServisa')}: ${odServisa.join(' · ')}');
+    final prosek = <String>[
+      if (p.prosekDana != null) '~${p.prosekDana} ${_OdrTr.tr('dana')}',
+      if (p.prosekKm != null) '~${V3FormatUtils.formatBroj(p.prosekKm!)} km',
+    ];
+    if (prosek.isNotEmpty) lines.add('${_OdrTr.tr('prosek')}: ${prosek.join(' · ')}');
+    return lines.isEmpty ? null : lines.join('\n');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<V3ServisProsek?>(
+      future: _future,
+      builder: (context, snapshot) => _EditableField(
+        icon: widget.icon,
+        label: widget.label,
+        value: widget.value ?? _formatServis(widget.datum, widget.km),
+        subtitle: _subtitle(snapshot.data),
+        onEdit: widget.onEdit,
+      ),
+    );
+  }
+}
+
 // ─── Text Dialog ─────────────────────────────────────────────────────────────
 
 class _TextDialog extends StatefulWidget {
@@ -890,6 +1002,12 @@ class _ServisSheetState extends State<_ServisSheet> {
                     };
                     try {
                       await V3VoziloService.updateKolskaKnjiga(widget.voziloId, data);
+                      final stariIso = widget.datum != null ? V3BelgradeTime.toIsoDate(widget.datum!) : null;
+                      final noviIso = _datum != null ? V3BelgradeTime.toIsoDate(_datum!) : null;
+                      if (noviIso != stariIso || kmValue != widget.km) {
+                        await V3VoziloService.logServisIstorija(
+                            voziloId: widget.voziloId, tip: widget.prefix, datum: _datum, km: kmValue);
+                      }
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       V3UIUtils.showSaveSuccess(context);
@@ -1088,6 +1206,15 @@ class _GumeSheetState extends State<_GumeSheet> {
                     };
                     try {
                       await V3VoziloService.updateKolskaKnjiga(widget.voziloId, data);
+                      final stariIso = widget.datum != null ? V3BelgradeTime.toIsoDate(widget.datum!) : null;
+                      final noviIso = _datum != null ? V3BelgradeTime.toIsoDate(_datum!) : null;
+                      if (noviIso != stariIso || kmValue != widget.km) {
+                        await V3VoziloService.logServisIstorija(
+                            voziloId: widget.voziloId,
+                            tip: 'gume_${widget.pozicija}',
+                            datum: _datum,
+                            km: kmValue);
+                      }
                       if (!context.mounted) return;
                       Navigator.pop(context);
                       V3UIUtils.showSaveSuccess(context);

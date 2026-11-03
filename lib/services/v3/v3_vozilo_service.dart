@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/v3_vozilo.dart';
+import '../../utils/v3_belgrade_time.dart';
 import '../realtime/v3_master_realtime_manager.dart';
 import 'repositories/v3_vozilo_repository.dart';
 
@@ -59,6 +60,70 @@ class V3VoziloService {
     } catch (e) {
       debugPrint('[V3VoziloService] updateKolskaKnjiga error: $e');
       rethrow;
+    }
+  }
+
+  /// Upisuje stavku u istoriju servisa (v3_servis_istorija).
+  /// Ne baca grešku — istorija je pomoćna i ne sme da blokira čuvanje servisa.
+  static Future<void> logServisIstorija({
+    required String voziloId,
+    required String tip,
+    required DateTime? datum,
+    required int? km,
+  }) async {
+    if (datum == null) return;
+    try {
+      await _repo.insertServisIstorija({
+        'vozilo_id': voziloId,
+        'tip': tip,
+        'datum': V3BelgradeTime.toIsoDate(datum),
+        if (km != null) 'km': km,
+      });
+    } catch (e) {
+      debugPrint('[V3VoziloService] logServisIstorija error: $e');
+    }
+  }
+
+  /// Računa prosečan interval servisa (u danima i km) iz v3_servis_istorija,
+  /// plus proteklo vreme/km od poslednjeg servisa.
+  static Future<V3ServisProsek?> getServisProsek(String voziloId, String tip, {double? trenutnaKm}) async {
+    try {
+      final rows = await _repo.fetchServisIstorija(voziloId, tip);
+      final entries = <({DateTime datum, int? km})>[];
+      for (final r in rows) {
+        final d = V3BelgradeTime.parseDatum(r['datum']?.toString());
+        if (d == null) continue;
+        final km = (r['km'] as num?)?.toInt();
+        if (entries.isEmpty || entries.last.datum != d || entries.last.km != km) {
+          entries.add((datum: d, km: km));
+        }
+      }
+      if (entries.isEmpty) return null;
+
+      final last = entries.last;
+      final danaOd = V3BelgradeTime.now().difference(last.datum).inDays;
+      final kmOd =
+          (trenutnaKm != null && last.km != null) ? (trenutnaKm - last.km!).round() : null;
+
+      final dani = <int>[];
+      final kilometri = <int>[];
+      for (var i = 1; i < entries.length; i++) {
+        final dd = entries[i].datum.difference(entries[i - 1].datum).inDays;
+        if (dd > 0) dani.add(dd);
+        final a = entries[i - 1].km;
+        final b = entries[i].km;
+        if (a != null && b != null && b > a) kilometri.add(b - a);
+      }
+
+      return V3ServisProsek(
+        prosekDana: dani.isEmpty ? null : (dani.reduce((a, b) => a + b) / dani.length).round(),
+        prosekKm: kilometri.isEmpty ? null : (kilometri.reduce((a, b) => a + b) / kilometri.length).round(),
+        danaOdPoslednjeg: danaOd >= 0 ? danaOd : null,
+        kmOdPoslednjeg: kmOd != null && kmOd >= 0 ? kmOd : null,
+      );
+    } catch (e) {
+      debugPrint('[V3VoziloService] getServisProsek error: $e');
+      return null;
     }
   }
 }

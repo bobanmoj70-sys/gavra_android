@@ -176,3 +176,18 @@ class V3Vozilo {
     };
   }
 }
+
+/// Prosečni intervali između servisa, računati iz v3_servis_istorija.
+class V3ServisProsek {
+  final int? prosekDana;
+  final int? prosekKm;
+  final int? danaOdPoslednjeg;
+  final int? kmOdPoslednjeg;
+
+  const V3ServisProsek({
+    this.prosekDana,
+    this.prosekKm,
+    this.danaOdPoslednjeg,
+    this.kmOdPoslednjeg,
+  });
+}
