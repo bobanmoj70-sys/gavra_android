@@ -41,7 +41,7 @@ class V3VoziloRepository {
         .select('datum, km')
         .eq('vozilo_id', voziloId)
         .eq('tip', tip)
-        .order('datum')
-        .order('created_at');
+        .order('datum', ascending: true)
+        .order('created_at', ascending: true);
   }
 }

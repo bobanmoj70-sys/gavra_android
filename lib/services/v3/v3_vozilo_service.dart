@@ -133,6 +133,7 @@ class V3VoziloService {
         }
       }
       if (entries.isEmpty) return null;
+      entries.sort((a, b) => a.datum.compareTo(b.datum));
 
       final n = V3BelgradeTime.now();
       final last = entries.last;
