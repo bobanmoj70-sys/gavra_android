@@ -66,6 +66,12 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   // zahteva. Sprečava da brzi uzastopni klikovi (2-3 puta zaredom) kreiraju
   // više zahteva pre nego što prvi stigne da se upiše i osveži u kešu.
   final Set<String> _pendingActionContexts = {};
+  // Aktivne ponude oslobođenih mesta (zahtevi status='odbijeno' + mesto_ponuda)
+  // — prikazuju se kao banner sa Prihvati/Ne dugmadima, da putnik vidi ponudu
+  // i kad push notifikacija ne stigne ili tapne telo notifikacije.
+  List<Map<String, dynamic>> _aktivnePonude = [];
+  final Set<String> _pendingPonudaZahtevi = {};
+  Timer? _ponudaRefreshTimer;
   Map<String, V3WeatherSnapshot> _weatherByGrad = const {};
   Timer? _weatherTimer;
   Timer? _weatherRetryTimer;
@@ -196,6 +202,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     _weatherTimer = Timer.periodic(const Duration(minutes: 15), (_) {
       if (mounted) _refreshWeather();
     });
+    // Periodično osveži prikaz preostalog vremena aktivnih ponuda mesta.
+    _ponudaRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _aktivnePonude.isNotEmpty) _refresh();
+    });
     // Pratimo promjene cache-a
     V3StreamUtils.subscribe<int>(
       key: 'putnik_profil_cache',
@@ -218,6 +228,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     V3StreamUtils.cancelTimer(_actionDebounceKey);
     _weatherTimer?.cancel();
     _weatherRetryTimer?.cancel();
+    _ponudaRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -259,6 +270,16 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     final dani = V3DanHelper.workdayAbbrs.toList(); // pon-pet (radni dani)
     final anchor = V3DanHelper.schedulingWeekAnchor();
     final rm = V3MasterRealtimeManager.instance;
+    // Aktivne ponude oslobođenih mesta za ovog putnika (odbijeni zahtevi sa
+    // mesto_ponuda flagom) — prikazuju se kao banner van rasporeda.
+    final ponude = rm.zahteviCache.values
+        .where((z) =>
+            (z['created_by']?.toString() ?? '') == putnikId &&
+            V3StatusPolicy.isRejected(z['status']?.toString()) &&
+            z['mesto_ponuda'] == true)
+        .map((z) => Map<String, dynamic>.from(z))
+        .toList()
+      ..sort((a, b) => (a['mesto_ponuda_at']?.toString() ?? '').compareTo(b['mesto_ponuda_at']?.toString() ?? ''));
     final newMap = <String, List<_ZahtevInfo>>{};
     for (final dan in dani) {
       final datumIso = V3DanHelper.datumIsoZaDanAbbrUTekucojSedmici(dan, anchor: anchor);
@@ -398,6 +419,7 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
         _rasporedMap
           ..clear()
           ..addAll(newMap);
+        _aktivnePonude = ponude;
       });
     }
   }
@@ -984,6 +1006,151 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
   }
 
   // _showAlternativaDialog obrisan jer alternativa ide samo preko push notifikacije.
+  // ─── MESTO OSLOBOĐENO (in-app ponuda) ────────────────────────────
+  int? _preostaloMinutaZaPonudu(String? mestoPonudaAt) {
+    final offeredAt = V3BelgradeTime.parseTs(mestoPonudaAt);
+    if (offeredAt == null) return null;
+    final elapsed = DateTime.now().difference(offeredAt);
+    final remaining = 10 - (elapsed.inSeconds / 60).ceil();
+    return remaining.clamp(0, 10);
+  }
+
+  String _formatDatumKratko(String? datumIso) {
+    final datum = V3BelgradeTime.parseDatum(datumIso);
+    if (datum == null) return '';
+    return '${datum.day.toString().padLeft(2, '0')}.${datum.month.toString().padLeft(2, '0')}.';
+  }
+
+  Future<void> _odgovoriNaPonudu(Map<String, dynamic> zahtev, {required bool prihvati}) async {
+    final zahtevId = zahtev['id']?.toString() ?? '';
+    if (zahtevId.isEmpty || _pendingPonudaZahtevi.contains(zahtevId)) return;
+    _pendingPonudaZahtevi.add(zahtevId);
+    try {
+      final response = await supabase.functions.invoke(
+        'v3-alternativa-action',
+        body: {
+          'zahtev_id': zahtevId,
+          'action': prihvati ? 'accept_pre' : 'reject',
+        },
+      );
+      final data = response.data;
+      final ok = data is Map && data['ok'] == true;
+      final reason = data is Map ? (data['reason'] ?? '').toString() : '';
+      if (!mounted) return;
+      if (ok) {
+        if (prihvati) {
+          V3AppSnackBar.success(context, V3PutnikProfilMessages.seatAccepted);
+        } else {
+          V3AppSnackBar.info(context, V3PutnikProfilMessages.seatOfferDeclined);
+        }
+      } else if (reason == 'offer_expired') {
+        V3AppSnackBar.info(context, V3PutnikProfilMessages.seatOfferExpired);
+      } else if (reason == 'selected_slot_full' || reason == 'no_capacity_slot') {
+        V3AppSnackBar.warning(context, V3PutnikProfilMessages.seatTaken);
+      } else {
+        V3AppSnackBar.warning(context, V3PutnikProfilMessages.seatOfferError);
+      }
+    } catch (e) {
+      V3ErrorUtils.asyncError(this, context, e);
+    } finally {
+      _pendingPonudaZahtevi.remove(zahtevId);
+    }
+  }
+
+  Widget _buildMestoPonudaCard() {
+    return V3ContainerUtils.styledContainer(
+      padding: const EdgeInsets.all(14),
+      backgroundColor: Colors.green.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.55), width: 1.2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.event_available, color: Colors.greenAccent, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _tr('mestoOslobodjenoNaslov'),
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          ..._aktivnePonude.map(_buildMestoPonudaRow),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMestoPonudaRow(Map<String, dynamic> zahtev) {
+    final zahtevId = zahtev['id']?.toString() ?? '';
+    final grad = (zahtev['grad']?.toString() ?? '').toUpperCase();
+    final gradLabel = grad == 'VS' ? _tr('vrsac') : _tr('belaCrkva');
+    final vreme = _normalizeValidTime(zahtev['trazeni_polazak_at']?.toString()) ?? '—';
+    final datum = _formatDatumKratko(zahtev['datum']?.toString());
+    final preostalo = _preostaloMinutaZaPonudu(zahtev['mesto_ponuda_at']?.toString());
+    final busy = _pendingPonudaZahtevi.contains(zahtevId);
+    final opis = [if (datum.isNotEmpty) datum, gradLabel, vreme].join(' • ');
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: V3ContainerUtils.styledContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        backgroundColor: Colors.black.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              opis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            if (preostalo != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                _tr('mestoPonudaIstice').replaceAll('%s', '$preostalo'),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: V3StyleHelper.whiteAlpha65, fontSize: 11),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: V3ButtonUtils.outlinedButton(
+                    onPressed: busy ? null : () => _odgovoriNaPonudu(zahtev, prihvati: true),
+                    text: _tr('mestoPrihvati'),
+                    icon: Icons.check_circle_outline,
+                    borderColor: Colors.greenAccent,
+                    foregroundColor: Colors.greenAccent,
+                    fontSize: 13,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: V3ButtonUtils.outlinedButton(
+                    onPressed: busy ? null : () => _odgovoriNaPonudu(zahtev, prihvati: false),
+                    text: _tr('mestoOdbij'),
+                    icon: Icons.cancel_outlined,
+                    borderColor: Colors.redAccent,
+                    foregroundColor: Colors.redAccent,
+                    fontSize: 13,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ─── STATUS WIDGET ───────────────────────────────────────────────
   // ─────────────────────────────────────────────────────────────────
   // BUILD
@@ -1076,6 +1243,10 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
                               if (putnikId != null && putnikId.isNotEmpty) ...[
                                 const SizedBox(height: 10),
                                 V3VremeDolaskaWidget(putnikId: putnikId),
+                              ],
+                              if (_aktivnePonude.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                _buildMestoPonudaCard(),
                               ],
                               const SizedBox(height: 16),
                               _buildStatistikaCard(

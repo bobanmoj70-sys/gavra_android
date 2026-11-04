@@ -142,6 +142,46 @@ class V3PutnikProfilMessages {
         _ => '📋 Žiro račun je kopiran.',
       };
 
+  static String get seatAccepted => switch (_lang) {
+        'en' => '✅ Seat confirmed.',
+        'ru' => '✅ Место подтверждено.',
+        'de' => '✅ Platz bestätigt.',
+        'zh' => '✅ 座位已确认。',
+        _ => '✅ Mesto je prihvaćeno.',
+      };
+
+  static String get seatOfferDeclined => switch (_lang) {
+        'en' => 'Seat offer declined.',
+        'ru' => 'Предложение места отклонено.',
+        'de' => 'Platzangebot abgelehnt.',
+        'zh' => '已拒绝座位。',
+        _ => 'Ponuda mesta je odbijena.',
+      };
+
+  static String get seatOfferExpired => switch (_lang) {
+        'en' => '⚠️ The offer expired — the seat was offered to the next passenger.',
+        'ru' => '⚠️ Срок предложения истёк — место предложено следующему пассажиру.',
+        'de' => '⚠️ Das Angebot ist abgelaufen — der Platz wurde dem nächsten Fahrgast angeboten.',
+        'zh' => '⚠️ 优惠已过期 — 座位已提供给下一位乘客。',
+        _ => '⚠️ Ponuda je istekla — mesto je ponuđeno sledećem putniku.',
+      };
+
+  static String get seatTaken => switch (_lang) {
+        'en' => '⚠️ The seat was taken in the meantime.',
+        'ru' => '⚠️ Место в это время уже заняли.',
+        'de' => '⚠️ Der Platz wurde inzwischen vergeben.',
+        'zh' => '⚠️ 该座位已被占用。',
+        _ => '⚠️ Mesto je u međuvremenu zauzeto.',
+      };
+
+  static String get seatOfferError => switch (_lang) {
+        'en' => '⚠️ The action failed. Please try again.',
+        'ru' => '⚠️ Действие не выполнено. Попробуйте снова.',
+        'de' => '⚠️ Die Aktion ist fehlgeschlagen. Bitte versuche es erneut.',
+        'zh' => '⚠️ 操作失败。请重试。',
+        _ => '⚠️ Akcija nije uspela. Pokušajte ponovo.',
+      };
+
   static String schedulingLocked(String vreme, String unlockStr) => switch (_lang) {
         'en' =>
           '🔒 Scheduling for $vreme is closed.\nNew scheduling for next week opens on Saturday at 03:00 ($unlockStr).',

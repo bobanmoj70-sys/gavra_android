@@ -587,6 +587,22 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
     'danSubota': {'sr': 'Subota', 'en': 'Saturday', 'ru': 'Суббота', 'de': 'Samstag', 'zh': '星期六'},
     'danNedelja': {'sr': 'Nedelja', 'en': 'Sunday', 'ru': 'Воскресенье', 'de': 'Sonntag', 'zh': '星期日'},
     'jezik': {'sr': 'Jezik', 'en': 'Language', 'ru': 'Язык', 'de': 'Sprache', 'zh': '语言'},
+    'mestoOslobodjenoNaslov': {
+      'sr': '🎉 Oslobodilo se mesto',
+      'en': '🎉 A seat opened up',
+      'ru': '🎉 Освободилось место',
+      'de': '🎉 Ein Platz ist frei geworden',
+      'zh': '🎉 有空位了',
+    },
+    'mestoPrihvati': {'sr': 'Prihvati', 'en': 'Accept', 'ru': 'Принять', 'de': 'Annehmen', 'zh': '接受'},
+    'mestoOdbij': {'sr': 'Ne', 'en': 'No', 'ru': 'Нет', 'de': 'Nein', 'zh': '拒绝'},
+    'mestoPonudaIstice': {
+      'sr': 'Ponuda važi još ~%s min',
+      'en': 'Offer valid ~%s min',
+      'ru': 'Предложение действует ещё ~%s мин',
+      'de': 'Angebot gültig ~%s Min.',
+      'zh': '优惠有效期约 %s 分钟',
+    },
   },
   'putnikStatistikaScreen': {
     'detaljneStatistike': {

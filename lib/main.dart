@@ -1051,9 +1051,14 @@ Future<void> _handleFcmLaunch(String type, Map<String, String> data) async {
 
   switch (type) {
     case 'v3_alternativa':
-      // Tap na telo samo otvara app. Akcije idu kroz lokalni handler / iOS native bridge.
-      debugPrint('[FCM launch] v3_alternativa body tap — bez ponovnog bannera');
-      return;
+      {
+        // Tap na telo otvara putnik profil — ponuda oslobođenog mesta je
+        // vidljiva i u app-u (banner sa Prihvati/Ne dugmadima).
+        final putnikId = (data['v3_auth_id'] ?? data['recipient_id'] ?? '').trim();
+        final navPayload = putnikId.isNotEmpty ? 'zahtev_status:$putnikId' : 'zahtev_status';
+        await _openPutnikProfilFromNotification(navPayload);
+        return;
+      }
 
     case 'zahtev_status':
     case 'v3_zahtev_odobren':
@@ -1337,12 +1342,16 @@ void onNotificationTap(NotificationResponse response) async {
       case 'v3_zahtev_odbijen':
       case 'v3_otkazano':
       case 'putnik_eta_start':
+      case 'v3_alternativa':
         await _handleFcmLaunch(decodedType, decodedData);
         return;
     }
 
-    // Lokalna alternativa već ima action dugmad. Tap na telo samo otvara app,
-    // ne sme da prikaže isti banner ponovo.
+    // Lokalna alternativa/mesto ponuda nosi pipe payload — tap na telo otvara
+    // putnik profil gde je ponuda vidljiva i u app-u.
+    if (payload.contains('|')) {
+      await _handleFcmLaunch('v3_alternativa', decodedData);
+    }
     return;
   }
 
