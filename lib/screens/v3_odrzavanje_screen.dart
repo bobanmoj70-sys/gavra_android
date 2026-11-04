@@ -145,6 +145,24 @@ Widget _selectChip(String label, {required bool selected, required VoidCallback 
   );
 }
 
+Widget _registracijaCounter(V3Vozilo v) {
+  if (v.registracijaVaziDo == null) return const SizedBox(height: 14);
+  final istekla = v.registracijaIstekla;
+  final dana = v.danaDoIstekaRegistracije;
+  final color = istekla
+      ? Colors.red.shade300
+      : dana <= 30
+          ? Colors.orange.shade300
+          : Colors.white70;
+  return SizedBox(
+    height: 14,
+    child: Text(
+      istekla ? _OdrTr.tr('istekla') : '$dana ${_OdrTr.tr('dana')}',
+      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color, height: 1),
+    ),
+  );
+}
+
 Widget _unosModeRow(bool ispravka, ValueChanged<bool> onChanged) {
   return Row(
     children: [
@@ -311,6 +329,8 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
                     ),
                     const SizedBox(height: 3),
                     _buildTablica(v.registracija, selected: isSel),
+                    const SizedBox(height: 2),
+                    _registracijaCounter(v),
                   ],
                 ),
               ),
@@ -828,11 +848,6 @@ class _ServisProsekFieldState extends State<_ServisProsekField> {
   String? _subtitle(V3ServisProsek? p) {
     final lines = <String>[if (widget.subtitlePrefix != null) widget.subtitlePrefix!];
     if (p == null) return lines.isEmpty ? null : lines.join('\n');
-    final odServisa = <String>[
-      if (p.danaOdPoslednjeg != null) '${p.danaOdPoslednjeg} ${_OdrTr.tr('dana')}',
-      if (p.kmOdPoslednjeg != null) '${V3FormatUtils.formatBroj(p.kmOdPoslednjeg!)} km',
-    ];
-    if (odServisa.isNotEmpty) lines.add('${_OdrTr.tr('protekloOdServisa')}: ${odServisa.join(' · ')}');
     final prosek = <String>[
       if (p.prosekDana != null) '~${p.prosekDana} ${_OdrTr.tr('dana')}',
       if (p.prosekKm != null) '~${V3FormatUtils.formatBroj(p.prosekKm!)} km',
