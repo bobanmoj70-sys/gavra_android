@@ -1,5 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'dart:math';
 
+import 'package:flutter/material.dart';
+
+import '../../services/realtime/v3_master_realtime_manager.dart';
+import '../../services/v3/v3_finansije_service.dart';
 import '../../services/v3/v3_uplata_pazara_service.dart';
 import '../../services/v3/v3_vozac_service.dart';
 import '../../services/v3_locale_manager.dart';
@@ -20,6 +25,7 @@ class _PopupTr {
 class V3VozacPazarPopup extends StatefulWidget {
   final DateTime datum;
   final double ukupno;
+  final double predao;
   final bool naknadnaNaplataDetektovana;
   final VoidCallback onSaved;
 
@@ -27,6 +33,7 @@ class V3VozacPazarPopup extends StatefulWidget {
     super.key,
     required this.datum,
     required this.ukupno,
+    this.predao = 0,
     this.naknadnaNaplataDetektovana = false,
     required this.onSaved,
   });
@@ -37,7 +44,38 @@ class V3VozacPazarPopup extends StatefulWidget {
 
 class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
   final _iznosController = TextEditingController();
+  StreamSubscription<V3PazarPromptEvent>? _eventSub;
   bool _isSaving = false;
+  late double _ukupno = widget.ukupno;
+  late double _vecPredato = widget.predao;
+  late bool _naknadna = widget.naknadnaNaplataDetektovana;
+
+  @override
+  void initState() {
+    super.initState();
+    // Dok je popup otvoren osvezava prikazane iznose kad stigne noviji event za
+    // isti dan (npr. naplata pristigla dok vozac kuca iznos).
+    _eventSub = V3MasterRealtimeManager.instance.pazarPromptStream.listen((event) {
+      if (event.datum.year != widget.datum.year ||
+          event.datum.month != widget.datum.month ||
+          event.datum.day != widget.datum.day) {
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        if (event.ukupno > _ukupno) _ukupno = event.ukupno;
+        _vecPredato = event.predao;
+        _naknadna = _naknadna || event.naknadnaNaplataDetektovana;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _eventSub?.cancel();
+    _iznosController.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     if (_isSaving) return;
@@ -52,20 +90,22 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
 
     setState(() => _isSaving = true);
     try {
+      // Svezi ukupno u trenutku cuvanja — naplata moze stici dok je popup otvoren.
+      final pazarMap = V3FinansijeService.getPazarPoVozacuZaDan(widget.datum);
+      final svezeUkupno = max(_ukupno, pazarMap[vozacId] ?? 0.0);
       await V3UplataPazaraService.sacuvajDnevnuUplatu(
         vozacId: vozacId,
         datum: widget.datum,
-        predao: predaoVal,
-        ukupno: widget.ukupno,
+        predao: _vecPredato + predaoVal,
+        ukupno: svezeUkupno,
         zahtevanUnos: false, // gasimo popup jer je ukucao!
-        saberiSaPostojecimPredao: false,
       );
       final noviPredao = await V3UplataPazaraService.getPredaoZaDan(
         vozacId: vozacId,
         datum: widget.datum,
       );
       if (!mounted) return;
-      final ukupnoPredato = (noviPredao ?? predaoVal).toStringAsFixed(0);
+      final ukupnoPredato = (noviPredao ?? (_vecPredato + predaoVal)).toStringAsFixed(0);
       V3AppSnackBar.success(
         context,
         _PopupTr.tr('pazarEvidentiranSaUkupnim').replaceAll('{iznos}', ukupnoPredato),
@@ -97,7 +137,21 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
                 style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              if (widget.naknadnaNaplataDetektovana) ...[
+              const SizedBox(height: 12),
+              Text(
+                _PopupTr.tr('ukupanPazar').replaceAll('{iznos}', _ukupno.toStringAsFixed(0)),
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 16, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+              if (_vecPredato > 0) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _PopupTr.tr('vecPredato').replaceAll('{iznos}', _vecPredato.toStringAsFixed(0)),
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (_naknadna) ...[
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
@@ -121,7 +175,7 @@ class _V3VozacPazarPopupState extends State<V3VozacPazarPopup> {
               const SizedBox(height: 24),
               V3InputUtils.numberField(
                 controller: _iznosController,
-                label: _PopupTr.tr('unesitePredatIznos'),
+                label: _vecPredato > 0 ? _PopupTr.tr('unesiteDodatniIznos') : _PopupTr.tr('unesitePredatIznos'),
                 suffixText: 'din',
                 onChanged: (_) => setState(() {}),
               ),

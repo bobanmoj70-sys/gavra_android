@@ -1186,6 +1186,27 @@ const Map<String, Map<String, Map<String, String>>> _screensB = {
           'Nach dem vorherigen Eintrag wurde eine zusätzliche Zahlung erkannt. Bitte geben Sie die Einnahmen mit dem aktualisierten Betrag erneut ein.',
       'zh': '检测到在上次录入后有新增收款。请使用更新后的金额重新录入收入。'
     },
+    'ukupanPazar': {
+      'sr': 'Ukupan pazar: {iznos} din',
+      'en': 'Total earnings: {iznos} RSD',
+      'ru': 'Общая выручка: {iznos} дин',
+      'de': 'Gesamteinnahmen: {iznos} RSD',
+      'zh': '总收入：{iznos} 第纳尔'
+    },
+    'vecPredato': {
+      'sr': 'Već predato: {iznos} din',
+      'en': 'Already handed over: {iznos} RSD',
+      'ru': 'Уже сдано: {iznos} дин',
+      'de': 'Bereits übergeben: {iznos} RSD',
+      'zh': '已交：{iznos} 第纳尔'
+    },
+    'unesiteDodatniIznos': {
+      'sr': 'Unesite dodatni iznos koji predajete',
+      'en': 'Enter the additional amount you are handing over',
+      'ru': 'Введите дополнительную сумму, которую сдаёте',
+      'de': 'Geben Sie den zusätzlichen Betrag ein, den Sie übergeben',
+      'zh': '请输入您要补交的额外金额'
+    },
   },
   'vozacScreen': {
     'kombiNijeDodeljen': {
