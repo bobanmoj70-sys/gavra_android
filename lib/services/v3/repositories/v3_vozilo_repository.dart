@@ -17,6 +17,24 @@ class V3VoziloRepository {
     await supabase.from('v3_servis_istorija').insert(data);
   }
 
+  /// Ažurira redove istorije za (vozilo, tip, stari datum).
+  /// Vraća true ako je bar jedan red izmenjen.
+  Future<bool> updateServisIstorija(
+    String voziloId,
+    String tip,
+    String stariDatumIso,
+    Map<String, dynamic> values,
+  ) async {
+    final res = await supabase
+        .from('v3_servis_istorija')
+        .update(values)
+        .eq('vozilo_id', voziloId)
+        .eq('tip', tip)
+        .eq('datum', stariDatumIso)
+        .select();
+    return res.isNotEmpty;
+  }
+
   Future<List<Map<String, dynamic>>> fetchServisIstorija(String voziloId, String tip) {
     return supabase
         .from('v3_servis_istorija')

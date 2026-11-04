@@ -122,6 +122,39 @@ String? _formatGumeSubtitle(DateTime? datum, int? km) {
   return parts.join(' · ');
 }
 
+Widget _selectChip(String label, {required bool selected, required VoidCallback onTap}) {
+  return Expanded(
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        decoration: BoxDecoration(
+          color: selected ? Colors.orange.withValues(alpha: 0.25) : Colors.white10,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? Colors.orange : Colors.white24, width: selected ? 2 : 1),
+        ),
+        child: Text(label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                color: selected ? Colors.orange : Colors.white70,
+                fontSize: 13)),
+      ),
+    ),
+  );
+}
+
+Widget _unosModeRow(bool ispravka, ValueChanged<bool> onChanged) {
+  return Row(
+    children: [
+      _selectChip(_OdrTr.tr('noviUnos'), selected: !ispravka, onTap: () => onChanged(false)),
+      const SizedBox(width: 8),
+      _selectChip(_OdrTr.tr('ispravka'), selected: ispravka, onTap: () => onChanged(true)),
+    ],
+  );
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 class V3OdrzavanjeScreen extends StatefulWidget {
@@ -447,10 +480,13 @@ class _V3OdrzavanjeScreenState extends State<V3OdrzavanjeScreen> {
             onEdit: () => _editServis('plocice_zadnje', _OdrTr.tr('plociceZadnje'), v.plociceZadnjeDatum,
                 v.plociceZadnjeKm, v.trenutnaKm.toInt()),
           ),
-          _EditableField(
+          _ServisProsekField(
+            vozilo: v,
+            tip: 'trap',
             icon: '🔩',
             label: _OdrTr.tr('trap'),
-            value: _formatServis(v.trapDatum, v.trapKm),
+            datum: v.trapDatum,
+            km: v.trapKm,
             onEdit: () => _editServis('trap', _OdrTr.tr('trap'), v.trapDatum, v.trapKm, v.trenutnaKm.toInt()),
           ),
 
@@ -929,12 +965,25 @@ class _ServisSheet extends StatefulWidget {
 class _ServisSheetState extends State<_ServisSheet> {
   late DateTime? _datum;
   late final TextEditingController _kmCtrl;
+  bool _ispravka = false;
 
   @override
   void initState() {
     super.initState();
-    _datum = V3BelgradeTime.now();
-    _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
+    _kmCtrl = TextEditingController();
+    _setMode(false);
+  }
+
+  void _setMode(bool ispravka) {
+    _ispravka = ispravka;
+    if (ispravka) {
+      _datum = widget.datum ?? V3BelgradeTime.now();
+      _kmCtrl.text = (widget.km ?? widget.trenutnaKm).toString();
+    } else {
+      _datum = V3BelgradeTime.now();
+      final k = widget.km;
+      _kmCtrl.text = (k != null && k > widget.trenutnaKm ? k : widget.trenutnaKm).toString();
+    }
   }
 
   @override
@@ -964,6 +1013,10 @@ class _ServisSheetState extends State<_ServisSheet> {
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 24),
+                if (widget.datum != null) ...[
+                  _unosModeRow(_ispravka, (v) => setState(() => _setMode(v))),
+                  const SizedBox(height: 16),
+                ],
                 InkWell(
                   onTap: () async {
                     final picked = await showDatePicker(
@@ -1005,8 +1058,17 @@ class _ServisSheetState extends State<_ServisSheet> {
                       final stariIso = widget.datum != null ? V3BelgradeTime.toIsoDate(widget.datum!) : null;
                       final noviIso = _datum != null ? V3BelgradeTime.toIsoDate(_datum!) : null;
                       if (noviIso != stariIso || kmValue != widget.km) {
-                        await V3VoziloService.logServisIstorija(
-                            voziloId: widget.voziloId, tip: widget.prefix, datum: _datum, km: kmValue);
+                        if (_ispravka && stariIso != null) {
+                          await V3VoziloService.ispraviServisIstorija(
+                              voziloId: widget.voziloId,
+                              tip: widget.prefix,
+                              stariDatum: widget.datum,
+                              noviDatum: _datum,
+                              km: kmValue);
+                        } else {
+                          await V3VoziloService.logServisIstorija(
+                              voziloId: widget.voziloId, tip: widget.prefix, datum: _datum, km: kmValue);
+                        }
                       }
                       if (!context.mounted) return;
                       Navigator.pop(context);
@@ -1059,13 +1121,14 @@ class _GumeSheetState extends State<_GumeSheet> {
   late final TextEditingController _opisCtrl;
   late final TextEditingController _kmCtrl;
   String? _tip;
+  bool _ispravka = false;
 
   @override
   void initState() {
     super.initState();
-    _datum = V3BelgradeTime.now();
     _opisCtrl = TextEditingController(text: widget.opis ?? '');
-    _kmCtrl = TextEditingController(text: (widget.km ?? widget.trenutnaKm).toString());
+    _kmCtrl = TextEditingController();
+    _setMode(false);
     final o = widget.opis;
     if (o != null) {
       if (o.contains('☀️') || o.toLowerCase().contains('letn'))
@@ -1077,6 +1140,18 @@ class _GumeSheetState extends State<_GumeSheet> {
     }
   }
 
+  void _setMode(bool ispravka) {
+    _ispravka = ispravka;
+    if (ispravka) {
+      _datum = widget.datum ?? V3BelgradeTime.now();
+      _kmCtrl.text = (widget.km ?? widget.trenutnaKm).toString();
+    } else {
+      _datum = V3BelgradeTime.now();
+      final k = widget.km;
+      _kmCtrl.text = (k != null && k > widget.trenutnaKm ? k : widget.trenutnaKm).toString();
+    }
+  }
+
   @override
   void dispose() {
     _opisCtrl.dispose();
@@ -1085,27 +1160,8 @@ class _GumeSheetState extends State<_GumeSheet> {
   }
 
   Widget _tipChip(String label, String value) {
-    final isSel = _tip == value;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _tip = isSel ? null : value),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-          decoration: BoxDecoration(
-            color: isSel ? Colors.orange.withValues(alpha: 0.25) : Colors.white10,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isSel ? Colors.orange : Colors.white24, width: isSel ? 2 : 1),
-          ),
-          child: Text(label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                  color: isSel ? Colors.orange : Colors.white70,
-                  fontSize: 13)),
-        ),
-      ),
-    );
+    return _selectChip(label,
+        selected: _tip == value, onTap: () => setState(() => _tip = _tip == value ? null : value));
   }
 
   @override
@@ -1130,6 +1186,10 @@ class _GumeSheetState extends State<_GumeSheet> {
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 20),
+                if (widget.datum != null) ...[
+                  _unosModeRow(_ispravka, (v) => setState(() => _setMode(v))),
+                  const SizedBox(height: 16),
+                ],
                 Text(_OdrTr.tr('tipGuma'), style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white70)),
                 const SizedBox(height: 8),
                 Row(
@@ -1209,11 +1269,20 @@ class _GumeSheetState extends State<_GumeSheet> {
                       final stariIso = widget.datum != null ? V3BelgradeTime.toIsoDate(widget.datum!) : null;
                       final noviIso = _datum != null ? V3BelgradeTime.toIsoDate(_datum!) : null;
                       if (noviIso != stariIso || kmValue != widget.km) {
-                        await V3VoziloService.logServisIstorija(
-                            voziloId: widget.voziloId,
-                            tip: 'gume_${widget.pozicija}',
-                            datum: _datum,
-                            km: kmValue);
+                        if (_ispravka && stariIso != null) {
+                          await V3VoziloService.ispraviServisIstorija(
+                              voziloId: widget.voziloId,
+                              tip: 'gume_${widget.pozicija}',
+                              stariDatum: widget.datum,
+                              noviDatum: _datum,
+                              km: kmValue);
+                        } else {
+                          await V3VoziloService.logServisIstorija(
+                              voziloId: widget.voziloId,
+                              tip: 'gume_${widget.pozicija}',
+                              datum: _datum,
+                              km: kmValue);
+                        }
                       }
                       if (!context.mounted) return;
                       Navigator.pop(context);

@@ -1632,6 +1632,20 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
     },
     'trenutno': {'sr': 'Trenutno', 'en': 'Current', 'ru': 'Текущий', 'de': 'Aktuell', 'zh': '当前'},
     'prosek': {'sr': 'Prosek', 'en': 'Average', 'ru': 'Среднее', 'de': 'Durchschnitt', 'zh': '平均'},
+    'noviUnos': {
+      'sr': 'Novi unos',
+      'en': 'New entry',
+      'ru': 'Новая запись',
+      'de': 'Neuer Eintrag',
+      'zh': '新记录'
+    },
+    'ispravka': {
+      'sr': 'Ispravka',
+      'en': 'Correction',
+      'ru': 'Исправление',
+      'de': 'Korrektur',
+      'zh': '更正'
+    },
     'protekloOdServisa': {
       'sr': 'Proteklo od servisa',
       'en': 'Since service',

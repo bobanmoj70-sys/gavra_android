@@ -84,6 +84,38 @@ class V3VoziloService {
     }
   }
 
+  /// Ispravlja poslednji zabeleženi unos u istoriji servisa.
+  /// Red sa starim datumom se ažurira; ako ne postoji (npr. podatak je stariji
+  /// od istorije), upisuje se novi red da istorija prati stvarno stanje.
+  /// Ne baca grešku — istorija je pomoćna i ne sme da blokira čuvanje servisa.
+  static Future<void> ispraviServisIstorija({
+    required String voziloId,
+    required String tip,
+    required DateTime? stariDatum,
+    required DateTime? noviDatum,
+    required int? km,
+  }) async {
+    if (stariDatum == null || noviDatum == null) return;
+    try {
+      final updated = await _repo.updateServisIstorija(
+        voziloId,
+        tip,
+        V3BelgradeTime.toIsoDate(stariDatum),
+        {'datum': V3BelgradeTime.toIsoDate(noviDatum), 'km': km},
+      );
+      if (!updated) {
+        await _repo.insertServisIstorija({
+          'vozilo_id': voziloId,
+          'tip': tip,
+          'datum': V3BelgradeTime.toIsoDate(noviDatum),
+          if (km != null) 'km': km,
+        });
+      }
+    } catch (e) {
+      debugPrint('[V3VoziloService] ispraviServisIstorija error: $e');
+    }
+  }
+
   /// Računa prosečan interval servisa (u danima i km) iz v3_servis_istorija,
   /// plus proteklo vreme/km od poslednjeg servisa.
   static Future<V3ServisProsek?> getServisProsek(String voziloId, String tip, {double? trenutnaKm}) async {
@@ -93,15 +125,18 @@ class V3VoziloService {
       for (final r in rows) {
         final d = V3BelgradeTime.parseDatum(r['datum']?.toString());
         if (d == null) continue;
+        // UTC ponoć za kalendarski dan — tačan broj dana bez DST/tz pomaka.
+        final du = DateTime.utc(d.year, d.month, d.day);
         final km = (r['km'] as num?)?.toInt();
-        if (entries.isEmpty || entries.last.datum != d || entries.last.km != km) {
-          entries.add((datum: d, km: km));
+        if (entries.isEmpty || entries.last.datum != du || entries.last.km != km) {
+          entries.add((datum: du, km: km));
         }
       }
       if (entries.isEmpty) return null;
 
+      final n = V3BelgradeTime.now();
       final last = entries.last;
-      final danaOd = V3BelgradeTime.now().difference(last.datum).inDays;
+      final danaOd = DateTime.utc(n.year, n.month, n.day).difference(last.datum).inDays;
       final kmOd =
           (trenutnaKm != null && last.km != null) ? (trenutnaKm - last.km!).round() : null;
 
@@ -109,7 +144,8 @@ class V3VoziloService {
       final kilometri = <int>[];
       for (var i = 1; i < entries.length; i++) {
         final dd = entries[i].datum.difference(entries[i - 1].datum).inDays;
-        if (dd > 0) dani.add(dd);
+        if (dd <= 0) continue;
+        dani.add(dd);
         final a = entries[i - 1].km;
         final b = entries[i].km;
         if (a != null && b != null && b > a) kilometri.add(b - a);
