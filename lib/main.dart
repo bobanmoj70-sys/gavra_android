@@ -1302,11 +1302,20 @@ Future<Map<String, dynamic>> _executeAlternativaEdgeAction({
     throw Exception('Nepoznata alternativa akcija: $safeActionId');
   }
 
+  // Dokaz identiteta uređaja — edge/RPC proverava da token ili device id
+  // odgovara vlasniku zahteva (v3_auth slotovi).
+  final tokenResult = await V3PushTokenProvider.getBestToken();
+  final hardwareId = await V3DeviceIdentityService.getHardwareId();
+  final installationId = await V3PushTokenProvider.getInstallationId();
+
   final response = await supabase.functions.invoke(
     'v3-alternativa-action',
     body: {
       'zahtev_id': safeZahtevId,
       'action': safeActionId,
+      'device_token': tokenResult?.token.trim() ?? '',
+      'hardware_id': hardwareId ?? '',
+      'installation_id': installationId?.trim() ?? '',
     },
   );
 
@@ -1429,6 +1438,27 @@ Future<void> _processAlternativaNotificationAction({
           );
           return;
         }
+        if (reason == 'selected_slot_full' || reason == 'no_capacity_slot') {
+          await _showActionFeedback(
+            '⚠️ Termin je popunjen',
+            'Izabrani termin je u međuvremenu popunjen.',
+          );
+          return;
+        }
+        if (reason == 'offer_expired' || reason == 'zahtev_not_in_alternativa') {
+          await _showActionFeedback(
+            '⚠️ Ponuda više nije aktiva',
+            'Ponuda je istekla ili je već obrađena.',
+          );
+          return;
+        }
+        if (reason == 'unauthorized') {
+          await _showActionFeedback(
+            '⚠️ Akcija nije izvršena',
+            'Akcija nije dozvoljena sa ovog uređaja.',
+          );
+          return;
+        }
         await _showActionFeedback('⚠️ Akcija nije izvršena', 'Akcija nije uspela: $reason');
         return;
       }
@@ -1458,7 +1488,7 @@ Future<void> _processAlternativaNotificationAction({
   }
 }
 
-Future<void> _showActionFeedback(String title, String body) async {
+Future<void> _showActionFeedback(String title, String body, {int? notificationId}) async {
   await _ensureLocalNotificationsInitialized();
   final androidDetails = AndroidNotificationDetails(
     'gavra_push_v2',
@@ -1473,7 +1503,8 @@ Future<void> _showActionFeedback(String title, String body) async {
   );
 
   await flutterLocalNotificationsPlugin.show(
-    DateTime.now().millisecondsSinceEpoch.remainder(100000),
+    // Fiksan slot: novi feedback zamenjuje prethodni (ne gomilaju se u tray-u).
+    notificationId ?? _stableNotificationId('alt_action_feedback'),
     title,
     body,
     NotificationDetails(

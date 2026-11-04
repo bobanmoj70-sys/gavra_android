@@ -46,6 +46,7 @@ class V3ZahtevDomainService {
       'scheduled_at': null,
       'alternativa_pre_at': null,
       'alternativa_posle_at': null,
+      'alternativa_offered_at': null,
       'mesto_ponuda': false,
       'mesto_ponuda_odbijena': false,
       'mesto_ponuda_at': null,

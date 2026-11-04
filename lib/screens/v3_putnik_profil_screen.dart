@@ -12,6 +12,7 @@ import '../services/v3/v3_adresa_service.dart';
 import '../services/v3/v3_closed_auth_service.dart';
 import '../services/v3/v3_device_identity_service.dart';
 import '../services/v3/v3_push_token_edge_service.dart';
+import '../services/v3/v3_push_token_provider.dart';
 import '../services/v3/v3_putnik_service.dart';
 import '../services/v3/v3_putnik_statistika_service.dart';
 import '../services/v3/v3_weather_service.dart';
@@ -1026,11 +1027,19 @@ class _V3PutnikProfilScreenState extends State<V3PutnikProfilScreen> with Widget
     if (zahtevId.isEmpty || _pendingPonudaZahtevi.contains(zahtevId)) return;
     _pendingPonudaZahtevi.add(zahtevId);
     try {
+      // Dokaz identiteta uređaja — edge/RPC proverava da token ili device id
+      // odgovara vlasniku zahteva (v3_auth slotovi).
+      final tokenResult = await V3PushTokenProvider.getBestToken();
+      final hardwareId = await V3DeviceIdentityService.getHardwareId();
+      final installationId = await V3PushTokenProvider.getInstallationId();
       final response = await supabase.functions.invoke(
         'v3-alternativa-action',
         body: {
           'zahtev_id': zahtevId,
           'action': prihvati ? 'accept_pre' : 'reject',
+          'device_token': tokenResult?.token.trim() ?? '',
+          'hardware_id': hardwareId ?? '',
+          'installation_id': installationId?.trim() ?? '',
         },
       );
       final data = response.data;
