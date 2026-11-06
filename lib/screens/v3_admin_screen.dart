@@ -712,6 +712,13 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
     final minAndroidCtrl = TextEditingController(text: (row['min_supported_version_android'] ?? '').toString());
     final latestIosCtrl = TextEditingController(text: (row['latest_version_ios'] ?? '').toString());
     final minIosCtrl = TextEditingController(text: (row['min_supported_version_ios'] ?? '').toString());
+    final storeUrlAndroidCtrl = TextEditingController(text: (row['store_url_android'] ?? '').toString());
+    final storeUrlIosCtrl = TextEditingController(text: (row['store_url_ios'] ?? '').toString());
+    final maintTitleAndroidCtrl =
+        TextEditingController(text: (row['maintenance_title_android'] ?? '').toString());
+    final maintMsgAndroidCtrl = TextEditingController(text: (row['maintenance_message_android'] ?? '').toString());
+    final maintTitleIosCtrl = TextEditingController(text: (row['maintenance_title_ios'] ?? '').toString());
+    final maintMsgIosCtrl = TextEditingController(text: (row['maintenance_message_ios'] ?? '').toString());
 
     var forceAndroid = row['force_update_android'] == true;
     var forceIos = row['force_update_ios'] == true;
@@ -742,10 +749,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
           'min_supported_version_android': minAndroid,
           'force_update_android': forceAndroid,
           'maintenance_mode_android': maintenanceAndroid,
+          'store_url_android': storeUrlAndroidCtrl.text.trim(),
+          'maintenance_title_android': maintTitleAndroidCtrl.text.trim(),
+          'maintenance_message_android': maintMsgAndroidCtrl.text.trim(),
           'latest_version_ios': latestIos,
           'min_supported_version_ios': minIos,
           'force_update_ios': forceIos,
           'maintenance_mode_ios': maintenanceIos,
+          'store_url_ios': storeUrlIosCtrl.text.trim(),
+          'maintenance_title_ios': maintTitleIosCtrl.text.trim(),
+          'maintenance_message_ios': maintMsgIosCtrl.text.trim(),
         });
 
         if (!mounted) return;
@@ -794,6 +807,16 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         label: _tr('iosMin'),
                       ),
                       const SizedBox(height: 8),
+                      V3InputUtils.textField(
+                        controller: storeUrlAndroidCtrl,
+                        label: _tr('androidStoreUrl'),
+                      ),
+                      const SizedBox(height: 8),
+                      V3InputUtils.textField(
+                        controller: storeUrlIosCtrl,
+                        label: _tr('iosStoreUrl'),
+                      ),
+                      const SizedBox(height: 8),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(_tr('forceAndroid')),
@@ -806,6 +829,17 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         value: forceIos,
                         onChanged: (value) => setModalState(() => forceIos = value),
                       ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          _tr('forceUpdateHint'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(builderContext).hintColor,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: Text(_tr('maintenanceAndroid')),
@@ -817,6 +851,26 @@ class _V3AdminScreenState extends State<V3AdminScreen> {
                         title: Text(_tr('maintenanceIos')),
                         value: maintenanceIos,
                         onChanged: (value) => setModalState(() => maintenanceIos = value),
+                      ),
+                      const SizedBox(height: 8),
+                      V3InputUtils.textField(
+                        controller: maintTitleAndroidCtrl,
+                        label: _tr('maintenanceTitleAndroid'),
+                      ),
+                      const SizedBox(height: 8),
+                      V3InputUtils.textField(
+                        controller: maintMsgAndroidCtrl,
+                        label: _tr('maintenanceMessageAndroid'),
+                      ),
+                      const SizedBox(height: 8),
+                      V3InputUtils.textField(
+                        controller: maintTitleIosCtrl,
+                        label: _tr('maintenanceTitleIos'),
+                      ),
+                      const SizedBox(height: 8),
+                      V3InputUtils.textField(
+                        controller: maintMsgIosCtrl,
+                        label: _tr('maintenanceMessageIos'),
                       ),
                     ],
                   ),

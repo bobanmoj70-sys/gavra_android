@@ -22,7 +22,6 @@ import '../utils/v3_button_utils.dart';
 import '../utils/v3_container_utils.dart';
 import '../utils/v3_input_utils.dart';
 import '../utils/v3_phone_utils.dart';
-import '../widgets/v3_update_banner.dart';
 
 enum _SmsStep { unosTelefona, unosProfila }
 
@@ -825,7 +824,6 @@ class _V3SmsLoginScreenState extends State<V3SmsLoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const V3UpdateBanner(),
               if (widget.header != null) ...[
                 widget.header!,
                 const SizedBox(height: 32),

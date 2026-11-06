@@ -399,6 +399,59 @@ const Map<String, Map<String, Map<String, String>>> _screensA = {
       'de': '✅ Update-Versionen gespeichert',
       'zh': '✅ 更新版本已保存',
     },
+    'androidStoreUrl': {
+      'sr': 'Android store URL',
+      'en': 'Android store URL',
+      'ru': 'Android URL магазина',
+      'de': 'Android Store-URL',
+      'zh': 'Android 商店链接',
+    },
+    'iosStoreUrl': {
+      'sr': 'iOS store URL',
+      'en': 'iOS store URL',
+      'ru': 'iOS URL магазина',
+      'de': 'iOS Store-URL',
+      'zh': 'iOS 商店链接',
+    },
+    'maintenanceTitleAndroid': {
+      'sr': 'Maintenance naslov Android',
+      'en': 'Maintenance title Android',
+      'ru': 'Заголовок обслуживания Android',
+      'de': 'Wartungstitel Android',
+      'zh': 'Android 维护标题',
+    },
+    'maintenanceMessageAndroid': {
+      'sr': 'Maintenance poruka Android',
+      'en': 'Maintenance message Android',
+      'ru': 'Сообщение обслуживания Android',
+      'de': 'Wartungsnachricht Android',
+      'zh': 'Android 维护信息',
+    },
+    'maintenanceTitleIos': {
+      'sr': 'Maintenance naslov iOS',
+      'en': 'Maintenance title iOS',
+      'ru': 'Заголовок обслуживания iOS',
+      'de': 'Wartungstitel iOS',
+      'zh': 'iOS 维护标题',
+    },
+    'maintenanceMessageIos': {
+      'sr': 'Maintenance poruka iOS',
+      'en': 'Maintenance message iOS',
+      'ru': 'Сообщение обслуживания iOS',
+      'de': 'Wartungsnachricht iOS',
+      'zh': 'iOS 维护信息',
+    },
+    'forceUpdateHint': {
+      'sr':
+          'Zid za update se prikazuje samo ako je force uključen, store URL popunjen i instalirana verzija manja od min podržane.',
+      'en':
+          'The update wall is shown only if force is enabled, the store URL is set and the installed version is below min supported.',
+      'ru':
+          'Экран обновления показывается только если force включён, задан URL магазина и установленная версия ниже минимальной.',
+      'de':
+          'Die Update-Sperre wird nur angezeigt, wenn Force aktiviert ist, die Store-URL gesetzt ist und die installierte Version unter der Mindestversion liegt.',
+      'zh': '只有在启用强制更新、已填写商店链接且已安装版本低于最低支持版本时，才会显示更新提示。',
+    },
     'uceniciBezVsTermina': {
       'sr': 'Učenici bez VS termina',
       'en': 'Students without VS slot',

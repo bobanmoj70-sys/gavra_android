@@ -64,6 +64,11 @@ class V3AppUpdateService {
       // Store URL only from remote config — no hardcoded store listing URLs in binary.
       final forceFlag = selected['force'] == true;
 
+      if (shouldBypassForceUpdateForCurrentOperator()) {
+        setUpdateInfoIfLatest(null);
+        return;
+      }
+
       if (maintenanceMode) {
         setUpdateInfoIfLatest(AppUpdateInfo(
           latestVersion: latest.isNotEmpty ? latest : currentVersion,
@@ -84,11 +89,6 @@ class V3AppUpdateService {
       }
 
       if (!forceFlag) {
-        setUpdateInfoIfLatest(null);
-        return;
-      }
-
-      if (shouldBypassForceUpdateForCurrentOperator()) {
         setUpdateInfoIfLatest(null);
         return;
       }

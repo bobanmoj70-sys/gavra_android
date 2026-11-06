@@ -19,6 +19,8 @@ String _trUpdateBanner(String key) {
 
 /// Forced-update gate za aplikaciju.
 /// Koristi se na V3HomeScreen, V3PutnikProfilScreen i V3VozacScreen.
+/// Namerno se NE montira na pre-login ekranima (welcome/SMS login) — zid ne sme
+/// da blokira prijavu jer bypass nalozi (review/dev) prvo moraju da se uloguju.
 /// Kada je update obavezan (`isForced=true`), prikazuje fullscreen blokadu preko cele aplikacije.
 class V3UpdateBanner extends StatefulWidget {
   const V3UpdateBanner({super.key});
@@ -29,7 +31,7 @@ class V3UpdateBanner extends StatefulWidget {
 
 class _V3UpdateBannerState extends State<V3UpdateBanner> {
   static bool _forceDialogOpen = false;
-  static String? _dialogSignature;
+  static BuildContext? _dialogContext;
 
   @override
   void initState() {
@@ -55,35 +57,22 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
       return;
     }
 
-    if (!info.isMaintenance) {
-      final shouldBypass = V3AppUpdateService.shouldBypassForceUpdateForCurrentOperator();
-      if (shouldBypass) {
-        _closeForceDialogIfOpen();
-        if (updateInfoNotifier.value != null) {
-          updateInfoNotifier.value = null;
-        }
-        return;
-      }
-    }
-
-    final latestInfo = updateInfoNotifier.value;
-    if (!mounted || latestInfo == null || !latestInfo.isForced) {
+    if (V3AppUpdateService.shouldBypassForceUpdateForCurrentOperator()) {
       _closeForceDialogIfOpen();
+      if (updateInfoNotifier.value != null) {
+        // Reset odloženo za sledeći frejm — direktno setovanje unutar listener-a
+        // bi izazvalo reentrantnu notifikaciju.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (updateInfoNotifier.value != null) {
+            updateInfoNotifier.value = null;
+          }
+        });
+      }
       return;
     }
 
-    final signature = [
-      latestInfo.isMaintenance,
-      latestInfo.latestVersion,
-      latestInfo.maintenanceTitle,
-      latestInfo.maintenanceMessage,
-    ].join('|');
-
-    if (_forceDialogOpen && _dialogSignature == signature) return;
     if (_forceDialogOpen) return;
-
     _forceDialogOpen = true;
-    _dialogSignature = signature;
 
     showGeneralDialog<void>(
       context: context,
@@ -92,8 +81,22 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
       barrierLabel: 'force_update',
       barrierColor: Colors.black.withValues(alpha: 0.72),
       transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (dialogContext, _, __) =>
-          latestInfo.isMaintenance ? _MaintenanceDialog(info: latestInfo) : _ForceUpdateDialog(info: latestInfo),
+      pageBuilder: (dialogContext, _, __) {
+        _dialogContext = dialogContext;
+        // Dijalog sluša notifier — sadržaj se osvežava uživo ako se
+        // settings red promeni dok je zid otvoren.
+        return ValueListenableBuilder<AppUpdateInfo?>(
+          valueListenable: updateInfoNotifier,
+          builder: (_, currentInfo, __) {
+            if (currentInfo == null || !currentInfo.isForced) {
+              return const SizedBox.shrink();
+            }
+            return currentInfo.isMaintenance
+                ? _MaintenanceDialog(info: currentInfo)
+                : _ForceUpdateDialog(info: currentInfo);
+          },
+        );
+      },
       transitionBuilder: (_, animation, __, child) {
         final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         return FadeTransition(
@@ -106,18 +109,24 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
       },
     ).whenComplete(() {
       _forceDialogOpen = false;
-      _dialogSignature = null;
+      _dialogContext = null;
     });
   }
 
   void _closeForceDialogIfOpen() {
     if (!_forceDialogOpen) return;
-    final nav = Navigator.of(context, rootNavigator: true);
-    if (nav.canPop()) {
-      nav.pop();
-    }
     _forceDialogOpen = false;
-    _dialogSignature = null;
+    final dialogContext = _dialogContext;
+    _dialogContext = null;
+    // Uklanja baš route ovog dijaloga — ne najviši route na navigatoru.
+    if (dialogContext != null) {
+      try {
+        final route = ModalRoute.of(dialogContext);
+        if (route != null) {
+          Navigator.of(dialogContext).removeRoute(route);
+        }
+      } catch (_) {}
+    }
   }
 
   @override
